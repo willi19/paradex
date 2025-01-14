@@ -45,7 +45,8 @@ def capture_video(camera_index, video_filename, duration):
     cameraLens = json.load(open("config/lens.json","r"))
     lensinfo = json.load(open("config/camera.json","r"))
     
-    root = "/home/capture16/captures1"  # Replace with the root path
+    homedir = os.path.expanduser("~")
+    root = f"{homedir}/captures1"  # Replace with the root path
     port = camera_index  # Port number
     cam = camera.Camera(camPtr, None, cameraLens, lensinfo, root, port, syncMode=True)
     try:

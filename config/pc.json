@@ -1,6 +1,6 @@
 {
     "pc15":{
         "ip":"asdf",
-        "cam_list":[] // maybe removed
+        "cam_list":[] 
     }
 }

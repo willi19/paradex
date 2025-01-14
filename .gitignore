@@ -1,2 +1,3 @@
 cam_param/*
-*.pyc
+src/*/*/*.pyc
+src/*/*.pyc

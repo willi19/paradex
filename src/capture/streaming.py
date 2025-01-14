@@ -3,8 +3,12 @@ import threading
 import PySpin
 import json
 import time
+from multiprocessing import Process, Queue, Event
+import signal
+import sys
 from ..camera import camera
-import os
+from ..utils.image_util import spin2cv
+
 
 def configure_camera(cam):
     """
@@ -17,6 +21,7 @@ def configure_camera(cam):
 
     print(f"Camera {cam.GetUniqueID()} configured to continuous acquisition mode.")
 
+
 def send_to_main_pc(data, server_ip, server_port):
     """
     Sends data to the main PC via TCP.
@@ -28,13 +33,14 @@ def send_to_main_pc(data, server_ip, server_port):
     except Exception as e:
         print(f"Error sending data to main PC: {e}")
 
-def capture_video(camera_index, duration, server_ip, server_port):
+
+def capture_video(camera_index, duration, frame_queue, stop_event):
     """
-    Captures video using Spinnaker's SpinVideo and sends metadata to the main PC.
+    Captures video using Spinnaker's SpinVideo and sends frames to a processing queue.
     """
     system = PySpin.System.GetInstance()
     cam_list = system.GetCameras()
-    
+
     if cam_list.GetSize() <= camera_index:
         print(f"Camera index {camera_index} is out of range.")
         cam_list.Clear()
@@ -44,50 +50,124 @@ def capture_video(camera_index, duration, server_ip, server_port):
     camPtr = cam_list.GetByIndex(camera_index)
     cameraLens = json.load(open("config/lens.json", "r"))
     lensinfo = json.load(open("config/camera.json", "r"))
-    
+
     root = "/home/capture16/captures1"
     port = camera_index
     cam = camera.Camera(camPtr, None, cameraLens, lensinfo, root, port)
-    
+
     try:
-        cnt = 0
         start_time = time.time()
-        while time.time() - start_time < duration:
-            frame = cam.get_capture()
-            cnt += 1
-            # Send metadata or status to the main PC
-            data = {
-                "camera_index": camera_index,
-                "frame_count": cnt,
-                "timestamp": time.time(),
-                "status": "Capturing"
-            }
-            send_to_main_pc(data, server_ip, server_port)
+        while time.time() - start_time < duration and not stop_event.is_set():
+            frame, ret = cam.get_capture()
+            img = spin2cv(frame, 1536, 2048)
+            # Send frame to the processing queue
+            if ret:
+                frame_queue.put((camera_index, img))
     finally:
         cam.stop_camera()
         del camPtr
         cam_list.Clear()
         system.ReleaseInstance()
 
+
+def process_frames(frame_queue, server_ip, server_port, stop_event):
+    """
+    Processes frames for hand detection and sends results to the main PC.
+    """
+    while not stop_event.is_set():
+        try:
+            frame_data = frame_queue.get(timeout=1)  # Timeout to check for stop_event
+            if frame_data is None:
+                # Stop signal received
+                break
+
+            camera_index, frame = frame_data
+
+            # Perform heavy hand detection (placeholder logic)
+            hand_detected = True if hash(frame[0][0][0]) % 2 == 0 else False
+
+            # Send results to the main PC
+            data = {
+                "camera_index": camera_index,
+                "hand_detected": hand_detected,
+                "timestamp": time.time(),
+            }
+            send_to_main_pc(data, server_ip, server_port)
+
+        except Exception as e:
+            print(f"Error in processing: {e}")
+
+
+def signal_handler(stop_event, threads, processes):
+    """
+    Handles SIGINT to terminate all threads and processes gracefully.
+    """
+    print("\nSIGINT received. Terminating all threads and processes...")
+    stop_event.set()
+
+    # Terminate threads
+    for t in threads:
+        if t.is_alive():
+            print(f"Joining thread {t.name}")
+            t.join(timeout=2)
+
+    # Terminate processes
+    for p in processes:
+        if p.is_alive():
+            print(f"Terminating process {p.name}")
+            p.terminate()
+
+    sys.exit(0)
+
+
 def main():
     duration = 180  # Duration in seconds
-    server_ip = "192.168.1.100"  # Replace with the IP address of the main PC
+    server_ip = "192.168.0.2"  # Replace with the IP address of the main PC
     server_port = 5000  # Replace with the listening port on the main PC
 
-    threads = [
-        threading.Thread(target=capture_video, args=(0, duration, server_ip, server_port)),
-        threading.Thread(target=capture_video, args=(1, duration, server_ip, server_port)),
-        threading.Thread(target=capture_video, args=(2, duration, server_ip, server_port)),
-        threading.Thread(target=capture_video, args=(3, duration, server_ip, server_port)),
+    # Queue to hold frames for processing
+    frame_queue = Queue()
+    stop_event = Event()
+
+    # Processes for capturing video from multiple cameras
+    capture_processes = [
+        Process(target=capture_video, args=(i, duration, frame_queue, stop_event))
+        for i in range(4)
     ]
 
-    for t in threads:
-        t.start()
+    # Thread for heavy processing
+    processing_thread = threading.Thread(
+        target=process_frames, args=(frame_queue, server_ip, server_port, stop_event), daemon=True
+    )
 
-    for t in threads:
-        t.join()
+    # Signal handler for Ctrl-C
+    def sigint_handler(sig, frame):
+        signal_handler(stop_event, [processing_thread], capture_processes)
 
-    print("All camera threads completed.")
+    signal.signal(signal.SIGINT, sigint_handler)  # Register signal handler
+
+    # Start all capture processes
+    for p in capture_processes:
+        p.start()
+
+    # Start the processing thread
+    processing_thread.start()
+
+    try:
+        # Wait for all capture processes to finish
+        for p in capture_processes:
+            p.join()
+
+        # Send stop signal to the processing thread
+        frame_queue.put(None)
+
+        # Wait for processing thread to finish
+        processing_thread.join()
+    except KeyboardInterrupt:
+        sigint_handler(None, None)
+
+    print("All processes and threads completed.")
+
 
 if __name__ == "__main__":
     main()

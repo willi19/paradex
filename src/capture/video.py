@@ -47,7 +47,7 @@ def capture_video(camera_index, video_filename, duration):
     
     root = "/home/capture16/captures1"  # Replace with the root path
     port = camera_index  # Port number
-    cam = camera.Camera(camPtr, None, cameraLens, lensinfo, root, port)
+    cam = camera.Camera(camPtr, None, cameraLens, lensinfo, root, port, syncMode=True)
     try:
         cam.set_record()
         cnt = 0

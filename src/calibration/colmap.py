@@ -14,7 +14,7 @@ import pycolmap
 import sys
 sys.path.append("..")
 
-from calibration.database import *
+from .database import *
 
 shared_dir = "/home/capture18/captures1"
 
@@ -223,7 +223,8 @@ if __name__ == "__main__":
     if not os.path.exists(out_pose_dir):
         os.mkdir(out_pose_dir)
 
-    with open("options.yaml", "r") as f:
+    print(os.getcwd())
+    with open("src/calibration/options.yaml", "r") as f:
         options = yaml.safe_load(f)
 
     databasepth = root_dir + "/database.db"

@@ -5,7 +5,7 @@ import cv2
 import PySpin as ps
 from pathlib import Path
 from ..camera.camera import Camera
-from flir_python.utils.utils import spin2cv
+from ..utils.image_util import spin2cv
 import threading
 import numpy as np
 import os

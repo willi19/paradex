@@ -5,7 +5,7 @@ import numpy as np
 from pathlib import Path
 import PySpin as ps
 
-import CameraConfig
+from camera_setting import CameraConfig
 import os
 
 class Camera(CameraConfig):

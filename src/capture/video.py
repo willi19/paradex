@@ -64,7 +64,7 @@ def capture_video(camera_index, video_filename, duration):
 
 def main():
     # Video recording duration in seconds
-    duration = 180
+    duration = 30
 
     # Create processes for multiple cameras
     processes = [

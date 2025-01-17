@@ -8,7 +8,7 @@ import signal
 import sys
 from ..camera import camera
 from ..utils.image_util import spin2cv
-
+from ..process.kyepoint_detector import HandKeypointDetector
 
 def configure_camera(cam):
     """
@@ -53,7 +53,7 @@ def capture_video(camera_index, duration, frame_queue, stop_event):
 
     root = "/home/capture16/captures1"
     port = camera_index
-    cam = camera.Camera(camPtr, None, cameraLens, lensinfo, root, port)
+    cam = camera.Camera(camPtr, None, cameraLens, lensinfo, root, port, syncMode=True)
 
     try:
         start_time = time.time()
@@ -74,6 +74,7 @@ def process_frames(frame_queue, server_ip, server_port, stop_event):
     """
     Processes frames for hand detection and sends results to the main PC.
     """
+    detector = HandKeypointDetector()
     while not stop_event.is_set():
         try:
             frame_data = frame_queue.get(timeout=1)  # Timeout to check for stop_event
@@ -82,16 +83,37 @@ def process_frames(frame_queue, server_ip, server_port, stop_event):
                 break
 
             camera_index, frame = frame_data
+            img = spin2cv(frame)
 
             # Perform heavy hand detection (placeholder logic)
-            hand_detected = True if hash(frame[0][0][0]) % 2 == 0 else False
+            hand_keypoints = detector.detect_keypoints(frame)  # This should return hand landmarks
 
-            # Send results to the main PC
-            data = {
-                "camera_index": camera_index,
-                "hand_detected": hand_detected,
-                "timestamp": time.time(),
-            }
+            # Build the result to send to the server
+            if hand_keypoints:
+                # Format detected keypoints as a list of dictionaries
+                landmarks = []
+                for hand in hand_keypoints:
+                    landmarks.append([
+                        {"x": lm.x, "y": lm.y, "z": lm.z}
+                        for lm in hand.landmark
+                    ])
+
+                # Send structured data to the main PC
+                data = {
+                    "camera_index": camera_index,
+                    "hands_detected": len(hand_keypoints),  # Number of hands detected
+                    "keypoints": landmarks,  # List of keypoints for each hand
+                    "timestamp": time.time(),  # Timestamp of detection
+                }
+            else:
+                # If no hands detected, send an empty response
+                data = {
+                    "camera_index": camera_index,
+                    "hands_detected": 0,
+                    "keypoints": [],
+                    "timestamp": time.time(),
+                }
+
             send_to_main_pc(data, server_ip, server_port)
 
         except Exception as e:

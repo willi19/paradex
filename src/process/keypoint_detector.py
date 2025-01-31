@@ -127,7 +127,7 @@ if __name__ == "__main__":
     update_flags = {}
 
     from ..camera.camera_loader import CameraManager
-    manager = CameraManager(num_cameras=num_cameras, duration=30, is_streaming=True, shared_memories=shared_memories, update_flags=update_flags)
+    manager = CameraManager(num_cameras=num_cameras, duration=300, is_streaming=True, shared_memories=shared_memories, update_flags=update_flags)
     manager.start()
     
     # Initialize and start the viewer

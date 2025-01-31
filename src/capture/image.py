@@ -47,7 +47,7 @@ def capture_images_from_all_cameras(save_path, num_image, lens_info_path, camera
         for pCam in camera_list:
             # Load camera configuration and lens information
             # Initialize the camera
-            cam = Camera(pCam, None, camera_config, lens_info, save_path, 0, False, False)
+            cam = Camera(pCam, lens_info, camera_config,  save_path, False)
             t = threading.Thread(target=capture_image, args=(cam, num_image, save_path))
             threads.append(t)
             t.start()

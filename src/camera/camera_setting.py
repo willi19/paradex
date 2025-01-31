@@ -31,10 +31,11 @@ class CameraConfig:
             self.videoOption.height = self.height
             self.videoOption.width = self.width
             # TODO : Below are some default values, change later for further control
-            if configDict["VideoFormat"] == "mjpg":
-                self.videoOption.quality = 40
-            if configDict["VideoFormat"] == "h264":
-                self.videoOption.bitrate = 1000000
+            
+            # if configDict["VideoFormat"] == "mjpg":
+            #     self.videoOption.quality = 40
+            # if configDict["VideoFormat"] == "h264":
+            #     self.videoOption.bitrate = 1000000
         else:
             self.videoStream = None
             self.videoOption = None

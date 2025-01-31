@@ -12,12 +12,9 @@ class Camera(CameraConfig):
     def __init__(
         self,
         camPtr,
-        processor,
         lens_info,
         cam_info,
-        root,
-        port,
-        saveVideo=False,
+        saveVideoPath=None,
         syncMode=False,
     ):
         camPtr.Init()  # initialize camera
@@ -25,6 +22,7 @@ class Camera(CameraConfig):
         self.nodeMap = camPtr.GetNodeMap()  #
         self.serialnum = self.get_serialnum()
         settingDict = lens_info[str(cam_info[self.serialnum]["lens"])]
+        saveVideo = saveVideoPath is not None
         super().__init__(settingDict, saveVideo)
 
         self.cam = camPtr
@@ -55,9 +53,9 @@ class Camera(CameraConfig):
         # self.image_processor.SetColorProcessing(ps.SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR)
 
         # TODO : Mainly for video, timestamp
-        self.outName = "PC" + str(port)  # number of c
+        
         self.videoName = None
-        self.root_path = root
+        self.saveVideoPath = saveVideoPath
 
         self.videoStream = ps.SpinVideo()
         video_option = ps.AVIOption()
@@ -177,18 +175,18 @@ class Camera(CameraConfig):
             print("Stop Recording")
             self.is_recording = False
             stampname = (
-                self.outName + "_" + self.serialnum + self.get_now() + "_timestamp.json"
+                self.serialnum + "_"+ self.get_now() + "_timestamp.json"
             )
             json.dump(
-                self.timestamps, open(self.root_path + "/" + stampname, "w"), indent="\t"
+                self.timestamps, open(self.saveVideoPath + "/" + stampname, "w"), indent="\t"
             )
             self.videoStream.Close()
             print("Video Save finished")
         else:
             self.is_recording = True
             self.videoStream.SetMaximumFileSize(0)  # no limited size for the file
-            self.videoName = self.outName + "_" + self.serialnum + self.get_now()
-            savePath = self.root_path +"/" + self.videoName
+            self.videoName = self.serialnum + "_"+self.get_now()
+            savePath = self.saveVideoPath +"/" + self.videoName
             print("Start Recording")
             self.videoStream.Open(str(savePath), self.videoOption)
         return

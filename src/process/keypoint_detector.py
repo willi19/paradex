@@ -91,7 +91,6 @@ class CameraStreamProcessor:
 
 
             while True:
-                print(f"Processing stream {cam_id}...")
                 if update_flag.value == 1:  # New frame available
                     with shm_info["lock"]:
                         frame = np.copy(shm_array)

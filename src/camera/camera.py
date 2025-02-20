@@ -187,8 +187,8 @@ class Camera(CameraConfig):
             self.videoStream.SetMaximumFileSize(0)  # no limited size for the file
             self.videoName = self.serialnum + "_"+self.get_now()
             savePath = self.saveVideoPath +"/" + self.videoName
-            print("Start Recording")
             self.videoStream.Open(str(savePath), self.videoOption)
+            print("Start Recording")
         return
 
     def configureSettings(self, nodeMap):

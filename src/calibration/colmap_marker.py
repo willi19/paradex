@@ -9,14 +9,71 @@ from itertools import chain
 from multiprocessing import Pool
 from glob import glob
 import pycolmap
-
+import cv2
+from cv2 import aruco
 
 import sys
 sys.path.append("..")
 
 from .database import *
 
-shared_dir = "/home/capture18/captures1"
+
+aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_1000)
+
+
+with open("./config/charuco_info.json", "r") as f:
+    boardinfo = json.load(f)
+
+board_idx = 1
+cb = boardinfo[str(board_idx)]
+board = aruco.CharucoBoard( (cb["numX"], cb["numY"]), cb["checkerLength"], cb["markerLength"], aruco_dict, np.array(cb["markerIDs"]))
+board_info = (board, int(cb["numMarker"]), 0) 
+
+corners3d = board_info[0].getChessboardCorners()
+arucoDetector = aruco.ArucoDetector(aruco_dict)
+arucoDetector_tuned = aruco.ArucoDetector(aruco_dict)
+params = arucoDetector_tuned.getDetectorParameters()
+# # set detect parameters
+"""
+Edge detection
+"""
+params.adaptiveThreshWinSizeMin = 3
+params.adaptiveThreshWinSizeMax = 28
+params.adaptiveThreshWinSizeStep = 26
+
+"""
+Contour filtering
+"""
+params.minMarkerPerimeterRate = 0.01
+params.maxMarkerPerimeterRate = 6.0
+params.minCornerDistanceRate = 0.01
+params.minMarkerDistanceRate = 0.01
+params.polygonalApproxAccuracyRate = 0.07
+
+"""
+Marker Identification
+"""
+params.minOtsuStdDev = 10.0
+params.perspectiveRemovePixelPerCell = 6
+params.perspectiveRemoveIgnoredMarginPerCell = 0.25
+params.errorCorrectionRate = 0.8 
+
+"""
+Corner Refinement
+"""
+params.cornerRefinementMethod = aruco.CORNER_REFINE_SUBPIX
+params.cornerRefinementWinSize = 5
+params.cornerRefinementMaxIterations = 100
+params.cornerRefinementMinAccuracy = 0.1
+
+"""
+Using newer version
+"""
+params.useAruco3Detection = True
+#params.useGlobalThreshold = True
+arucoDetector_tuned.setDetectorParameters(params) 
+
+shared_dir = "/home/capture18/paradex/config"
 
 # def build_framewise_directories(root):
 #     all_frames_dir = os.path.join(root, "frames")
@@ -45,6 +102,7 @@ def get_two_view_geometries(cam1, cam2, pix1, pix2, indices, pair): # get tuple 
     pycam1 = pycolmap.Camera(model="OPENCV", width=cam1["width"], height=cam1["height"], params=list(cam1["params"].reshape(-1)))
     pycam2 = pycolmap.Camera(model="OPENCV", width=cam2["width"], height=cam2["height"], params=list(cam2["params"].reshape(-1)))
     E = pycolmap.estimate_essential_matrix(pix1, pix2, pycam1, pycam2)
+    F = pycolmap.estimate_fundamental_matrix(pix1, pix2)
     F = pycolmap.estimate_fundamental_matrix(pix1, pix2)['F']
     H = pycolmap.estimate_homography_matrix(pix1, pix2)['H']
     # database is shared resource here
@@ -193,17 +251,65 @@ def sift_merge_database(root_dir, num_cam):
 #     pycolmap.extract_features(database_path, all_frame_dir, camera_model="OPENCV", sift_options=sift_extract_options)
 #     pycolmap.match_exhaustive(database_path, sift_options=sift_matching_options)
 
-def create_database(database_path):
-    cmd = f"colmap database_creator --database_path {database_path}"
-    os.system(cmd)
 
-def feature_extraction(database_path, image_path, camera_model):
-    cmd = f"colmap feature_extractor \
-            --database_path {database_path} \
-            --image_path {image_path} \
-            --ImageReader.camera_model {camera_model} \
-            --SiftExtraction.use_gpu 0" # Change this when GPU is available
-    os.system(cmd)
+
+
+def detect_charuco_features(frame_path):
+    global board_info
+
+    ret = {"detected_corners": {}, "detected_markers": {}, "detected_ids": {}, "detected_mids": {}}
+    
+    scene_list = os.listdir(frame_path)
+    scene_list.sort()
+
+    b = board_info
+    cur_board, cur_board_id = b[0], b[2]
+    charDet = aruco.CharucoDetector(cur_board)
+
+    for scene_idx, scene_name in enumerate(scene_list[:2]):
+        scene_path = pjoin(frame_path, scene_name)
+
+        for img_name_tot in os.listdir(scene_path):
+            img_name = img_name_tot.split(".")[0]
+            img_path = pjoin(scene_path, img_name_tot)
+            img = cv2.imread(img_path)
+            charCorner, charIDs, markerCorner, markerIDs = charDet.detectBoard(img)
+            
+            if img_name not in ret["detected_corners"]:
+                ret["detected_corners"][img_name] = []
+                ret["detected_ids"][img_name] = []
+                ret["detected_markers"][img_name] = []
+                ret["detected_mids"][img_name] = []
+
+            if charIDs is not None:
+                ret["detected_corners"][img_name].append(charCorner[:,0,:])
+                ret["detected_ids"][img_name].append((charIDs + 70*scene_idx)[:,0])
+                for val in markerCorner:
+                    ret["detected_markers"][img_name].append(val)
+                ret["detected_mids"][img_name].append(markerIDs)
+
+
+    for img_name in list(ret["detected_corners"].keys()):    
+        if len(ret["detected_corners"][img_name]) > 0:
+            ret["detected_corners"][img_name] = np.concatenate(ret["detected_corners"][img_name], axis=0)
+            ret["detected_ids"][img_name] = np.concatenate(ret["detected_ids"][img_name], axis=0)
+            #detected_markers = np.concatenate(detected_markers, axis=0)
+            ret["detected_mids"][img_name] = np.concatenate(ret["detected_mids"][img_name], axis=0)
+    return ret
+
+def get_colmap_images(database_path):
+    """
+    Fetches image IDs and names from the COLMAP database using an SQL query.
+    If no images exist in the database, return an empty dictionary.
+    """
+    conn = sqlite3.connect(database_path)
+    cursor = conn.cursor()
+
+    cursor.execute("SELECT image_id, name FROM images")
+    images = {row[0]: row[1] for row in cursor.fetchall()}
+
+    conn.close()
+    return images
 
 def feature_matching(database_path):
     cmd = f"colmap sequential_matcher --database_path {database_path} --SiftMatching.use_gpu 0"
@@ -211,30 +317,120 @@ def feature_matching(database_path):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--root_dir", help="Keep data structure as formulated") # <some_dir>/sequence_# or <some_dir>/calibration
-    args = parser.parse_args()
-
-    root_dir = args.root_dir
+    root_dir = "/home/capture18/captures1/calib_0217"
+    
     out_pose_dir = pjoin(root_dir, "out")
     frame_dir = pjoin(root_dir, "frames")
 
-    num_cam = len(os.listdir(frame_dir))
+    num_cam = 24#len(os.listdir(frame_dir))
     if not os.path.exists(out_pose_dir):
         os.mkdir(out_pose_dir)
 
-    print(os.getcwd())
     with open("src/calibration/options.yaml", "r") as f:
         options = yaml.safe_load(f)
 
-    databasepth = root_dir + "/database.db"
+    database_path = root_dir + "/database.db"
 
-    create_database(database_path=databasepth)
-    feature_extraction(database_path=databasepth, image_path=frame_dir, camera_model="OPENCV") # we use undistorted cameras
-    feature_matching(database_path=databasepth)
+    #charuco_feature_extraction(database_path=databasepth, image_path=frame_dir) # we use undistorted cameras
+    # feature_matching(database_path=databasepth)
 
-    sift_merge_database(root_dir, num_cam)
-    db_path = glob(root_dir+"/*.db")[0]
+    # sift_merge_database(root_dir, num_cam)
+    # db_path = glob(root_dir+"/*.db")[0]
+    # mapperOptions = pycolmap.IncrementalPipelineOptions(options['MapperOptions'])
+    # maps = pycolmap.incremental_mapping(db_path, ".", out_pose_dir, options = mapperOptions)
+    # maps[0].write_text(out_pose_dir)
+
+    scene_list = os.listdir(frame_dir)
+    scene_list.sort()
+
+    ret = detect_charuco_features(frame_dir)
+    print(ret["detected_corners"].keys())
+    db = COLMAPDatabase.connect(database_path)
+    db.create_tables()
+
+    with open(f"{shared_dir}/camera_lens.json", "r") as f:
+        camera_lens = json.load(f) # {camera_serial : lens_type}
+
+    with open(f"{shared_dir}/camera_index.json", "r") as f:
+        camera_index = json.load(f)  # {camera_serial : camera_index}
+
+    with open(f"{shared_dir}/lens_info.json", "r") as f:
+        lens_info = json.load(f)
+
+    camera_index_inv = dict()
+    for k,v in camera_index.items():
+        camera_index_inv[v] = k
+
+    # Initial camera intrinsics
+    width, height = 2048, 1536
+    cx, cy = width // 2, height // 2
+    num_cameras = 24
+
+    for i in range(1, num_cameras+1): # add 50 cameras
+        cur_serial = camera_index_inv[i]
+        cur_lens_type = camera_lens[cur_serial]
+
+        if str(cur_lens_type) not in lens_info:
+            print("Choose appropriate lens type!")
+            exit(-1)
+
+        cur_lens_info = lens_info[str(cur_lens_type)]
+        fx = cur_lens_info["fx"]
+        fy = cur_lens_info["fy"]
+        k1 = cur_lens_info["k1"]
+        k2 = cur_lens_info["k2"]
+        p1 = cur_lens_info["p1"]
+        p2 = cur_lens_info["p2"]
+
+        # OPENCV, (fx, fy, cx, cy, k1, k2, p1, p2) considered
+        camera_id = db.add_camera(4, width, height, np.array([fx,fy, cx, cy, k1, k2, p1, p2]), 0)
+        _ = db.add_image(f"{cur_serial}.png", camera_id)
+        db.add_keypoints(camera_id, ret["detected_corners"][f"{cur_serial}"])
+
+    img_keys = db.get_images()
+    cam_keys = db.get_camera()
+
+    for i in range(1, num_cameras+1):
+        for j in range(i+1, num_cameras+1):
+            
+            cam_id1 = img_keys[i]["camera_id"]
+            cam_id2 = img_keys[j]["camera_id"]
+
+            cam_serial1 = camera_index_inv[cam_id1]
+            cam_serial2 = camera_index_inv[cam_id2]
+
+            corners1 = ret["detected_corners"][f"{cam_serial1}"]
+            ids1 = ret["detected_ids"][f"{cam_serial1}"]
+
+            corners2 = ret["detected_corners"][f"{cam_serial2}"]
+            ids2 = ret["detected_ids"][f"{cam_serial2}"]
+
+            common_ids, idx1, idx2 = np.intersect1d(ids1, ids2, return_indices=True)
+            if len(common_ids) > 0:
+                matches = np.column_stack((idx1, idx2))  # Pair indices of matching keypoints
+                
+                db.add_matches(i, j, matches)
+                print(f"Added {len(matches)} matches between {i} and {j}")
+
+                try:
+                    twoviewgeom = get_two_view_geometries(cam_keys[cam_id1], cam_keys[cam_id2], corners1[idx1], corners2[idx2], matches, (i,j))
+
+                    db.add_two_view_geometry(*twoviewgeom)
+                except:
+                    pass
+    db.commit()
+    db.close()
+
     mapperOptions = pycolmap.IncrementalPipelineOptions(options['MapperOptions'])
-    maps = pycolmap.incremental_mapping(db_path, ".", out_pose_dir, options = mapperOptions)
+    maps = pycolmap.incremental_mapping(database_path, ".", out_pose_dir, options = mapperOptions)
     maps[0].write_text(out_pose_dir)
+
+
+    # for img_name, img_idx in enumerate(list(ret["detected_corners"].keys())):
+    #     img_idx, 
+
+
+    #     img_id = db.add_image(img_name, 1)
+    #     db.add_keypoints(img_id, ret["detected_corners"][img_name])
+    #     db.add_descriptors(img_id, np.zeros((ret["detected_corners"][img_name].shape[0], 128)))
+    #     db.add_points(ret["detected_corners"][img_name], ret["detected_ids"][img_name], ret["detected_mids"][img_name])

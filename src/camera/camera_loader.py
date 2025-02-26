@@ -8,14 +8,17 @@ import sys
 from ..camera import camera
 from ..utils.image_util import spin2cv
 import numpy as np
+import os
+
+homedir = os.path.expanduser("~")
 
 class CameraManager:
-    def __init__(self, num_cameras, duration, is_streaming=False, save_dir=None, frame_queue=None, syncMode=True, shared_memories={}, update_flags={}):
+    def __init__(self, num_cameras, duration, is_streaming=False, name=None, frame_queue=None, syncMode=True, shared_memories={}, update_flags={}):
         self.num_cameras = num_cameras
         self.duration = duration
 
         self.is_streaming = is_streaming
-        self.save_dir = save_dir
+        self.name = name
 
         self.stop_event = Event()
         self.shared_memories = shared_memories
@@ -66,17 +69,20 @@ class CameraManager:
         lens_info = json.load(open("config/lens.json", "r"))
         cam_info = json.load(open("config/camera.json", "r"))
 
-        shm_info = self.shared_memories[camera_index]
-        update_flag = self.update_flags[camera_index]
-
-        cam = camera.Camera(camPtr, lens_info, cam_info, self.save_dir, syncMode=self.syncMode)
+        if self.is_streaming:
+            shm_info = self.shared_memories[camera_index]
+            update_flag = self.update_flags[camera_index]
+        
+        save_dir = f"{homedir}/captures{camera_index // 2 + 1}/{self.name}"
+        os.makedirs(save_dir, exist_ok=True)
+        
+        cam = camera.Camera(camPtr, lens_info, cam_info, save_dir, syncMode=self.syncMode)
 
         if not self.is_streaming:
             cam.set_record()
-
         try:
             start_time = time.time()
-            while cnt < self.duration * 30 and not self.stop_event.is_set():
+            while not self.stop_event.is_set():
                 frame, ret = cam.get_capture()
                 cnt += 1
                 if ret and self.is_streaming:
@@ -84,7 +90,8 @@ class CameraManager:
                     with shm_info["lock"]:
                         np.copyto(shm_info["array"], img)
                         update_flag.value = 1  # Mark as updated
-
+        except Exception as e:
+            print(e, repr(e))
         finally:
             if not self.is_streaming:
                 cam.set_record()
@@ -102,23 +109,45 @@ class CameraManager:
             shm_info["shm"].unlink()
 
         sys.exit(0)
+    
+
+    def input_listener(self):
+        """
+        Listens for user input and stops capture when 'q' is pressed.
+        """
+        while not self.stop_event.is_set():
+            user_input = input().strip().lower()
+            if user_input == "q":
+                print("\n'q' received. Stopping capture...")
+                self.stop_event.set()
+                break
 
     def start(self):
         frame_shape = (1536, 2048, 3)  # Example shape for each frame (RGB)
         frame_dtype = np.uint8
-        for i in range(self.num_cameras):
-            self.create_shared_memory(i, frame_shape, frame_dtype)
+        if self.is_streaming:
+            for i in range(self.num_cameras):
+                self.create_shared_memory(i, frame_shape, frame_dtype)
 
         self.capture_threads = [
             threading.Thread(target=self.capture_video, args=(i,))
             for i in range(self.num_cameras)
         ]
 
+        if not self.is_streaming:
+            self.input_thread = threading.Thread(target=self.input_listener, daemon=True)
+            self.input_thread.start()
+
         signal.signal(signal.SIGINT, lambda sig, frame: self.signal_handler())
 
         for p in self.capture_threads:
             p.start()
 
+        # Wait for all threads to finish
+        for p in self.capture_threads:
+            p.join()
+
+        print("All capture threads have stopped.")
 
         
 if __name__ == "__main__":

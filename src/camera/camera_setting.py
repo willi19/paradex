@@ -71,8 +71,11 @@ class CameraConfig:
             return
         # Ensure desired exposure time does not exceed the maximum
         ValMax = ptrVal.GetMax()
-        ptrVal.SetValue(ValMax)
-        print("Throughput limit set to ", ValMax)
+        ValMin = ptrVal.GetMin()
+
+        posValMax = ((ValMax - ValMin) // 16000) * 16000 + ValMin
+        ptrVal.SetValue(posValMax)
+        print("Throughput limit set to ", posValMax)
         return
 
     # if free-run mode
@@ -212,6 +215,51 @@ class CameraConfig:
         ptrAcquisitionMode.SetIntValue(acquisitionModeContinuous)
         return
 
+    def configureBuffer(self, nodeMap):
+        handling_mode = ps.CEnumerationPtr(nodeMap.GetNode('StreamBufferHandlingMode'))
+        if not ps.IsAvailable(handling_mode) or not ps.IsWritable(handling_mode):
+            print('Unable to set Buffer Handling mode (node retrieval). Aborting...\n')
+            return False
+
+        handling_mode_entry = ps.CEnumEntryPtr(handling_mode.GetCurrentEntry())
+        if not ps.IsAvailable(handling_mode_entry) or not ps.IsReadable(handling_mode_entry):
+            print('Unable to set Buffer Handling mode (Entry retrieval). Aborting...\n')
+            return False
+
+
+        # Set stream buffer Count Mode to manual
+        stream_buffer_count_mode = ps.CEnumerationPtr(nodeMap.GetNode('StreamBufferCountMode'))
+        if not ps.IsAvailable(stream_buffer_count_mode) or not ps.IsWritable(stream_buffer_count_mode):
+            print('Unable to set Buffer Count Mode (node retrieval). Aborting...\n')
+            return False
+
+        stream_buffer_count_mode_manual = ps.CEnumEntryPtr(stream_buffer_count_mode.GetEntryByName('Manual'))
+        if not ps.IsAvailable(stream_buffer_count_mode_manual) or not ps.IsReadable(stream_buffer_count_mode_manual):
+            print('Unable to set Buffer Count Mode entry (Entry retrieval). Aborting...\n')
+            return False
+
+        stream_buffer_count_mode.SetIntValue(stream_buffer_count_mode_manual.GetValue())
+        print('Stream Buffer Count Mode set to manual...')
+
+        # Retrieve and modify Stream Buffer Count
+        buffer_count = ps.CIntegerPtr(nodeMap.GetNode('StreamBufferCountManual'))
+        if not ps.IsAvailable(buffer_count) or not ps.IsWritable(buffer_count):
+            print('Unable to set Buffer Count (Integer node retrieval). Aborting...\n')
+            return False
+
+        buffer_count.SetValue(100)
+        print('Stream Buffer Count set to 100...')
+        return 
+
+    def configurePacketSize(self, nodeMap):
+        ptrPayloadSize = ps.CIntegerPtr(nodeMap.GetNode("GevSCPSPacketSize"))
+        if not ps.IsAvailable(ptrPayloadSize) or not ps.IsWritable(ptrPayloadSize):
+            print("Unable to set packet size. Aborting...")
+            return
+        ptrPayloadSize.SetValue(9000)
+        print("Packet size set to 9000")
+        return
+    
     def configureChunk(self, nodeMap):
         ptrChunkModeActive = ps.CBooleanPtr(nodeMap.GetNode("ChunkModeActive"))
         if not ps.IsAvailable(ptrChunkModeActive) or not ps.IsWritable(ptrChunkModeActive):

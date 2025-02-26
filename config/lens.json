@@ -2,34 +2,34 @@
     "__comment" : "0 : narrow, 1 : wide, 2: new",
     "0":{
         "Gain": 3.0, 
-        "Exposure": 2500,
+        "Exposure": 3000,
         "fps":30.0
 
     },
     "1" : {
         "Gain": 6.5, 
-        "Exposure": 2500,
+        "Exposure": 3000,
         "fps":30.0
     },
     "2" : {
         "Gain": 3.0,
-        "Exposure": 2500,
+        "Exposure": 3000,
         "fps":30.0
     },
     "3":{
         "Gain": 3.0, 
-        "Exposure": 2500,
+        "Exposure": 3000,
         "fps":30.0
 
     },
     "4" : {
         "Gain": 6.5, 
-        "Exposure": 2500,
+        "Exposure": 3000,
         "fps":30.0
     },
     "5" : {
         "Gain": 3.0,
-        "Exposure": 2500,
+        "Exposure": 3000,
         "fps":30.0
     }
 }

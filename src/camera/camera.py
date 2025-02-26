@@ -19,6 +19,7 @@ class Camera(CameraConfig):
     ):
         camPtr.Init()  # initialize camera
         self.device_nodemap = camPtr.GetTLDeviceNodeMap()  #
+        self.stream_nodemap = camPtr.GetTLStreamNodeMap()  #
         self.nodeMap = camPtr.GetNodeMap()  #
         self.serialnum = self.get_serialnum()
         settingDict = lens_info[str(cam_info[self.serialnum]["lens"])]
@@ -47,6 +48,8 @@ class Camera(CameraConfig):
         # Check for spinview attribute for details
 
         self.configureSettings(self.nodeMap)
+        self.configureBuffer(self.stream_nodemap)
+        self.configurePacketSize(self.nodeMap)
 
         self.image_processor = None
         # self.image_processor = ps.ImageProcessor()
@@ -203,4 +206,5 @@ class Camera(CameraConfig):
         self.configureAcquisition(nodeMap)
         # Set Exposure time, Gain, Throughput limit, Trigger mode,
         self.configureChunk(nodeMap)  # getting timestamp
+        # self.configureBuffer(nodeMap)
         return

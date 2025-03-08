@@ -12,3 +12,6 @@ MapperOptions:
     ba_refine_focal_length : true
     ba_refine_principal_point : true
     ba_refine_extra_params: true
+    ba_local_num_images : 100
+    ba_local_max_num_iterations : 50
+IncrementalTriangulatorOptions:

@@ -79,7 +79,7 @@ class Camera(CameraConfig):
 
     def get_now(self):
         now = datetime.now()
-        return now.strftime("%Y%m%d_%H%M%S")
+        return now.strftime("%Y%m%d%H%M%S")
 
     def get_fps(self):
         if self.captureCount < 10:

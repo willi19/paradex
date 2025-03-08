@@ -14,7 +14,7 @@ import pycolmap
 import sys
 sys.path.append("..")
 
-from .database import *
+from ..database import *
 
 shared_dir = "/home/capture18/captures1"
 

@@ -1,0 +1,9 @@
+Metadata-Version: 2.1
+Name: paradex
+Version: 0.1
+Summary: managing camera system of paradex
+Home-page: 
+Author: Mingi Choi
+Author-email: willi19@snu.ac.kr
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown

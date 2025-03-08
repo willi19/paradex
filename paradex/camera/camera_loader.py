@@ -13,7 +13,7 @@ import os
 homedir = os.path.expanduser("~")
 
 class CameraManager:
-    def __init__(self, num_cameras, duration, is_streaming=False, name=None, frame_queue=None, syncMode=True, shared_memories={}, update_flags={}):
+    def __init__(self, num_cameras, duration=0, is_streaming=False, name=None, syncMode=True, shared_memories={}, update_flags={}):
         self.num_cameras = num_cameras
         self.duration = duration
 
@@ -35,8 +35,7 @@ class CameraManager:
         node_acquisition_mode = PySpin.CEnumerationPtr(nodemap.GetNode("AcquisitionMode"))
         node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName("Continuous")
         node_acquisition_mode.SetIntValue(node_acquisition_mode_continuous.GetValue())
-        print(f"Camera {cam.GetUniqueID()} configured to continuous acquisition mode.")
-
+        
 
     def create_shared_memory(self, camera_index, shape, dtype):
         """

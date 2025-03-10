@@ -54,7 +54,7 @@ if __name__ == "__main__":
         for index in index_list:
             video_dir = os.path.join(calib_path, name, index, "video")
             video_list += get_video_list(video_dir)
-
+    print(index_list)
         # process_dir_list += [os.path.join(calib_path, name, d) for d in os.listdir(os.path.join(calib_path, name))]
     video_list = sorted(video_list, key=lambda x: int(x[0].split("/")[-3]))
     

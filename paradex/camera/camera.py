@@ -67,10 +67,13 @@ class Camera(CameraConfig):
         now = datetime.now()
         return now.strftime("%Y%m%d%H%M%S")
 
-    def get_capture(self, return_img=True):
+    def get_capture(self,timeout=0):
         retcode = False  # if pImageRaw is incomplete, return False
 
-        pImageRaw = self.cam.GetNextImage()  # get from buffer
+        if timeout != 0:
+            pImageRaw = self.cam.GetNextImage(timeout)  # get from buffer
+        else:
+            pImageRaw = self.cam.GetNextImage()
         framenum = pImageRaw.GetFrameID()
         
         if not pImageRaw.IsIncomplete():

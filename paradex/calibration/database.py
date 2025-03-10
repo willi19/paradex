@@ -203,6 +203,7 @@ class COLMAPDatabase(sqlite3.Connection):
 
         pair_id = image_ids_to_pair_id(image_id1, image_id2)
         matches = np.asarray(matches, np.uint32)
+        
         self.execute(
             "INSERT INTO matches VALUES (?, ?, ?, ?)",
             (pair_id,) + matches.shape + (array_to_blob(matches),))

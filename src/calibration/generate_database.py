@@ -29,41 +29,28 @@ def find_latest_directory():
 
 def process_match(args):
     """ Function to process a single match pair """
-    (serial_1, serial_2), matches, image_id_dict, camera_id_dict, tot_kypt_dict, cam_keys = args
-    
-    image_id_1 = image_id_dict[serial_1]
-    image_id_2 = image_id_dict[serial_2]
-    cam_id1 = camera_id_dict[serial_1]
-    cam_id2 = camera_id_dict[serial_2]
-    
-    matches = np.vstack(matches)
+    (cam_key1, cam_key2), matches, corners1, corners2, cam_id1, cam_id2 = args
     idx1 = matches[:, 0]
     idx2 = matches[:, 1]
-    
-    # Add matches to database
-    db.add_matches(image_id_1, image_id_2, matches)
-    
-    corners1 = tot_kypt_dict[serial_1]
-    corners2 = tot_kypt_dict[serial_2]
-    
-    twoviewgeom = get_two_view_geometries(
-        cam_keys[cam_id1], cam_keys[cam_id2], corners1[idx1], corners2[idx2], matches, (cam_id1, cam_id2)
-    )
-    
-    # Add two-view geometry to database
-    db.add_two_view_geometry(*twoviewgeom)
 
-def parallel_processing(tot_kypt_matches, image_id_dict, camera_id_dict, tot_kypt_dict, cam_keys):
+
+    twoviewgeom = get_two_view_geometries(
+        cam_key1, cam_key2, corners1[idx1], corners2[idx2], matches, (cam_id1, cam_id2)
+    )
+    return (serial_1, serial_2, twoviewgeom)
+
+def parallel_processing(tot_kypt_matches, tot_kypt_dict, cam_keys):
     """ Parallelize the processing of keypoint matches """
+    args = [((cam_keys[camera_id_dict[serial_1]], cam_keys[camera_id_dict[serial_2]]), np.vstack(matches, dtype=np.int32), tot_kypt_dict[serial_1], tot_kypt_dict[serial_2], camera_id_dict[serial_1], camera_id_dict[serial_2]) for (serial_1, serial_2), matches in tot_kypt_matches.items()]
     num_processes = mp.cpu_count()  # Use all available cores
-    pool = mp.Pool(processes=num_processes)
+    with mp.Pool(processes=num_processes) as pool:
+        results = list(pool.map(process_match, args))
+    # Add two-view geometry to database
+    for serial_1, serial_2, twoviewgeom in results:
+        if twoviewgeom is not None:
+            db.add_two_view_geometry(*twoviewgeom)
     
-    args_list = [((serial_1, serial_2), matches, image_id_dict, camera_id_dict, tot_kypt_dict, cam_keys)
-                 for (serial_1, serial_2), matches in tot_kypt_matches.items()]
     
-    pool.map(process_match, args_list)
-    pool.close()
-    pool.join()
 
 if __name__ == "__main__":
     import time
@@ -82,10 +69,10 @@ if __name__ == "__main__":
         name = find_latest_directory()
     else:
         name = args.name
-
+    print(name)
     root_dir = os.path.join(download_dir, name)
     index_list = os.listdir(root_dir)
-
+    index_list.sort()
     if len(index_list) == 0:
         print("No valid directories found.")
         exit()
@@ -102,19 +89,19 @@ if __name__ == "__main__":
     keypoint_path_list = []
     for index in index_list:
         frame_dir = os.path.join(root_dir, index, "keypoints")
-        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir)]
-        
+        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 5 == 0]
+
     db = COLMAPDatabase.connect(database_path)
     db.create_tables()
 
-    with open(f"{config_dir}/camera.json", "r") as f:
+    with open(f"{config_dir}/initial_intrinsic.json", "r") as f:
         camera_lens = json.load(f) # {camera_serial : lens_type}
 
     with open(f"{config_dir}/camera_index.json", "r") as f:
         camera_index = json.load(f)  # {camera_serial : camera_index}
 
-    with open(f"{config_dir}/lens_info.json", "r") as f:
-        lens_info = json.load(f)
+    # with open(f"{config_dir}/lens_info.json", "r") as f:
+    #     lens_info = json.load(f)
 
     camera_index_inv = dict()
     for k,v in camera_index.items():
@@ -130,13 +117,8 @@ if __name__ == "__main__":
     camera_id_dict = {}
     for i in range(1, num_cameras+1): # add 50 cameras
         cur_serial = camera_index_inv[i]
-        cur_lens_type = camera_lens[cur_serial]["lens"]
 
-        if str(cur_lens_type) not in lens_info:
-            print("Choose appropriate lens type!")
-            exit(-1)
-
-        cur_lens_info = lens_info[str(cur_lens_type)]
+        cur_lens_info = camera_lens[cur_serial]
         fx = cur_lens_info["fx"]
         fy = cur_lens_info["fy"]
         k1 = cur_lens_info["k1"]
@@ -210,8 +192,19 @@ if __name__ == "__main__":
         tot_kypt_dict[serial_num] = kypt_list
         camera_id = camera_id_dict[serial_num]
         db.add_keypoints(camera_id, kypt_list)
+
+    for (serial_1, serial_2), matches in tot_kypt_matches.items():        
+        image_id_1 = image_id_dict[serial_1]
+        image_id_2 = image_id_dict[serial_2]
+        matches = np.vstack(matches)
+        print(image_id_1, image_id_2, matches.shape)
+        idx1 = matches[:, 0]
+        idx2 = matches[:, 1]
+        
+        # Add matches to database
+        db.add_matches(image_id_1, image_id_2, matches)
     
-    parallel_processing(tot_kypt_matches, image_id_dict, camera_id_dict, tot_kypt_dict, cam_keys)
+    parallel_processing(tot_kypt_matches, tot_kypt_dict, cam_keys)
 
      
     

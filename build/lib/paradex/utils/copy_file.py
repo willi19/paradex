@@ -61,24 +61,24 @@ def copy_to_nfs(source_path, destination_path, total_size, copied_size=0):
         print(f"Error: Source path '{source_path}' does not exist.")
         return copied_size
 
-    try:
-        if os.path.isfile(source_path):
-            copied_size = copy_file_with_progress(source_path, destination_path, total_size, copied_size)
-        else:
-            os.makedirs(destination_path, exist_ok=True)
-            file_list = os.listdir(source_path)
-            for file in file_list:
-                source_file = os.path.join(source_path, file)
-                destination_file = os.path.join(destination_path, file)
-                copied_size = copy_to_nfs(source_file, destination_file, total_size, copied_size)
-    except Exception as e:
-        print(f"Error copying {source_path}, retrying: {e}")
-        # Retry: Overwrite the file in case of corruption
-        try:
-            shutil.copy2(source_path, destination_path)
-            print(f"File '{source_path}' overwritten successfully.")
-        except Exception as retry_error:
-            print(f"Failed to overwrite '{source_path}': {retry_error}")
+    # try:
+    if os.path.isfile(source_path):
+        copied_size = copy_file_with_progress(source_path, destination_path, total_size, copied_size)
+    else:
+        os.makedirs(destination_path, exist_ok=True)
+        file_list = os.listdir(source_path)
+        for file in file_list:
+            source_file = os.path.join(source_path, file)
+            destination_file = os.path.join(destination_path, file)
+            copied_size = copy_to_nfs(source_file, destination_file, total_size, copied_size)
+    # except Exception as e:
+    #     print(f"Error copying {source_path}, retrying: {e}")
+    #     # Retry: Overwrite the file in case of corruption
+    #     try:
+    #         shutil.copy2(source_path, destination_path)
+    #         print(f"File '{source_path}' overwritten successfully.")
+    #     except Exception as retry_error:
+    #         print(f"Failed to overwrite '{source_path}': {retry_error}")
 
     return copied_size
 

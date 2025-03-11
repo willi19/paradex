@@ -19,6 +19,8 @@ def get_total_size(path, dest_path):
     return total_size
 
 def copy_file_with_progress(src, dst, total_size, copied_size):
+    if total_size == 0:
+        return copied_size
     """Copy a file with progress tracking, overwriting in case of corruption."""
     file_size = os.path.getsize(src)
 

@@ -42,8 +42,8 @@ def copy_file_with_progress(src, dst, total_size, copied_size):
             copied_size += len(chunk)
             pbar.update(len(chunk))
             
-            elapsed_time = time.time() - start_time + 1e-6
-            speed = copied_size / elapsed_time if elapsed_time > 0 else 0  # Speed in B/s
+            elapsed_time = time.time() - start_time
+            speed = copied_size / elapsed_time if elapsed_time > 1e-6 else 0  # Speed in B/s
             percent_complete = (copied_size / total_size) * 100
             remaining_size = total_size - copied_size  # Remaining data to copy
 

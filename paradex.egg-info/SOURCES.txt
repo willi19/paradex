@@ -21,6 +21,7 @@ paradex/utils/image_util.py
 paradex/utils/io.py
 paradex/utils/logger.py
 paradex/utils/marker.py
+paradex/utils/merge_video.py
 paradex/utils/upload_file.py
 paradex/utils/video.py
 paradex/viewer/__init__.py

@@ -1,0 +1,1 @@
+ffmpeg -i /home/capture18/download/calibration/20250310022523/0/colmap/23029839_20250310022707-0000.avi -vcodec libx264 -crf 23 -preset fast -acodec aac -b:a 192k output.mp4

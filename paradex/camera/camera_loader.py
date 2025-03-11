@@ -79,25 +79,22 @@ class CameraManager:
 
         if not self.is_streaming:
             cam.set_record()
-        try:
-            start_time = time.time()
-            while not self.stop_event.is_set():
-                frame, ret = cam.get_capture()
-                cnt += 1
-                if ret and self.is_streaming:
-                    img = spin2cv(frame, 1536, 2048)
-                    with shm_info["lock"]:
-                        np.copyto(shm_info["array"], img)
-                        update_flag.value = 1  # Mark as updated
-        except Exception as e:
-            print(e, repr(e))
-        finally:
-            if not self.is_streaming:
-                cam.set_record()
-            cam.stop_camera()
-            del camPtr
-            cam_list.Clear()
-            system.ReleaseInstance()
+        while not self.stop_event.is_set():
+            frame, ret = cam.get_capture()
+            # cnt += 1
+            # print(f"Camera {camera_index} captured frame {cnt}")
+            if ret and self.is_streaming:
+                img = spin2cv(frame, 1536, 2048)
+                with shm_info["lock"]:
+                    np.copyto(shm_info["array"], img)
+                    update_flag.value = 1  # Mark as updated
+        
+        if not self.is_streaming:
+            cam.set_record()
+        cam.stop_camera()
+        del camPtr
+        cam_list.Clear()
+        system.ReleaseInstance()
 
     def signal_handler(self):
         print("\nSIGINT received. Terminating all processes and threads...")

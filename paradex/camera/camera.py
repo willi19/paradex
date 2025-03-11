@@ -75,7 +75,7 @@ class Camera(CameraConfig):
         else:
             pImageRaw = self.cam.GetNextImage()
         framenum = pImageRaw.GetFrameID()
-        
+        print(self.serialnum, " : ", framenum)
         if not pImageRaw.IsIncomplete():
             chunkData = pImageRaw.GetChunkData()
             # print("chunkd : ", time.time() - before)
@@ -95,10 +95,10 @@ class Camera(CameraConfig):
             retcode=True
             
             if self.is_recording:
-                try:
-                    self.videoStream.Append(retImage)
-                except Exception as e:
-                    print(e)
+                # try:
+                self.videoStream.Append(retImage)
+                # except Exception as e:
+                #     print(e)
             
         else:
             print(ps.Image_GetImageStatusDescription(pImageRaw.GetImageStatus()))

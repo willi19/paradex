@@ -54,6 +54,9 @@ def copy_file_with_progress(src, dst, total_size, copied_size):
     return copied_size
 
 def copy_to_nfs(source_path, destination_path, total_size, copied_size=0):
+    if total_size == 0:
+        print(f"Nothing to copy for '{source_path}'.")
+        return copied_size
     """Recursively copy files and directories while skipping identical files but overwriting corrupt ones."""
     if not os.path.exists(source_path):
         print(f"Error: Source path '{source_path}' does not exist.")

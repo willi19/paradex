@@ -75,7 +75,7 @@ class Camera(CameraConfig):
         else:
             pImageRaw = self.cam.GetNextImage()
         framenum = pImageRaw.GetFrameID()
-        print(self.serialnum, " : ", framenum)
+        
         if not pImageRaw.IsIncomplete():
             chunkData = pImageRaw.GetChunkData()
             # print("chunkd : ", time.time() - before)

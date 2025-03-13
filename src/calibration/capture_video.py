@@ -3,9 +3,7 @@ import os
 import datetime
 import paradex
 from paradex.camera.camera_loader import CameraManager
-
-home_dir = os.path.expanduser("~")
-calib_path_list = [os.path.join(home_dir, f"captures{i}", "calibration") for i in range(1,3)]
+from paradex.utils.io import home_dir, calib_path_list
 
 def find_latest_directory(is_init):
     if is_init:

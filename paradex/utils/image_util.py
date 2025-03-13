@@ -17,3 +17,6 @@ def spin2cv(pImg, h, w):
     cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w))
     cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)
     return cvImg
+
+def undistort(img, intrinsic):
+    pass

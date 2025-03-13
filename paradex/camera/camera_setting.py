@@ -247,7 +247,7 @@ class CameraConfig:
             print('Unable to set Buffer Count (Integer node retrieval). Aborting...\n')
             return False
 
-        buffer_count.SetValue(100)
+        buffer_count.SetValue(500)
         print('Stream Buffer Count set to 100...')
         return 
 

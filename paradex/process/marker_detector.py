@@ -8,7 +8,8 @@ from typing import Tuple, List, Dict
 from pathlib import Path
 import glob
 
-from flir_python.utils.file_io import load_cam_param, load_images
+from paradex.utils.io import load_cam_param, load_images
+# from flir_python.utils.file_io import load_cam_param, load_images
 
 
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_1000)
@@ -108,7 +109,7 @@ def detect_charuco(img):
             aruco_dict,
             np.array(cb["markerIDs"]),
         )
-        print(board)
+        
         all_boards.append((board, int(cb["numMarker"]), idx))  # j for offset ID
 
     corners3d = all_boards[0][0].getChessboardCorners()
@@ -117,7 +118,7 @@ def detect_charuco(img):
     detected_markers, detected_mids = [], []
     # initial board num
     cur_board, cur_board_id = all_boards[0][0], all_boards[0][2]
-    print(cur_board_id)
+    
     charDet = aruco.CharucoDetector(cur_board)
     charCorner, charIDs, markerCorner, markerIDs = charDet.detectBoard(img)
     if charIDs is not None:
@@ -186,7 +187,7 @@ def get_marker_from_imageset(
     undist_cam_param = {}
 
     for cam_name, cam in intrinsic.items():
-        undist_cam_param[cam_name] = cam["Intrinsics"]
+        undist_cam_param[cam_name] = cam["intrinsics_undistort"]
 
     markers = {}
     proj_mtx = {}
@@ -194,7 +195,7 @@ def get_marker_from_imageset(
     for img_name, img in img_list.items():
         corners, ids = detect_aruco(img)
         original_intrinsics = np.array(
-            intrinsic[img_name]["original_intrinsics"]
+            intrinsic[img_name]["intrinsics_original"]
         ).reshape(3, 3)
         if len(corners) == 0:
             continue

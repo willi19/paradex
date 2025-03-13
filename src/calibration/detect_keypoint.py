@@ -5,20 +5,7 @@ from paradex.utils.marker import detect_charuco
 import cv2
 import numpy as np
 from multiprocessing import Pool, cpu_count
-
-home_dir = os.path.expanduser("~")
-calib_path_list = [os.path.join(home_dir, f"captures{i}", "calibration") for i in range(1,3)]
-
-def find_latest_directory():
-    dirs = [d for d in os.listdir(calib_path_list[0])] 
-    if not dirs:
-        print("No valid directories found.")
-        return
-        
-        # Sort directories based on name (assuming names are time-based)
-    latest_dir = max(dirs, key=str)
-    
-    return latest_dir
+from paradex.utils.io import find_latest_directory, home_dir, calib_path_list
 
 def process_image(img_dir):
     """
@@ -73,7 +60,7 @@ if __name__ == "__main__":
         exit()
     
     if args.latest:
-        name = find_latest_directory()
+        name = find_latest_directory(calib_path_list[0])
     else:
         name = args.name
 

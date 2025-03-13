@@ -11,21 +11,10 @@ from cv2 import aruco
 import multiprocessing as mp
 from paradex.calibration.database import *
 from paradex.calibration.colmap import get_two_view_geometries
+from paradex.utils.io import find_latest_directory, home_dir, download_dir
 
-home_dir = os.path.expanduser("~")
-download_dir = os.path.join(home_dir, "download","calibration")
+download_dir = os.path.join(download_dir,"calibration")
 config_dir = "config"
-
-def find_latest_directory():
-    dirs = [d for d in os.listdir(download_dir)] 
-    if not dirs:
-        print("No valid directories found.")
-        return
-        
-        # Sort directories based on name (assuming names are time-based)
-    latest_dir = max(dirs, key=str)
-    
-    return latest_dir
 
 def process_match(args):
     """ Function to process a single match pair """
@@ -66,10 +55,10 @@ if __name__ == "__main__":
         exit()
     
     if args.latest:
-        name = find_latest_directory()
+        name = find_latest_directory(download_dir)
     else:
         name = args.name
-    print(name)
+
     root_dir = os.path.join(download_dir, name)
     index_list = os.listdir(root_dir)
     index_list.sort()

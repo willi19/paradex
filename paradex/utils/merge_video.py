@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 
 from paradex.utils.io import get_video_list
+import tqdm
 
 cam_index = json.load(open('config/camera_index.json'))
 
@@ -44,7 +45,7 @@ def merge_video(input_dir, output_file):
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     out = cv2.VideoWriter(output_file, fourcc, fps, (frame_width, frame_height))
 
-    for frame_idx in range(max_frames):
+    for frame_idx in tqdm.tqdm(range(max_frames)):
         merged_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)  # Fill with black if no frame
         # Read frames from each video only if the frame index is in timestamp_list
         for serial_num, cap in caps.items():

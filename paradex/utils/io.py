@@ -7,7 +7,7 @@ shared_dir = os.path.join(home_dir, "shared_data")
 calib_path_list = [os.path.join(home_dir, f"captures{i}", "calibration") for i in range(1,3)]
 download_dir = os.path.join(home_dir, "download")
 cam_param_dir = os.path.join(shared_dir, "cam_param")
-handeye_calib_path = os.path.join(shared_dir, "handeye_calib")
+handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")
 
 def get_video_list(video_dir):
     """

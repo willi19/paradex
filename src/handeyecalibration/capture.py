@@ -17,7 +17,7 @@ def find_latest_directory():
     latest_dir = max(dirs, key=str)
     index_list = [int(d) for d in os.listdir(os.path.join(handeye_calib_path, latest_dir))]
 
-    return latest_dir, max(index_list)+1 if index_list else 0
+    return latest_dir, max(index_list) if index_list else 0
 
 if __name__ == "__main__":
     camera_config = "config/lens.json"

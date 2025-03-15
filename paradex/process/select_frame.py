@@ -5,7 +5,7 @@ from tqdm import tqdm
 from paradex.utils.image_util import undistort_img
 import numpy as np
 
-def split_video(video_path_tuple, intrinsic, selected_frame):
+def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
     """
     Extract frames from a video using OpenCV with FFmpeg backend.
 
@@ -42,38 +42,36 @@ def split_video(video_path_tuple, intrinsic, selected_frame):
         print(f"Frame count mismatch between video ({total_frames}) and JSON ({len(timestamp)})")
         return 
 
-    video_name = os.path.basename(video_path).split(".")[0]
-    output_video_name = f"{video_name}_selected_frame.avi"
-    output_video_path = os.path.join(os.path.dirname(video_path), output_video_name)
-    
     fourcc = cv2.VideoWriter_fourcc(*"XVID")  # AVI format
-    out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
-
     frame_count = 0    
-    si = 0
-
+    
     # Initialize tqdm progress bar based on total frames
     with tqdm(total=total_frames, desc=f"Processing {video_path}", unit="frame", leave=False) as inner_bar:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break  # End of video
-            
-            if timestamp[frame_count] < selected_frame[si]:
-                frame_count += 1
-                continue
-            # Save frame at specified intervals
-            if timestamp[frame_count] == selected_frame[si]:
-                undist_frame = undistort_img(frame, intrinsic)
-                si += 1
-                frame_count += 1
+    
+        for idx, range_list in selected_frame.items():
+            output_video_name = f"{serial_num}.avi"
+            output_video_dir = os.path.dirname(os.path.dirname(video_path)).replace("capture", "processed")
+            output_video_path = os.path.join(output_video_dir,int(idx)+int(index_offset), "video", output_video_name)
+        
+            out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 
-            else:
-                undist_frame = np.zeros_like(frame)
-                si += 1
-            out.write(undist_frame)
-            inner_bar.update(1)  # Update tqdm progress bar
-            if si == len(selected_frame):
-                break
+            for(start_frame, end_frame) in range_list:
+                while timestamp[frame_count] < start_frame:
+                    ret, frame = cap.read()
+                    frame_count += 1
+                    inner_bar.update(1)
+                    if not ret:
+                        break
+                for i in range(start_frame, end_frame+1):
+                    if i < timestamp[frame_count]:
+                        undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+                    else:
+                        ret, frame = cap.read()
+                        frame_count += 1
+                        inner_bar.update(1)
+                        if not ret:
+                            break
+                        undistorted_frame = undistort_img(frame, intrinsic)                       
+                    out.write(undistorted_frame)
+            out.release()
     cap.release()
-    out.release()

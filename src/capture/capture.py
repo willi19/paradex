@@ -3,8 +3,8 @@ import argparse
 from paradex.utils.io import capture_path_list
 import os
 
-def main(name):
-    manager = CameraManager(num_cameras=4, name=name, is_streaming=False)
+def main(save_path):
+    manager = CameraManager(num_cameras=4, name=save_path, is_streaming=False)
     manager.start()
 
 def get_last_directory(name):
@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     for capture_path in capture_path_list:
         os.makedirs(os.path.join(capture_path, "capture", name), exist_ok=True)
-        
+
     index = get_last_directory(name)
     save_path = f"capture/{name}/{index}"
     os.makedirs(save_path, exist_ok=True)

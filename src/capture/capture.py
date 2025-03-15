@@ -20,4 +20,5 @@ if __name__ == "__main__":
 
     index = get_last_directory(name)
     save_path = f"capture/{name}/{index}"
+    os.makedirs(save_path, exist_ok=True)
     main(save_path)

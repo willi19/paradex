@@ -5,6 +5,7 @@ import numpy as np
 home_dir = os.path.expanduser("~")
 shared_dir = os.path.join(home_dir, "shared_data")
 calib_path_list = [os.path.join(home_dir, f"captures{i}", "calibration") for i in range(1,3)]
+capture_path_list = [os.path.join(home_dir, f"captures{i}") for i in range(1,3)]
 download_dir = os.path.join(home_dir, "download")
 cam_param_dir = os.path.join(shared_dir, "cam_param")
 handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")
@@ -54,7 +55,7 @@ def find_latest_directory(directory):
 def load_cam_param(name=None):
     if name == None:
         name = find_latest_directory(cam_param_dir)
-    intrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "intrinsic.json")))
+    intrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "intrinsics.json")))
     intrinsic = {}
     for serial, values in intrinsic_data.items():
         intrinsic[serial] = {
@@ -65,12 +66,10 @@ def load_cam_param(name=None):
             "height": values["height"],  # Scalar values remain unchanged
             "width": values["width"],
         }
-    extrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "extrinsic.json")))
+    extrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "extrinsics.json")))
     extrinsic = {}
     for serial, values in extrinsic_data.items():
-        extrinsic[serial] = {
-            np.array(values).reshape(3, 4)
-        }
+        extrinsic[serial] = np.array(values).reshape(3, 4)
     return intrinsic, extrinsic
 
 def is_image_file(file):

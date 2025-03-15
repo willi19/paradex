@@ -64,12 +64,7 @@ arucoDetector_tuned.setDetectorParameters(params)
 
 def detect_aruco(img):
     global arucoDetector_tuned
-    #arucoDetector = aruco.ArucoDetector(aruco_dict)
-    # corners, IDs, _ = arucoDetector.detectMarkers(img) # marker corners 의미?
     corners, IDs, _ = arucoDetector.detectMarkers(img)
-    #corners_t, IDs_t, _ = arucoDetector_tuned.detectMarkers(img) # marker corners 의미?
-    # Merge detected
-    # return corners_t, IDs_t #corners, corners_t, IDs, IDs_t
     return corners, IDs
 
 # Detect charuco board
@@ -96,77 +91,78 @@ def detect_charuco(img):
         detected_mids = np.concatenate(detected_mids, axis=0)
     return (detected_corners, detected_markers), (detected_ids, detected_mids)
 
+def triangulate(corners: np.ndarray, projections: np.ndarray):
+    """
+    corners : Nx4x2 matrix (N cameras, 4 keypoints, 2D image coordinates)
+    projections : Nx3x4 matrix (N cameras)
 
-def triangulate(corners:dict, projections:list):
+    Returns:
+        kp3d : (4, 3) matrix with triangulated 3D points for each corner
     """
-    N : number of images with same marker
-    corners : {1: (N,2) array, 2:(N,2) array, 3:(N,2) array, 4: (N,2) array}
-    projections : list of 3x4 matrices of length N
-    """
-    numImg = len(projections)
-    kp3d = dict()
-    #print("triangulate")
-    for corner_id, kps in corners.items():
-        A = [] 
-        for i in range(numImg):
-            curX, curY = kps[i,0], kps[i,1]
-            cur_proj = projections[i]
-            A.append(curY*cur_proj[2] - cur_proj[1])
-            A.append(curX*cur_proj[2] - cur_proj[0])
-        #print(A, numImg)
-        A = np.array(A)
-        U, S, V = np.linalg.svd(A)
-        kp3d[corner_id] = V[3][0:3]/V[3][3] #
-    return kp3d
-
-def triangulate_table(corners, projections):
-    """
-    N : number of images with same marker
-    corners : (N, 4, 2) array
-    projections : (N, 3, 4) array
-    """
-    N = corners.shape[0]
-    assert corners.shape == (N, 4, 2)
-    assert projections.shape == (N, 3, 4)
-    corner_3d = []
-    for corner_id in range(4):
-        A = [] 
-        for i in range(N):
-            curX, curY = corners[i,corner_id,0], corners[i,corner_id,1]
-            cur_proj = projections[i]
-            A.append(curY*cur_proj[2] - cur_proj[1])
-            A.append(curX*cur_proj[2] - cur_proj[0])
-        A = np.array(A)
-        U, S, V = np.linalg.svd(A)
-        #print(S, U.shape, V.shape)
-        kp3d = V[3][0:3]/V[3][3] #
-        corner_3d.append(kp3d)
-    return np.array(corner_3d) # (4, 3)
-
-def detect_charuco_features(image_path):
-    """
-    Detects ChArUco markers and extracts features.
-    """
-    img = cv2.imread(image_path)
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-    # Detect ArUco markers
-    corners, ids, _ = aruco.detectMarkers(gray, aruco_dict)
+    numImg = projections.shape[0]
+    if numImg < 2:
+        return None
     
-    if ids is None:
-        return None, None  # No markers detected
+    numPts = corners.shape[1]
 
-    # Detect ChArUco corners
-    charuco = aruco.CharucoDetector(board)
-    charuco_corners, charuco_ids, _, _ = charuco.detectBoard(gray)
+    curX = corners[:, :, None, 0]
+    curY = corners[:, :, None, 1]
+    A = np.zeros((numPts, numImg * 2, 4))    
+    
+    A = np.vstack([
+        curY @ projections[:, 2:3, :] - projections[:, 1:2, :],
+        curX @ projections[:, 2:3, :] - projections[:, 0:1, :]
+    ])
+    
+    A = A.transpose(1, 0, 2)
+    _, _, Vt = np.linalg.svd(A)
 
-    if charuco_corners is None or charuco_ids is None:
-        return None, None  # No ChArUco corners detected
+    X = Vt[:, -1]  # Last row of V (smallest singular value)
+    return (X[:, :3] / X[:, 3:4])  # Normalize by X[:,3]
 
-    return charuco_corners, charuco_ids
 
-if __name__ == "__main__":
+def ransac_triangulation(corners: np.ndarray, projections: np.ndarray, threshold=1.5, iterations=100):
+    """
+    RANSAC-based triangulation to filter out outliers.
+    
+    corners : Nx4x2 matrix (N cameras, 4 keypoints, 2D image coordinates)
+    projections : Nx3x4 matrix (N cameras)
+    threshold : Inlier threshold for reprojection error
+    iterations : Number of RANSAC iterations
+    
+    Returns:
+        best_kp3d : (4, 3) matrix with filtered 3D keypoints
+    """
+    best_inliers = 0
+    best_kp3d = None
+    
+    numPts = corners.shape[1]
+    numImg = projections.shape[0]
+    if numImg < 2:
+        return None
+    for _ in range(iterations):
+        # Randomly sample a subset of cameras
+        sample_idx = np.random.choice(numImg, size=max(2, numImg // 2), replace=False)
+        sampled_corners = corners[sample_idx]
+        sampled_projections = projections[sample_idx]
+        
+        # Triangulate points
+        kp3d = np.array(triangulate(sampled_corners, sampled_projections))
+        
+        # Reproject points to all cameras and compute errors
 
-    im1 = cv2.imread("/home/capture2/Videos/22640993.png")
-    res = detect_charuco(im1)
-    print(res[1][0], res[1][0].shape, res[0][0], res[0][0].shape)
+        kp3d_h = np.hstack((kp3d, np.ones((numPts, 1))))  # Convert to homogeneous coordinates
+        reprojections = projections @ kp3d_h.T  # Shape: (N, 3, numPts)
+        
+        reprojections = reprojections[:, :2, :] / reprojections[:, 2:3, :]  # Normalize
+        
+        # Compute reprojection errors
+        errors = np.linalg.norm(reprojections - corners.transpose(0, 2, 1), axis=1)
+        inliers = np.sum(errors < threshold, axis=0)
+        
+        # Update best inlier count and result
+        total_inliers = np.sum(inliers)
+        if total_inliers > best_inliers:
+            best_inliers = total_inliers
+            best_kp3d = kp3d
+    return best_kp3d

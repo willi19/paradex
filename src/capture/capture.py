@@ -18,6 +18,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     name = args.name
 
+    for capture_path in capture_path_list:
+        os.makedirs(os.path.join(capture_path, "capture", name), exist_ok=True)
+        
     index = get_last_directory(name)
     save_path = f"capture/{name}/{index}"
     os.makedirs(save_path, exist_ok=True)

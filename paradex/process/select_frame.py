@@ -61,7 +61,7 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                     ret, frame = cap.read()
                     frame_count += 1
                     inner_bar.update(1)
-                    if not ret:
+                    if not ret or frame_count >= total_frames:
                         break
                 for i in range(start_frame, end_frame+1):
                     if i < timestamp[frame_count]:

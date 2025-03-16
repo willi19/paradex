@@ -64,7 +64,7 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                     if not ret or frame_count >= total_frames:
                         break
                 for i in range(start_frame, end_frame+1):
-                    if i < timestamp[frame_count]:
+                    if frame_count == len(timestamp) or i < timestamp[frame_count]:
                         undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
                     else:
                         ret, frame = cap.read()

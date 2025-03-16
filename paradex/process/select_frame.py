@@ -47,11 +47,12 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
     
     # Initialize tqdm progress bar based on total frames
     with tqdm(total=total_frames, desc=f"Processing {video_path}", unit="frame", leave=False) as inner_bar:
-    
         for idx, range_list in selected_frame.items():
             output_video_name = f"{serial_num}.avi"
-            output_video_dir = os.path.dirname(os.path.dirname(video_path)).replace("capture", "processed")
-            output_video_path = os.path.join(output_video_dir,int(idx)+int(index_offset), "video", output_video_name)
+            output_video_dir = os.path.dirname(os.path.dirname(video_path)).replace("capture/", "processed/")
+            os.makedirs(os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video"), exist_ok=True)
+
+            output_video_path = os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video", output_video_name)
         
             out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
 

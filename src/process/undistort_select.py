@@ -26,25 +26,27 @@ if __name__ == "__main__":
     name = args.name
     intrinsics, extrinsics = load_cam_param(args.cam_param)
 
-    if not os.path.exists(os.path.join(capture_path_list[0], name)) or not os.path.exists(os.path.join(capture_path_list[1], name)):
+    if not os.path.exists(os.path.join(capture_path_list[0], "capture", name)) or not os.path.exists(os.path.join(capture_path_list[1], "capture", name)):
         print(f"Directory {name} not found.")
         exit()
     
-    index_list = os.listdir(os.path.join(capture_path_list[0], name))
-    
+    index_list = os.listdir(os.path.join(capture_path_list[0], "capture", name))
+    print(name, capture_path_list)
+
     video_list = []
     index_offset = 0
     for index in index_list:
-
         for capture_path in capture_path_list:
+            
             selected_frame = json.load(open(os.path.join(shared_dir, "capture", name, index, "selected_frame.json")))
-            video_dir = os.path.join(capture_path, name)
+            video_dir = os.path.join(capture_path, "capture", name, index)
 
             for vp in get_video_list(video_dir):
                 serial = os.path.basename(vp[0]).split("_")[0]
                 video_list.append((vp, intrinsics[serial], selected_frame, index_offset))
 
         index_offset += len(selected_frame.keys())
+
     with Pool(processes=cpu_count()) as pool:
         with tqdm(total=len(video_list), desc="Total Progress", unit="dir") as outer_bar:
             for _ in pool.imap_unordered(process_video, video_list):

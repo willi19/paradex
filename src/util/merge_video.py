@@ -1,6 +1,6 @@
 import os
 import json
-from paradex.utils.merge_video import merge_video
+from paradex.utils.merge_video import merge_video_synced
 
 import argparse
 
@@ -11,4 +11,4 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    merge_video(args.input_dir, args.output_file)
+    merge_video_synced(args.input_dir, args.output_file)

@@ -28,6 +28,7 @@ def get_video_list(video_dir):
             
             if not os.path.exists(timestamp_path):
                 print(f"Timestamp file not found for {f}", timestamp_path)
+                video_list.append((os.path.join(video_dir, f), None))
                 continue
             video_list.append((os.path.join(video_dir, f), timestamp_path))
 

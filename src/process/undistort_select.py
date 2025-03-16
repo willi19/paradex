@@ -27,7 +27,6 @@ if __name__ == "__main__":
     intrinsics, extrinsics = load_cam_param(args.cam_param)
 
     for name in args.name_list:
-        name = args.name
 
         if not os.path.exists(os.path.join(capture_path_list[0], "capture", name)) or not os.path.exists(os.path.join(capture_path_list[1], "capture", name)):
             print(f"Directory {name} not found.")

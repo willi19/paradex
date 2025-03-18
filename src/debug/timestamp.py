@@ -28,8 +28,7 @@ def main():
         print("camera", serial_num, "fps:", frame_ids[-1] / timestamps[-1])
         plt.plot(frame_ids, timestamps, label=f"Camera {serial_num}")
         
-    plt.xlabel("Frame ID")
-    plt.ylabel("Timestamp Difference (s)")
+
     plt.title("Frame ID vs. Adjusted Timestamps")
     plt.show()
     plt.legend()

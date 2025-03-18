@@ -4,6 +4,9 @@ import argparse
 import time
 from tqdm import tqdm
 
+home_dir = os.path.expanduser("~")
+capture_path_list = [os.path.join(home_dir, f"captures{i}") for i in range(1,3)]
+
 def get_total_size(path, dest_path):
     """Calculate total size of files that need to be copied (excluding identical existing files)."""
     total_size = 0
@@ -53,10 +56,7 @@ def copy_file_with_progress(src, dst, total_size, copied_size):
         pbar.close()
     return copied_size
 
-def copy_to_nfs(source_path, destination_path, total_size, copied_size=0, end_with=None):
-    if total_size == 0:
-        print(f"Nothing to copy for '{source_path}'.")
-        return copied_size
+def copy_to_nfs(source_path, destination_path, total_size, copied_size=0):
     """Recursively copy files and directories while skipping identical files but overwriting corrupt ones."""
     if not os.path.exists(source_path):
         print(f"Error: Source path '{source_path}' does not exist.")
@@ -64,9 +64,6 @@ def copy_to_nfs(source_path, destination_path, total_size, copied_size=0, end_wi
 
     try:
         if os.path.isfile(source_path):
-            if end_with:
-                if not source_path.endswith(end_with):
-                    return copied_size
             copied_size = copy_file_with_progress(source_path, destination_path, total_size, copied_size)
         else:
             os.makedirs(destination_path, exist_ok=True)
@@ -88,14 +85,15 @@ def copy_to_nfs(source_path, destination_path, total_size, copied_size=0, end_wi
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Recursively copy files and directories, skipping identical files but overwriting corrupt ones.")
-    parser.add_argument("--source_path", required=True, help="Path to the source file or directory")
-    parser.add_argument("--dest_path", required=True, help="Path to the NFS-mounted directory")
-
+    parser.add_argument("--name", required=True, help="Path to the source file or directory")
+    
     args = parser.parse_args()
-    destination_path = os.path.join(args.dest_path, os.path.basename(args.source_path))
+    source_path = os.path.join(home_dir, "shared_data", args.name)
+    destination_path = os.path.join(home_dir, "download", args.name)
 
-    total_size = get_total_size(args.source_path, destination_path)
-    print(f"Total size to copy (excluding identical files): {total_size / (1024 * 1024):.2f} MB")
+    total_size = get_total_size(source_path, destination_path)
+        
+    copy_to_nfs(source_path, destination_path, total_size, end_with=".json")
 
-    copy_to_nfs(args.source_path, destination_path, total_size)
-    print("Copy completed successfully.")
+    print("Copy completed.")
+        

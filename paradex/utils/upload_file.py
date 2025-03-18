@@ -62,7 +62,6 @@ def copy_to_nfs(source_path, destination_path, total_size, copied_size=0, end_wi
         print(f"Error: Source path '{source_path}' does not exist.")
         return copied_size
 
-    print(source_path, destination_path)
     try:
         if os.path.isfile(source_path):
             if end_with is not None:

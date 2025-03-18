@@ -17,7 +17,6 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
 
     video_path, json_path = video_path_tuple  # Unpack tuple
     serial_num = os.path.basename(video_path).split("_")[0]  # Extract serial number from video filename
-
     # Open the video file using OpenCV
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
@@ -47,15 +46,14 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
     
     # Initialize tqdm progress bar based on total frames
     with tqdm(total=total_frames, desc=f"Processing {video_path}", unit="frame", leave=False) as inner_bar:
-        for idx, range_list in selected_frame.items():
+        for idx, range_list in sorted(selected_frame.items()):
+            num_frame = 0
             output_video_name = f"{serial_num}.avi"
             output_video_dir = os.path.dirname(os.path.dirname(video_path)).replace("capture/", "processed/")
             os.makedirs(os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video"), exist_ok=True)
 
             output_video_path = os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video", output_video_name)
-        
             out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
-
             for(start_frame, end_frame) in range_list:
                 while timestamp[frame_count] < start_frame:
                     ret, frame = cap.read()
@@ -64,15 +62,17 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                     if not ret or frame_count >= total_frames:
                         break
                 for i in range(start_frame, end_frame+1):
+                    # print(frame_count, len(timestamp), i, serial_num,start_frame,end_frame)
                     if frame_count == len(timestamp) or i < timestamp[frame_count]:
-                        undistorted_frame = np.zeros((frame_width, frame_height, 3), dtype=np.uint8)
+                        undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
                     else:
                         ret, frame = cap.read()
                         frame_count += 1
                         inner_bar.update(1)
                         if not ret:
-                            break
-                        undistorted_frame = undistort_img(frame, intrinsic)                       
+                            undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+                        else:
+                            undistorted_frame = frame        
                     out.write(undistorted_frame)
             out.release()
     cap.release()

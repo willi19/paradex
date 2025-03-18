@@ -67,7 +67,6 @@ def copy_to_nfs(source_path, destination_path, total_size, copied_size=0, end_wi
             if end_with is not None:
                 if source_path[-len(end_with):] != end_with:
                     return copied_size
-            print(source_path, destination_path)
             copied_size = copy_file_with_progress(source_path, destination_path, total_size, copied_size)
         else:
             os.makedirs(destination_path, exist_ok=True)

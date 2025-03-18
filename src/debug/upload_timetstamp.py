@@ -13,7 +13,7 @@ if __name__ == "__main__":
     parser.add_argument("--name", required=True, help="Path to the source file or directory")
     
     args = parser.parse_args()
-    destination_path = os.path.join(home_dir, "shared_data", "capture", args.name)
+    destination_path = os.path.join(home_dir, "shared_data")
 
     for capture_path in capture_path_list:
         source_path = os.path.join(capture_path, args.name)

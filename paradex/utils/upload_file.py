@@ -64,7 +64,7 @@ def copy_to_nfs(source_path, destination_path, total_size, copied_size=0, end_wi
 
     try:
         if os.path.isfile(source_path):
-            if end_with:
+            if end_with is not None:
                 if source_path[-len(end_with):] != end_with:
                     return copied_size
             print(source_path, source_path[-len(end_with):], end_with)
@@ -75,7 +75,7 @@ def copy_to_nfs(source_path, destination_path, total_size, copied_size=0, end_wi
             for file in file_list:
                 source_file = os.path.join(source_path, file)
                 destination_file = os.path.join(destination_path, file)
-                copied_size = copy_to_nfs(source_file, destination_file, total_size, copied_size)
+                copied_size = copy_to_nfs(source_file, destination_file, total_size, copied_size, end_with)
     except Exception as e:
         print(f"Error copying {source_path}, retrying: {e}")
         # Retry: Overwrite the file in case of corruption

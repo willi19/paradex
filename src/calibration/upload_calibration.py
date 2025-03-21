@@ -71,4 +71,4 @@ if __name__ == "__main__":
     
     os.makedirs(os.path.join(save_dir, name), exist_ok=True)
     json.dump(intrinsics, open(os.path.join(save_dir, name, "intrinsics.json"), "w"), indent='\t')
-    json.dump(extrinsics, open(os.path.join(save_dir, name, "extrinsics.json"), "w"), indent='\t')
+    json.dump(extrinsics, open(os.path.join(save_dir, name, "extrinsics_temp.json"), "w"), indent='\t')

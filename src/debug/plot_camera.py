@@ -19,10 +19,10 @@ def draw_camera_pyramid(extrinsic_matrix, scale=0.1):
     
     # Define camera pyramid points in camera coordinate system
     pyramid_points = np.array([
-        [-0.5, -0.5, 1],  # Bottom-left
-        [0.5, -0.5, 1],   # Bottom-right
-        [0.5, 0.5, 1],    # Top-right
-        [-0.5, 0.5, 1],   # Top-left
+        [-0.05, -0.05, 0.1],  # Bottom-left
+        [0.05, -0.05, 0.1],   # Bottom-right
+        [0.05, 0.05, 0.1],    # Top-right
+        [-0.05, 0.05, 0.1],   # Top-left
         [0, 0, 0]         # Apex (camera position)
     ]) * scale
     

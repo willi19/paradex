@@ -5,9 +5,10 @@ import cv2
 import numpy as np
 
 from paradex.utils.io import get_video_list
+from paradex.camera.camera_index import cam_index
 import tqdm
+import subprocess
 
-cam_index = json.load(open('config/camera_index.json'))
 
 def merge_video(input_dir, output_file):
     # Get list of AVI files in the directory
@@ -107,7 +108,9 @@ def merge_video_synced(input_dir, output_file):
 
     # Define video writer
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    out = cv2.VideoWriter(output_file, fourcc, fps, (frame_width, frame_height))
+    temp_file = output_file.replace(".mp4", "_temp.mp4")
+
+    out = cv2.VideoWriter(temp_file, fourcc, fps, (frame_width, frame_height))
 
     while True:
         merged_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)  # Fill with black if no frame
@@ -123,10 +126,6 @@ def merge_video_synced(input_dir, output_file):
                 merged_frame[offset_y:offset_y + grid_height, offset_x:offset_x + grid_width] = frame
                 all_down = False            
             
-        # merged_frame_tmp = cv2.resize(merged_frame, (frame_width*2//3, frame_height*2//3))
-        # cv2.imshow("Merged Video", merged_frame_tmp)
-        # cv2.waitKey(0)
-        # Write to output video
         out.write(merged_frame)
         if all_down:
             break
@@ -136,4 +135,23 @@ def merge_video_synced(input_dir, output_file):
         cap.release()
     out.release()
 
+    # Convert to H.264
+    ffmpeg_cmd = [
+        "ffmpeg",
+        "-y",  # Overwrite existing file
+        "-i", temp_file,  # Input file
+        "-c:v", "libx264",  # Video codec: H.264
+        "-preset", "slow",  # Compression rate and speed control (slow = high quality)
+        "-crf", "23",  # Quality setting (lower is higher quality, recommended 18~23)
+        "-pix_fmt", "yuv420p",  # Pixel format (H.264 standard compatible)
+        output_file
+    ]
+
+    try:
+        subprocess.run(ffmpeg_cmd, check=True)
+        print(f"✅ H.264 encoded video saved: {output_file}")
+        os.remove(temp_file)  # 변환 후 임시 파일 삭제
+    except subprocess.CalledProcessError as e:
+        print(f"❌ FFmpeg encoding failed: {e}")
+    
     print("Video processing complete. Output saved as", output_file)

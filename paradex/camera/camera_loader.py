@@ -29,7 +29,6 @@ class CameraManager:
         self.frame_cnt = 0
         self.syncMode = syncMode
 
-
     def configure_camera(self, cam):
         nodemap = cam.GetNodeMap()
         node_acquisition_mode = PySpin.CEnumerationPtr(nodemap.GetNode("AcquisitionMode"))
@@ -38,9 +37,6 @@ class CameraManager:
         
 
     def create_shared_memory(self, camera_index, shape, dtype):
-        """
-        Creates shared memory and lock for a camera.
-        """
         shm_name = f"camera_{camera_index}_shm"
         shm = shared_memory.SharedMemory(create=True, name=shm_name, size=np.prod(shape) * np.dtype(dtype).itemsize)
         self.shared_memories[camera_index] = {
@@ -56,7 +52,6 @@ class CameraManager:
     def capture_video(self, camera_index):
         system = PySpin.System.GetInstance()
         cam_list = system.GetCameras()
-        cnt = 0
 
         if cam_list.GetSize() <= camera_index:
             print(f"Camera index {camera_index} is out of range.")
@@ -77,18 +72,24 @@ class CameraManager:
         
         cam = camera.Camera(camPtr, lens_info, cam_info, save_dir, syncMode=self.syncMode)
 
+        wait_times = []  # List to store wait times
+
         if not self.is_streaming:
             cam.set_record()
         while not self.stop_event.is_set():
+            start_time = time.time()  # Start timing
             frame, ret = cam.get_capture()
-            # cnt += 1
-            # print(f"Camera {camera_index} captured frame {cnt}")
+            wait_times.append(time.time() - start_time)  # Calculate waiting time
+
             if ret and self.is_streaming:
                 img = spin2cv(frame, 1536, 2048)
                 with shm_info["lock"]:
                     np.copyto(shm_info["array"], img)
                     update_flag.value = 1  # Mark as updated
         
+        # Save the waiting times array
+        np.save(os.path.join(save_dir, f"wait_times_camera_{camera_index}.npy"), np.array(wait_times))
+
         if not self.is_streaming:
             cam.set_record()
         cam.stop_camera()
@@ -106,11 +107,7 @@ class CameraManager:
 
         sys.exit(0)
     
-
     def input_listener(self):
-        """
-        Listens for user input and stops capture when 'q' is pressed.
-        """
         while not self.stop_event.is_set():
             user_input = input().strip().lower()
             if user_input == "q":
@@ -139,13 +136,11 @@ class CameraManager:
         for p in self.capture_threads:
             p.start()
 
-        # Wait for all threads to finish
         for p in self.capture_threads:
             p.join()
 
         print("All capture threads have stopped.")
 
-        
 if __name__ == "__main__":
     manager = CameraManager(num_cameras=4, duration=180, save_dir="/home/capture16/captures1", is_streaming=False)
     manager.start()

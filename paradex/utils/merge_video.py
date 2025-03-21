@@ -96,7 +96,7 @@ def merge_video_synced(input_dir, output_file):
     first_key = list(caps.keys())[0]
     frame_width = int(caps[first_key].get(cv2.CAP_PROP_FRAME_WIDTH))
     frame_height = int(caps[first_key].get(cv2.CAP_PROP_FRAME_HEIGHT))
-    fps = int(caps[first_key].get(cv2.CAP_PROP_FPS))
+    fps = 30 #int(caps[first_key].get(cv2.CAP_PROP_FPS))
     
     # Get the maximum timestamp for video length
     rows, cols = 4, 6

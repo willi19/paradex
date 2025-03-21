@@ -247,8 +247,8 @@ class CameraConfig:
             print('Unable to set Buffer Count (Integer node retrieval). Aborting...\n')
             return False
 
-        buffer_count.SetValue(400)
-        print('Stream Buffer Count set to 100...')
+        buffer_count.SetValue(10)
+        print('Stream Buffer Count set to 10...')
         return 
 
     def configurePacketSize(self, nodeMap):

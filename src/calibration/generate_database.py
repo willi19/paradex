@@ -12,6 +12,7 @@ import multiprocessing as mp
 from paradex.calibration.database import *
 from paradex.calibration.colmap import get_two_view_geometries
 from paradex.utils.io import find_latest_directory, home_dir, download_dir
+import tqdm
 
 download_dir = os.path.join(download_dir,"calibration")
 config_dir = "config"
@@ -78,7 +79,7 @@ if __name__ == "__main__":
     keypoint_path_list = []
     for index in index_list:
         frame_dir = os.path.join(root_dir, index, "keypoints")
-        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 5 == 0]
+        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 10 == 0]
 
     db = COLMAPDatabase.connect(database_path)
     db.create_tables()
@@ -108,14 +109,15 @@ if __name__ == "__main__":
         cur_serial = camera_index_inv[i]
 
         cur_lens_info = camera_lens[cur_serial]
-        fx = cur_lens_info["fx"]
-        fy = cur_lens_info["fy"]
-        k1 = cur_lens_info["k1"]
-        k2 = cur_lens_info["k2"]
-        p1 = cur_lens_info["p1"]
-        p2 = cur_lens_info["p2"]
-        cx = cur_lens_info["cx"]
-        cy = cur_lens_info["cy"]
+
+        fx = cur_lens_info["original_intrinsics"][0]
+        fy = cur_lens_info["original_intrinsics"][4]
+        k1 = cur_lens_info["dist_param"][0]
+        k2 = cur_lens_info["dist_param"][1]
+        p1 = cur_lens_info["dist_param"][2]
+        p2 = cur_lens_info["dist_param"][3]
+        cx = cur_lens_info["original_intrinsics"][2]
+        cy = cur_lens_info["original_intrinsics"][5]
 
         # OPENCV, (fx, fy, cx, cy, k1, k2, p1, p2) considered
         camera_id = db.add_camera(4, width, height, np.array([fx,fy, cx, cy, k1, k2, p1, p2]), 0)
@@ -130,7 +132,7 @@ if __name__ == "__main__":
     tot_kypt_dict = {}
     tot_kypt_matches = {}
 
-    for kypt_path in keypoint_path_list:
+    for kypt_path in tqdm.tqdm(keypoint_path_list):
         # print(tot_kypt_dict.keys(), tot_kypt_matches.keys(), kypt_path)
         kypt_file_list = os.listdir(os.path.join(root_dir, kypt_path))
         kypt_dict = {}
@@ -186,7 +188,6 @@ if __name__ == "__main__":
         image_id_1 = image_id_dict[serial_1]
         image_id_2 = image_id_dict[serial_2]
         matches = np.vstack(matches)
-        print(image_id_1, image_id_2, matches.shape)
         idx1 = matches[:, 0]
         idx2 = matches[:, 1]
         

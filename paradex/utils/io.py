@@ -27,7 +27,7 @@ def get_video_list(video_dir):
             timestamp_path = os.path.join(video_dir, video_name+"_timestamp.json")\
             
             if not os.path.exists(timestamp_path):
-                print(f"Timestamp file not found for {f}", timestamp_path)
+                # print(f"Timestamp file not found for {f}", timestamp_path)
                 video_list.append((os.path.join(video_dir, f), None))
                 continue
             video_list.append((os.path.join(video_dir, f), timestamp_path))
@@ -68,6 +68,26 @@ def load_cam_param(name=None):
             "width": values["width"],
         }
     extrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "extrinsics.json")))
+    extrinsic = {}
+    for serial, values in extrinsic_data.items():
+        extrinsic[serial] = np.array(values).reshape(3, 4)
+    return intrinsic, extrinsic
+
+def load_cam_param_temp(name=None):
+    if name == None:
+        name = find_latest_directory(cam_param_dir)
+    intrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "intrinsics.json")))
+    intrinsic = {}
+    for serial, values in intrinsic_data.items():
+        intrinsic[serial] = {
+            "intrinsics_original": np.array(values["original_intrinsics"]).reshape(3, 3),
+            "intrinsics_undistort": np.array(values["Intrinsics"]).reshape(3, 3),
+            "intrinsics_warped": np.array(values["Intrinsics_warped"]).reshape(3, 3),
+            "dist_params": np.array(values["dist_param"]),
+            "height": values["height"],  # Scalar values remain unchanged
+            "width": values["width"],
+        }
+    extrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "extrinsics_temp.json")))
     extrinsic = {}
     for serial, values in extrinsic_data.items():
         extrinsic[serial] = np.array(values).reshape(3, 4)

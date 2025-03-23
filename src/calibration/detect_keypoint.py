@@ -66,9 +66,13 @@ if __name__ == "__main__":
 
     image_dir_list = []
     for calib_path in calib_path_list:
+        if not os.path.exists(os.path.join(calib_path, name)):
+            continue
         index_list = os.listdir(os.path.join(calib_path, name))
         for index in index_list:
             image_dir = os.path.join(calib_path, name, index, "images")
+            if not os.path.exists(image_dir):
+                continue
             image_dir_list += [os.path.join(image_dir, d) for d in os.listdir(image_dir)]
     image_dir_list = sorted(image_dir_list, key=lambda x: (int(x.split("/")[-3]), int(x.split("/")[-1])))
 

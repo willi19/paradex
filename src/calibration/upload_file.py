@@ -42,6 +42,8 @@ if __name__ == "__main__":
     
     kypt_dir_list = []
     for calib_path in calib_path_list:
+        if not os.path.exists(os.path.join(calib_path, name)):
+            continue
         index_list = os.listdir(os.path.join(calib_path, name))
         for index in index_list:
             kypt_dir = os.path.join(calib_path, name, index, "keypoints")

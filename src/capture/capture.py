@@ -13,6 +13,15 @@ def get_last_directory(name):
         return 0
     dirs = [int(d) for d in dirs if d.isdigit()]
     max_dir = max(dirs)
+
+    capture_path_local = os.path.join(capture_path_list[0], "capture", name)
+    has_local = False
+    for ind in os.listdir(capture_path_local):
+        if int(ind) > max_dir:
+            max_dir = int(ind)
+            has_local = True
+    if has_local:
+        return max_dir+1    
     if os.path.exists(os.path.join(capture_path, max_dir, "videos")):
         return max_dir + 1
     else:

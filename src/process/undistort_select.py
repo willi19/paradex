@@ -23,7 +23,8 @@ if __name__ == "__main__":
     parser.add_argument("--cam_param", type=str, default=None, help="Camera parameter file.")
     args = parser.parse_args()
 
-    
+    if args.name_list == None:
+        args.name_list = os.listdir(os.path.join(capture_path_list[0], "capture"))
     intrinsics, extrinsics = load_cam_param(args.cam_param)
 
     for name in args.name_list:

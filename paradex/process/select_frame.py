@@ -49,7 +49,7 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
         for idx, range_list in sorted(selected_frame.items()):
             num_frame = 0
             output_video_name = f"{serial_num}.avi"
-            output_video_dir = os.path.dirname(os.path.dirname(video_path)).replace("capture/", "processed/")
+            output_video_dir = os.path.dirname(os.path.dirname(os.path.dirname(video_path))).replace("capture/", "processed/")
             os.makedirs(os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video"), exist_ok=True)
 
             output_video_path = os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video", output_video_name)

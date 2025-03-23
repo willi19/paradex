@@ -75,12 +75,12 @@ if __name__ == "__main__":
         options = yaml.safe_load(f)
 
     database_path = out_pose_dir + "/database.db"
-
     keypoint_path_list = []
     for index in index_list:
         frame_dir = os.path.join(root_dir, index, "keypoints")
-        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 10 == 0]
 
+        
+        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 10 == 1]
     db = COLMAPDatabase.connect(database_path)
     db.create_tables()
 
@@ -121,7 +121,7 @@ if __name__ == "__main__":
 
         # OPENCV, (fx, fy, cx, cy, k1, k2, p1, p2) considered
         camera_id = db.add_camera(4, width, height, np.array([fx,fy, cx, cy, k1, k2, p1, p2]), 0)
-        image_id = db.add_image(f"{cur_serial}.png", camera_id)
+        image_id = db.add_image(f"{cur_serial}.jpg", camera_id)
         kypt_offset[cur_serial] = 0
         image_id_dict[cur_serial] = image_id
         camera_id_dict[cur_serial] = camera_id
@@ -145,7 +145,6 @@ if __name__ == "__main__":
             kypt_dict[serial_num] = {}
             kypt_dict[serial_num]["corners"] = np.load(os.path.join(root_dir, kypt_path, kypt_file))
             kypt_dict[serial_num]["ids"] = np.load(os.path.join(root_dir, kypt_path, f"{serial_num}_ids.npy"))
-
         for serial_num, kypt in kypt_dict.items():
             image_id = image_id_dict[serial_num]
             camera_id = camera_id_dict[serial_num]
@@ -190,7 +189,6 @@ if __name__ == "__main__":
         matches = np.vstack(matches)
         idx1 = matches[:, 0]
         idx2 = matches[:, 1]
-        
         # Add matches to database
         db.add_matches(image_id_1, image_id_2, matches)
     

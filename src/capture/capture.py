@@ -1,6 +1,6 @@
 from paradex.camera.camera_loader import CameraManager
 import argparse
-from paradex.utils.io import capture_path_list
+from paradex.utils.io import capture_path_list, shared_dir
 import os
 
 def main(save_path):
@@ -8,9 +8,15 @@ def main(save_path):
     manager.start()
 
 def get_last_directory(name):
-    capture_path = os.path.join(capture_path_list[0], "capture", name)
-    dirs = [d for d in os.listdir(capture_path)]
-    return len(dirs)
+    capture_path = os.path.join(shared_dir, "capture", name)
+    if not os.path.exists(capture_path):
+        return 0
+    dirs = [int(d) for d in dirs if d.isdigit()]
+    max_dir = max(dirs)
+    if os.path.exists(os.path.join(capture_path, max_dir, "videos")):
+        return max_dir + 1
+    else:
+        return max_dir
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Capture video from cameras.")
@@ -22,6 +28,6 @@ if __name__ == "__main__":
         os.makedirs(os.path.join(capture_path, "capture", name), exist_ok=True)
 
     index = get_last_directory(name)
-    save_path = f"capture/{name}/{index}"
-    os.makedirs(save_path, exist_ok=True)
+
+    save_path = f"capture/{name}/{index}/videos"
     main(save_path)

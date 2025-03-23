@@ -34,6 +34,7 @@ if __name__ == "__main__":
 
     root_dir = os.path.join(download_dir, name)
     index_list = os.listdir(root_dir)
+    # index_list = ["0"]
     index_list.sort()
     if len(index_list) == 0:
         print("No valid directories found.")
@@ -42,14 +43,15 @@ if __name__ == "__main__":
     keypoint_path_list = []
     for index in index_list:
         frame_dir = os.path.join(root_dir, index, "keypoints")
-        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 5 == 0]
-
+        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 20 == 0]
+    keypoint_path_list.sort(key=lambda x: int(x.split("/")[-1]))
     # Initial camera intrinsics
     width, height = 2048, 1536
     cx, cy = width // 2, height // 2
     num_cameras = 24
 
-    intrinsics, extrinsics = load_cam_param_temp(name)
+    intrinsics, extrinsics = load_cam_param_temp("20250323204657")
+    # print(intrinsics.keys())
     # tot_kypt_dict = {}
     # tot_kypt_matches = {}
     length = []
@@ -63,12 +65,30 @@ if __name__ == "__main__":
             if "ids" in kypt_file:
                 continue
             serial_num = kypt_file.split("_")[0]
+            
+            if serial_num not in intrinsics.keys():
+                continue
 
             ids = np.load(os.path.join(root_dir, kypt_path, f"{serial_num}_ids.npy"))
             kypt = np.load(os.path.join(root_dir, kypt_path, kypt_file))
             int_mat = np.array(intrinsics[serial_num]['intrinsics_original'])
             ext_mat = np.array(extrinsics[serial_num])
+            int_dist = np.array(intrinsics[serial_num]['dist_params'])
             
+            int_undist = np.array(intrinsics[serial_num]['intrinsics_undistort'])
+
+            if len(kypt) == 0:
+                continue
+            
+            normalized = cv2.undistortPoints(kypt, int_mat, int_dist)
+            kypt = normalized.squeeze() * np.array(
+                [[int_undist[0, 0], int_undist[1, 1]]]
+            ) + np.array(
+                [[int_undist[0, 2], int_undist[1, 2]]]
+            )
+
+            # kypt = kypt.reshape(-1, 2)
+
             for i in range(ids.shape[0]):
                 id = ids[i][0]
                 cor = kypt[i]
@@ -76,7 +96,7 @@ if __name__ == "__main__":
                     kypt_dict[id] = {"2d": [], "projection":[]}
                 
                 kypt_dict[id]["2d"].append(cor)
-                kypt_dict[id]["projection"].append(int_mat @ ext_mat)
+                kypt_dict[id]["projection"].append(int_undist @ ext_mat)
 
         kypt_3d = {}
         for i in list(kypt_dict.keys()):
@@ -86,7 +106,6 @@ if __name__ == "__main__":
             if pt3d is None:
                 continue
             kypt_3d[i] = pt3d
-        
         idx_list = list(kypt_3d.keys())
         idx_list.sort()
 
@@ -100,6 +119,10 @@ if __name__ == "__main__":
             if "ids" in kypt_file:
                 continue
             serial_num = kypt_file.split("_")[0]
+
+            # print(serial_num)
+            if serial_num not in intrinsics.keys():
+                continue    
             if serial_num not in proj_err.keys():
                 proj_err[serial_num] = []
 
@@ -108,7 +131,27 @@ if __name__ == "__main__":
 
             int_mat = np.array(intrinsics[serial_num]['intrinsics_original'])
             ext_mat = np.array(extrinsics[serial_num])
+            int_dist = np.array(intrinsics[serial_num]['dist_params'])
             
+            int_undist = np.array(intrinsics[serial_num]['intrinsics_undistort'])
+
+            if len(kypt) == 0:
+                continue
+            normalized = cv2.undistortPoints(kypt, int_mat, int_dist)
+            kypt = normalized.squeeze() * np.array(
+                [[int_undist[0, 0], int_undist[1, 1]]]
+            ) + np.array(
+                [[int_undist[0, 2], int_undist[1, 2]]]
+            )
+
+            
+            if serial_num == "23263780":
+                img_path = os.path.join(root_dir, kypt_path).replace("keypoints", "images")
+                # print(os.path.join(img_path, f"{serial_num}.png"))
+                # if not os.path.exists(os.path.join(img_path, f"{serial_num}.jpg")):
+                #     continue
+                # img = cv2.imread(os.path.join(img_path, f"{serial_num}.jpg"))
+
             for i in range(ids.shape[0]):
                 id = ids[i][0]
                 cor = kypt[i]
@@ -118,12 +161,27 @@ if __name__ == "__main__":
                 pt3d = kypt_3d[id]
                 pt3d_h = np.hstack((pt3d, np.ones((1))))
 
-                proj = int_mat @ ext_mat @ pt3d_h
+                proj = int_undist @ ext_mat @ pt3d_h
                 proj = proj[:2] / proj[2]
+
+                    # cv2.line(img, tuple(cor), tuple(proj.astype(int)), (0, 255, 0), 2)
 
                 err = np.linalg.norm(proj - cor)
                 proj_err[serial_num].append(err)
+                
+                # print(err)
+                if serial_num == "23263780":
+                    cor = cor.astype(int)
+                    proj = proj.astype(int)
+                    # print(err, kypt_path)
+                    # cv2.circle(img, tuple(cor), 1, (0, 255, 0), -1)
+                    # cv2.circle(img, tuple(proj.astype(int)), 1, (0, 0, 255), -1)
 
+            # if serial_num == "23263780":
+            #     cv2.imshow("img", img)
+            #     cv2.waitKey(0)
+            #     cv2.destroyAllWindows()
+            
 
     print(np.std(length))
     print(np.mean(length))

@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
                 err = np.linalg.norm(proj - cor)
                 proj_err[serial_num].append(err)
-
+            # print(serial_num, err)
 
     print(np.std(length))
     print(np.mean(length))

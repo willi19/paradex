@@ -79,7 +79,7 @@ def main():
     save_path = f"calibration/{name}/{index}/images/00001"
     camera_config = "config/lens.json"
     lens_info = "config/camera.json"
-    capture_images_from_all_cameras(save_path, args.num_image, lens_info, camera_config)
+    capture_images_from_all_cameras(save_path, 4, lens_info, camera_config)
 
 
 if __name__ == "__main__":

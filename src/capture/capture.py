@@ -12,7 +12,7 @@ def get_last_directory(name):
     if not os.path.exists(capture_path):
         next_dir = 0
     else:      
-        dirs = [int(d) for d in dirs if d.isdigit()]
+        dirs = [int(d) for d in capture_path if d.isdigit()]
         next_dir = max(dirs)
         if os.path.exists(os.path.join(capture_path, str(next_dir), "videos")):
             next_dir += 1

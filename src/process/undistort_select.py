@@ -45,7 +45,10 @@ if __name__ == "__main__":
             print(f"Selected frame loaded for {name}/{index}.")
             for capture_path in capture_path_list:
                 
-                video_dir = os.path.join(capture_path, "capture", name, index, "video")
+                video_dir = os.path.join(capture_path, "capture", name, index, "videos")
+                if not os.path.exists(video_dir):
+                    print(f"Video directory not found for {name}/{index}.")
+                    continue
 
                 for vp in get_video_list(video_dir):
                     serial = os.path.basename(vp[0]).split("_")[0]

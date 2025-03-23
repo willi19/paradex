@@ -10,22 +10,18 @@ def main(save_path):
 def get_last_directory(name):
     capture_path = os.path.join(shared_dir, "capture", name)
     if not os.path.exists(capture_path):
-        return 0
-    dirs = [int(d) for d in dirs if d.isdigit()]
-    max_dir = max(dirs)
-
+        next_dir = 0
+    else:      
+        dirs = [int(d) for d in dirs if d.isdigit()]
+        next_dir = max(dirs)
+        if os.path.exists(os.path.join(capture_path, str(next_dir), "videos")):
+            next_dir += 1
+    
     capture_path_local = os.path.join(capture_path_list[0], "capture", name)
-    has_local = False
     for ind in os.listdir(capture_path_local):
-        if int(ind) > max_dir:
-            max_dir = int(ind)
-            has_local = True
-    if has_local:
-        return max_dir+1    
-    if os.path.exists(os.path.join(capture_path, max_dir, "videos")):
-        return max_dir + 1
-    else:
-        return max_dir
+        if int(ind)+1 > next_dir:
+            next_dir = int(ind)+1
+    return next_dir
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Capture video from cameras.")

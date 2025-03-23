@@ -40,6 +40,8 @@ if __name__ == "__main__":
         for index in index_list:
             for capture_path in capture_path_list:
                 
+                if not os.path.exists(os.path.join(shared_dir, "capture", name, index, "selected_frame.json")):
+                    continue
                 selected_frame = json.load(open(os.path.join(shared_dir, "capture", name, index, "selected_frame.json")))
                 video_dir = os.path.join(capture_path, "capture", name, index)
 

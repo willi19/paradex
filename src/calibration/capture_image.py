@@ -37,12 +37,11 @@ if __name__ == "__main__":
     lens_info = "config/camera.json"
 
     
-    for calib_path in calib_path_list:
-        os.makedirs(os.path.join(calib_path, str(name), str(index), "images","00001"), exist_ok=True)
-        
-    save_path = f"calibration/{name}/{index}/images/00001"
+    os.makedirs(os.path.join(calib_path_list[0], str(name), str(index), "images","00001"), exist_ok=True)
+    
 
-    save_path = Path(args.save_folder)
-    save_path.mkdir(parents=True, exist_ok=True)
+    save_path = f"{calib_path_list[0]}/{name}/{index}/images/00001"
+    os.makedirs(save_path, exist_ok=True)
+#     save_path.mkdir(parents=True, exist_ok=True)
 
     capture_images_from_all_cameras(save_path, lens_info, camera_config)

@@ -39,12 +39,13 @@ if __name__ == "__main__":
         index_offset = 0
         for index in index_list:
             if not os.path.exists(os.path.join(shared_dir, "capture", name, index, "selected_frame.json")):
+                print(f"Selected frame not found for {name}/{index}.")
                 continue
             selected_frame = json.load(open(os.path.join(shared_dir, "capture", name, index, "selected_frame.json")))
-            
+            print(f"Selected frame loaded for {name}/{index}.")
             for capture_path in capture_path_list:
                 
-                video_dir = os.path.join(capture_path, "capture", name, index)
+                video_dir = os.path.join(capture_path, "capture", name, index, "video")
 
                 for vp in get_video_list(video_dir):
                     serial = os.path.basename(vp[0]).split("_")[0]

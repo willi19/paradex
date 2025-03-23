@@ -38,11 +38,12 @@ if __name__ == "__main__":
         video_list = []
         index_offset = 0
         for index in index_list:
+            if not os.path.exists(os.path.join(shared_dir, "capture", name, index, "selected_frame.json")):
+                continue
+            selected_frame = json.load(open(os.path.join(shared_dir, "capture", name, index, "selected_frame.json")))
+            
             for capture_path in capture_path_list:
                 
-                if not os.path.exists(os.path.join(shared_dir, "capture", name, index, "selected_frame.json")):
-                    continue
-                selected_frame = json.load(open(os.path.join(shared_dir, "capture", name, index, "selected_frame.json")))
                 video_dir = os.path.join(capture_path, "capture", name, index)
 
                 for vp in get_video_list(video_dir):

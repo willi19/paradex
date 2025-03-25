@@ -1,7 +1,7 @@
 import subprocess
 import argparse
 from paradex.utils.io import capture_path_list
-from paradex.utils.video import compress_video
+from paradex.utils.video import convert_avi_to_mp4
 import os
 
 if __name__ == "__main__":
@@ -14,4 +14,4 @@ if __name__ == "__main__":
         for name in args.name:
             source_path = os.path.join(capture_path, name)
             output_path = os.path.join(capture_path, "compressed", name)
-            compress_video(source_path, output_path)
+            convert_avi_to_mp4(source_path, output_path)

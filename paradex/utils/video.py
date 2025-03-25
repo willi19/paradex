@@ -2,6 +2,7 @@ import cv2
 import os
 import json
 from tqdm import tqdm
+import subprocess
 
 def split_video(video_path_tuple, image_dir, frame_interval=1):
     """
@@ -69,3 +70,25 @@ def split_video(video_path_tuple, image_dir, frame_interval=1):
             inner_bar.update(1)  # Update tqdm progress bar
 
     cap.release()
+
+
+def convert_avi_to_mp4(input_path, output_path):
+    # Build the ffmpeg command
+    command = [
+        "ffmpeg",
+        "-i", input_path,        # input file
+        "-c:v", "libx264",       # video codec
+        "-preset", "fast",       # encoding speed (options: ultrafast, superfast, fast, medium, slow, etc.)
+        "-crf", "23",            # quality (lower = better, 18–28 is common)
+        "-c:a", "aac",           # audio codec
+        "-b:a", "192k",          # audio bitrate
+        "-y",                    # overwrite output file if it exists
+        output_path
+    ]
+
+    try:
+        subprocess.run(command, check=True)
+        print("Conversion successful!")
+    except subprocess.CalledProcessError as e:
+        print("An error occurred during conversion:")
+        print(e)

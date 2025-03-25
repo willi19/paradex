@@ -14,4 +14,9 @@ if __name__ == "__main__":
         for name in args.name:
             source_path = os.path.join(capture_path, name)
             output_path = os.path.join(capture_path, "compressed", name)
-            convert_avi_to_mp4(source_path, output_path)
+
+            video_list = [f for f in os.listdir(source_path) if f.endswith(".avi")]
+            for video in video_list:
+                source_path = os.path.join(source_path, video)
+                output_path = os.path.join(output_path, video.replace(".avi", ".mp4"))
+                convert_avi_to_mp4(source_path, output_path)

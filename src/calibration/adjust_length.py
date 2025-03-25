@@ -43,7 +43,7 @@ if __name__ == "__main__":
     keypoint_path_list = []
     for index in index_list:
         frame_dir = os.path.join(root_dir, index, "keypoints")
-        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 20 == 0]
+        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 10 == 0]
     keypoint_path_list.sort(key=lambda x: int(x.split("/")[-1]))
     # Initial camera intrinsics
     width, height = 2048, 1536
@@ -192,7 +192,7 @@ if __name__ == "__main__":
         new_extrinsic[:3, 3] *= (0.025 / np.mean(length))
         new_extrinsics[serial_num] = new_extrinsic.tolist()
 
-    json.dump(new_extrinsics, open(os.path.join(cam_param_dir, name, "extrinsics.json"), "w"), indent=4)
-
     for serial_num, err_list in proj_err.items():
         print(serial_num, np.mean(err_list))
+
+    json.dump(new_extrinsics, open(os.path.join(cam_param_dir, name, "extrinsics.json"), "w"), indent=4)

@@ -13,10 +13,10 @@ if __name__ == "__main__":
     parser.add_argument("--name", required=True, help="Path to the source file or directory")
     
     args = parser.parse_args()
-    destination_path = os.path.join(home_dir, "shared_data", "capture", args.name)
+    destination_path = os.path.join(home_dir, "shared_data", args.name)
 
     for capture_path in capture_path_list:
-        source_path = os.path.join(capture_path, "capture", args.name)
+        source_path = os.path.join(capture_path, args.name)
         total_size = get_total_size(source_path, destination_path)
         
         copy_to_nfs(source_path, destination_path, total_size, end_with=".json")

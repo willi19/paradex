@@ -16,10 +16,10 @@ if __name__ == "__main__":
     destination_path = os.path.join(home_dir, "shared_data", args.name)
 
     for capture_path in capture_path_list:
-        source_path = os.path.join(capture_path, args.name)
-        obj_list = os.listdir(source_path)
+        source_dir = os.path.join(capture_path, args.name)
+        obj_list = os.listdir(source_dir)
         for obj_name in obj_list:
-            index_list = os.listdir(os.path.join(source_path, obj_name))
+            index_list = os.listdir(os.path.join(source_dir, obj_name))
             for index_name in index_list:
                 source_path = os.path.join(capture_path, args.name, obj_name, index_name,"videos")
                 destination_path = os.path.join(home_dir, "shared_data", args.name, obj_name, index_name,"videos")

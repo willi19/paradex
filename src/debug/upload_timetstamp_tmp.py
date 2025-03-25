@@ -23,6 +23,8 @@ if __name__ == "__main__":
             for index_name in index_list:
                 source_path = os.path.join(capture_path, args.name, obj_name, index_name,"videos")
                 destination_path = os.path.join(home_dir, "shared_data", args.name, obj_name, index_name,"videos")
+                total_size = get_total_size(source_path, destination_path)
+
                 copy_to_nfs(source_path, destination_path, total_size, end_with=".json")
 
         

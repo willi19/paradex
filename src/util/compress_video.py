@@ -20,3 +20,4 @@ if __name__ == "__main__":
                 source_path = os.path.join(source_path, video)
                 output_path = os.path.join(output_path, video.replace(".avi", ".mp4"))
                 convert_avi_to_mp4(source_path, output_path)
+                print(f"Compressed {source_path} to {output_path}")

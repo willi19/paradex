@@ -11,11 +11,10 @@ def get_total_size(path, dest_path):
         for f in filenames:
             src_file = os.path.join(dirpath, f)
             dest_file = os.path.join(dest_path, os.path.relpath(src_file, path))
-
             # Count only files that need to be copied (new or different)
             if not os.path.exists(dest_file) or os.path.getsize(dest_file) != os.path.getsize(src_file):
                 total_size += os.path.getsize(src_file)
-    
+        
     return total_size
 
 def copy_file_with_progress(src, dst, total_size, copied_size):

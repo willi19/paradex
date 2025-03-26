@@ -13,7 +13,7 @@ if __name__ == "__main__":
     for capture_path in capture_path_list:
         for name in args.name:
             for idx in os.listdir(os.path.join(capture_path, name)):
-                source_dir = os.path.join(capture_path, name, idx)
+                source_dir = os.path.join(capture_path, name, idx, "video")
                 output_dir = os.path.join(capture_path, name, idx, "compressed")
                 os.makedirs(output_dir, exist_ok=True)
                 video_list = [f for f in os.listdir(source_dir) if f.endswith(".avi")]

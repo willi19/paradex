@@ -75,6 +75,9 @@ if __name__ == "__main__":
         options = yaml.safe_load(f)
 
     database_path = out_pose_dir + "/database.db"
+    if os.path.exists(database_path):
+        os.remove(database_path)
+        
     keypoint_path_list = []
     for index in index_list:
         frame_dir = os.path.join(root_dir, index, "keypoints")

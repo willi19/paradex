@@ -43,14 +43,14 @@ if __name__ == "__main__":
     keypoint_path_list = []
     for index in index_list:
         frame_dir = os.path.join(root_dir, index, "keypoints")
-        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 10 == 0]
+        keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir)]# if int(d) % 10 == 0]
     keypoint_path_list.sort(key=lambda x: int(x.split("/")[-1]))
     # Initial camera intrinsics
     width, height = 2048, 1536
     cx, cy = width // 2, height // 2
     num_cameras = 24
 
-    intrinsics, extrinsics = load_cam_param_temp("20250323204657")
+    intrinsics, extrinsics = load_cam_param_temp(name)
     # print(intrinsics.keys())
     # tot_kypt_dict = {}
     # tot_kypt_matches = {}
@@ -67,6 +67,7 @@ if __name__ == "__main__":
             serial_num = kypt_file.split("_")[0]
             
             if serial_num not in intrinsics.keys():
+                print(serial_num)
                 continue
 
             ids = np.load(os.path.join(root_dir, kypt_path, f"{serial_num}_ids.npy"))

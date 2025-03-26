@@ -53,6 +53,9 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
             os.makedirs(os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video"), exist_ok=True)
 
             output_video_path = os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video", output_video_name)
+            if os.path.exists(output_video_path):
+                print(f"Video {output_video_path} already exists.")
+                continue
             out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
             for(start_frame, end_frame) in range_list:
                 while timestamp[frame_count] < start_frame:

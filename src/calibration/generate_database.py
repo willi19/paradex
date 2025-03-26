@@ -11,7 +11,7 @@ from cv2 import aruco
 import multiprocessing as mp
 from paradex.calibration.database import *
 from paradex.calibration.colmap import get_two_view_geometries
-from paradex.utils.io import find_latest_directory, home_dir, download_dir
+from paradex.utils.io import find_latest_directory, home_dir, download_dir, shared_dir
 import tqdm
 
 download_dir = os.path.join(download_dir,"calibration")
@@ -80,14 +80,17 @@ if __name__ == "__main__":
         
     keypoint_path_list = []
     for index in index_list:
-        frame_dir = os.path.join(root_dir, index, "keypoints")
-
-        
+        frame_dir = os.path.join(root_dir, index, "keypoints")       
         keypoint_path_list += [os.path.join(frame_dir, d) for d in os.listdir(frame_dir) if int(d) % 10 == 1]
+        
     db = COLMAPDatabase.connect(database_path)
     db.create_tables()
 
-    with open(f"{config_dir}/initial_intrinsic.json", "r") as f:
+    if not os.path.exists(f"{shared_dir}/cam_param/{name}/intrinsics_init.json"):
+        print("python get_intrinsic.py --name", name)
+        exit()
+
+    with open(f"{shared_dir}/cam_param/{name}/intrinsics_init.json", "r") as f:
         camera_lens = json.load(f) # {camera_serial : lens_type}
 
     with open(f"{config_dir}/camera_index.json", "r") as f:
@@ -113,14 +116,14 @@ if __name__ == "__main__":
 
         cur_lens_info = camera_lens[cur_serial]
 
-        fx = cur_lens_info["original_intrinsics"][0]
-        fy = cur_lens_info["original_intrinsics"][4]
-        k1 = cur_lens_info["dist_param"][0]
-        k2 = cur_lens_info["dist_param"][1]
-        p1 = cur_lens_info["dist_param"][2]
-        p2 = cur_lens_info["dist_param"][3]
-        cx = cur_lens_info["original_intrinsics"][2]
-        cy = cur_lens_info["original_intrinsics"][5]
+        fx = cur_lens_info["original_intrinsics"][0][0]
+        fy = cur_lens_info["original_intrinsics"][1][1]
+        k1 = cur_lens_info["dist_param"][0][0]
+        k2 = cur_lens_info["dist_param"][0][1]
+        p1 = cur_lens_info["dist_param"][0][2]
+        p2 = cur_lens_info["dist_param"][0][3]
+        cx = cur_lens_info["original_intrinsics"][0][2]
+        cy = cur_lens_info["original_intrinsics"][1][2]
 
         # OPENCV, (fx, fy, cx, cy, k1, k2, p1, p2) considered
         camera_id = db.add_camera(4, width, height, np.array([fx,fy, cx, cy, k1, k2, p1, p2]), 0)
@@ -206,3 +209,5 @@ if __name__ == "__main__":
     mapperOptions = pycolmap.IncrementalPipelineOptions(options['MapperOptions'])
     maps = pycolmap.incremental_mapping(database_path, ".", out_pose_dir, options = mapperOptions)
     maps[0].write_text(out_pose_dir)
+
+    recon = maps[0]

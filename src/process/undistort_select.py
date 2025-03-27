@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Manage timestamped directories.")
     # parser.add_argument("--name", type=str, required=True, help="Name of the directory to split.")
     parser.add_argument("--name_list", type=str, nargs="+", default=None, help="List of directories to split.")
-    parser.add_argument("--cam_param", type=str, default=None, help="Camera parameter file.")
+    # parser.add_argument("--cam_param", type=str, default=None, help="Camera parameter file.")
     args = parser.parse_args()
 
     if args.name_list == None:

@@ -7,6 +7,9 @@ from tqdm import tqdm
 def get_total_size(path, dest_path):
     """Calculate total size of files that need to be copied (excluding identical existing files)."""
     total_size = 0
+    if os.path.isfile(path):
+        return os.path.getsize(path)
+    
     for dirpath, _, filenames in os.walk(path):
         for f in filenames:
             src_file = os.path.join(dirpath, f)

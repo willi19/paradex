@@ -122,10 +122,19 @@ def merge_video_synced(input_dir, output_file):
             
             ret, frame = cap.read()
             if ret:
+                cv2.putText(
+                    frame,
+                    f"{serial_num}",
+                    (100, 300),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    8,  # 폰트 크기
+                    (0, 255, 0),  # 글자 색상 (녹색)
+                    2,  # 두께
+                    cv2.LINE_AA  # 선 스타일
+                )
                 frame = cv2.resize(frame, (grid_width, grid_height))
                 merged_frame[offset_y:offset_y + grid_height, offset_x:offset_x + grid_width] = frame
                 all_down = False            
-            
         out.write(merged_frame)
         if all_down:
             break

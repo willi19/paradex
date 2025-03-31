@@ -23,7 +23,7 @@ if __name__ == "__main__":
         index_list = os.listdir(capture_path)
         for index in index_list:
             os.makedirs(os.path.join("image", obj_name, str(index)), exist_ok=True)
-            timestamp_list = glob.glob(os.path.join(capture_path, index, "*_timestamp.json"))
+            timestamp_list = glob.glob(os.path.join(capture_path, index, "videos", "*_timestamp.json"))
             frame_ids = {}
             max_len = 0
             serial_ind = {}

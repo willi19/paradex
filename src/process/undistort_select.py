@@ -34,6 +34,7 @@ if __name__ == "__main__":
                 continue    
             
             index_list = os.listdir(os.path.join(capture_path_list[0], "capture", name))
+            index_list.sort(key=lambda x: int(x))
             
             video_list = []
             index_offset = 0

@@ -115,6 +115,8 @@ if __name__ == "__main__":
         cur_serial = camera_index_inv[i]
 
         cur_lens_info = camera_lens[cur_serial]
+        cur_lens_info["original_intrinsics"] = np.array(cur_lens_info["original_intrinsics"]).reshape(3, 3)
+        cur_lens_info["dist_param"] = np.array(cur_lens_info["dist_param"]).reshape(1, 5)
 
         fx = cur_lens_info["original_intrinsics"][0][0]
         fy = cur_lens_info["original_intrinsics"][1][1]

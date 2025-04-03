@@ -1,6 +1,6 @@
 import os
 import json
-from paradex.utils.merge_video import merge_video
+from paradex.utils.merge_video import merge_video_synced
 
 import argparse
 import subprocess
@@ -13,7 +13,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     temp_video_path = args.output_file.replace(".mp4", "_temp.mp4")
 
-    merge_video(args.input_dir, temp_video_path)
+    merge_video_synced(args.input_dir, temp_video_path)
 
     output_video_path = args.output_file
     ffmpeg_cmd = [

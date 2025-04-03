@@ -22,7 +22,7 @@ def merge_video(input_dir, output_file):
         serial_num = os.path.basename(f[0]).split("_")[0]
         if serial_num not in cam_index.keys():
             print(f"Camera index not found for {serial_num}")
-            return
+            continue
         caps[serial_num] = cv2.VideoCapture(f[0])
         timestamp_list[serial_num] = json.load(open(f[1],"r"))["frameID"]
         index_position[serial_num] = 0
@@ -50,6 +50,7 @@ def merge_video(input_dir, output_file):
         merged_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)  # Fill with black if no frame
         # Read frames from each video only if the frame index is in timestamp_list
         for serial_num, cap in caps.items():
+            print("asdf")
             offset_x = ((cam_index[serial_num]-1) % cols) * grid_width
             offset_y = (cam_index[serial_num]-1) // cols * grid_height
             
@@ -81,7 +82,6 @@ def merge_video(input_dir, output_file):
 def merge_video_synced(input_dir, output_file):
     # Get list of AVI files in the directory
     video_list = get_video_list(input_dir)
-
     caps = {}
     timestamp_list = {}
     index_position = {}
@@ -90,7 +90,7 @@ def merge_video_synced(input_dir, output_file):
         serial_num = os.path.basename(f[0]).split(".")[0]
         if serial_num not in cam_index.keys():
             print(f"Camera index not found for {serial_num}")
-            return
+            continue
         caps[serial_num] = cv2.VideoCapture(f[0])
         
     # Get frame properties from the first video

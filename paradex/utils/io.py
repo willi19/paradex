@@ -49,7 +49,7 @@ def find_latest_directory(directory):
         print("No valid directories found.")
         return
         
-    latest_dir = max(dirs, key=str)
+    latest_dir = max(dirs, key=int)
     
     return latest_dir
 

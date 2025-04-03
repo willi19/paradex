@@ -87,7 +87,9 @@ if __name__ == "__main__":
             ids = np.load(os.path.join(root_dir, kypt_path, f"{serial_num}_ids.npy")) 
             if ids.shape[0] < 50:
                 continue
-            ids = ids[:,0] - 70
+            
+            id_min = (np.min(ids) // 70) * 70
+            ids = ids[:,0] - id_min
 
             corner = np.load(os.path.join(root_dir, kypt_path, kypt_file))
             obj = objp[ids]

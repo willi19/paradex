@@ -27,7 +27,7 @@ def capture_images_from_all_cameras(save_path, lens_info_path, camera_config_pat
         cam = Camera(pCam, camera_config, lens_info, save_path, False)
         for frame_num in range(1):
             for _ in range(10):
-                pImg, retcode = cam.get_capture(200) # 200 ms timeout
+                pImg, retcode = cam.get_capture(0) # 200 ms timeout
                 if retcode:
                     cvImg = spin2cv(pImg, 1536, 2048)  # Adjust resolution as needed
                     image_save_path = os.path.join(save_path , f"{cam.serialnum}.png") 

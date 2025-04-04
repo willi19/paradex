@@ -44,12 +44,13 @@ def find_latest_directory(directory):
     Returns:
     - latest_dir: Latest directory in the specified directory.
     """
+    
     dirs = [d for d in os.listdir(directory)] 
     if not dirs:
         print("No valid directories found.")
-        return
+        return "0"
         
-    latest_dir = max(dirs, key=int)
+    latest_dir = max(dirs, key=str)
     
     return latest_dir
 

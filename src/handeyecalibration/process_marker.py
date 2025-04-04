@@ -30,6 +30,7 @@ if __name__ == "__main__":
         
         img_dir = os.path.join(he_calib_path, idx, "image")
         undist_img_dir = os.path.join(he_calib_path, idx, "undist_image")
+        os.makedirs(undist_img_dir, exist_ok=True)
         
         img_list = os.listdir(img_dir)
         id_cor = {}
@@ -37,7 +38,8 @@ if __name__ == "__main__":
             img = cv2.imread(os.path.join(img_dir, img_name))
             serial_num = img_name.split(".")[0]
             undist_img = undistort_img(img, intrinsic[serial_num])
-            
+            cv2.imwrite(os.path.join(undist_img_dir, img_name), undist_img)
+
             undist_kypt, ids = detect_aruco(undist_img) # Tuple(np.ndarray(1, 4, 2)), np.ndarray(N, 1)
 
             if ids is None:

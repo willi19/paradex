@@ -54,6 +54,25 @@ def find_latest_directory(directory):
     
     return latest_dir
 
+def find_latest_index(directory):
+    """
+    Get the latest directory in the specified directory.
+
+    Parameters:
+    - directory: Directory containing timestamped directories.
+
+    Returns:
+    - latest_dir: Latest directory in the specified directory.
+    """
+        
+    dirs = [d for d in os.listdir(directory)] 
+
+    if not dirs:
+        return -1
+        
+    latest_dir = max(dirs, key=int)    
+    return latest_dir
+
 def load_cam_param(name=None):
     if name == None:
         name = find_latest_directory(cam_param_dir)

@@ -33,7 +33,7 @@ if __name__ == "__main__":
                 print(f"Directory {name} not found.")
                 continue    
             
-            index_list = os.listdir(os.path.join(capture_path_list[0], "capture", name))
+            index_list = os.listdir(os.path.join(shared_dir, "capture", name))
             index_list.sort(key=lambda x: int(x))
             
             video_list = []

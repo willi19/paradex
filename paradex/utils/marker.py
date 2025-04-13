@@ -6,19 +6,6 @@ from cv2 import aruco
 
 aruco_dict = aruco.getPredefinedDictionary(aruco.DICT_6X6_1000)
 
-all_boards = [] # to be used in detection
-#for j in range(1, args.board_num+1): # read all board info
-
-with open("config/charuco_info.json", "r") as f:
-    boardinfo = json.load(f)
-
-board_num = [1,2,3,4]
-for board_cnt, idx in enumerate(board_num):
-    cb = boardinfo[str(idx)] # idx : board index
-    board = aruco.CharucoBoard( (cb["numX"], cb["numY"]), cb["checkerLength"], cb["markerLength"], aruco_dict, np.array(cb["markerIDs"]))
-    all_boards.append((board, int(cb["numMarker"]), board_cnt)) # j for offset ID
-
-corners3d = all_boards[0][0].getChessboardCorners()
 arucoDetector = aruco.ArucoDetector(aruco_dict)
 arucoDetector_tuned = aruco.ArucoDetector(aruco_dict)
 params = arucoDetector_tuned.getDetectorParameters()
@@ -69,7 +56,19 @@ def detect_aruco(img):
 
 # Detect charuco board
 def detect_charuco(img):
-    global all_boards
+
+    all_boards = [] # to be used in detection
+    #for j in range(1, args.board_num+1): # read all board info
+
+    with open("config/charuco_info.json", "r") as f:
+        boardinfo = json.load(f)
+
+    board_num = [1,2,3,4]
+    for board_cnt, idx in enumerate(board_num):
+        cb = boardinfo[str(idx)] # idx : board index
+        board = aruco.CharucoBoard( (cb["numX"], cb["numY"]), cb["checkerLength"], cb["markerLength"], aruco_dict, np.array(cb["markerIDs"]))
+        all_boards.append((board, int(cb["numMarker"]), board_cnt)) # j for offset ID
+        
     detected_corners, detected_ids = [], []
     detected_markers, detected_mids = [], []
     for b in all_boards:
@@ -113,15 +112,15 @@ def triangulate(corners: np.ndarray, projections: np.ndarray):
         curY @ projections[:, 2:3, :] - projections[:, 1:2, :],
         curX @ projections[:, 2:3, :] - projections[:, 0:1, :]
     ])
-    
     A = A.transpose(1, 0, 2)
+    # print(A)
     _, _, Vt = np.linalg.svd(A)
 
     X = Vt[:, -1]  # Last row of V (smallest singular value)
     return (X[:, :3] / X[:, 3:4])  # Normalize by X[:,3]
 
 
-def ransac_triangulation(corners: np.ndarray, projections: np.ndarray, threshold=1.5, iterations=100):
+def ransac_triangulation(corners: np.ndarray, projections: np.ndarray, threshold=1, iterations=100):
     """
     RANSAC-based triangulation to filter out outliers.
     
@@ -150,7 +149,7 @@ def ransac_triangulation(corners: np.ndarray, projections: np.ndarray, threshold
         kp3d = np.array(triangulate(sampled_corners, sampled_projections))
         
         # Reproject points to all cameras and compute errors
-
+        # import pdb; pdb.set_trace()
         kp3d_h = np.hstack((kp3d, np.ones((numPts, 1))))  # Convert to homogeneous coordinates
         reprojections = projections @ kp3d_h.T  # Shape: (N, 3, numPts)
         
@@ -165,4 +164,14 @@ def ransac_triangulation(corners: np.ndarray, projections: np.ndarray, threshold
         if total_inliers > best_inliers:
             best_inliers = total_inliers
             best_kp3d = kp3d
+        # print(errors, sample_idx, kp3d_h)
+    if best_kp3d is None:
+        return None
+    
+    if best_inliers < 12:
+        return None
+    reprojections = projections @ np.hstack((best_kp3d, np.ones((numPts, 1)))).T
+    reprojections = reprojections[:, :2, :] / reprojections[:, 2:3, :]
+    errors = np.linalg.norm(reprojections - corners.transpose(0, 2, 1), axis=1)
+    # print(errors, numPts)
     return best_kp3d

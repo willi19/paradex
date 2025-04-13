@@ -30,7 +30,7 @@ class Camera(CameraConfig):
         self.is_capturing = True
         self.is_recording = False
 
-        self.timestamps = dict([("timestamps", []), ("frameID", [])])
+        self.timestamps = dict([("timestamps", []), ("frameID", []), ("pc_time", [])])
         
         self.syncMode = syncMode  # True : triggered, False : no trigger,
         self.saveVideo = saveVideo  # true : save in video, false : stream viewer
@@ -92,6 +92,7 @@ class Camera(CameraConfig):
             retImage = pImageConv
             self.timestamps["timestamps"].append(ts)
             self.timestamps["frameID"].append(framenum)
+            self.timestamps["pc_time"].append(time.time())
             retcode=True
             
             if self.is_recording:

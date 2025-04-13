@@ -75,7 +75,7 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                         if not ret:
                             undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
                         else:
-                            undistorted_frame = frame        
+                            undistorted_frame = cv2.undistort(frame, intrinsic["intrinsics_original"], intrinsic["distortion_coefficients"])        
                     out.write(undistorted_frame)
             out.release()
     cap.release()

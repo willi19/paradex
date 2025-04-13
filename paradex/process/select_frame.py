@@ -28,6 +28,9 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     # Read timestamp JSON file safely
+    if json_path == None:
+        return
+        
     try:
         with open(json_path, "r") as json_file:
             timestamp = json.load(json_file).get("frameID", {})

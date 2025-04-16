@@ -4,6 +4,7 @@ import json
 from tqdm import tqdm
 from paradex.utils.image_util import undistort_img
 import numpy as np
+from paradex.utils.io import shared_dir
 
 def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
     """
@@ -50,16 +51,27 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
     # Initialize tqdm progress bar based on total frames
     with tqdm(total=total_frames, desc=f"Processing {video_path}", unit="frame", leave=False) as inner_bar:
         for idx, range_list in sorted(selected_frame.items()):
-            num_frame = 0
+            if not os.path.exists(os.path.join(shared_dir, "capture", serial_num, str(int(idx)+int(index_offset)), "grasp_info.json")):
+                continue
+            
+            grasp_info = json.load(open(os.path.join(shared_dir, "capture", serial_num, str(int(idx)+int(index_offset)), "grasp_info.json")))
+            grasp_end = grasp_info["end"]
+
+            processed_frame_cnt = 0
+
             output_video_name = f"{serial_num}.avi"
             output_video_dir = os.path.dirname(os.path.dirname(os.path.dirname(video_path))).replace("capture/", "processed/")
+            
             os.makedirs(os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video"), exist_ok=True)
 
             output_video_path = os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video", output_video_name)
             if os.path.exists(output_video_path):
                 print(f"Video {output_video_path} already exists.")
                 continue
+
             out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+            
+            
             for(start_frame, end_frame) in range_list:
                 while timestamp[frame_count] < start_frame:
                     ret, frame = cap.read()
@@ -68,7 +80,6 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                     if not ret or frame_count >= total_frames:
                         break
                 for i in range(start_frame, end_frame+1):
-                    # print(frame_count, len(timestamp), i, serial_num,start_frame,end_frame)
                     if frame_count == len(timestamp) or i < timestamp[frame_count]:
                         undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
                     else:
@@ -79,6 +90,11 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                             undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
                         else:
                             undistorted_frame = undistort_img(frame, intrinsic)        
+                    
+                    if processed_frame_cnt == grasp_end:
+                        cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
+
+                    processed_frame_cnt += 1
                     out.write(undistorted_frame)
             out.release()
     cap.release()

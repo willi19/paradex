@@ -53,7 +53,7 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
         for idx, range_list in sorted(selected_frame.items()):
             name = video_path.split("/")[-4]
             if not os.path.exists(os.path.join(shared_dir, "capture", name, str(int(idx)+int(index_offset)), "grasp_info.json")):
-                print(f"Grasp info not found for  {name} {idx}.")
+                print(f"Grasp info not found for  {os.path.join(shared_dir, "capture", name, str(int(idx)+int(index_offset)), 'grasp_info.json')}")
                 continue
             
             grasp_info = json.load(open(os.path.join(shared_dir, "capture", str(int(idx)+int(index_offset)), "grasp_info.json")))

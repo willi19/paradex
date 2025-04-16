@@ -52,6 +52,7 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
     with tqdm(total=total_frames, desc=f"Processing {video_path}", unit="frame", leave=False) as inner_bar:
         for idx, range_list in sorted(selected_frame.items()):
             if not os.path.exists(os.path.join(shared_dir, "capture", serial_num, str(int(idx)+int(index_offset)), "grasp_info.json")):
+                print(f"Grasp info not found for {serial_num}/{idx}.")
                 continue
             
             grasp_info = json.load(open(os.path.join(shared_dir, "capture", serial_num, str(int(idx)+int(index_offset)), "grasp_info.json")))

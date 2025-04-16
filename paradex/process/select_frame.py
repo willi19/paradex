@@ -57,7 +57,7 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                 print(f"Grasp info not found for {asdf}")
                 continue
             
-            grasp_info = json.load(open(os.path.join(shared_dir, "processed", str(int(idx)+int(index_offset)), "grasp_info.json")))
+            grasp_info = json.load(open(os.path.join(shared_dir, "processed", name, str(int(idx)+int(index_offset)), "grasp_info.json")))
             grasp_end = grasp_info["end"]
 
             processed_frame_cnt = 0

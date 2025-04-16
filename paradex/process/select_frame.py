@@ -28,6 +28,9 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
     frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
     # Read timestamp JSON file safely
+    if json_path == None:
+        return
+        
     try:
         with open(json_path, "r") as json_file:
             timestamp = json.load(json_file).get("frameID", {})
@@ -75,7 +78,7 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                         if not ret:
                             undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
                         else:
-                            undistorted_frame = cv2.undistort(frame, intrinsic["intrinsics_original"], intrinsic["distortion_coefficients"])        
+                            undistorted_frame = undistort_img(frame, intrinsic)        
                     out.write(undistorted_frame)
             out.release()
     cap.release()

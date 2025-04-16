@@ -41,6 +41,6 @@ if __name__ == "__main__":
     
     capture_path_local = os.path.join(capture_path_list[0], "capture", name)
 
-    f = open(os.path.join(capture_path_local, index, "index.txt"), "w")
-    f.write(f"{last_capture_index}")
+    f = open(os.path.join(capture_path_local, str(index), "index.txt"), "w")
+    f.write(f"{last_capture_index}")()
     f.close()

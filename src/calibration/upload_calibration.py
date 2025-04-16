@@ -37,10 +37,10 @@ if __name__ == "__main__":
 
     intrinsics = dict()
     extrinsics = dict()
+    print(len(images))
     for imid in images:
         serialnum = images[imid].name.split("_")[0][:-4]
         camid  = images[imid].camera_id
-        print(f"camid : {camid}, imageid : {imid}")
 
         w, h = cameras[camid].width, cameras[camid].height
         fx, fy, cx, cy, k1, k2, p1, p2 = cameras[camid].params

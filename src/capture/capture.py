@@ -36,3 +36,8 @@ if __name__ == "__main__":
 
     save_path = f"capture/{name}/{index}/videos"
     main(save_path)
+
+    last_capture_index = max(os.listdir(os.path.join(shared_dir, "capture", name)), key=int)
+    f = open(os.path.join(shared_dir, "capture", name, index, "index.txt"), "w")
+    f.write(f"{last_capture_index}")
+    f.close()

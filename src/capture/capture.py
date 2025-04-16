@@ -14,7 +14,7 @@ def get_last_directory(name):
     else:      
         dirs = [int(d) for d in os.listdir(capture_path) if d.isdigit()]
         next_dir = max(dirs) if len(dirs) > 0 else 0
-        if os.path.exists(os.path.join(capture_path, str(next_dir), "videos")):
+        if os.path.exists(os.path.join(capture_path, str(next_dir), "activate_range.json")):
             next_dir += 1
     
     capture_path_local = os.path.join(capture_path_list[0], "capture", name)

@@ -51,11 +51,11 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
     # Initialize tqdm progress bar based on total frames
     with tqdm(total=total_frames, desc=f"Processing {video_path}", unit="frame", leave=False) as inner_bar:
         for idx, range_list in sorted(selected_frame.items()):
-            if not os.path.exists(os.path.join(shared_dir, "capture", serial_num, str(int(idx)+int(index_offset)), "grasp_info.json")):
+            if not os.path.exists(os.path.join(shared_dir, "capture", str(int(idx)+int(index_offset)), "grasp_info.json")):
                 print(f"Grasp info not found for {serial_num}/{idx}.")
                 continue
             
-            grasp_info = json.load(open(os.path.join(shared_dir, "capture", serial_num, str(int(idx)+int(index_offset)), "grasp_info.json")))
+            grasp_info = json.load(open(os.path.join(shared_dir, "capture", str(int(idx)+int(index_offset)), "grasp_info.json")))
             grasp_end = grasp_info["end"]
 
             processed_frame_cnt = 0

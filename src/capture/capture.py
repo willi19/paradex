@@ -38,6 +38,9 @@ if __name__ == "__main__":
     main(save_path)
 
     last_capture_index = max(os.listdir(os.path.join(shared_dir, "capture", name)), key=int)
-    f = open(os.path.join(shared_dir, "capture", name, index, "index.txt"), "w")
+    
+    capture_path_local = os.path.join(capture_path_list[0], "capture", name)
+
+    f = open(os.path.join(capture_path_local, index, "index.txt"), "w")
     f.write(f"{last_capture_index}")
     f.close()

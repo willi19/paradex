@@ -23,7 +23,7 @@ def compress_video(video_path_tuple):
         
     index = os.path.basename(os.path.dirname(os.path.dirname(json_path)))
     name = os.path.basename(os.path.dirname(os.path.dirname(os.path.dirname(json_path))))
-    output_video_dir = os.path.dirname(os.path.dirname(os.path.dirname(video_path))).replace("capture/", "capture_compressed/")
+    output_video_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(video_path)))).replace("capture/", "capture_compressed/")
     
     os.makedirs(os.path.join(output_video_dir, name, index, "videos"), exist_ok=True)
     convert_avi_to_compressed_avi(video_path, os.path.join(output_video_dir, name, index, "videos", serial_num + ".avi"))

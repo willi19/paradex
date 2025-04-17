@@ -13,7 +13,7 @@ def process_video(args):
     Process a single video: split video into frames.
     - Splits a video into frames and saves them in a directory.
     """
-    video_path, intrinsics, selected_frame, index_offset = args
+    video_path = args
     compress_video(video_path)
     return
     

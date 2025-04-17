@@ -92,3 +92,22 @@ def convert_avi_to_mp4(input_path, output_path):
     except subprocess.CalledProcessError as e:
         print("An error occurred during conversion:")
         print(e)
+
+def convert_avi_to_compressed_avi(input_path, output_path):
+    # FFmpeg 명령어로 h.264 압축된 avi 생성
+    command = [
+        "ffmpeg",
+        "-i", input_path,
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "23",
+        "-an",  # 오디오 제거. 필요시 제거
+        "-y",   # 기존 파일 덮어쓰기
+        output_path
+    ]
+
+    try:
+        subprocess.run(command, check=True)
+        print(f"Compressed AVI saved to {output_path}")
+    except subprocess.CalledProcessError as e:
+        print(f"Compression failed for {input_path}: {e}")

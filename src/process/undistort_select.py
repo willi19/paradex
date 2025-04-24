@@ -61,6 +61,6 @@ if __name__ == "__main__":
                 for _ in pool.imap_unordered(process_video, video_list):
                     outer_bar.update(1)
             
-    except Exception as e:
-        print(f"Error processing {name}: {e}")
-        # continue
+    # except Exception as e:
+    #     print(f"Error processing {name}: {e}")
+    #     continue

@@ -51,64 +51,57 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
     
     # Initialize tqdm progress bar based on total frames
     with tqdm(total=total_frames, desc=f"Processing {video_path}", unit="frame", leave=False) as inner_bar:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
-            inner_bar.update(1)
-            if frame_count == len(timestamp):
-                break
-            frame_count += 1
-        # for idx, range_list in sorted(selected_frame.items()):
-        #     name = video_path.split("/")[-4]
-        #     if not os.path.exists(os.path.join(shared_dir, "processed", name, str(int(idx)+int(index_offset)), "grasp_info.json")):
-        #         asdf = os.path.join(shared_dir, "processed", name, str(int(idx)+int(index_offset)), "grasp_info.json")
-        #         print(f"Grasp info not found for {asdf}")
-        #         continue
+        for idx, range_list in sorted(selected_frame.items()):
+            name = video_path.split("/")[-4]
+            print(idx, range_list)
+            # if not os.path.exists(os.path.join(shared_dir, "processed", name, str(int(idx)+int(index_offset)), "grasp_info.json")):
+            #     asdf = os.path.join(shared_dir, "processed", name, str(int(idx)+int(index_offset)), "grasp_info.json")
+            #     print(f"Grasp info not found for {asdf}")
+            #     continue
             
-        #     grasp_info = json.load(open(os.path.join(shared_dir, "processed", name, str(int(idx)+int(index_offset)), "grasp_info.json")))
-        #     grasp_end = grasp_info["end"]
+            # grasp_info = json.load(open(os.path.join(shared_dir, "processed", name, str(int(idx)+int(index_offset)), "grasp_info.json")))
+            # grasp_end = grasp_info["end"]
 
-        #     processed_frame_cnt = 0
+            # processed_frame_cnt = 0
 
-        #     output_video_name = f"{serial_num}.avi"
-        #     output_video_dir = os.path.dirname(os.path.dirname(os.path.dirname(video_path))).replace("capture/", "processed/")
+            # output_video_name = f"{serial_num}.avi"
+            # output_video_dir = os.path.dirname(os.path.dirname(os.path.dirname(video_path))).replace("capture/", "processed/")
             
-        #     os.makedirs(os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video"), exist_ok=True)
-        #     os.makedirs(os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "last_frame"), exist_ok=True)
+            # os.makedirs(os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video"), exist_ok=True)
+            # os.makedirs(os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "last_frame"), exist_ok=True)
 
-        #     output_video_path = os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video", output_video_name)
-        #     if os.path.exists(output_video_path):
-        #         print(f"Video {output_video_path} already exists.")
-        #         continue
+            # output_video_path = os.path.join(output_video_dir,str(int(idx)+int(index_offset)), "video", output_video_name)
+            # if os.path.exists(output_video_path):
+            #     print(f"Video {output_video_path} already exists.")
+            #     continue
 
-        #     out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+            # out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
             
             
-        #     for(start_frame, end_frame) in range_list:
-        #         while timestamp[frame_count] < start_frame:
-        #             ret, frame = cap.read()
-        #             frame_count += 1
-        #             inner_bar.update(1)
-        #             if not ret or frame_count >= total_frames:
-        #                 break
-        #         for i in range(start_frame, end_frame+1):
-        #             if frame_count == len(timestamp) or i < timestamp[frame_count]:
-        #                 undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
-        #             else:
-        #                 ret, frame = cap.read()
-        #                 frame_count += 1
-        #                 inner_bar.update(1)
-        #                 if not ret:
-        #                     undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
-        #                 else:
-        #                     undistorted_frame = undistort_img(frame, intrinsic)        
+            # for(start_frame, end_frame) in range_list:
+            #     while timestamp[frame_count] < start_frame:
+            #         ret, frame = cap.read()
+            #         frame_count += 1
+            #         inner_bar.update(1)
+            #         if not ret or frame_count >= total_frames:
+            #             break
+            #     for i in range(start_frame, end_frame+1):
+            #         if frame_count == len(timestamp) or i < timestamp[frame_count]:
+            #             undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+            #         else:
+            #             ret, frame = cap.read()
+            #             frame_count += 1
+            #             inner_bar.update(1)
+            #             if not ret:
+            #                 undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+            #             else:
+            #                 undistorted_frame = undistort_img(frame, intrinsic)        
                     
-        #             if processed_frame_cnt == grasp_end:
+            #         if processed_frame_cnt == grasp_end:
 
-        #                 cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
+            #             cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
 
-        #             processed_frame_cnt += 1
-        #             out.write(undistorted_frame)
-        #     out.release()
+            #         processed_frame_cnt += 1
+            #         out.write(undistorted_frame)
+            # out.release()
     cap.release()

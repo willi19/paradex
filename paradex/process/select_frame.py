@@ -79,17 +79,18 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                 ret, frame = cap.read()
                 if not ret:
                     break
-                inner_bar.update(1)
-                undistorted_frame = undistort_img(frame, intrinsic)
+                frame_count += 1
+                # inner_bar.update(1)
+                # undistorted_frame = undistort_img(frame, intrinsic)
                 
-                # Check if the current frame is in the selected range
-                for start_frame, end_frame in range_list:
-                    if start_frame <= frame_count < end_frame:
-                        # out.write(undistorted_frame)
-                        processed_frame_cnt += 1
-                        if processed_frame_cnt == grasp_end:
-                            cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
-                            break
+                # # Check if the current frame is in the selected range
+                # for start_frame, end_frame in range_list:
+                #     if start_frame <= frame_count < end_frame:
+                #         # out.write(undistorted_frame)
+                #         processed_frame_cnt += 1
+                #         if processed_frame_cnt == grasp_end:
+                #             cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
+                #             break
             # for(start_frame, end_frame) in range_list:
             #     while timestamp[frame_count] < start_frame:
             #         ret, frame = cap.read()

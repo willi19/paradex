@@ -5,7 +5,7 @@ import numpy as np
 home_dir = os.path.expanduser("~")
 shared_dir = os.path.join(home_dir, "shared_data")
 calib_path_list = [os.path.join(home_dir, f"captures{i}", "calibration") for i in range(1,3)]
-capture_path_list = [os.path.join(home_dir, f"captures{i}") for i in range(1,3)]
+capture_path_list = [os.path.join(home_dir, f"captures{i}") for i in range(1,2)]
 download_dir = os.path.join(home_dir, "download")
 cam_param_dir = os.path.join(shared_dir, "cam_param")
 handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")
@@ -23,9 +23,13 @@ def get_video_list(video_dir):
     video_list = []
     for f in os.listdir(video_dir):
         if f.endswith(".avi") or f.endswith(".mp4"):
-            video_name = f.split("-")[0] # {serial_num}_{date}
-            timestamp_path = os.path.join(video_dir, video_name+"_timestamp.json")\
-            
+            video_name = f.split(".")[0] # {serial_num}_{date}
+            # timestamp_path = os.path.join(video_dir, video_name+"_timestamp.json")
+            timestamp_path = None
+            for fname in os.listdir(video_dir):
+                if fname.startswith(video_name) and fname.endswith("_timestamp.json"):
+                    timestamp_path = os.path.join(video_dir, fname)
+                    break
             if not os.path.exists(timestamp_path):
                 # print(f"Timestamp file not found for {f}", timestamp_path)
                 video_list.append((os.path.join(video_dir, f), None))

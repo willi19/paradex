@@ -75,31 +75,45 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
 
             # out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
             
-            
-            for(start_frame, end_frame) in range_list:
-                while timestamp[frame_count] < start_frame:
-                    ret, frame = cap.read()
-                    frame_count += 1
-                    inner_bar.update(1)
-                    if not ret or frame_count >= total_frames:
-                        break
-                for i in range(start_frame, end_frame+1):
-                    if frame_count == len(timestamp) or i < timestamp[frame_count]:
-                        undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
-                    else:
-                        ret, frame = cap.read()
-                        frame_count += 1
-                        inner_bar.update(1)
-                        if not ret:
-                            undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
-                        else:
-                            undistorted_frame = undistort_img(frame, intrinsic)        
+            while frame_count < total_frames:
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                inner_bar.update(1)
+                undistorted_frame = undistort_img(frame, intrinsic)
+                
+                # Check if the current frame is in the selected range
+                for start_frame, end_frame in range_list:
+                    if start_frame <= frame_count < end_frame:
+                        # out.write(undistorted_frame)
+                        processed_frame_cnt += 1
+                        if processed_frame_cnt == grasp_end:
+                            cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
+                            break
+            # for(start_frame, end_frame) in range_list:
+            #     while timestamp[frame_count] < start_frame:
+            #         ret, frame = cap.read()
+            #         frame_count += 1
+            #         inner_bar.update(1)
+            #         if not ret or frame_count >= total_frames:
+            #             break
+            #     for i in range(start_frame, end_frame+1):
+            #         if frame_count == len(timestamp) or i < timestamp[frame_count]:
+            #             undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+            #         else:
+            #             ret, frame = cap.read()
+            #             frame_count += 1
+            #             inner_bar.update(1)
+            #             if not ret:
+            #                 undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+            #             else:
+            #                 undistorted_frame = undistort_img(frame, intrinsic)        
                     
-                    if processed_frame_cnt == grasp_end:
+            #         if processed_frame_cnt == grasp_end:
 
-                        cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
+            #             cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
 
-                    processed_frame_cnt += 1
+            #         processed_frame_cnt += 1
                     # out.write(undistorted_frame)
             # out.release()
     cap.release()

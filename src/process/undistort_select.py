@@ -56,14 +56,14 @@ if __name__ == "__main__":
 
             index_offset += len(selected_frame.keys())
 
-        with Pool(processes=cpu_count()) as pool:
-            print(cpu_count)
-            with tqdm(total=len(video_list), desc="Total Progress", unit="dir") as outer_bar:
-                # for _ in pool.imap_unordered(process_video, video_list):
-                #     outer_bar.update(1)
-                for args in video_list:
-                    split_video(*args)
-                    outer_bar.update(1)
+        # with Pool(processes=cpu_count()) as pool:
+        #     print(cpu_count)
+        with tqdm(total=len(video_list), desc="Total Progress", unit="dir") as outer_bar:
+            # for _ in pool.imap_unordered(process_video, video_list):
+            #     outer_bar.update(1)
+            for args in video_list:
+                split_video(*args)
+                outer_bar.update(1)
     # except Exception as e:
     #     print(f"Error processing {name}: {e}")
     #     continue

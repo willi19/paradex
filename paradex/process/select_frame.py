@@ -86,6 +86,7 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                         break
                 for i in range(start_frame, end_frame+1):
                     if frame_count == len(timestamp) or i < timestamp[frame_count]:
+                        print(f"Frame {i} not found in video {video_path}")
                         undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
                     else:
                         ret, frame = cap.read()

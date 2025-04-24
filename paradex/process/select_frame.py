@@ -78,24 +78,25 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
             
             
             for(start_frame, end_frame) in range_list:
-                while timestamp[frame_count] < start_frame:
+                # while timestamp[frame_count] < start_frame:
+                #     ret, frame = cap.read()
+                #     frame_count += 1
+                #     inner_bar.update(1)
+                #     if not ret or frame_count >= total_frames:
+                #         print(f"Error reading frame {frame_count} from {video_path}")
+                #         break
+                for i in range(start_frame, end_frame+1):
+                    # if frame_count == len(timestamp) or i < timestamp[frame_count]:
+                    #     undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+                    # else:
                     ret, frame = cap.read()
                     frame_count += 1
                     inner_bar.update(1)
-                    if not ret or frame_count >= total_frames:
-                        print(f"Error reading frame {frame_count} from {video_path}")
-                        break
-                for i in range(start_frame, end_frame+1):
-                    if frame_count == len(timestamp) or i < timestamp[frame_count]:
+                    if not ret:
                         undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
+                        print(f"Error reading frame {frame_count} from {video_path}")
                     else:
-                        ret, frame = cap.read()
-                        frame_count += 1
-                        inner_bar.update(1)
-                        if not ret:
-                            undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
-                        else:
-                            undistorted_frame = undistort_img(frame, intrinsic)        
+                        undistorted_frame = undistort_img(frame, intrinsic)        
                     
                     if processed_frame_cnt == grasp_end:
 

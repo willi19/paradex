@@ -24,8 +24,8 @@ def get_video_list(video_dir):
     for f in os.listdir(video_dir):
         if f.endswith(".avi") or f.endswith(".mp4"):
             video_name = f.split(".")[0] # {serial_num}_{date}
-            # timestamp_path = os.path.join(video_dir, video_name+"_timestamp.json")
-            timestamp_path = None
+            timestamp_path = os.path.join(video_dir, video_name+"_timestamp.json")
+            # timestamp_path = None
             for fname in os.listdir(video_dir):
                 if fname.startswith(video_name) and fname.endswith("_timestamp.json"):
                     timestamp_path = os.path.join(video_dir, fname)

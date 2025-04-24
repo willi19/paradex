@@ -94,8 +94,8 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                         inner_bar.update(1)
                         if not ret:
                             undistorted_frame = np.zeros((frame_height, frame_width, 3), dtype=np.uint8)
-                        # else:
-                        #     undistorted_frame = undistort_img(frame, intrinsic)        
+                        else:
+                            undistorted_frame = undistort_img(frame, intrinsic)        
                     
                     # if processed_frame_cnt == grasp_end:
 

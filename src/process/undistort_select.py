@@ -26,6 +26,7 @@ if __name__ == "__main__":
     if args.name_list == None:
         args.name_list = os.listdir(os.path.join(capture_path_list[0], "capture"))
     intrinsics, extrinsics = load_cam_param(args.cam_param)
+    serial_list = list(intrinsics.keys())
 
     for name in args.name_list:
         if not os.path.exists(os.path.join(capture_path_list[0], "capture", name)):# or not os.path.exists(os.path.join(capture_path_list[1], "capture", name)):
@@ -51,7 +52,7 @@ if __name__ == "__main__":
                     continue
 
                 for vp in get_video_list(video_dir):
-                    serial = os.path.basename(vp[0]).split("_")[0]
+                    serial = serial_list[0]# os.path.basename(vp[0]).split("_")[0]
                     video_list.append((vp, intrinsics[serial], selected_frame, index_offset))
 
             index_offset += len(selected_frame.keys())

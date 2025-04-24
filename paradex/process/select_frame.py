@@ -73,7 +73,7 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                 print(f"Video {output_video_path} already exists.")
                 continue
 
-            out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
+            # out = cv2.VideoWriter(output_video_path, fourcc, fps, (frame_width, frame_height))
             
             
             for(start_frame, end_frame) in range_list:
@@ -100,6 +100,6 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                         cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
 
                     processed_frame_cnt += 1
-                    out.write(undistorted_frame)
-            out.release()
+                    # out.write(undistorted_frame)
+            # out.release()
     cap.release()

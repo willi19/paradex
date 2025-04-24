@@ -5,7 +5,7 @@ import numpy as np
 home_dir = os.path.expanduser("~")
 shared_dir = os.path.join(home_dir, "shared_data")
 calib_path_list = [os.path.join(home_dir, f"captures{i}", "calibration") for i in range(1,3)]
-capture_path_list = [os.path.join(home_dir, f"captures{i}") for i in range(1,2)]
+capture_path_list = [os.path.join(home_dir, f"captures{i}") for i in range(2,3)]
 download_dir = os.path.join(home_dir, "download")
 cam_param_dir = os.path.join(shared_dir, "cam_param")
 handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")

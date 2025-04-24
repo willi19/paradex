@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     for name in args.name_list:
         try:
-            if not os.path.exists(os.path.join(capture_path_list[0], "capture", name)) or not os.path.exists(os.path.join(capture_path_list[1], "capture", name)):
+            if not os.path.exists(os.path.join(capture_path_list[0], "capture", name)):# or not os.path.exists(os.path.join(capture_path_list[1], "capture", name)):
                 print(f"Directory {name} not found.")
                 continue    
             

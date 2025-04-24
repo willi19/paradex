@@ -97,9 +97,9 @@ def split_video(video_path_tuple, intrinsic, selected_frame, index_offset):
                         # else:
                         #     undistorted_frame = undistort_img(frame, intrinsic)        
                     
-                    if processed_frame_cnt == grasp_end:
+                    # if processed_frame_cnt == grasp_end:
 
-                        cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
+                    #     cv2.imwrite(os.path.join(output_video_dir, str(int(idx)+int(index_offset)), "last_frame", f"{serial_num}.png"), undistorted_frame)
 
                     processed_frame_cnt += 1
                     # out.write(undistorted_frame)

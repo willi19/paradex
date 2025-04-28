@@ -55,7 +55,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--save_folder", type=str, required=True, help="Folder to save the captured images."
     )
-    camera_config = "config/lens.json"
+    camera_config = "config/lens_info.json"
     lens_info = "config/camera.json"
     parser.add_argument(
         "--num_image", type=int, required=False, default=1

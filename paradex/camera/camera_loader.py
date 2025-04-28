@@ -60,7 +60,7 @@ class CameraManager:
             return
 
         camPtr = cam_list.GetByIndex(camera_index)
-        lens_info = json.load(open("config/lens.json", "r"))
+        lens_info = json.load(open("config/lens_info.json", "r"))
         cam_info = json.load(open("config/camera.json", "r"))
 
         if self.is_streaming:

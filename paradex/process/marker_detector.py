@@ -58,15 +58,6 @@ params.useAruco3Detection = True
 # params.useGlobalThreshold = True
 arucoDetector_tuned.setDetectorParameters(params)
 
-
-def detect_aruco_process(img_path: str) -> Tuple[np.ndarray, np.ndarray, int, int]:
-    cam_num = int(img_path.split("/")[-3])
-    frame_num = int(img_path.split("/")[-1][:-4])
-    img = cv2.imread(img_path)
-    corners, corners_t, IDs, IDs_t = detect_aruco_tuned(img)
-    return corners, corners_t, IDs, IDs_t, cam_num, frame_num
-
-
 def detect_aruco_tuned(img) -> Tuple[np.ndarray, np.ndarray]:
     global arucoDetector_tuned
     corners, IDs, _ = arucoDetector.detectMarkers(img)

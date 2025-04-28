@@ -33,7 +33,7 @@ if __name__ == "__main__":
     is_init = args.init
     name, index = find_latest_directory(is_init)
 
-    camera_config = "config/lens.json"
+    camera_config = "config/lens_info.json"
     lens_info = "config/camera.json"
 
     

@@ -20,7 +20,7 @@ def find_latest_directory():
     return latest_dir, max(index_list) if index_list else 0
 
 if __name__ == "__main__":
-    camera_config = "config/lens.json"
+    camera_config = "config/lens_info.json"
     lens_info = "config/camera.json"
 
     name, index = find_latest_directory()

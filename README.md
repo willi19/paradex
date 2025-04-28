@@ -1,6 +1,6 @@
 0. run autoforce_ip.py whenever you restart the capturePC
 
-Adjust Exposure in config/lens.json
+Adjust Exposure in config/lens_info.json
 
 1. calibration
 

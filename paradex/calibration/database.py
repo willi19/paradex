@@ -1,36 +1,3 @@
-# Copyright (c) 2022, ETH Zurich and UNC Chapel Hill.
-# All rights reserved.
-#
-# Redistribution and use in source and binary forms, with or without
-# modification, are permitted provided that the following conditions are met:
-#
-#     * Redistributions of source code must retain the above copyright
-#       notice, this list of conditions and the following disclaimer.
-#
-#     * Redistributions in binary form must reproduce the above copyright
-#       notice, this list of conditions and the following disclaimer in the
-#       documentation and/or other materials provided with the distribution.
-#
-#     * Neither the name of ETH Zurich and UNC Chapel Hill nor the names of
-#       its contributors may be used to endorse or promote products derived
-#       from this software without specific prior written permission.
-#
-# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-# AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
-# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
-# ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDERS OR CONTRIBUTORS BE
-# LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-# CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-# SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
-# INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
-# CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
-# ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
-# POSSIBILITY OF SUCH DAMAGE.
-#
-# Author: Johannes L. Schoenberger (jsch-at-demuc-dot-de)
-
-# This script is based on an original implementation by True Price.
-
 import sys
 import sqlite3
 import numpy as np
@@ -266,7 +233,7 @@ class COLMAPDatabase(sqlite3.Connection):
         )
         return matches
 
-    def get_images(self): # image_id 위해 추가
+    def get_images(self):
         images = dict(
             (image_id, {"name":name, "camera_id":camera_id})
             for image_id, name, camera_id in self.execute(
@@ -275,12 +242,6 @@ class COLMAPDatabase(sqlite3.Connection):
         return images
 
     def get_two_view_geometries(self): 
-        # twoview = dict()
-        # for pair_id, data, config, F,E, H, qvec, tvec in self.execute(
-        #         "SELECT pair_id, data, config, F, E, H, qvec, tvec FROM two_view_geometries WHERE data IS NOT NULL"):
-        #     if data is not None:
-        #         twoview[(pair_id_to_image_ids(pair_id))] = {"pair_id":pair_id_to_image_ids(pair_id), "data":blob_to_array(data,np.uint32 ,(-1,2)), "config":config, "F":blob_to_array(F, np.float32,(-1,3,3)),
-        #                  "E":blob_to_array(E,np.float32, (-1, 3,3)),  "H":blob_to_array(F,np.float32, (-1, 3,3)), "qvec":blob_to_array(qvec,np.float32,(-1,4)), "tvec":blob_to_array(tvec,np.float32,(-1,3))}
         twoview = dict(
             (pair_id_to_image_ids(pair_id),
             {"pair_id":pair_id_to_image_ids(pair_id), "data":blob_to_array(data,np.uint32 ,(-1,2)), "config":config, "F":blob_to_array(F, np.float32,(-1,3,3)),
@@ -290,129 +251,3 @@ class COLMAPDatabase(sqlite3.Connection):
                 "SELECT pair_id, data, config, F, E, H FROM two_view_geometries WHERE data IS NOT NULL")
         )
         return twoview
-
-def example_usage():
-    import os
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--database_path", default="database.db")
-    args = parser.parse_args()
-
-    if os.path.exists(args.database_path):
-        print("ERROR: database path already exists -- will not modify it.")
-        return
-
-    # Open the database.
-
-    db = COLMAPDatabase.connect(args.database_path)
-
-    # For convenience, try creating all the tables upfront.
-
-    db.create_tables()
-
-    # Create dummy cameras.
-
-    model1, width1, height1, params1 = \
-        0, 1024, 768, np.array((1024., 512., 384.)) # model what for?
-    model2, width2, height2, params2 = \
-        2, 1024, 768, np.array((1024., 512., 384., 0.1))
-
-    camera_id1 = db.add_camera(model1, width1, height1, params1)
-    camera_id2 = db.add_camera(model2, width2, height2, params2)
-
-    # Create dummy images.
-
-    image_id1 = db.add_image("image1.png", camera_id1)
-    image_id2 = db.add_image("image2.png", camera_id1)
-    image_id3 = db.add_image("image3.png", camera_id2)
-    image_id4 = db.add_image("image4.png", camera_id2)
-
-    # Create dummy keypoints.
-    #
-    # Note that COLMAP supports:
-    #      - 2D keypoints: (x, y)
-    #      - 4D keypoints: (x, y, theta, scale)
-    #      - 6D affine keypoints: (x, y, a_11, a_12, a_21, a_22)
-
-    num_keypoints = 1000
-    keypoints1 = np.random.rand(num_keypoints, 2) * (width1, height1) # num
-    keypoints2 = np.random.rand(num_keypoints, 2) * (width1, height1)
-    keypoints3 = np.random.rand(num_keypoints, 2) * (width2, height2)
-    keypoints4 = np.random.rand(num_keypoints, 2) * (width2, height2)
-
-    db.add_keypoints(image_id1, keypoints1)
-    db.add_keypoints(image_id2, keypoints2)
-    db.add_keypoints(image_id3, keypoints3)
-    db.add_keypoints(image_id4, keypoints4)
-
-    # Create dummy matches.
-
-    M = 50
-    matches12 = np.random.randint(num_keypoints, size=(M, 2))
-    matches23 = np.random.randint(num_keypoints, size=(M, 2))
-    matches34 = np.random.randint(num_keypoints, size=(M, 2))
-
-    db.add_matches(image_id1, image_id2, matches12)
-    db.add_matches(image_id2, image_id3, matches23)
-    db.add_matches(image_id3, image_id4, matches34)
-
-    # Commit the data to the file.
-
-    db.commit()
-
-    # Read and check cameras.
-
-    rows = db.execute("SELECT * FROM cameras")
-
-    camera_id, model, width, height, params, prior = next(rows)
-    params = blob_to_array(params, np.float64)
-    assert camera_id == camera_id1
-    assert model == model1 and width == width1 and height == height1
-    assert np.allclose(params, params1)
-
-    camera_id, model, width, height, params, prior = next(rows)
-    params = blob_to_array(params, np.float64)
-    assert camera_id == camera_id2
-    assert model == model2 and width == width2 and height == height2
-    assert np.allclose(params, params2)
-
-    # Read and check keypoints.
-
-    keypoints = dict(
-        (image_id, blob_to_array(data, np.float32, (-1, 2)))
-        for image_id, data in db.execute(
-            "SELECT image_id, data FROM keypoints"))
-
-    assert np.allclose(keypoints[image_id1], keypoints1)
-    assert np.allclose(keypoints[image_id2], keypoints2)
-    assert np.allclose(keypoints[image_id3], keypoints3)
-    assert np.allclose(keypoints[image_id4], keypoints4)
-
-    # Read and check matches.
-
-    pair_ids = [image_ids_to_pair_id(*pair) for pair in
-                ((image_id1, image_id2),
-                 (image_id2, image_id3),
-                 (image_id3, image_id4))]
-
-    matches = dict(
-        (pair_id_to_image_ids(pair_id),
-         blob_to_array(data, np.uint32, (-1, 2)))
-        for pair_id, data in db.execute("SELECT pair_id, data FROM matches")
-    )
-
-    assert np.all(matches[(image_id1, image_id2)] == matches12)
-    assert np.all(matches[(image_id2, image_id3)] == matches23)
-    assert np.all(matches[(image_id3, image_id4)] == matches34)
-
-    # Clean up.
-
-    db.close()
-
-    if os.path.exists(args.database_path):
-        os.remove(args.database_path)
-
-
-if __name__ == "__main__":
-    example_usage()

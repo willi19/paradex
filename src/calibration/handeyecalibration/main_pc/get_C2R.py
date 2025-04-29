@@ -43,6 +43,9 @@ def Calibrate(A, B):
     b_x  = np.dot(inv(np.dot(C.T, C)), np.dot(C.T, d))
     return theta, b_x
 
+marker_id_list = [261,262,263,264,265,266]
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
@@ -71,8 +74,9 @@ if __name__ == "__main__":
         marker2 = []
         for mid in marker_dict1:
             if mid in marker_dict2:
-                marker1.append(marker_dict1[mid])
-                marker2.append(marker_dict2[mid])
+                if mid in marker_id_list:
+                    marker1.append(marker_dict1[mid])
+                    marker2.append(marker_dict2[mid])
         
         marker1 = np.vstack(marker1)
         marker2 = np.vstack(marker2)
@@ -84,5 +88,26 @@ if __name__ == "__main__":
     theta, b_x = Calibrate(A_list, B_list)
     X[0:3, 0:3] = theta
     X[0:3, -1] = b_x.flatten()
-    print(A_list[0] @ X - X @ B_list[0])
+    for i in range(len(index_list)-1):
+        print(A_list[i] @ X - X @ B_list[i])
     np.save(os.path.join(he_calib_path, "0", "C2R.npy"), X)
+
+    marker_pos = {}
+    marker_id_list = [261,263,264,265,266]
+
+    for idx in index_list:
+        robot = np.load(os.path.join(he_calib_path, idx, "link5.npy"))
+        marker_dict = np.load(os.path.join(he_calib_path, idx, "marker_3d.npy"), allow_pickle=True).item()
+
+        for mid in marker_dict:
+            if mid not in marker_pos:
+                marker_pos[mid] = []
+            # marker_dict[mid] :4x3
+            marker_pos[mid].append(np.linalg.inv(robot) @ np.linalg.inv(X) @ np.hstack((marker_dict[mid], np.ones((marker_dict[mid].shape[0], 1)))).T)
+            
+    # for mid in marker_pos:
+    #     # import pdb; pdb.set_trace()
+    #     print(np.std(marker_pos[mid], axis=0))
+    #     marker_pos[mid] = np.mean(marker_pos[mid], axis=0)
+        
+    np.save(os.path.join(he_calib_path, "0", "marker_pos.npy"), marker_pos)

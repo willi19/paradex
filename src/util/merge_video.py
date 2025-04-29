@@ -1,35 +1,21 @@
 import os
 import json
 from paradex.utils.merge_video import merge_video_synced
-
+from paradex.utils.io import home_dir
 import argparse
-import subprocess
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Merge video files.")
-    parser.add_argument("--input_dir", type=str, help="Input directory containing video files.")
-    parser.add_argument("--output_file", type=str, help="Output file path.")
+    parser.add_argument("--obj_list", type=str, nargs="+", help="List of objects to merge.")
 
     args = parser.parse_args()
-    temp_video_path = args.output_file.replace(".mp4", "_temp.mp4")
 
-    merge_video_synced(args.input_dir, temp_video_path)
+    for obj in args.obj_list:
+        root_dir = os.path.join(home_dir, "download", "processed", obj)
+        ind_list = os.listdir(root_dir)
+        for ind in ind_list:
+            input_dir = os.path.join(root_dir, ind, "video")
+            output_file = os.path.join("video","merged", obj, f"{ind}.mp4")
+            os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
-    output_video_path = args.output_file
-    ffmpeg_cmd = [
-        "ffmpeg",
-        "-y",  # 기존 파일 덮어쓰기
-        "-i", temp_video_path,  # 입력 파일
-        "-c:v", "libx264",  # 비디오 코덱: H.264
-        "-preset", "slow",  # 압축률과 속도 조절 (slow = 고품질)
-        "-crf", "23",  # 품질 설정 (낮을수록 고품질, 18~23 추천)
-        "-pix_fmt", "yuv420p",  # 픽셀 포맷 (H.264 표준 호환)
-        output_video_path
-    ]
-
-    # FFmpeg 실행
-    subprocess.run(ffmpeg_cmd, check=True)
-    print(f"✅ H.264 encoded video saved: {output_video_path}")
-    os.remove(temp_video_path)  # 변환 후 임시 파일 삭제
-    
-os.remove(temp_video_path)  # 변환 후 임시 파일 삭제
+            merge_video_synced(input_dir, output_file)

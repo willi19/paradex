@@ -1,7 +1,7 @@
 import datetime
 import time
-from dex_robot.io.contact.receiver import SerialReader
-from dex_robot.io.contact.process import process_contact
+from paradex.io.contact.receiver import SerialReader
+from paradex.io.contact.process import process_contact
 
 import numpy as np
 import matplotlib.pyplot as plt

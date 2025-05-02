@@ -25,22 +25,15 @@ objp[:, :2] = np.indices(chessboard_size).T.reshape(-1, 2)
 objp *= square_size
 
 if __name__ == "__main__":
-    import time
-    start_time = time.time()
     parser = argparse.ArgumentParser(description="Manage timestamped directories.")
     parser.add_argument("--name", type=str, help="Name of the directory to detect keypoint.")
-    parser.add_argument("--latest", action="store_true", help="Split the latest video files.")
-    
     args = parser.parse_args()
     
-    if not args.latest and not args.name:
-        print("Please specify either --latest or --name.")
-        exit()
-    
-    if args.latest:
-        name = find_latest_directory(download_dir)
-    else:
+    if not args.name:
         name = args.name
+
+    else:
+        name = find_latest_directory(download_dir)
 
     root_dir = os.path.join(download_dir, name)
     index_list = os.listdir(root_dir)

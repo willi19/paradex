@@ -4,9 +4,9 @@ import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 import shutil
-from dex_robot.io.contact.process import process_contact
-from dex_robot.utils.robot_wrapper import RobotWrapper
-from dex_robot.utils.file_io import rsc_path, capture_path, shared_path
+from paradex.io.contact.process import process_contact
+from paradex.utils.robot_wrapper import RobotWrapper
+from paradex.utils.file_io import rsc_path, capture_path, shared_path
 
 home_path = os.path.expanduser("~")
 shared_path = os.path.join(home_path, "shared_data")

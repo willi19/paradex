@@ -1,0 +1,20 @@
+# Pyramid OBJ file with base length 0.5 and height 0.5
+
+v -0.05 -0.05 0.05  # Bottom-left
+v  0.05 -0.05 0.05  # Bottom-right
+v  0.05  0.05 0.05  # Top-right
+v -0.05  0.05 0.05  # Top-left
+v  0.00  0.00 0.0  # Apex
+
+# Base face
+f 1 2 3 4
+
+# Side faces
+f 1 2 5
+f 1 5 2
+f 2 3 5
+f 2 5 3
+f 3 4 5
+f 3 5 4
+f 4 1 5
+f 4 5 1

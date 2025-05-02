@@ -4,10 +4,10 @@ import argparse
 import numpy as np
 import json
 import cv2
-from dex_robot.utils.file_io import shared_path, load_camparam, load_c2r, download_path, rsc_path
+from paradex.utils.file_io import shared_path, load_camparam, load_c2r, download_path, rsc_path
 from paradex.utils.marker import detect_aruco, triangulate, ransac_triangulation
 import tqdm
-from dex_robot.utils.robot_wrapper import RobotWrapper
+from paradex.utils.robot_wrapper import RobotWrapper
 
 def fill_framedrop(cam_timestamp):
     frameID = cam_timestamp["frameID"]

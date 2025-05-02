@@ -17,7 +17,6 @@ def process_image(img_dir):
         img_path = os.path.join(img_dir, img_name)
         img = cv2.imread(img_path)
         if img is None:
-            tqdm.write(f"❌ Failed to load {img_path}")
             return None
 
         # Define keypoint directory
@@ -28,9 +27,8 @@ def process_image(img_dir):
         kypt_file_name = os.path.basename(img_path).split(".")[0]
         kypt_path = os.path.join(kypt_dir, f"{kypt_file_name}_ids.npy")
 
-        # # Skip if already processed
-        # if os.path.exists(kypt_path):
-        #     continue
+        if os.path.exists(kypt_path):
+            continue
 
         # Detect charuco markers
         (detected_corners, detected_markers), (detected_ids, detected_mids) = detect_charuco(img)

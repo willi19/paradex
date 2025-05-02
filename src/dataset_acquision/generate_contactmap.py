@@ -1,13 +1,13 @@
 import argparse
 import os
 import numpy as np
-from dex_robot.utils.file_io import shared_path, rsc_path
-from dex_robot.visualization.grid_image import grid_image
-from dex_robot.utils.robot_wrapper import RobotWrapper
+from paradex.utils.file_io import shared_path, rsc_path, load_c2r
+from paradex.visualization.grid_image import grid_image
+from paradex.utils.robot_wrapper import RobotWrapper
 import json
 import cv2
 import shutil
-
+import pickle
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate contact map from a given camera path.")
@@ -19,11 +19,13 @@ if __name__ == "__main__":
     name_list = [args.name] if args.name else os.listdir(os.path.join(shared_path, 'processed'))
     for name in name_list:
         root_path = os.path.join(shared_path, 'processed', name)
-        index_list = os.listdir(root_path)
+        # index_list = os.listdir(root_path)
+        index_list = ["0"]
         for index in index_list:
             grasp_info_path = os.path.join(root_path, index, 'grasp_info.json')
             if not os.path.exists(grasp_info_path):
                 continue
+            c2r = load_c2r(os.path.join(root_path, index))
             
             grasp_info = json.load(open(grasp_info_path, 'r'))
 
@@ -90,4 +92,12 @@ if __name__ == "__main__":
             robot.compute_forward_kinematics(qpos)
 
             wrist_T = robot.get_link_pose(robot.get_link_index('palm_link'))
+            print(pose_idx)
 
+            # wrist_T = c2r @ wrist_T
+
+            obj_pose = pickle.load(open(os.path.join(root_path, index, 'object_tracking', 'trajectory.pickle'), 'rb'))
+            import pdb; pdb.set_trace()
+            obj_pose = np.linalg.inv(c2r) @ obj_pose[pose_idx]
+            np.save(os.path.join(shared_path, 'contact_map', name, index, 'object_pose.npy'), obj_pose)#[pose_idx])
+            np.save(os.path.join(shared_path, 'contact_map', name, index, 'wrist_T.npy'), wrist_T)

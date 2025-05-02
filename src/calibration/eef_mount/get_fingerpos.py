@@ -8,9 +8,9 @@ from numpy.linalg import inv
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 from paradex.utils.math import rigid_transform_3D
-from dex_robot.utils.robot_wrapper import RobotWrapper
-from dex_robot.utils.file_io import rsc_path
-from dex_robot.utils.file_io import shared_path, load_camparam, load_c2r, download_path, rsc_path
+from paradex.utils.robot_wrapper import RobotWrapper
+from paradex.utils.file_io import rsc_path
+from paradex.utils.file_io import shared_path, load_camparam, load_c2r, download_path, rsc_path
 
 def logR(T):
     R = T[0:3, 0:3]

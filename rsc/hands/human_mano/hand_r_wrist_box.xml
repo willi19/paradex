@@ -1,0 +1,199 @@
+<mujoco model="humanoid">
+  <compiler coordinate="local"/>
+  <default>
+    <joint damping="0.0" armature="0.01" stiffness="0.0" limited="true"/>
+    <geom conaffinity="1" condim="3" contype="7" margin="0.001" rgba="0.8 0.6 .4 1"/>
+  </default>
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1=".4 .5 .6" rgb2="0 0 0" width="100" height="100"/>
+    <texture builtin="flat" height="1278" mark="cross" markrgb="1 1 1" name="texgeom" random="0.01" rgb1="0.8 0.6 0.4" rgb2="0.8 0.6 0.4" type="cube" width="127"/>
+    <texture builtin="checker" height="100" name="texplane" rgb1="0 0 0" rgb2="0.8 0.8 0.8" type="2d" width="100"/>
+    <material name="MatPlane" reflectance="0.5" shininess="1" specular="1" texrepeat="60 60" texture="texplane"/>
+    <material name="geom" texture="texgeom" texuniform="true"/>
+  </asset>
+  <worldbody>
+    <light cutoff="100" diffuse="1 1 1" dir="-0 0 -1.3" directional="true" exponent="1" pos="0 0 1.3" specular=".1 .1 .1"/>
+    <geom conaffinity="1" condim="3" name="floor" pos="0 0 0" rgba="0.8 0.9 0.8 1" size="100 100 .2" type="plane" material="MatPlane"/>
+      <body name="R_Wrist" pos="-0.2493 -0.0045 -0.0153">
+        <joint name="R_Wrist_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 1 1 150 1 1" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+        <joint name="R_Wrist_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 1 1 150 1 1" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+        <joint name="R_Wrist_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 1 1 150 1 1" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+        <geom type="box" pos="-0.0537 -0.0044 -0.0029" size="0.0454 0.0122 0.046" quat="1.0000 0.0000 0.0000 0.0000" density="1230.822844" name="R_Wrist"/>
+        <body name="R_Index1" pos="-0.0999 -0.0118 0.0196">
+          <joint name="R_Index1_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <joint name="R_Index1_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <joint name="R_Index1_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0064 0.0004 0.0006 -0.0256 0.0018 0.0024" size="0.0091" name="R_Index1"/>
+          <body name="R_Index2" pos="-0.0319 0.0022 0.003">
+            <joint name="R_Index2_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <joint name="R_Index2_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <joint name="R_Index2_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0045 -0.0005 0.0000 -0.0180 -0.0019 0.0000" size="0.0076" name="R_Index2"/>
+            <body name="R_Index3" pos="-0.0225 -0.0023 0.0001">
+              <joint name="R_Index3_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <joint name="R_Index3_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <joint name="R_Index3_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0041 -0.0001 0.0004 -0.0164 -0.0003 0.0016" size="0.0067" name="R_Index3"/>
+            </body>
+          </body>
+        </body>
+        <body name="R_Middle1" pos="-0.1074 -0.0094 -0.0037">
+          <joint name="R_Middle1_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <joint name="R_Middle1_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <joint name="R_Middle1_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0061 0.0002 -0.0008 -0.0245 0.0006 -0.0032" size="0.0094" name="R_Middle1"/>
+          <body name="R_Middle2" pos="-0.0306 0.0008 -0.004">
+            <joint name="R_Middle2_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <joint name="R_Middle2_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <joint name="R_Middle2_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0047 -0.0004 -0.0008 -0.0188 -0.0016 -0.0033" size="0.007" name="R_Middle2"/>
+            <body name="R_Middle3" pos="-0.0235 -0.002 -0.0041">
+              <joint name="R_Middle3_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <joint name="R_Middle3_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <joint name="R_Middle3_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0043 -0.0000 -0.0004 -0.0172 -0.0000 -0.0017" size="0.0064" name="R_Middle3"/>
+            </body>
+          </body>
+        </body>
+        <body name="R_Pinky1" pos="-0.082 -0.0176 -0.0435">
+          <joint name="R_Pinky1_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <joint name="R_Pinky1_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <joint name="R_Pinky1_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0031 -0.0002 -0.0024 -0.0124 -0.0009 -0.0096" size="0.0067" name="R_Pinky1"/>
+          <body name="R_Pinky2" pos="-0.0155 -0.0011 -0.012">
+            <joint name="R_Pinky2_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <joint name="R_Pinky2_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <joint name="R_Pinky2_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0031 -0.0003 -0.0022 -0.0124 -0.0013 -0.0090" size="0.0065" name="R_Pinky2"/>
+            <body name="R_Pinky3" pos="-0.0155 -0.0017 -0.0112">
+              <joint name="R_Pinky3_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <joint name="R_Pinky3_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <joint name="R_Pinky3_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0027 0.0001 -0.0018 -0.0108 0.0003 -0.0074" size="0.0052" name="R_Pinky3"/>
+            </body>
+          </body>
+        </body>
+        <body name="R_Ring1" pos="-0.0954 -0.0124 -0.0271">
+          <joint name="R_Ring1_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <joint name="R_Ring1_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <joint name="R_Ring1_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0056 0.0003 -0.0011 -0.0224 0.0012 -0.0042" size="0.008" name="R_Ring1"/>
+          <body name="R_Ring2" pos="-0.028 0.0015 -0.0053">
+            <joint name="R_Ring2_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <joint name="R_Ring2_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <joint name="R_Ring2_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0046 -0.0003 -0.0014 -0.0183 -0.0012 -0.0057" size="0.0074" name="R_Ring2"/>
+            <body name="R_Ring3" pos="-0.0228 -0.0015 -0.0071">
+              <joint name="R_Ring3_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <joint name="R_Ring3_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <joint name="R_Ring3_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0042 0.0001 -0.0010 -0.0167 0.0004 -0.0041" size="0.006" name="R_Ring3"/>
+            </body>
+          </body>
+        </body>
+        <body name="R_Thumb1" pos="-0.0386 -0.0211 0.0259">
+          <joint name="R_Thumb1_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <joint name="R_Thumb1_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <joint name="R_Thumb1_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+          <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0034 0.0002 0.0050 -0.0136 0.0008 0.0200" size="0.012" name="R_Thumb1"/>
+          <body name="R_Thumb2" pos="-0.017 0.001 0.025">
+            <joint name="R_Thumb2_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <joint name="R_Thumb2_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <joint name="R_Thumb2_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+            <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0041 -0.0010 0.0031 -0.0164 -0.0041 0.0124" size="0.0095" name="R_Thumb2"/>
+            <body name="R_Thumb3" pos="-0.0205 -0.0052 0.0155">
+              <joint name="R_Thumb3_x" type="hinge" pos="0 0 0" axis="1 0 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <joint name="R_Thumb3_y" type="hinge" pos="0 0 0" axis="0 1 0" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <joint name="R_Thumb3_z" type="hinge" pos="0 0 0" axis="0 0 1" user="100 10 1 150" armature="0.01" range="-180.0000 180.0000" damping="0" stiffness="0"/>
+              <geom type="capsule" contype="1" conaffinity="1" density="1000" fromto="-0.0037 -0.0006 0.0035 -0.0148 -0.0025 0.0140" size="0.009" name="R_Thumb3"/>
+            </body>
+          </body>
+        </body>
+      </body>
+  </worldbody>
+  <actuator>
+    <motor name="R_Wrist_x" joint="R_Wrist_x" gear="1"/>
+    <motor name="R_Wrist_y" joint="R_Wrist_y" gear="1"/>
+    <motor name="R_Wrist_z" joint="R_Wrist_z" gear="1"/>
+    <motor name="R_Index1_x" joint="R_Index1_x" gear="1"/>
+    <motor name="R_Index1_y" joint="R_Index1_y" gear="1"/>
+    <motor name="R_Index1_z" joint="R_Index1_z" gear="1"/>
+    <motor name="R_Index2_x" joint="R_Index2_x" gear="1"/>
+    <motor name="R_Index2_y" joint="R_Index2_y" gear="1"/>
+    <motor name="R_Index2_z" joint="R_Index2_z" gear="1"/>
+    <motor name="R_Index3_x" joint="R_Index3_x" gear="1"/>
+    <motor name="R_Index3_y" joint="R_Index3_y" gear="1"/>
+    <motor name="R_Index3_z" joint="R_Index3_z" gear="1"/>
+    <motor name="R_Middle1_x" joint="R_Middle1_x" gear="1"/>
+    <motor name="R_Middle1_y" joint="R_Middle1_y" gear="1"/>
+    <motor name="R_Middle1_z" joint="R_Middle1_z" gear="1"/>
+    <motor name="R_Middle2_x" joint="R_Middle2_x" gear="1"/>
+    <motor name="R_Middle2_y" joint="R_Middle2_y" gear="1"/>
+    <motor name="R_Middle2_z" joint="R_Middle2_z" gear="1"/>
+    <motor name="R_Middle3_x" joint="R_Middle3_x" gear="1"/>
+    <motor name="R_Middle3_y" joint="R_Middle3_y" gear="1"/>
+    <motor name="R_Middle3_z" joint="R_Middle3_z" gear="1"/>
+    <motor name="R_Pinky1_x" joint="R_Pinky1_x" gear="1"/>
+    <motor name="R_Pinky1_y" joint="R_Pinky1_y" gear="1"/>
+    <motor name="R_Pinky1_z" joint="R_Pinky1_z" gear="1"/>
+    <motor name="R_Pinky2_x" joint="R_Pinky2_x" gear="1"/>
+    <motor name="R_Pinky2_y" joint="R_Pinky2_y" gear="1"/>
+    <motor name="R_Pinky2_z" joint="R_Pinky2_z" gear="1"/>
+    <motor name="R_Pinky3_x" joint="R_Pinky3_x" gear="1"/>
+    <motor name="R_Pinky3_y" joint="R_Pinky3_y" gear="1"/>
+    <motor name="R_Pinky3_z" joint="R_Pinky3_z" gear="1"/>
+    <motor name="R_Ring1_x" joint="R_Ring1_x" gear="1"/>
+    <motor name="R_Ring1_y" joint="R_Ring1_y" gear="1"/>
+    <motor name="R_Ring1_z" joint="R_Ring1_z" gear="1"/>
+    <motor name="R_Ring2_x" joint="R_Ring2_x" gear="1"/>
+    <motor name="R_Ring2_y" joint="R_Ring2_y" gear="1"/>
+    <motor name="R_Ring2_z" joint="R_Ring2_z" gear="1"/>
+    <motor name="R_Ring3_x" joint="R_Ring3_x" gear="1"/>
+    <motor name="R_Ring3_y" joint="R_Ring3_y" gear="1"/>
+    <motor name="R_Ring3_z" joint="R_Ring3_z" gear="1"/>
+    <motor name="R_Thumb1_x" joint="R_Thumb1_x" gear="1"/>
+    <motor name="R_Thumb1_y" joint="R_Thumb1_y" gear="1"/>
+    <motor name="R_Thumb1_z" joint="R_Thumb1_z" gear="1"/>
+    <motor name="R_Thumb2_x" joint="R_Thumb2_x" gear="1"/>
+    <motor name="R_Thumb2_y" joint="R_Thumb2_y" gear="1"/>
+    <motor name="R_Thumb2_z" joint="R_Thumb2_z" gear="1"/>
+    <motor name="R_Thumb3_x" joint="R_Thumb3_x" gear="1"/>
+    <motor name="R_Thumb3_y" joint="R_Thumb3_y" gear="1"/>
+    <motor name="R_Thumb3_z" joint="R_Thumb3_z" gear="1"/>
+  </actuator>
+  <sensor>
+    <framelinvel name="sensor_R_Wrist_framelinvel" objtype="xbody" objname="R_Wrist"/>
+    <framelinvel name="sensor_R_Index1_framelinvel" objtype="xbody" objname="R_Index1"/>
+    <framelinvel name="sensor_R_Index2_framelinvel" objtype="xbody" objname="R_Index2"/>
+    <framelinvel name="sensor_R_Index3_framelinvel" objtype="xbody" objname="R_Index3"/>
+    <framelinvel name="sensor_R_Middle1_framelinvel" objtype="xbody" objname="R_Middle1"/>
+    <framelinvel name="sensor_R_Middle2_framelinvel" objtype="xbody" objname="R_Middle2"/>
+    <framelinvel name="sensor_R_Middle3_framelinvel" objtype="xbody" objname="R_Middle3"/>
+    <framelinvel name="sensor_R_Pinky1_framelinvel" objtype="xbody" objname="R_Pinky1"/>
+    <framelinvel name="sensor_R_Pinky2_framelinvel" objtype="xbody" objname="R_Pinky2"/>
+    <framelinvel name="sensor_R_Pinky3_framelinvel" objtype="xbody" objname="R_Pinky3"/>
+    <framelinvel name="sensor_R_Ring1_framelinvel" objtype="xbody" objname="R_Ring1"/>
+    <framelinvel name="sensor_R_Ring2_framelinvel" objtype="xbody" objname="R_Ring2"/>
+    <framelinvel name="sensor_R_Ring3_framelinvel" objtype="xbody" objname="R_Ring3"/>
+    <framelinvel name="sensor_R_Thumb1_framelinvel" objtype="xbody" objname="R_Thumb1"/>
+    <framelinvel name="sensor_R_Thumb2_framelinvel" objtype="xbody" objname="R_Thumb2"/>
+    <framelinvel name="sensor_R_Thumb3_framelinvel" objtype="xbody" objname="R_Thumb3"/>
+    <frameangvel name="sensor_R_Wrist_frameangvel" objtype="xbody" objname="R_Wrist"/>
+    <frameangvel name="sensor_R_Index1_frameangvel" objtype="xbody" objname="R_Index1"/>
+    <frameangvel name="sensor_R_Index2_frameangvel" objtype="xbody" objname="R_Index2"/>
+    <frameangvel name="sensor_R_Index3_frameangvel" objtype="xbody" objname="R_Index3"/>
+    <frameangvel name="sensor_R_Middle1_frameangvel" objtype="xbody" objname="R_Middle1"/>
+    <frameangvel name="sensor_R_Middle2_frameangvel" objtype="xbody" objname="R_Middle2"/>
+    <frameangvel name="sensor_R_Middle3_frameangvel" objtype="xbody" objname="R_Middle3"/>
+    <frameangvel name="sensor_R_Pinky1_frameangvel" objtype="xbody" objname="R_Pinky1"/>
+    <frameangvel name="sensor_R_Pinky2_frameangvel" objtype="xbody" objname="R_Pinky2"/>
+    <frameangvel name="sensor_R_Pinky3_frameangvel" objtype="xbody" objname="R_Pinky3"/>
+    <frameangvel name="sensor_R_Ring1_frameangvel" objtype="xbody" objname="R_Ring1"/>
+    <frameangvel name="sensor_R_Ring2_frameangvel" objtype="xbody" objname="R_Ring2"/>
+    <frameangvel name="sensor_R_Ring3_frameangvel" objtype="xbody" objname="R_Ring3"/>
+    <frameangvel name="sensor_R_Thumb1_frameangvel" objtype="xbody" objname="R_Thumb1"/>
+    <frameangvel name="sensor_R_Thumb2_frameangvel" objtype="xbody" objname="R_Thumb2"/>
+    <frameangvel name="sensor_R_Thumb3_frameangvel" objtype="xbody" objname="R_Thumb3"/>
+  </sensor>
+  <size njmax="700" nconmax="700"/>
+</mujoco>

@@ -1,5 +1,5 @@
 import argparse
-from paradex.capture.image import capture_images_from_all_cameras
+from paradex.io.camera.capture_image import capture_images_from_all_cameras
 from pathlib import Path
 import os
 from paradex.utils.io import calib_path_list

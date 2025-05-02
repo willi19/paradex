@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+<robot name="smallbowl1">
+  <link name="smallbowl1">
+    <visual>
+      <origin xyz="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="smallbowl1.obj" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </visual>
+    <collision concave = "yes">
+      <origin xyz="0.0 0.0 0.0"/>
+      <geometry>
+        <mesh filename="smallbowl1.obj" scale="1.0 1.0 1.0"/>
+      </geometry>
+    </collision>
+    <inertial>
+      <!-- Mass value from the *empty* spam can. Full spam can is 368g -->
+      <mass value="0.33"/> 
+      <inertia ixx="0.0001" ixy="0.0" ixz="0.0" iyy="0.0001" iyz="0.0" izz="0.0001"/>
+    </inertial>
+  </link>
+</robot>

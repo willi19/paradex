@@ -1,13 +1,13 @@
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from dex_robot.io.robot_controller import XArmController, AllegroController, InspireController
-from dex_robot.io.xsens.receiver import XSensReceiver
-from dex_robot.io.contact.receiver import SerialReader
-from dex_robot.io.camera.camera_loader import CameraManager
-from dex_robot.io.robot_controller import retarget
+from paradex.io.robot_controller import XArmController, AllegroController, InspireController
+from paradex.io.xsens.receiver import XSensReceiver
+from paradex.io.contact.receiver import SerialReader
+from paradex.io.camera.camera_loader import CameraManager
+from paradex.io.robot_controller import retarget
 
-from dex_robot.utils.file_io import rsc_path, capture_path, shared_path
+from paradex.utils.file_io import rsc_path, capture_path, shared_path
 
 from paradex.utils.io import find_latest_index, find_latest_directory
 

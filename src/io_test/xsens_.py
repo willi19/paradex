@@ -1,7 +1,7 @@
-from dex_robot.io.xsens.receiver import XSensReceiver
+from paradex.io.xsens.receiver import XSensReceiver
 import time 
 from multiprocessing import shared_memory, Lock, Value, Event
-from dex_robot.io.xsens.visualizer import XSensVisualizer
+from paradex.io.xsens.visualizer import XSensVisualizer
 import threading
 import numpy as np
 

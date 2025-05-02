@@ -1,4 +1,4 @@
-from dex_robot.io.robot_controller.allegro_controller import AllegroController
+from paradex.io.robot_controller.allegro_controller import AllegroController
 import numpy as np
 import time
 

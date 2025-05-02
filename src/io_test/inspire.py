@@ -1,4 +1,4 @@
-from dex_robot.io.robot_controller.inspire_controller import InspireController
+from paradex.io.robot_controller.inspire_controller import InspireController
 import numpy as np
 import time
 

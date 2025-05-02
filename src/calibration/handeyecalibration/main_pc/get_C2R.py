@@ -3,45 +3,11 @@ import os
 from paradex.utils.io import handeye_calib_path, find_latest_directory
 import argparse
 import numpy as np
-from scipy.linalg import sqrtm
 from numpy.linalg import inv
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 from paradex.utils.math import rigid_transform_3D
-
-def logR(T):
-    R = T[0:3, 0:3]
-    theta = np.arccos((np.trace(R) - 1)/2)
-    logr = np.array([R[2,1] - R[1,2], R[0,2] - R[2,0], R[1,0] - R[0,1]]) * theta / (2*np.sin(theta))
-    return logr
-
-def Calibrate(A, B):
-    n_data = len(A)
-    M = np.zeros((3,3))
-    C = np.zeros((3*n_data, 3))
-    d = np.zeros((3*n_data, 1))
-    A_ = np.array([])
-    for i in range(n_data-1):
-        alpha = logR(A[i])
-        beta = logR(B[i])
-        alpha2 = logR(A[i+1])
-        beta2 = logR(B[i+1])
-        alpha3 = np.cross(alpha, alpha2)
-        beta3  = np.cross(beta, beta2)
-        M1 = np.dot(beta.reshape(3,1),alpha.reshape(3,1).T)
-        M2 = np.dot(beta2.reshape(3,1),alpha2.reshape(3,1).T)
-        M3 = np.dot(beta3.reshape(3,1),alpha3.reshape(3,1).T)
-        M = M1+M2+M3
-    theta = np.dot(sqrtm(inv(np.dot(M.T, M))), M.T)
-    for i in range(n_data):
-        rot_a = A[i][0:3, 0:3]
-        rot_b = B[i][0:3, 0:3]
-        trans_a = A[i][0:3, 3]
-        trans_b = B[i][0:3, 3]
-        C[3*i:3*i+3, :] = np.eye(3) - rot_a
-        d[3*i:3*i+3, 0] = trans_a - np.dot(theta, trans_b)
-    b_x  = np.dot(inv(np.dot(C.T, C)), np.dot(C.T, d))
-    return theta, b_x
+from paradex.geometry.Tsai_Lenz import solve
 
 marker_id_list = [261,262,263,264,265,266]
 
@@ -85,7 +51,7 @@ if __name__ == "__main__":
 
 
     X = np.eye(4)
-    theta, b_x = Calibrate(A_list, B_list)
+    theta, b_x = solve(A_list, B_list)
     X[0:3, 0:3] = theta
     X[0:3, -1] = b_x.flatten()
     for i in range(len(index_list)-1):

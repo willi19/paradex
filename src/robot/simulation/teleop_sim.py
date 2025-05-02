@@ -1,8 +1,8 @@
-from dex_robot.simulate.simulator import simulator
+from paradex.simulate.simulator import simulator
 import numpy as np
 from scipy.spatial.transform import Rotation
-from dex_robot.xsens.receiver import XSensReceiver
-from dex_robot.io.xsens import hand_index
+from paradex.xsens.receiver import XSensReceiver
+from paradex.io.xsens import hand_index
 
 home_wrist_pose = np.load("data/home_pose/allegro_eef_frame.npy")
 home_hand_pose = np.load("data/home_pose/allegro_hand_joint_angle.npy")

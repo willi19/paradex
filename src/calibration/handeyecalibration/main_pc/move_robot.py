@@ -7,7 +7,7 @@ from xarm.wrapper import XArmAPI
 
 import numpy as np
 import datetime
-from dex_robot.utils.file_io import shared_path
+from paradex.utils.file_io import shared_path
 import shutil
 from paradex.utils.io import find_latest_index, find_latest_directory
 
@@ -112,7 +112,7 @@ if __name__ == "__main__":
             target_action[i-3] += 0.8
         target_action[:3] *= 1000
 
-        hand_action = np.load("data/calibration_pose/hand_{}.npy".format(i))
+        hand_action = np.zeros(16) # np.load("data/calibration_pose/hand_{}.npy".format(i))
         dex_arm.move_hand(allegro_angles=hand_action)
         dex_arm.move_arm(target_action)
         time.sleep(2)
@@ -120,8 +120,6 @@ if __name__ == "__main__":
         xarm_angles,allegro_angles = dex_arm.get_joint_values()
         # print(allegro_angles)
         os.makedirs(f"/home/temp_id/shared_data/handeye_calibration/{date_str}/{i}/image", exist_ok=True)
-        os.makedirs(f"/home/temp_id/shared_data/handeye_calibration/{date_str}/{i}/robot", exist_ok=True)
-
         np.save(f"/home/temp_id/shared_data/handeye_calibration/{date_str}/{i}/robot", np.concatenate([xarm_angles[:6],allegro_angles]))
 
         _ = input(f"Press Enter to continue... {i}")

@@ -18,8 +18,4 @@ print(f"[Client] Registration ack received")
 
 # 명령 루프
 for i in range(10):
-    msg = sock.recv_string()
-    if msg == "do_something":
-        print("[Client] Trigger received.")
-        # TODO: 실제 동작 수행
-        sock.send_string("done")
+    sock.send_string("done")

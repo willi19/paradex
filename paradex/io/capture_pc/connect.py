@@ -14,15 +14,17 @@ def reset_and_run(script_name: str, branch: str = "merging"):
     for pc_name, pc in pc_info.items():
         ip = pc["ip"]
         print(f"[{pc_name}] Connecting to {pc_name}@{ip}...")
-
         remote_cmd = (
             f"echo '[{pc_name}] Remote PWD:' && pwd && "
             f"cd {repo_path} && "
             f"git fetch origin && "
             f"git reset --hard origin/{branch} && "
-            f"git clean -fd && "
-            f"bash -i -c 'source ~/.bashrc && conda activate flir_python && "
-            f"nohup python {script_name} '"
+            f"git clean -fd &&"
+            
+            f"bash -c '"
+            f"source ~/anaconda3/etc/profile.d/conda.sh && "
+            f"conda activate flir_python '"#&& "
+            # f"nohup python {script_name} > /dev/null 2>&1 &'"
         )
 
         ssh_cmd = f"ssh -p {ssh_port} {pc_name}@{ip} \"{remote_cmd}\""

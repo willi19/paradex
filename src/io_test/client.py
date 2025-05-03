@@ -17,7 +17,7 @@ ack = sock.recv_string()
 print(f"[Client] Registration ack received")
 
 # 명령 루프
-while True:
+for i in range(10):
     msg = sock.recv_string()
     if msg == "do_something":
         print("[Client] Trigger received.")

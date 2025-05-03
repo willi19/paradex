@@ -1,19 +1,24 @@
-# register_client.py
+# client.py
+import zmq
 import socket
-import json
-import os
 
-MAIN_PC_IP = "192.168.0.2"  # ← Main PC의 실제 IP로 교체
-PORT = 8888
+SERVER_IP = "192.168.0.2"
+context = zmq.Context()
+socket = context.socket(zmq.DEALER)
+socket.identity = socket.gethostname().encode()
+socket.connect(f"tcp://{SERVER_IP}:5556")
 
-message = {
-    "type": "register",
-    "hostname": os.uname()[1]  # 또는 socket.gethostname()
-}
+# 등록 메시지 전송
+socket.send_string(f"register:{socket.identity.decode()}")
 
-try:
-    with socket.create_connection((MAIN_PC_IP, PORT), timeout=5) as sock:
-        sock.sendall((json.dumps(message) + "\n").encode("utf-8"))
-        print("[Client] Sent registration message.")
-except Exception as e:
-    print(f"[Client] Connection failed: {e}")
+# ack 수신
+ack = socket.recv_string()
+print(f"[Client] Registration ack received")
+
+# 명령 루프
+while True:
+    msg = socket.recv_string()
+    if msg == "do_something":
+        print("[Client] Trigger received.")
+        # TODO: 실제 동작 수행
+        socket.send_string("done")

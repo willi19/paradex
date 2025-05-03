@@ -15,16 +15,17 @@ def reset_and_run(script_name: str, branch: str = "merging"):
         ip = pc["ip"]
         print(f"[{pc_name}] Connecting to {pc_name}@{ip}...")
 
-        remote_cmd = f"""
-            cd {repo_path} && \
-            git fetch origin && \
-            git reset --hard origin/{branch} && \
-            git clean -fd && \
-            source ~/.bashrc && conda activate flir_python && \
-            nohup python {script_name} > logs/{pc_name}.log 2>&1 &
-        """
+        remote_cmd = (
+            f"echo '[{pc_name}] Remote PWD:' && pwd && "
+            f"cd {repo_path} && "
+            f"git fetch origin && "
+            f"git reset --hard origin/{branch} && "
+            f"git clean -fd && "
+            f"bash -i -c 'source ~/.bashrc && conda activate flir_python && "
+            f"nohup python {script_name} '"
+        )
 
-        ssh_cmd = f"ssh -p {ssh_port} {pc_name}@{ip} '{remote_cmd}'"
+        ssh_cmd = f"ssh -p {ssh_port} {pc_name}@{ip} \"{remote_cmd}\""
 
         try:
             subprocess.run(ssh_cmd, shell=True, check=True)

@@ -8,7 +8,7 @@ context = zmq.Context()
 socket = context.socket(zmq.REP)
 socket.bind("tcp://*:5556")
 
-reset_and_run(os.path.join(home_path, "paradex", "paradex/io/capture_pc/command_listener.py"))  # 명령 수신 대기
+reset_and_run(os.path.join("src/io_test/client.py"))  # 명령 수신 대기
 
 # while True:
 #     msg = socket.recv_string()

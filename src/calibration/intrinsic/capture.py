@@ -75,4 +75,4 @@ else:
     print("[Client] Registration failed.")
 
 threading.Thread(target=wait_for_keypress, args=(socket,), daemon=True).start()  # 키 입력 대기 스레드
-receive_replies()  
+receive_replies(socket)

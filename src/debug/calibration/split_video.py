@@ -1,5 +1,5 @@
 from paradex.utils.io import get_video_list
-from paradex.utils.video import split_video
+from paradex.video.video import split_video
 import os
 import argparse
 from tqdm import tqdm

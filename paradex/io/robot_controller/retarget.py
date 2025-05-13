@@ -4,7 +4,7 @@ from paradex.io.xsens import hand_index
 
 import transforms3d as t3d
 import os
-from paradex.utils.robot_wrapper import RobotWrapper
+from paradex.robot.robot_wrapper import RobotWrapper
 from paradex.utils.file_io import rsc_path
 
 LINK62PALM = np.array(
@@ -70,7 +70,6 @@ class retargetor(): # Input is only from Xsens
     def __init__(self, arm_name=None, hand_name=None, home_arm_pose=None):
         self.arm_name = arm_name
         self.hand_name = hand_name
-
         if arm_name is not None and arm_name not in ["xarm", "franka"]:
             raise ValueError("Invalid arm name")
         if hand_name is not None and hand_name not in ["inspire", "allegro"]:
@@ -179,6 +178,7 @@ class retargetor(): # Input is only from Xsens
 
         # print(hand_pose_frame[0,:3,:3])
         for i in range(5):
+            print(hand_pose_frame[0])
             tip_position = (np.linalg.inv(hand_pose_frame[0]) @ hand_pose_frame[3+4*i])[:3, 3]
             finger_base_position = (np.linalg.inv(hand_pose_frame[0]) @ hand_pose_frame[1+4*i])[:3, 3]
 

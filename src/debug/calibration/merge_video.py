@@ -1,6 +1,6 @@
 import os
 from paradex.utils.io import get_video_list, calib_path_list
-from paradex.utils.merge_video import merge_video
+from paradex.video.merge_video import merge_video
 import cv2
 import numpy as np
 

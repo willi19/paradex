@@ -1,6 +1,6 @@
 import os
 from paradex.utils.io import get_video_list
-from paradex.process.compress_video import compress_video
+from paradex.video.compress_video import compress_video
 import os
 import argparse
 from tqdm import tqdm

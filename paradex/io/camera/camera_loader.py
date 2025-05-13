@@ -1,145 +1,270 @@
 import threading
-import PySpin
+import PySpin as ps
 import json
-import time
-from multiprocessing import shared_memory, Lock, Value, Event
-import signal
-import sys
-from ..camera import camera
-from ..utils.image_util import spin2cv
+from multiprocessing import shared_memory
+from threading import Event
+
+from paradex.io.camera.camera import Camera
+from paradex.image.convert import spin2cv
 import numpy as np
 import os
-from paradex.utils.io import home_dir
-
+from paradex.utils.io import home_dir, config_dir
+import time
+import cv2
 
 class CameraManager:
-    def __init__(self, num_cameras, duration=0, is_streaming=False, name=None, syncMode=True, shared_memories={}, update_flags={}):
-        self.num_cameras = num_cameras
-        self.duration = duration
+    def __init__(self, mode, path = None, serial_list = None, syncMode=True):
+        self.exit = Event()
+        self.start_capture = Event()
 
-        self.is_streaming = is_streaming
-        self.name = name
+        self.mode = mode
+        if self.mode == "image":
+            syncMode = False
 
-        self.stop_event = Event()
-        self.shared_memories = shared_memories
-        self.update_flags = update_flags
-        self.locks = {}
+        self.autoforce_ip()
 
-        self.capture_threads = []
-        self.frame_cnt = 0
+        self.connected_serial_list = self.get_serial_list()
+        if serial_list is None:
+            self.serial_list = self.connected_serial_list
+
+        else:
+            for serial in serial_list:
+                if serial not in self.connected_serial_list:
+                    raise ValueError(f"Camera with serial {serial} not found.")
+            self.serial_list = serial_list
+
+        self.num_cameras = len(self.serial_list)
+
+        self.connect_flag = [Event() for _ in range(self.num_cameras)]
+        self.connect_success = [Event() for _ in range(self.num_cameras)]
+        
+        self.capture_end_flag = [Event() for _ in range(self.num_cameras)]
+
+        if self.mode == "stream":
+            self.image_array = np.zeros((self.num_cameras, 1536, 2048, 3), dtype=np.uint8)
+            self.frame_num = np.zeros((self.num_cameras,), dtype=np.uint64)
+            self.locks = [threading.Lock() for _ in range(self.num_cameras)]
+
+        self.camera_threads = []
         self.syncMode = syncMode
 
-    def configure_camera(self, cam):
-        nodemap = cam.GetNodeMap()
-        node_acquisition_mode = PySpin.CEnumerationPtr(nodemap.GetNode("AcquisitionMode"))
-        node_acquisition_mode_continuous = node_acquisition_mode.GetEntryByName("Continuous")
-        node_acquisition_mode.SetIntValue(node_acquisition_mode_continuous.GetValue())
-        
+        self.lens_info = json.load(open(os.path.join(config_dir, "camera/lens_info.json"), "r"))
+        self.cam_info = json.load(open(os.path.join(config_dir,"camera/camera.json"), "r"))
 
-    def create_shared_memory(self, camera_index, shape, dtype):
-        shm_name = f"camera_{camera_index}_shm"
-        shm = shared_memory.SharedMemory(create=True, name=shm_name, size=np.prod(shape) * np.dtype(dtype).itemsize)
-        self.shared_memories[camera_index] = {
-            "name": shm_name,
-            "shm": shm,
-            "array": np.ndarray(shape, dtype=dtype, buffer=shm.buf),
-            "lock": Lock(),
-        }
-        self.update_flags[camera_index] = Value('i', 0)  # 0: not updated, 1: updated
-
-        print(f"Shared memory created for camera {camera_index}.")
-
-    def capture_video(self, camera_index):
-        system = PySpin.System.GetInstance()
-        cam_list = system.GetCameras()
-
-        if cam_list.GetSize() <= camera_index:
-            print(f"Camera index {camera_index} is out of range.")
-            cam_list.Clear()
-            system.ReleaseInstance()
-            return
-
-        camPtr = cam_list.GetByIndex(camera_index)
-        lens_info = json.load(open("config/lens_info.json", "r"))
-        cam_info = json.load(open("config/camera.json", "r"))
-
-        if self.is_streaming:
-            shm_info = self.shared_memories[camera_index]
-            update_flag = self.update_flags[camera_index]
-        
-        save_dir = f"{home_dir}/captures{camera_index // 2 + 1}/{self.name}"
-        os.makedirs(save_dir, exist_ok=True)
-        
-        cam = camera.Camera(camPtr, lens_info, cam_info, save_dir, syncMode=self.syncMode)
-
-        wait_times = []  # List to store wait times
-
-        if not self.is_streaming:
-            cam.set_record()
-        while not self.stop_event.is_set():
-            start_time = time.time()  # Start timing
-            frame, ret = cam.get_capture()
-            wait_times.append(time.time() - start_time)  # Calculate waiting time
-
-            if ret and self.is_streaming:
-                img = spin2cv(frame, 1536, 2048)
-                with shm_info["lock"]:
-                    np.copyto(shm_info["array"], img)
-                    update_flag.value = 1  # Mark as updated
-        
-        # Save the waiting times array
-        np.save(os.path.join(save_dir, f"wait_times_camera_{camera_index}.npy"), np.array(wait_times))
-
-        if not self.is_streaming:
-            cam.set_record()
-        cam.stop_camera()
-        del camPtr
-        cam_list.Clear()
-        system.ReleaseInstance()
-
-    def signal_handler(self):
-        print("\nSIGINT received. Terminating all processes and threads...")
-        self.stop_event.set()
-
-        for shm_info in self.shared_memories.values():
-            shm_info["shm"].close()
-            shm_info["shm"].unlink()
-
-        sys.exit(0)
-    
-    def input_listener(self):
-        while not self.stop_event.is_set():
-            user_input = input().strip().lower()
-            if user_input == "q":
-                print("\n'q' received. Stopping capture...")
-                self.stop_event.set()
-                break
-
-    def start(self):
-        frame_shape = (1536, 2048, 3)  # Example shape for each frame (RGB)
-        frame_dtype = np.uint8
-        if self.is_streaming:
-            for i in range(self.num_cameras):
-                self.create_shared_memory(i, frame_shape, frame_dtype)
-
+        self.save_dir = {"save_dir" : path}
         self.capture_threads = [
-            threading.Thread(target=self.capture_video, args=(i,))
+            threading.Thread(target=self.run_camera, args=(i,))
             for i in range(self.num_cameras)
         ]
 
-        if not self.is_streaming:
-            self.input_thread = threading.Thread(target=self.input_listener, daemon=True)
-            self.input_thread.start()
+        for i in range(self.num_cameras):
+            self.capture_threads[i].start()
+        
+        ret = self.wait_for_connection()
+        if not ret:
+            raise RuntimeError("Failed to connect to all cameras.")
 
-        signal.signal(signal.SIGINT, lambda sig, frame: self.signal_handler())
+    def set_save_dir(self, save_dir):
+        self.save_dir["save_dir"] = save_dir
 
-        for p in self.capture_threads:
-            p.start()
+    def get_serial_list(self):
+        system = ps.System.GetInstance()
+        cam_list = system.GetCameras()
+        serial_list = []
 
+        for cam in cam_list:
+            device_nodemap = cam.GetTLDeviceNodeMap()
+            serialnum_entry = device_nodemap.GetNode(
+                "DeviceSerialNumber"
+            )  # .GetValue()
+            serialnum = ps.CStringPtr(serialnum_entry).GetValue()
+            serial_list.append(serialnum)
+            del cam
+
+        cam_list.Clear()
+        system.ReleaseInstance()
+
+        return serial_list
+
+    def create_shared_memory(self, name, size):
+        try:
+            existing_shm = shared_memory.SharedMemory(name=name)
+            existing_shm.close()
+            existing_shm.unlink()
+        except FileNotFoundError:
+            pass
+        self.shm[name] = shared_memory.SharedMemory(create=True, name=name, size=size)
+
+    def autoforce_ip(self):
+        system = ps.System.GetInstance()
+        interfaceList = system.GetInterfaces() # virtual port included
+        for pInterface in interfaceList:
+            nodeMapInterface = pInterface.GetTLNodeMap()
+            camera_list = pInterface.GetCameras()
+            cam_num = len(camera_list)
+            camera_list.Clear()
+
+            if cam_num == 1:
+                curIPNode = nodeMapInterface.GetNode("GevDeviceIPAddress")    
+                if ps.IsAvailable(curIPNode) and ps.IsReadable(curIPNode):
+                    ip_int = ps.CIntegerPtr(curIPNode).GetValue()
+                
+                ip_str = f"{(ip_int >> 24) & 0xFF}.{(ip_int >> 16) & 0xFF}.{(ip_int >> 8) & 0xFF}.{ip_int & 0xFF}"
+                if ip_str[:2] != "11":
+                    ptrAutoForceIP = nodeMapInterface.GetNode("GevDeviceAutoForceIP")
+                    if ps.IsAvailable(ptrAutoForceIP) and ps.IsWritable(ptrAutoForceIP) and ps.IsWritable(pInterface.TLInterface.DeviceSelector.GetAccessMode()):
+                        pInterface.TLInterface.DeviceSelector.SetValue(0)
+                        pInterface.TLInterface.GevDeviceAutoForceIP.Execute()
+
+            del pInterface
+            
+        
+        interfaceList.Clear()
+        system.ReleaseInstance()
+        return
+
+    def get_videostream(self, savePath):
+        videoStream = ps.SpinVideo()
+
+        videoOption = ps.AVIOption()
+
+        videoOption.frameRate = 30
+        videoOption.height = 1536
+        videoOption.width = 2048
+
+        videoStream.Open(str(savePath), videoOption)
+        return videoStream
+
+    def wait_for_connection(self):
+        for i in range(self.num_cameras):
+            self.connect_flag[i].wait()
+            if not self.connect_success[i].is_set():
+                print(f"Camera {self.serial_list[i]} failed to connect.")
+                return False
+        return True
+    
+    def run_camera(self, index):
+        serial_num = self.serial_list[index]
+
+        system = ps.System.GetInstance()
+        cam_list = system.GetCameras()
+
+        camPtr = cam_list.GetBySerial(serial_num)
+
+        lens_id = str(self.cam_info[serial_num]["lens"])
+
+        gain = self.lens_info[lens_id]["Gain"]
+        exposure = self.lens_info[lens_id]["Exposure"]
+        frame_rate = self.lens_info[lens_id]["fps"]
+        
+        try:
+            cam = Camera(camPtr, gain, exposure, frame_rate, self.mode, self.syncMode)
+
+            self.connect_flag[index].set()
+            self.connect_success[index].set()
+
+        except:
+            self.connect_flag[index].set()
+
+            cam.release()    
+            del camPtr
+            cam_list.Clear()
+            system.ReleaseInstance()
+
+            return 
+
+        self.capture_end_flag[index].set()
+        while not self.exit.is_set():
+            while not self.start_capture.is_set():
+                time.sleep(0.01)
+                if self.exit.is_set():
+                    break
+            if self.exit.is_set():
+                break
+
+            init = True
+            while self.start_capture.is_set():
+                if init:
+                    cam.start()
+                    if self.mode == "video":
+                        save_dir = f"{home_dir}/captures{index // 2 + 1}/{self.save_dir['save_dir']}"
+                        os.makedirs(save_dir, exist_ok=True)
+
+                        save_path = os.path.join(save_dir, f"{serial_num}")
+                        videostream = self.get_videostream(save_path)
+
+                        timestamp_path = os.path.join(save_dir, f"{serial_num}_timestamps.json")
+                        timestamps = dict([("timestamps", []), ("frameID", []), ("pc_time", [])])
+
+                    if self.mode == "image":
+                        os.makedirs(self.save_dir["save_dir"], exist_ok=True)
+                        save_path = os.path.join(self.save_dir["save_dir"], f"{serial_num}.png")
+                    
+                    if self.mode == "stream":
+                        self.frame_num[index] = 0
+
+                    self.capture_end_flag[index].clear()
+                    init = False
+
+                if self.exit.is_set():
+                    break
+                raw_frame = cam.get_image()
+                framenum = raw_frame.GetFrameID()
+                
+                if raw_frame.IsIncomplete():
+                    if self.mode == "stream":
+                        with self.locks[index]:
+                            np.copyto(self.image_array[index], np.zeros((1536, 2048, 3), dtype=np.uint8))
+                            self.frame_num[index] = framenum
+                    continue
+                
+                if self.mode == "video":
+                    videostream.Append(raw_frame)
+                    timestamps["timestamps"].append(raw_frame.GetChunkData().GetTimestamp())
+                    timestamps["frameID"].append(framenum)
+                    timestamps["pc_time"].append(time.time())
+
+                elif self.mode == "image":
+                    frame = spin2cv(raw_frame, 1536, 2048)
+                    cv2.imwrite(save_path, frame)
+
+                    self.start_capture.clear()
+                    break
+
+                elif self.mode == "stream":
+                    with self.locks[index]:
+                        np.copyto(self.image_array[index], spin2cv(raw_frame, 1536, 2048))
+                        self.frame_num[index] = framenum
+                raw_frame.Release()
+            
+            if self.mode == "video":
+                json.dump(
+                    timestamps, open(timestamp_path, "w"), indent="\t"
+                )
+                videostream.Close()
+            cam.stop()
+            self.capture_end_flag[index].set()
+            
+        
+        cam.release()
+        del camPtr
+        cam_list.Clear()
+        system.ReleaseInstance()
+    
+    def wait_for_capture_end(self):
+        for i in range(self.num_cameras):
+            self.capture_end_flag[i].wait()    
+
+    def start(self):
+        self.start_capture.set()
+
+    def end(self):
+        self.start_capture.clear()
+
+    def quit(self):
+        self.exit.set()
         for p in self.capture_threads:
             p.join()
-
-        print("All capture threads have stopped.")
 
 if __name__ == "__main__":
     manager = CameraManager(num_cameras=4, duration=180, save_dir="/home/capture16/captures1", is_streaming=False)

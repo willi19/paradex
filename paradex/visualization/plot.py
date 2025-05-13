@@ -10,7 +10,7 @@ from dex_robot.visualization.convert_codec import change_to_h264
 from dex_robot.utils.file_io import load_camparam, load_robot_traj, load_c2r
 import tqdm
 from dex_robot.io.contact.index import sensor_name, contact_sensor_idx
-from paradex.utils.merge_video import merge_video_synced
+from paradex.video.merge_video import merge_video_synced
 from dex_robot.simulator.isaac import simulator as sim
 from multiprocessing import Process
 

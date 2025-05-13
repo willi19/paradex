@@ -3,7 +3,7 @@ import os
 import numpy as np
 from paradex.utils.file_io import shared_path, rsc_path, load_c2r
 from paradex.visualization.grid_image import grid_image
-from paradex.utils.robot_wrapper import RobotWrapper
+from paradex.robot.robot_wrapper import RobotWrapper
 import json
 import cv2
 import shutil

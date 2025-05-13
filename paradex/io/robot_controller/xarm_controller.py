@@ -83,13 +83,10 @@ class XArmController:
 
         fps = 100
         self.arm_cnt = 0
-        self.lock_arm = Lock()
-
         while not self.exit.is_set():
             start_time = time.time()
-            with self.lock_arm:        
-                angles = self.arm_target_action_array.copy()
-                angles[:3] *= 1000
+            angles = self.arm_target_action_array.copy()
+            angles[:3] *= 1000
             if self.ready_array[0] == 1:
                 
                 current_arm_angles = np.asarray(self.arm.get_joint_states(is_radian=True)[1][0][:6])

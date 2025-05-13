@@ -7,7 +7,7 @@ import shutil
 from paradex.model.AdamGrasp import AdamGrasp
 import torch
 import plotly.graph_objects as go
-from paradex.utils.visualize_plotly import plot_point_cloud, plot_point_cloud_cmap, plot_mesh_from_name
+from paradex.visualization.visualize_plotly import plot_point_cloud, plot_point_cloud_cmap, plot_mesh_from_name
 from paradex.model.set_seed import set_global_seed
 from torch.utils.tensorboard import SummaryWriter
 from paradex.utils.file_io import shared_path

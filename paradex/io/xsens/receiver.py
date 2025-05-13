@@ -14,7 +14,7 @@ import argparse
 
 import numpy as np
 from multiprocessing import shared_memory, Lock, Value, Event, Process
-from paradex.utils import conversions
+from paradex.geometry import conversions
 from . import hand_index
 from scipy.spatial.transform import Rotation as R
 import time

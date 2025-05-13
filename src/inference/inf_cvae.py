@@ -11,12 +11,13 @@ import trimesh.sample
 
 import torch
 import plotly.graph_objects as go
-from paradex.utils.visualize_plotly import plot_point_cloud, plot_point_cloud_cmap, plot_mesh
+from paradex.visualization.visualize_plotly import plot_point_cloud, plot_point_cloud_cmap, plot_mesh
 from paradex.model.set_seed import set_global_seed
 import trimesh as tm
 import torch.nn as nn
 from paradex.model.PointNetCVAE import PointNetCVAE
 import numpy as np
+from paradex.model.get_models import get_handmodel
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -45,6 +46,7 @@ def pre_process_sharp_clamp(contact_map):
 
 def identity_map(contact_map):
     return contact_map
+
 
 if __name__ == '__main__':
     set_global_seed(seed=42)

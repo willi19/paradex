@@ -158,8 +158,8 @@ class simulator:
                         object_rb_state,
                         gymapi.STATE_POS,
                     )
-
-            self.save_stateinfo()
+            if self.save_state:
+                self.save_stateinfo()
             self.gym.set_actor_dof_position_targets(
                 self.env, self.actor_handle["robot"], action
             )
@@ -506,6 +506,7 @@ class simulator:
                 self.gym.set_rigid_body_color(self.env, self.actor_handle[serial_num], 0, gymapi.MESH_VISUAL_AND_COLLISION, gymapi.Vec3(0.4, 0.4, 0.6))
         
         return
+    
     def load_camera(self, camera_param_dict=None):
         self.camera_handle = {}
         if camera_param_dict is None:

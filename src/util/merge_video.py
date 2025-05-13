@@ -1,6 +1,6 @@
 import os
 import json
-from paradex.utils.merge_video import merge_video_synced
+from paradex.video.merge_video import merge_video_synced
 from paradex.utils.io import home_dir
 import argparse
 

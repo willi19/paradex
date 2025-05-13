@@ -8,7 +8,7 @@ from paradex.io.camera.camera import Camera
 from paradex.image.convert import spin2cv
 import numpy as np
 import os
-from paradex.utils.io import home_path, config_dir
+from paradex.utils.file_io import home_path, config_dir
 import time
 import cv2
 

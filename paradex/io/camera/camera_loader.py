@@ -24,6 +24,7 @@ class CameraManager:
         self.autoforce_ip()
 
         self.connected_serial_list = self.get_serial_list()
+        print(f"Connected cameras: {self.connected_serial_list}")
         if serial_list is None:
             self.serial_list = self.connected_serial_list
 

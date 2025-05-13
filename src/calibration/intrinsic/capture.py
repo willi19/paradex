@@ -42,7 +42,8 @@ def send_commands():
         key = sys.stdin.read(1)
         if key == 'c':
             print("[Server] Sending command to all clients...")
-            
+            # ROUTER는 클라이언트 ident를 알아야 보낼 수 있음 → 저장해둬야 함
+            socket.send_multipart([pc_name, b"capture"])
 
 def receive_replies():
     while True:

@@ -1,8 +1,5 @@
-
-# client.py
 import zmq
-import socket as pysocket  # 충돌 방지를 위해 이름 변경
-import time
+import socket as pysocket
 
 SERVER_IP = "192.168.0.2"
 
@@ -11,15 +8,11 @@ sock = context.socket(zmq.DEALER)
 sock.identity = pysocket.gethostname().encode()
 sock.connect(f"tcp://{SERVER_IP}:5556")
 
-# 등록 메시지 전송
-sock.send_string(f"register:{sock.identity.decode()}")
-
-# # ack 수신
-# ack = sock.recv_string()
-# print(f"[Client] Registration ack received")
-
-# 명령 루프
-# for i in range(10):
+# 클라이언트 루프
 while True:
-    sock.send_string("done")
-    time.sleep(0.01)
+    msg = sock.recv()  # ROUTER에서 보내는 건 단일 프레임
+    msg = msg.decode()
+
+    if msg == "capture":
+        print("[Client] Received capture command")
+        sock.send_string("received")  # ROUTER expects single-frame reply

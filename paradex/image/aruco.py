@@ -109,5 +109,10 @@ def detect_charuco(img, boardinfo):
         detected_corners = np.concatenate(detected_corners, axis=0)
         detected_ids = np.concatenate(detected_ids, axis=0)
         detected_mids = np.concatenate(detected_mids, axis=0)
+    
+    else:
+        detected_corners = np.array([])
+        detected_ids = np.array([])
+        detected_mids = np.array([])
 
     return (detected_corners, detected_markers), (detected_ids, detected_mids)

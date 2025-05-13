@@ -24,7 +24,7 @@ class CameraManager:
         self.autoforce_ip()
 
         self.connected_serial_list = self.get_serial_list()
-        print(f"Connected cameras: {self.connected_serial_list}")
+        
         if serial_list is None:
             self.serial_list = self.connected_serial_list
 
@@ -35,6 +35,9 @@ class CameraManager:
                     raise ValueError(f"Camera with serial {serial} not found.")
             self.serial_list = serial_list
 
+        for i in range(len(self.serial_list)):
+            self.serial_list[i] = str(self.serial_list[i])
+            
         self.num_cameras = len(self.serial_list)
 
         self.connect_flag = [Event() for _ in range(self.num_cameras)]

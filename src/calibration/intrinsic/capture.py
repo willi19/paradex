@@ -36,25 +36,25 @@ socket.bind("tcp://*:5556")
 
 reset_and_run(os.path.join("src/calibration/intrinsic/client.py"), [pc_name])  # 명령 수신 대기
 
-def send_commands():
-    while True:
-        key = sys.stdin.read(1)
-        if key == 'c':
-            print("[Server] Sending command to all clients...")
+# def send_commands():
+#     while True:
+#         key = sys.stdin.read(1)
+#         if key == 'c':
+#             print("[Server] Sending command to all clients...")
             
 
-def receive_replies():
-    while True:
-        print("[Server] Waiting for message...")
-        ident, reply = socket.recv_multipart()
-        ident = ident.decode("utf-8")
-        reply = reply.decode("utf-8")
+# def receive_replies():
+#     while True:
+#         print("[Server] Waiting for message...")
+#         ident, reply = socket.recv_multipart()
+#         ident = ident.decode("utf-8")
+#         reply = reply.decode("utf-8")
 
-        print(f"[Server] Received reply from {ident}: {reply}")
-        print(f"[{pc_name}] Replied: {reply}")
+#         print(f"[Server] Received reply from {ident}: {reply}")
+#         print(f"[{pc_name}] Replied: {reply}")
             
-threading.Thread(target=send_commands, daemon=True).start()
-receive_replies()  # main thread는 계속 수신 담당
+# threading.Thread(target=send_commands, daemon=True).start()
+# receive_replies()  # main thread는 계속 수신 담당
 
 # Get serial number
 

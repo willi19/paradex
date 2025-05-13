@@ -8,6 +8,7 @@ from paradex.io.capture_pc.connect import reset_and_run
 import os
 import threading
 import sys
+import time
 
 parser = argparse.ArgumentParser(description="Capture intrinsic camera calibration.")
 parser.add_argument(
@@ -34,7 +35,7 @@ context = zmq.Context()
 socket = context.socket(zmq.ROUTER)
 socket.bind("tcp://*:5556")
 
-# reset_and_run(os.path.join("src/calibration/intrinsic/client.py"), [pc_name])  # 명령 수신 대기
+reset_and_run(os.path.join("src/calibration/intrinsic/client.py"), [pc_name])  # 명령 수신 대기
 
 def send_commands():
     while True:
@@ -52,6 +53,7 @@ def receive_replies():
 
         print(f"[Server] Received reply from {ident}: {reply}")
         print(f"[{pc_name}] Replied: {reply}")
+        print(time.time())
             
 threading.Thread(target=send_commands, daemon=True).start()
 receive_replies()  # main thread는 계속 수신 담당

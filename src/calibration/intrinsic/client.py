@@ -22,4 +22,4 @@ sock.send_string(f"register:{sock.identity.decode()}")
 # for i in range(10):
 while True:
     sock.send_string("done")
-    time.sleep(0.1)
+    time.sleep(0.01)

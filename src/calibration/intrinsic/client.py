@@ -15,4 +15,4 @@ while True:
 
     if msg == "capture":
         print("[Client] Received capture command")
-        sock.send_string("received")  # ROUTER expects single-frame reply
+        sock.send_string(b"received")  # ROUTER expects single-frame reply

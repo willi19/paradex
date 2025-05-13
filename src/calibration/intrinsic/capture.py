@@ -31,7 +31,7 @@ if pc_name is None:
     raise ValueError(f"Serial number {serial_num} not found in PC list.")
 
 context = zmq.Context()
-socket = context.socket(zmq.REP)
+socket = context.socket(zmq.ROUTER)
 socket.bind("tcp://*:5556")
 
 reset_and_run(os.path.join("src/calibration/intrinsic/client.py"), [pc_name])  # 명령 수신 대기
@@ -45,6 +45,7 @@ def send_commands():
 
 def receive_replies():
     while True:
+        print("[Server] Waiting for message...")
         ident, reply = socket.recv_multipart()
         ident = ident.decode("utf-8")
         reply = reply.decode("utf-8")

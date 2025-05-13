@@ -4,7 +4,7 @@ import os
 import argparse
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
-from paradex.utils.io import find_latest_directory, home_dir, calib_path_list
+from paradex.utils.io import find_latest_directory, home_path, calib_path_list
 
 def process_video(video_path):
     """

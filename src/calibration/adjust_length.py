@@ -6,7 +6,7 @@ from itertools import chain
 from multiprocessing import Pool
 from glob import glob
 import cv2
-from paradex.utils.io import find_latest_directory, home_dir, download_dir, load_cam_param_temp, cam_param_dir
+from paradex.utils.io import find_latest_directory, home_path, download_dir, load_cam_param_temp, cam_param_dir
 import numpy as np
 from paradex.triangulate.traingulate import ransac_triangulation
 import tqdm

@@ -3,7 +3,7 @@ import json
 import os
 from paradex.utils.file_io import home_path
 
-def reset_and_run(script_name: str, branch: str = "merging"):
+def reset_and_run(script_name: str, pc_list = None, branch: str = "merging"):
     repo_path = "~/paradex"
     ssh_port = 77
 
@@ -11,9 +11,15 @@ def reset_and_run(script_name: str, branch: str = "merging"):
     with open(pc_info_path, 'r') as f:
         pc_info = json.load(f)
 
-    for pc_name, pc in pc_info.items():
-        ip = pc["ip"]
-        # print(f"[{pc_name}] Connecting to {pc_name}@{ip}...")
+    if pc_list is None:
+        pc_list = list(pc_info.keys())
+        
+    for pc_name in pc_list:
+        if pc_name not in pc_info:
+            raise ValueError(f"PC {pc_name} not found in the configuration file.")
+    
+    for pc_name in pc_list:
+        ip = pc_info[pc_name]["ip"]
         remote_cmd = (
             f"cd {repo_path} && "
             f"git fetch origin && "

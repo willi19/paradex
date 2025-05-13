@@ -1,13 +1,13 @@
 import cv2
 import os
-from paradex.utils.io import home_dir
+from paradex.utils.io import home_path
 import numpy as np
 
 
 
 index_list = ["4"]
 for index in index_list:
-    video_dir = os.path.join(home_dir,"captures1","calibration","20250323121043", index,"video")
+    video_dir = os.path.join(home_path,"captures1","calibration","20250323121043", index,"video")
     vid_list = os.listdir(os.path.join(video_dir))
     cap_list = []
     for vid_name in vid_list:

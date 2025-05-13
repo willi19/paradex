@@ -10,11 +10,11 @@ rsc_path = os.path.join(
     "rsc",
 )
 
-home_dir = os.path.expanduser("~")
-shared_dir = os.path.join(home_dir, "shared_data")
-calib_path_list = [os.path.join(home_dir, f"captures{i}", "calibration") for i in range(1,3)]
-capture_path_list = [os.path.join(home_dir, f"captures{i}") for i in range(1,3)]
-download_dir = os.path.join(home_dir, "download")
+home_path = os.path.expanduser("~")
+shared_dir = os.path.join(home_path, "shared_data")
+calib_path_list = [os.path.join(home_path, f"captures{i}", "calibration") for i in range(1,3)]
+capture_path_list = [os.path.join(home_path, f"captures{i}") for i in range(1,3)]
+download_dir = os.path.join(home_path, "download")
 cam_param_dir = os.path.join(shared_dir, "cam_param")
 handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")
 config_dir = os.path.join(os.path.dirname(__file__), "..", "..", "config")

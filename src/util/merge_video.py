@@ -1,7 +1,7 @@
 import os
 import json
 from paradex.video.merge_video import merge_video_synced
-from paradex.utils.io import home_dir
+from paradex.utils.io import home_path
 import argparse
 
 if __name__ == "__main__":
@@ -11,7 +11,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     for obj in args.obj_list:
-        root_dir = os.path.join(home_dir, "download", "processed", obj)
+        root_dir = os.path.join(home_path, "download", "processed", obj)
         ind_list = os.listdir(root_dir)
         for ind in ind_list:
             input_dir = os.path.join(root_dir, ind, "video")

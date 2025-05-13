@@ -6,8 +6,8 @@ from tqdm import tqdm
 from paradex.utils.upload_file import get_total_size, copy_to_nfs
 from paradex.utils.io import shared_dir, download_dir
 
-home_dir = os.path.expanduser("~")
-capture_path_list = [os.path.join(home_dir, f"captures{i}") for i in range(1,3)]
+home_path = os.path.expanduser("~")
+capture_path_list = [os.path.join(home_path, f"captures{i}") for i in range(1,3)]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Recursively copy files and directories, skipping identical files but overwriting corrupt ones.")

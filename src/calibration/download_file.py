@@ -3,7 +3,7 @@ import argparse
 from paradex.utils.upload_file import get_total_size, copy_to_nfs
 import numpy as np
 from tqdm import tqdm
-from paradex.utils.io import find_latest_directory, home_dir, calib_path_list, shared_dir
+from paradex.utils.io import find_latest_directory, home_path, calib_path_list, shared_dir
 
 nfs_root_dir = os.path.join(shared_dir,"calibration")
 
@@ -36,12 +36,12 @@ if __name__ == "__main__":
     else:
         name = args.name
 
-    dest_root_dir = os.path.join(home_dir, "download", "calibration", name)
+    dest_root_dir = os.path.join(home_path, "download", "calibration", name)
     
     
 
     kypt_dir_list = []
-    index_list = os.listdir(os.path.join(home_dir, "shared_data", "calibration", name))
+    index_list = os.listdir(os.path.join(home_path, "shared_data", "calibration", name))
     for index in index_list:
         kypt_dir = os.path.join(nfs_root_dir, name, index, "keypoints")
         kypt_dir_list += [os.path.join(kypt_dir, d) for d in os.listdir(kypt_dir)]

@@ -4,7 +4,7 @@ import os
 from paradex.process.marker_detector import detect_aruco
 import numpy as np
 import cv2
-from paradex.utils.io import home_dir, handeye_calib_path
+from paradex.utils.io import home_path, handeye_calib_path
 
 def find_latest_directory():
     dirs = [d for d in os.listdir(handeye_calib_path)] 

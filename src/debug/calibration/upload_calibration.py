@@ -4,9 +4,9 @@ import json
 import os
 import argparse 
 import cv2
-from paradex.utils.io import find_latest_directory, home_dir, download_dir, cam_param_dir
+from paradex.utils.io import find_latest_directory, home_path, download_dir, cam_param_dir
 
-home_dir = os.path.expanduser("~")
+home_path = os.path.expanduser("~")
 calib_dir = os.path.join(download_dir,"calibration")
 save_dir = cam_param_dir
 

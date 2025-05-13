@@ -1,6 +1,6 @@
 import cv2
 import os
-from paradex.utils.io import home_dir
+from paradex.utils.io import home_path
 import numpy as np
 import json
 import matplotlib.pyplot as plt
@@ -8,9 +8,9 @@ import matplotlib.pyplot as plt
 
 index_list = ["0","1","2","3","4","5"]
 for index in index_list:
-    video_dir = os.path.join(home_dir,"captures1","calibration","20250323121043", index,"video")
+    video_dir = os.path.join(home_path,"captures1","calibration","20250323121043", index,"video")
     vid_list = os.listdir(os.path.join(video_dir))
-    video_dir = os.path.join(home_dir,"captures2","calibration","20250323121043", index,"video")
+    video_dir = os.path.join(home_path,"captures2","calibration","20250323121043", index,"video")
     vid_list += os.listdir(os.path.join(video_dir))
     
     timestamp_list = []

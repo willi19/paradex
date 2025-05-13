@@ -1,13 +1,13 @@
 import cv2
 import os
-from paradex.utils.io import home_dir
+from paradex.utils.io import home_path
 import numpy as np
 
 
 
 index_list = ["0","1","2"]
 for index in index_list:
-    image_dir = os.path.join(home_dir,"captures1","calibration","20250323121043", index,"images")
+    image_dir = os.path.join(home_path,"captures1","calibration","20250323121043", index,"images")
     img_list = os.listdir(os.path.join(image_dir))
     img_list.sort()
     for i in img_list:

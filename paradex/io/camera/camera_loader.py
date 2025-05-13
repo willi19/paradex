@@ -8,7 +8,7 @@ from paradex.io.camera.camera import Camera
 from paradex.image.convert import spin2cv
 import numpy as np
 import os
-from paradex.utils.io import home_dir, config_dir
+from paradex.utils.io import home_path, config_dir
 import time
 import cv2
 
@@ -187,7 +187,7 @@ class CameraManager:
                 if init:
                     cam.start()
                     if self.mode == "video":
-                        save_dir = f"{home_dir}/captures{index // 2 + 1}/{self.save_dir['save_dir']}"
+                        save_dir = f"{home_path}/captures{index // 2 + 1}/{self.save_dir['save_dir']}"
                         os.makedirs(save_dir, exist_ok=True)
 
                         save_path = os.path.join(save_dir, f"{serial_num}")

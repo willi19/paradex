@@ -5,8 +5,8 @@ import numpy as np
 from tqdm import tqdm
 from paradex.utils.io import find_latest_directory
 
-home_dir = os.path.expanduser("~")
-calib_path_list = [os.path.join(home_dir, f"captures{i}", "calibration") for i in range(1,3)]
+home_path = os.path.expanduser("~")
+calib_path_list = [os.path.join(home_path, f"captures{i}", "calibration") for i in range(1,3)]
 
 
 def load_keypoints(keypoint_dir):
@@ -38,7 +38,7 @@ if __name__ == "__main__":
     else:
         name = args.name
 
-    dest_root_dir = os.path.join(home_dir, "shared_data", "calibration", name)
+    dest_root_dir = os.path.join(home_path, "shared_data", "calibration", name)
     
     kypt_dir_list = []
     for calib_path in calib_path_list:

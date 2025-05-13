@@ -3,7 +3,7 @@ import os
 import datetime
 import paradex
 from paradex.camera.camera_loader import CameraManager
-from paradex.utils.io import home_dir, calib_path_list
+from paradex.utils.io import home_path, calib_path_list
 
 def find_latest_directory(is_init):
     if is_init:

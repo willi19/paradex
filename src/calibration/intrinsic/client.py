@@ -37,7 +37,7 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-serial_num = int(args.serial)
+serial_num = args.serial
 
 context = zmq.Context()
 socket = context.socket(zmq.ROUTER)

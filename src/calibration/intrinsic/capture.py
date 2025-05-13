@@ -50,7 +50,7 @@ parser.add_argument(
 )
 
 args = parser.parse_args()
-serial_num = int(args.serial)
+serial_num = args.serial
 
 pc_name, ip = get_pc_info(serial_num)
 print("PC Name:", pc_name)

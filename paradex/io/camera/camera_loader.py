@@ -30,8 +30,7 @@ class CameraManager:
 
         else:
             for serial in serial_list:
-                if type(serial) != str:
-                    serial = str(serial)
+                serial = str(serial)
                 if serial not in self.connected_serial_list:
                     raise ValueError(f"Camera with serial {serial} not found.")
             self.serial_list = serial_list

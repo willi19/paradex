@@ -58,7 +58,7 @@ print("PC Name:", pc_name)
 git_pull("merging", [pc_name]) 
 print(f"[{pc_name}] Git pull complete.")
 
-run_script(os.path.join("python src/calibration/intrinsic/client.py "), [pc_name])  # 명령 수신 대기
+run_script(os.path.join(f"python src/calibration/intrinsic/client.py --serial {serial_num}"), [pc_name])  # 명령 수신 대기
 print(f"[{pc_name}] Client script started.")
 
 context = zmq.Context()
@@ -68,8 +68,11 @@ socket.connect(f"tcp://{ip}:5556")  # 서버 IP로 연결
 
 socket.send_string("register")
 msg = socket.recv_string()
+
 if msg == "registered":
     print("[Client] Registration complete, starting detection loop...")
+else:
+    print("[Client] Registration failed.")
 
 threading.Thread(target=wait_for_keypress, args=(socket,), daemon=True).start()  # 키 입력 대기 스레드
 receive_replies()  

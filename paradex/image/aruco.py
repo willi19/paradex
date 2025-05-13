@@ -25,7 +25,7 @@ aruco_dict = {"4X4_50": aruco.getPredefinedDictionary(aruco.DICT_4X4_50),
                 "7X7_250": aruco.getPredefinedDictionary(aruco.DICT_7X7_250),
                 "7X7_1000": aruco.getPredefinedDictionary(aruco.DICT_7X7_1000)}
 
-arucoDetector_dict = {dict_name: aruco.ArucoDetector(aruco_dict[dict_name]) for dict_name in aruco_type.items()}
+arucoDetector_dict = {dict_name: aruco.ArucoDetector(aruco_dict[dict_name]) for dict_name in aruco_type}
 
 def detect_aruco(img, dict_type='6X6_1000') -> Tuple[List[np.ndarray], np.ndarray]:
     """

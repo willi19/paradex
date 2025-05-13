@@ -2,6 +2,7 @@
 # client.py
 import zmq
 import socket as pysocket  # 충돌 방지를 위해 이름 변경
+import time
 
 SERVER_IP = "192.168.0.2"
 
@@ -21,3 +22,4 @@ sock.send_string(f"register:{sock.identity.decode()}")
 # for i in range(10):
 while True:
     sock.send_string("done")
+    time.sleep(0.1)

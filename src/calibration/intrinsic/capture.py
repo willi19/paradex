@@ -89,8 +89,7 @@ while True:
         data = json.loads(msg)
         if data.get("type") == "charuco":
             image = np.zeros((1536, 2048, 3), dtype=np.uint8)
-            print(data.keys())
-            for board_id, result in data["results"].items():
+            for board_id, result in data["detect_result"].items():
                 corners = np.array(result["corners"], dtype=np.float32)
                 ids = np.array(result["ids"], dtype=np.int32).reshape(-1, 1)
 

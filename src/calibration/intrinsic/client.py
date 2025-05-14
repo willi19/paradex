@@ -84,6 +84,7 @@ while not should_exit:
             detect_result[board_id]["save"] = is_save
         
             for data_name in detect_result[board_id].keys():
+                print(data_name, detect_result[board_id][data_name])
                 detect_result[board_id][data_name] = detect_result[board_id][data_name].tolist()
         # print(detect_result)
         msg_dict = {

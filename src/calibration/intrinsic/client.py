@@ -82,6 +82,9 @@ while not should_exit:
             if is_save:
                 board_corner_list.append(result["checkerCorner"])
             detect_result[board_id]["save"] = is_save
+        
+            for data_name in detect_result[board_id].keys():
+                detect_result[board_id][data_name] = detect_result[board_id][data_name].tolist()
 
         msg_dict = {
             "frame": last_frame,

@@ -40,6 +40,61 @@ def detect_aruco(img, dict_type='6X6_1000') -> Tuple[List[np.ndarray], np.ndarra
     corners, IDs, _ = arucoDetector_dict[dict_type].detectMarkers(img)
     return corners, IDs
 
+def check_boardinfo_valid(boardinfo):
+    for board_idx in boardinfo.keys():
+        assert "dict_type" in boardinfo[board_idx].keys(), f"dict_type not found in boardinfo for board {board_idx}"
+        assert "numX" in boardinfo[board_idx].keys(), f"numX not found in boardinfo for board {board_idx}"
+        assert "numY" in boardinfo[board_idx].keys(), f"numY not found in boardinfo for board {board_idx}"
+        assert "checkerLength" in boardinfo[board_idx].keys(), f"checkerLength not found in boardinfo for board {board_idx}"
+        assert "markerLength" in boardinfo[board_idx].keys(), f"markerLength not found in boardinfo for board {board_idx}"
+        assert "markerIDs" in boardinfo[board_idx].keys(), f"markerIDs not found in boardinfo for board {board_idx}"
+
+def merge_charuco_detection(detection_list, boardinfo):
+    check_boardinfo_valid(boardinfo)
+
+    marker_id_offset = {}
+    offset_sum = 0
+
+    for board_idx in boardinfo.keys():
+        cb = boardinfo[board_idx]
+        
+        marker_id_offset[int(board_idx)] = offset_sum
+        offset_sum += (cb["numX"] - 1) * (cb["numY"] - 1)
+    
+    detected_corners, detected_ids = [], []
+    detected_markers, detected_mids = [], []
+
+    for board_id in detection_list.keys():
+        offset = marker_id_offset[board_id]
+        checkerCorner = detection_list[board_id]["checkerCorner"]
+        checkerIDs = detection_list[board_id]["checkerIDs"]
+        markerCorner = detection_list[board_id]["markerCorner"]
+        markerIDs = detection_list[board_id]["markerIDs"]
+
+        detected_corners.append(checkerCorner)
+        detected_ids.append(checkerIDs + offset)
+
+        for val in markerCorner:
+            detected_markers.append(val)
+        detected_mids.append(markerIDs)
+
+    if len(detected_corners) > 0:
+        detected_corners = np.concatenate(detected_corners, axis=0)
+        detected_ids = np.concatenate(detected_ids, axis=0)
+        detected_mids = np.concatenate(detected_mids, axis=0)
+    
+    else:
+        detected_corners = np.array([])
+        detected_ids = np.array([])
+        detected_mids = np.array([])
+
+    return {
+        "checkerCorner": detected_corners,
+        "checkerIDs": detected_ids,
+        "markerCorner": detected_markers,
+        "markerIDs": detected_mids
+    }
+
 def detect_charuco(img, boardinfo):
     """
     Detects Charuco corners and ArUco markers in the given image using multiple boards.
@@ -60,16 +115,9 @@ def detect_charuco(img, boardinfo):
             - detected_mids (np.ndarray): Detected ArUco marker IDs. Shape (N, 1).
     """
 
-    for board_idx in boardinfo.keys():
-        assert "dict_type" in boardinfo[board_idx].keys(), f"dict_type not found in boardinfo for board {board_idx}"
-        assert "numX" in boardinfo[board_idx].keys(), f"numX not found in boardinfo for board {board_idx}"
-        assert "numY" in boardinfo[board_idx].keys(), f"numY not found in boardinfo for board {board_idx}"
-        assert "checkerLength" in boardinfo[board_idx].keys(), f"checkerLength not found in boardinfo for board {board_idx}"
-        assert "markerLength" in boardinfo[board_idx].keys(), f"markerLength not found in boardinfo for board {board_idx}"
-        assert "markerIDs" in boardinfo[board_idx].keys(), f"markerIDs not found in boardinfo for board {board_idx}"
-
-    all_boards = {}
-    marker_id_offset = 0
+    check_boardinfo_valid(boardinfo)
+    detector_dict = {}
+    detection_results = {}
 
     for board_idx in boardinfo.keys():
         cb = boardinfo[board_idx]
@@ -82,37 +130,20 @@ def detect_charuco(img, boardinfo):
         )
         charDet = aruco.CharucoDetector(board)
 
-        all_boards[int(board_idx)] = {
-            "marker_id_offset": marker_id_offset,
-            "detector": charDet
+        detector_dict[int(board_idx)] = charDet
+        
+    for board_id in detector_dict.keys():
+        charDet = detector_dict[board_id]
+        checkerCorner, checkerIDs, markerCorner, markerIDs = charDet.detectBoard(img)
+        
+        if checkerIDs is None:
+            continue
+        
+        detection_results[board_id] = {
+            "checkerCorner": checkerCorner,
+            "checkerIDs": checkerIDs,
+            "markerCorner": markerCorner,
+            "markerIDs": markerIDs
         }
-        marker_id_offset += (cb["numX"] - 1) * (cb["numY"] - 1)
 
-    detected_corners, detected_ids = [], []
-    detected_markers, detected_mids = [], []
-
-    for board_id in all_boards.keys():
-        offset = all_boards[board_id]["marker_id_offset"]
-        charDet = all_boards[board_id]["detector"]
-
-        charCorner, charIDs, markerCorner, markerIDs = charDet.detectBoard(img)
-
-        if charIDs is not None:
-            detected_corners.append(charCorner)
-            detected_ids.append(charIDs + offset)
-
-            for val in markerCorner:
-                detected_markers.append(val)
-            detected_mids.append(markerIDs)
-
-    if len(detected_corners) > 0:
-        detected_corners = np.concatenate(detected_corners, axis=0)
-        detected_ids = np.concatenate(detected_ids, axis=0)
-        detected_mids = np.concatenate(detected_mids, axis=0)
-    
-    else:
-        detected_corners = np.array([])
-        detected_ids = np.array([])
-        detected_mids = np.array([])
-
-    return (detected_corners, detected_markers), (detected_ids, detected_mids)
+    return detection_results

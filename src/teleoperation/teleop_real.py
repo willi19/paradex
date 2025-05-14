@@ -7,9 +7,9 @@ from paradex.io.contact.receiver import SerialReader
 from paradex.io.camera.camera_loader import CameraManager
 from paradex.io.robot_controller import retarget
 
-from paradex.utils.file_io import rsc_path, capture_path, shared_path
+from paradex.utils.file_io import rsc_path
 
-from paradex.utils.io import find_latest_index, find_latest_directory
+from paradex.utils.file_io import find_latest_index, find_latest_directory
 
 import time
 import threading
@@ -21,7 +21,7 @@ import shutil
 import transforms3d as t3d
 
 hand_name = "inspire"
-arm_name = None
+arm_name = "xarm"
 
 home_wrist_pose = np.array([[0, 1 ,0, 0.5],[0, 0, 1, -0.3],[1, 0, 0, 0.1],[0, 0, 0, 1]])
 
@@ -52,25 +52,6 @@ def listen_for_exit(stop_event):
             stop_event.set()  # Set the exit flag
             break
 
-def copy_calib_files(save_path):
-
-    handeye_calib_dir = os.path.join(shared_path, "handeye_calibration")
-    handeye_calib_name = find_latest_directory(handeye_calib_dir)
-    handeye_calib_path = os.path.join(shared_path, "handeye_calibration", handeye_calib_name, "0", "C2R.npy")
-
-    camparam_dir = os.path.join(shared_path, "cam_param")
-    camparam_name = find_latest_directory(camparam_dir)
-    camparam_path = os.path.join(shared_path, "cam_param", camparam_name)
-
-    shutil.copyfile(handeye_calib_path, os.path.join(save_path, "C2R.npy"))
-    shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"))
-
-
-def load_savepath(name):
-    if name == None:
-        return None
-    index = int(find_latest_index(os.path.join(capture_path, name)))+1
-    return os.path.join(capture_path, name, str(index))
 
 
 
@@ -97,14 +78,8 @@ def initialize_teleoperation(save_path):
     return controller
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Teleoperation for real robot")
-    parser.add_argument("--name", type=str, help="Control mode for robot", default=None)
-    args = parser.parse_args()
-    
-    if args.name is not None:
-        os.makedirs(os.path.join(capture_path, args.name), exist_ok=True)
-    save_path = load_savepath(args.name)
+def main():    
+    save_path = None
     print (f"save_path: {save_path}")
     sensors = initialize_teleoperation(save_path)
     
@@ -206,11 +181,7 @@ def main():
             # except Exception as e:
             #     print(f"Error: {e}")
             #     break
-            
-    if save_path != None:
-        json.dump(grasp_range, open(os.path.join(save_path, "grasp_range.json"), 'w'))
-        json.dump(activate_range, open(os.path.join(save_path, "activate_range.json"), 'w'))
-        copy_calib_files(save_path)
+        
 
     for key in sensors.keys():
         sensors[key].quit()

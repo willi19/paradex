@@ -8,10 +8,11 @@ import time
 import argparse
 from paradex.image.aruco import detect_charuco
 import threading
-
+import numpy as np
 
 should_exit = False  # 공유 변수로 종료 제어
 client_ident = None  # 메인 PC에서 온 ident 저장용
+board_corner_list = []
 
 def listen_for_commands():
     global should_exit, client_ident
@@ -27,6 +28,20 @@ def listen_for_commands():
             print(f"[Server] Received quit from client")
             should_exit = True
             break
+
+def should_save(result):
+    corner = result["checkerCorner"]
+    ids = result["markerIDs"]
+    
+    if len(ids) != 70:
+        return False
+    
+    for board_corner in board_corner_list:
+        dist = np.linalg.norm(corner - board_corner, axis=1).sum()
+        if dist < 0.1:
+            return False
+
+    return True
 
 parser = argparse.ArgumentParser(description="Capture intrinsic camera calibration.")
 parser.add_argument(
@@ -52,21 +67,26 @@ camera.start()
 last_frame = -1
 last_image = None
 
+selected_frame = []
+
 threading.Thread(target=listen_for_commands, daemon=True).start()
 while not should_exit:
     if camera.frame_num[0] != last_frame:
         last_frame = camera.frame_num[0]
         with camera.locks[0]:
             last_image = camera.image_array[0].copy()
-        (detected_corners, detected_markers), (detected_ids, detected_mids) = detect_charuco(last_image, board_info)
+        detect_result = detect_charuco(last_image, board_info)
 
-        corners_list = detected_corners.tolist() if detected_corners is not None else []
-        ids_list = detected_ids.flatten().tolist() if detected_ids is not None else []
+        for board_id, result in detect_result.items():
+            is_save = should_save(result)
+            if is_save:
+                board_corner_list.append(result["checkerCorner"])
+            detect_result[board_id]["save"] = is_save
 
         msg_dict = {
-            "type": "charuco",
-            "corners": corners_list,
-            "ids": ids_list
+            "frame": last_frame,
+            "detect_result": detect_result,
+            "selected_frame": selected_frame,
         }
         msg_json = json.dumps(msg_dict)
 

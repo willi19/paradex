@@ -12,6 +12,16 @@ import time
 import numpy as np
 import cv2
 
+BOARD_COLORS = [
+    (255, 0, 0),     # 빨강
+    (0, 255, 0),     # 초록
+    (0, 0, 255),     # 파랑
+    (255, 255, 0),   # 시안
+    (255, 0, 255),   # 마젠타
+    (0, 255, 255),   # 노랑
+    (128, 128, 255)  # 연보라
+]
+
 def get_pc_info(serial_num):
     pc_info = json.load(open(os.path.join(config_dir, "environment", "pc.json"), "r"))
 
@@ -67,7 +77,9 @@ if msg == "registered":
 else:
     print("[Client] Registration failed.")
 
-threading.Thread(target=wait_for_keypress, args=(socket,), daemon=True).start()  # 키 입력 대기 스레드
+threading.Thread(target=wait_for_keypress, args=(socket,), daemon=True).start()  
+saved_board_corners = []
+
 while True:
     msg = socket.recv_string()
     if msg == "terminated":
@@ -76,23 +88,22 @@ while True:
     else:
         data = json.loads(msg)
         if data.get("type") == "charuco":
-            corners = np.array(data["corners"], dtype=np.float32)
-            ids = np.array(data["ids"], dtype=np.int32).reshape(-1, 1)
-
-            if corners.shape[0] == 0:
-                print("[Client] No corners detected.")
-                continue
-
-            # 기본 크기의 검정 배경 이미지 (예: 1280x1080)
             image = np.zeros((1536, 2048, 3), dtype=np.uint8)
+            for board_id, result in data["results"].items():
+                corners = np.array(result["corners"], dtype=np.float32)
+                ids = np.array(result["ids"], dtype=np.int32).reshape(-1, 1)
 
-            # 코너 시각화
-            cv2.aruco.drawDetectedCornersCharuco(image, corners, ids)
+                if corners.shape[0] == 0:
+                    print("[Client] No corners detected.")
+                    continue
 
-            # 시각화
+                cv2.aruco.drawDetectedCornersCharuco(image, corners, ids, color=BOARD_COLORS[int(board_id)])
+
+            for saved_corner in saved_board_corners:
+                cv2.circle(image, tuple(saved_corner), 5, BOARD_COLORS[0], -1)
+                
             cv2.imshow("Charuco Detection", image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
-                print("[Client] Local quit requested.")
                 socket.send_string("quit")
                 break
         else:

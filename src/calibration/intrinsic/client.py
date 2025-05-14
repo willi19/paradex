@@ -85,7 +85,7 @@ while not should_exit:
         
             for data_name in detect_result[board_id].keys():
                 detect_result[board_id][data_name] = detect_result[board_id][data_name].tolist()
-
+        print(detect_result)
         msg_dict = {
             "frame": last_frame,
             "detect_result": detect_result,

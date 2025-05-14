@@ -79,4 +79,4 @@ camera.end()
 camera.quit()
 
 if client_ident is not None:
-    socket.send_multipart([client_ident, b"terminated"])
+    socket.send_multipart([client_ident, b"terminate"])

@@ -31,7 +31,7 @@ def listen_for_commands():
 
 def should_save(result):
     corner = result["checkerCorner"]
-    ids = result["markerIDs"]
+    ids = result["checkerIDs"]
     
     if len(ids) != 70:
         return False

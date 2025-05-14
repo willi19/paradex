@@ -68,15 +68,15 @@ def merge_charuco_detection(detection_list, boardinfo):
         offset = marker_id_offset[board_id]
         checkerCorner = detection_list[board_id]["checkerCorner"]
         checkerIDs = detection_list[board_id]["checkerIDs"]
-        markerCorner = detection_list[board_id]["markerCorner"]
-        markerIDs = detection_list[board_id]["markerIDs"]
+        # markerCorner = detection_list[board_id]["markerCorner"]
+        # markerIDs = detection_list[board_id]["markerIDs"]
 
         detected_corners.append(checkerCorner)
         detected_ids.append(checkerIDs + offset)
 
-        for val in markerCorner:
-            detected_markers.append(val)
-        detected_mids.append(markerIDs)
+        # for val in markerCorner:
+        #     detected_markers.append(val)
+        # detected_mids.append(markerIDs)
 
     if len(detected_corners) > 0:
         detected_corners = np.concatenate(detected_corners, axis=0)
@@ -91,8 +91,8 @@ def merge_charuco_detection(detection_list, boardinfo):
     return {
         "checkerCorner": detected_corners,
         "checkerIDs": detected_ids,
-        "markerCorner": detected_markers,
-        "markerIDs": detected_mids
+        # "markerCorner": detected_markers,
+        # "markerIDs": detected_mids
     }
 
 def detect_charuco(img, boardinfo):
@@ -142,8 +142,8 @@ def detect_charuco(img, boardinfo):
         detection_results[board_id] = {
             "checkerCorner": checkerCorner,
             "checkerIDs": checkerIDs,
-            "markerCorner": markerCorner,
-            "markerIDs": markerIDs
+            # "markerCorner": markerCorner,
+            # "markerIDs": markerIDs
         }
 
     return detection_results

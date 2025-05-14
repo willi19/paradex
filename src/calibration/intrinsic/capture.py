@@ -89,6 +89,7 @@ while True:
         data = json.loads(msg)
         if data.get("type") == "charuco":
             image = np.zeros((1536, 2048, 3), dtype=np.uint8)
+            print(data.keys())
             for board_id, result in data["results"].items():
                 corners = np.array(result["corners"], dtype=np.float32)
                 ids = np.array(result["ids"], dtype=np.int32).reshape(-1, 1)
@@ -101,7 +102,7 @@ while True:
 
             for saved_corner in saved_board_corners:
                 cv2.circle(image, tuple(saved_corner), 5, BOARD_COLORS[0], -1)
-                
+
             cv2.imshow("Charuco Detection", image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 socket.send_string("quit")

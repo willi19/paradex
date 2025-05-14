@@ -86,7 +86,8 @@ while not should_exit:
         msg_dict = {
             "frame": last_frame,
             "detect_result": detect_result,
-            "selected_frame": selected_frame,
+            "image": last_image.tolist(),
+            "type": "charuco"
         }
         msg_json = json.dumps(msg_dict)
 

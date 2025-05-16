@@ -67,6 +67,9 @@ class CameraManager:
         
         ret = self.wait_for_connection()
         if not ret:
+            self.quit()
+            for i in range(self.num_cameras):
+                self.capture_threads[i].join()
             raise RuntimeError("Failed to connect to all cameras.")
 
     def set_save_dir(self, save_dir):

@@ -3,16 +3,16 @@ from paradex.utils.file_io import config_dir, shared_dir
 import json
 import os
 from paradex.io.camera.camera_loader import CameraManager
-import cv2
 import time
-import argparse
-from paradex.image.aruco import detect_charuco
+from paradex.image.aruco import detect_charuco, merge_charuco_detection
 import threading
 import numpy as np
+import sys
 
-should_exit = False  # 공유 변수로 종료 제어
-client_ident = None  # 메인 PC에서 온 ident 저장용
-board_corner_list = []
+should_exit = False 
+client_ident = None 
+current_index = 0 
+cur_filename = None
 
 def listen_for_commands():
     global should_exit, client_ident
@@ -24,35 +24,25 @@ def listen_for_commands():
             client_ident = ident  # ← bytes 그대로 저장
             socket.send_multipart([client_ident, b"registered"])
             print(f"[Server] Client registered: {ident.decode()}")
+
         elif msg == "quit":
             print(f"[Server] Received quit from client")
             should_exit = True
             break
 
-def should_save(result):
-    corner = result["checkerCorner"]
-    ids = result["checkerIDs"]
-    
-    if len(ids) != 70:
-        return False
-    
-    for board_corner in board_corner_list:
-        dist = np.linalg.norm(corner - board_corner, axis=1).mean()
-        if dist < 10:
-            return False
-
-    return True
-
-parser = argparse.ArgumentParser(description="Capture intrinsic camera calibration.")
-parser.add_argument(
-    "--serial",
-    type=str,
-    required=True,
-    help="Directory to save the video.",
-)
-
-args = parser.parse_args()
-serial_num = args.serial
+        elif msg.startswith("capture"):
+            global current_index, num_cam, save_flag, save_finish
+            _, index = msg.split(":")
+            index = int(index)
+            for i in range(num_cam):
+                save_flag[i] = True
+            current_index = index
+            save_finish = False
+        
+        elif msg.startswith("filename"):
+            global cur_filename
+            _, filename = msg.split(":")
+            cur_filename = filename
 
 context = zmq.Context()
 socket = context.socket(zmq.ROUTER)
@@ -60,49 +50,65 @@ socket.bind("tcp://*:5556")
 
 board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
 
-camera = CameraManager("stream", path=None, serial_list=[serial_num], syncMode=False)
+try:
+    camera = CameraManager("stream", path=None, serial_list=None, syncMode=False)
+except:
+    socket.send_multipart([client_ident, b"camera_error"])
+    sys.exit(1)
+    
+socket.send_multipart([client_ident, b"camera_ready"])
 num_cam = camera.num_cameras
 
 camera.start()
-last_frame = -1
-last_image = None
-
-selected_frame = []
+last_frame_ind = [-1 for _ in range(num_cam)]
+save_flag = [False for _ in range(num_cam)]
+save_finish = True
 
 threading.Thread(target=listen_for_commands, daemon=True).start()
-while not should_exit:
-    if camera.frame_num[0] != last_frame:
-        last_frame = camera.frame_num[0]
-        with camera.locks[0]:
-            last_image = camera.image_array[0].copy()
-        detect_result = detect_charuco(last_image, board_info)
 
-        for board_id, result in detect_result.items():
-            is_save = should_save(result)
-            if is_save:
-                board_corner_list.append(result["checkerCorner"])
-            detect_result[board_id]["save"] = is_save
-        
-            for data_name in ["checkerCorner", "checkerIDs"]:
-                detect_result[board_id][data_name] = detect_result[board_id][data_name].tolist()
+while not should_exit:
+    for i in range(num_cam):
+        if camera.frame_num[i] == last_frame_ind[i]:
+            continue
+
+        last_frame_ind[i] = camera.frame_num[i]
+        with camera.locks[i]:
+            last_image = camera.image_array[i].copy()
+        detect_result = detect_charuco(last_image, board_info)
+        merged_detect_result = merge_charuco_detection(detect_result, board_info)
+
+        serial_num = camera.serial_list[i]
+        merged_detect_result["save"] = save_flag[i]
+            
+        if save_flag[i]:
+            np.save(os.path.join(shared_dir, "extrinsic", cur_filename, current_index, serial_num + "_cor.npy"), merged_detect_result["checkerCorner"])
+            np.save(os.path.join(shared_dir, "extrinsic", cur_filename, current_index, serial_num + "_id.npy"), merged_detect_result["checkerIDs"])
+        save_flag[i] = False
+
+        for data_name in ["checkerCorner", "checkerIDs"]:
+            merged_detect_result[data_name] = merged_detect_result[data_name].tolist()
+
         msg_dict = {
-            "frame": int(last_frame),
-            "detect_result": detect_result,
-            # "image": last_image.tolist(),
+            "frame": int(last_frame_ind[i]),
+            "detect_result": merged_detect_result,
             "type": "charuco"
         }
         msg_json = json.dumps(msg_dict)
 
         if client_ident is not None:
             socket.send_multipart([client_ident, msg_json.encode()])
+    
+    all_saved = True
+    for i in range(num_cam):
+        if save_flag[i]:
+            all_saved = False
+            break
+    if all_saved and not save_finish:
+        socket.send_multipart([client_ident, b"save_finish"])
+        save_finish = True
+        
+    time.sleep(0.01)
 
-        time.sleep(0.01)
-
-selected_frame = np.array(selected_frame)
-datetime_str = time.strftime("%Y%m%d_%H%M%S")
-
-os.makedirs(os.path.join(shared_dir, "intrinsic", serial_num), exist_ok=True)
-np.save(os.path.join(shared_dir, "intrinsic", serial_num, datetime_str + ".npy"), selected_frame)
 camera.end()
 camera.quit()
 

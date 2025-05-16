@@ -61,13 +61,9 @@ socket.bind("tcp://*:5556")
 board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
 
 camera = CameraManager("stream", path=None, serial_list=[serial_num], syncMode=False)
-num_cam = camera.num_cameras
-
 camera.start()
-last_frame = -1
-last_image = None
 
-selected_frame = []
+last_frame = -1
 
 threading.Thread(target=listen_for_commands, daemon=True).start()
 while not should_exit:
@@ -98,11 +94,11 @@ while not should_exit:
 
         time.sleep(0.01)
 
-selected_frame = np.array(selected_frame)
+board_corner_list = np.array(board_corner_list)
 datetime_str = time.strftime("%Y%m%d_%H%M%S")
 
 os.makedirs(os.path.join(shared_dir, "intrinsic", serial_num), exist_ok=True)
-np.save(os.path.join(shared_dir, "intrinsic", serial_num, datetime_str + ".npy"), selected_frame)
+np.save(os.path.join(shared_dir, "intrinsic", serial_num, datetime_str + ".npy"), board_corner_list)
 camera.end()
 camera.quit()
 

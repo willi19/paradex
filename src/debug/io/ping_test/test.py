@@ -29,7 +29,7 @@ def wait_for_keypress(socket):
             
 
 pc_info = json.load(open(os.path.join(config_dir, "environment", "pc.json"), "r"))
-pc_name = pc_info.keys()[0]
+pc_name = list(pc_info.keys())[0]
 ip = pc_info[pc_name]["ip"]
 
 print("PC Name:", pc_name)
@@ -37,7 +37,7 @@ print("PC Name:", pc_name)
 git_pull("merging", [pc_name]) 
 print(f"[{pc_name}] Git pull complete.")
 
-run_script(os.path.join(f"python src/debug/io/ping_test.py"), [pc_name])  # 명령 수신 대기
+run_script(os.path.join(f"python src/debug/io/ping_test/client.py"), [pc_name])  # 명령 수신 대기
 print(f"[{pc_name}] Client script started.")
 
 context = zmq.Context()

@@ -37,8 +37,8 @@ def should_save(result):
         return False
     
     for board_corner in board_corner_list:
-        dist = np.linalg.norm(corner - board_corner, axis=1).sum()
-        if dist < 0.1:
+        dist = np.linalg.norm(corner - board_corner, axis=1).mean()
+        if dist < 10:
             return False
 
     return True

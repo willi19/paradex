@@ -1,5 +1,5 @@
 import zmq
-from paradex.utils.file_io import config_dir
+from paradex.utils.file_io import config_dir, shared_dir
 import json
 import os
 from paradex.io.camera.camera_loader import CameraManager
@@ -98,6 +98,9 @@ while not should_exit:
 
         time.sleep(0.01)
 
+selected_frame = np.array(selected_frame)
+datetime_str = time.strftime("%Y%m%d_%H%M%S")
+np.save(os.path.join(shared_dir, "intrinsic", serial_num, datetime_str + ".npy"), selected_frame)
 camera.end()
 camera.quit()
 

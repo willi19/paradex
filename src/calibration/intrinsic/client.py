@@ -100,6 +100,8 @@ while not should_exit:
 
 selected_frame = np.array(selected_frame)
 datetime_str = time.strftime("%Y%m%d_%H%M%S")
+
+os.makedirs(os.path.join(shared_dir, "intrinsic", serial_num), exist_ok=True)
 np.save(os.path.join(shared_dir, "intrinsic", serial_num, datetime_str + ".npy"), selected_frame)
 camera.end()
 camera.quit()

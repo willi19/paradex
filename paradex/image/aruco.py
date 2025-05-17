@@ -81,18 +81,14 @@ def merge_charuco_detection(detection_list, boardinfo):
     if len(detected_corners) > 0:
         detected_corners = np.concatenate(detected_corners, axis=0)
         detected_ids = np.concatenate(detected_ids, axis=0)
-        detected_mids = np.concatenate(detected_mids, axis=0)
     
     else:
         detected_corners = np.array([])
         detected_ids = np.array([])
-        detected_mids = np.array([])
 
     return {
         "checkerCorner": detected_corners,
         "checkerIDs": detected_ids,
-        # "markerCorner": detected_markers,
-        # "markerIDs": detected_mids
     }
 
 def detect_charuco(img, boardinfo):

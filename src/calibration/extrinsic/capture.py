@@ -6,7 +6,7 @@ import json
 import time
 import zmq
 import os
-from paradex.utils.file_io import config_dir
+from paradex.utils.file_io import config_dir, shared_dir
 from paradex.io.capture_pc.connect import git_pull, run_script
 import math
 
@@ -31,6 +31,8 @@ saved_corner_img = {serial_num:np.zeros((1536, 2048, 3), dtype=np.uint8) for ser
 cur_state = {serial_num:(np.array([]), np.array([])) for serial_num in serial_list}
 capture_idx = 0
 capture_state = {pc: False for pc in pc_info.keys()}
+
+filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
 def draw_charuco_corners_custom(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids=None):
     for i in range(len(corners)):
@@ -125,7 +127,8 @@ def main_ui_loop():
                     send_capture = False
                     break
             if send_capture:
-                global capture_idx
+                global capture_idx, filename
+                os.makedirs(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx)), exist_ok=True)
                 for pc, socket in socket_dict.items():
                     socket.send_string(f"capture:{capture_idx}")
                     capture_state[pc] = True
@@ -149,8 +152,6 @@ try:
         if socket_dict[pc_name].recv_string() == "registered":
             print(f"[{pc_name}] Registered.")
         
-        filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-        
         socket_dict[pc_name].send_string("filename:" + filename)
 
     # Start per-socket listener
@@ -160,8 +161,8 @@ try:
     # Main UI loop
     main_ui_loop()
 
-except:
-    
+except Exception as e:
+    print(e)
     for pc_name, sock in socket_dict.items():
         sock.send_string("quit")
         sock.close()

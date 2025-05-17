@@ -106,7 +106,8 @@ while not should_exit:
         msg_dict = {
             "frame": int(last_frame_ind[i]),
             "detect_result": merged_detect_result,
-            "type": "charuco"
+            "type": "charuco",
+            "serial_num": serial_num,
         }
         msg_json = json.dumps(msg_dict)
 

@@ -1,23 +1,12 @@
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from dex_robot.io.robot_controller import XArmController, AllegroController, InspireController
-from dex_robot.io.xsens.receiver import XSensReceiver
-from dex_robot.io.contact.receiver import SerialReader
-from dex_robot.io.camera.camera_loader import CameraManager
-from dex_robot.io.robot_controller import retarget
-
-from dex_robot.utils.file_io import rsc_path, capture_path, shared_path
-
-from paradex.utils.io import find_latest_index, find_latest_directory
+from paradex.io.robot_controller import XArmController, AllegroController, InspireController
+from paradex.io.camera.camera_loader import CameraManager
 
 import time
-import threading
 import os
 import chime
-import argparse
-import json
-import shutil
 import transforms3d as t3d
 
 hand_name = None # "allegro"

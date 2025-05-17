@@ -12,7 +12,7 @@ import sys
 should_exit = False 
 client_ident = None 
 current_index = 0 
-cur_filename = None
+cur_filename = "asdf"
 
 def listen_for_commands():
     global should_exit, client_ident
@@ -20,12 +20,7 @@ def listen_for_commands():
         ident, msg = socket.recv_multipart()
         msg = msg.decode()
 
-        if msg == "register":
-            client_ident = ident  # ← bytes 그대로 저장
-            socket.send_multipart([client_ident, b"registered"])
-            print(f"[Server] Client registered: {ident.decode()}")
-
-        elif msg == "quit":
+        if msg == "quit":
             print(f"[Server] Received quit from client")
             should_exit = True
             break
@@ -39,14 +34,34 @@ def listen_for_commands():
             current_index = index
             save_finish = False
         
-        elif msg.startswith("filename"):
-            global cur_filename
-            _, filename = msg.split(":")
-            cur_filename = filename
+        else:
+            print(f"[Server] Unknown command: {msg}")
+            continue
+        
 
 context = zmq.Context()
 socket = context.socket(zmq.ROUTER)
 socket.bind("tcp://*:5556")
+
+ident, msg = socket.recv_multipart()
+msg = msg.decode()
+
+if msg == "register":
+    client_ident = ident  # ← bytes 그대로 저장
+    socket.send_multipart([client_ident, b"registered"])
+    print(f"[Server] Client registered: {ident.decode()}")
+
+else:
+    sys.exit(1)
+
+ident, msg = socket.recv_multipart()
+msg = msg.decode()
+
+if msg.startswith("filename"):
+    _, cur_filename = msg.split(":")
+
+else:
+    sys.exit(1)
 
 board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
 
@@ -106,7 +121,7 @@ while not should_exit:
     if all_saved and not save_finish:
         socket.send_multipart([client_ident, b"save_finish"])
         save_finish = True
-        
+
     time.sleep(0.01)
 
 camera.end()

@@ -1,7 +1,7 @@
-from paradex.simulate.simulator import simulator
+from paradex.simulator.isaac import simulator
 import numpy as np
 from scipy.spatial.transform import Rotation
-from paradex.xsens.receiver import XSensReceiver
+from paradex.io.xsens.receiver import XSensReceiver
 from paradex.io.xsens import hand_index
 
 home_wrist_pose = np.load("data/home_pose/allegro_eef_frame.npy")
@@ -86,7 +86,7 @@ def main():
     port = 9763
 
     xsens_updater = XSensReceiver()
-    xsens_updater.init_server(host, port)
+    # xsens_updater.init_server(host, port)
 
     traj_cnt = 5
 

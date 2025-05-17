@@ -2,7 +2,7 @@
 import argparse
 import os
 import json
-from paradex.utils.file_io import config_dir, home_path
+from paradex.utils.file_io import config_dir, home_path, shared_dir
 import zmq
 from paradex.io.capture_pc.connect import git_pull, run_script
 import os
@@ -21,63 +21,59 @@ BOARD_COLORS = [
     (0, 255, 255),   # 노랑
     (128, 128, 255)  # 연보라
 ]
+current_index = 0
+save_finish = True
 
-def get_pc_info(serial_num):
-    pc_info = json.load(open(os.path.join(config_dir, "environment", "pc.json"), "r"))
-
-    pc_name = None
-    for pc in pc_info.keys():
-        if serial_num in pc_info[pc]['cam_list']:
-            pc_name = pc
-            break
-
-    if pc_name is None:
-        raise ValueError(f"Serial number {serial_num} not found in PC list.")
-    
-    return pc_name, pc_info[pc_name]['ip']
-
-def wait_for_keypress(socket):
+def wait_for_keypress(socket_dict):
     while True:
         key = sys.stdin.read(1)
-        if key == 'q':
-            print("[Server] Quitting...")
-            socket.send_string("quit")
-            break
+        for pc_name, socket in socket_dict.items():
+            if key == 'q':
+                print("[Server] Quitting...")
+                socket.send_string("quit")
+                break
             
-parser = argparse.ArgumentParser(description="Capture intrinsic camera calibration.")
-parser.add_argument(
-    "--serial",
-    type=str,
-    required=True,
-    help="Directory to save the video.",
-)
+            if key == 'c':
+                global current_index, save_finish
 
-args = parser.parse_args()
-serial_num = args.serial
+                print("[Server] Capture command received.")
+                if not save_finish:
+                    print("[Server] Capture command already in progress.")
+                    continue
+                
+                socket.send_string(f"capture:{current_index}")
+                current_index += 1
 
-pc_name, ip = get_pc_info(serial_num)
-print("PC Name:", pc_name)
+pc_info = json.load(open(os.path.join(config_dir, "environment", "pc.json"), "r"))
 
-git_pull("merging", [pc_name]) 
-print(f"[{pc_name}] Git pull complete.")
+for pc_name in pc_info.keys():
+    git_pull("merging", [pc_name]) 
+    print(f"[{pc_name}] Git pull complete.")
 
-run_script(os.path.join(f"python src/calibration/intrinsic/client.py --serial {serial_num}"), [pc_name])  # 명령 수신 대기
+for pc_name in pc_info.keys():
+    run_script(os.path.join(f"python src/calibration/extrinsic/client.py"), [pc_name])  # 명령 수신 대기
+
 print(f"[{pc_name}] Client script started.")
 
-context = zmq.Context()
-socket = context.socket(zmq.DEALER)
-socket.identity = b"server"
-socket.connect(f"tcp://{ip}:5556")  # 서버 IP로 연결
+socket_dict = {}
+for pc_name in pc_info.keys():
+    ip = pc_info[pc_name]["ip"]
+    context = zmq.Context()
+    socket_dict[pc_name] = context.socket(zmq.DEALER)
+    socket_dict[pc_name].identity = b"server"
+    socket_dict[pc_name].connect(f"tcp://{ip}:5556")  # 서버 IP로 연결
 
-socket.send_string("register")
-msg = socket.recv_string()
+    socket_dict[pc_name].send_string("register")
+    msg = socket_dict[pc_name].recv_string()
 
-if msg == "registered":
-    print("[Client] Registration complete, starting detection loop...")
-else:
-    print("[Client] Registration failed.")
+    if msg == "registered":
+        print("[Client] Registration complete, starting detection loop...")
+    else:
+        print("[Client] Registration failed.")
+    filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+    socket_dict[pc_name].send_string("filename:"+filename)
 
-threading.Thread(target=wait_for_keypress, args=(socket,), daemon=True).start()  
+threading.Thread(target=wait_for_keypress, args=(socket_dict,), daemon=True).start()  
 saved_board_corners = []
 
 def draw_charuco_corners_custom(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids=None):

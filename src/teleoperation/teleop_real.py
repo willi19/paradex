@@ -135,7 +135,6 @@ def main():
             if state == -1: # Xsens not ready
                 continue
 
-            state = 0
             if state == 0 or state == 3:
                 if activate_start_time == -1:
                     activate_start_time = time.time()

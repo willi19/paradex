@@ -97,10 +97,10 @@ while not should_exit:
         
         if merged_detect_result["checkerIDs"].size != 0:
             print(f"[{serial_num}] Detected {len(merged_detect_result['checkerIDs'])} corners")
-            
+
         if save_flag[i]:
-            np.save(os.path.join(shared_dir, "extrinsic", cur_filename, current_index, serial_num + "_cor.npy"), merged_detect_result["checkerCorner"])
-            np.save(os.path.join(shared_dir, "extrinsic", cur_filename, current_index, serial_num + "_id.npy"), merged_detect_result["checkerIDs"])
+            np.save(os.path.join(shared_dir, "extrinsic", cur_filename, str(current_index), serial_num + "_cor.npy"), merged_detect_result["checkerCorner"])
+            np.save(os.path.join(shared_dir, "extrinsic", cur_filename, str(current_index), serial_num + "_id.npy"), merged_detect_result["checkerIDs"])
         save_flag[i] = False
 
         for data_name in ["checkerCorner", "checkerIDs"]:

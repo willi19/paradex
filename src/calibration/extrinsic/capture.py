@@ -41,19 +41,17 @@ def draw_charuco_corners_custom(image, corners, color=(0, 255, 255), radius=4, t
 def listen_socket(pc_name, socket):
     while True:
         msg = socket.recv_string()
-        str_msg = msg.decode()
-
-        if str_msg == "terminated":
+        if msg == "terminated":
             terminate_dict[pc_name] = True
             print(f"[{pc_name}] Terminated.")
             break
         
-        elif str_msg == "camera_ready":
+        elif msg == "camera_ready":
             start_dict[pc_name] = True
             print(f"[{pc_name}] Camera ready.")
             continue
         
-        elif str_msg == "camera_error":
+        elif msg == "camera_error":
             print(f"[{pc_name}] Camera error.")
             terminate_dict[pc_name] = True
             continue
@@ -65,6 +63,7 @@ def listen_socket(pc_name, socket):
             continue
         
         serial_num = data["serial_num"]
+        print(data)
         if data.get("type") == "charuco":
             result = data["detect_result"]
             corners = np.array(result["checkerCorner"], dtype=np.float32)
@@ -114,14 +113,12 @@ def main_ui_loop():
                 socket.send_string("capture")
 
 # Git pull and client run
-for pc_name in pc_info.keys():
-    git_pull("merging", [pc_name])
-    run_script("python src/calibration/extrinsic/client.py", [pc_name])
-
+pc_list = list(pc_info.keys())
+git_pull("merging", pc_list)
+run_script("python src/calibration/extrinsic/client.py", pc_list)
 
 for pc_name, info in pc_info.items():
     ip = info["ip"]
-    
     sock = context.socket(zmq.DEALER)
     sock.identity = b"server"
     sock.connect(f"tcp://{ip}:5556")
@@ -130,19 +127,13 @@ for pc_name, info in pc_info.items():
 try:
     # Register clients and open sockets
     for pc_name, info in pc_info.items():
-        ip = info["ip"]
-        socket_dict[pc_name] = context.socket(zmq.DEALER)
-        socket_dict[pc_name].identity = b"server"
-        socket_dict[pc_name].connect(f"tcp://{ip}:5556")
-
-        sock.send_string("register")
-        if sock.recv_string() == "registered":
+        socket_dict[pc_name].send_string("register")
+        if socket_dict[pc_name].recv_string() == "registered":
             print(f"[{pc_name}] Registered.")
         
         filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
         
-        sock.send_string("filename:" + filename)
-        socket_dict[pc_name] = sock
+        socket_dict[pc_name].send_string("filename:" + filename)
     
     # Start per-socket listener
     for pc_name, sock in socket_dict.items():

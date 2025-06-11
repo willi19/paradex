@@ -22,6 +22,9 @@ parser.add_argument(
 
 args = parser.parse_args()
 
+num_trial = 20
+sample_size = 100
+
 serial_num = args.serial
 root_path = os.path.join(shared_dir, "intrinsic", serial_num)
 kypt_path = os.path.join(root_path, "keypoint")
@@ -42,24 +45,22 @@ objp *= square_size
 
 tot_objp = np.array([objp] * len(kypt))
 tot_imgp = np.array([corners.reshape(-1, 2) for corners in kypt])
-# --- Perform camera calibration ---
-image_size = (2048, 1536)  
-ret, K, dist, rvecs, tvecs = cv2.calibrateCamera(
-    tot_objp, tot_imgp, image_size, None, None
-)
-print(f"Calibration RMS error: {ret}")
-print(f"Intrinsic matrix K:\n{K}")
-print(f"Distortion coefficients:\n{dist.flatten()}")
 
-intrinsics_data = {
-    "RMS_error": ret,
-    "K": K.tolist(),
-    "distortion": dist.flatten().tolist(),
-    "width": image_size[0],
-    "height": image_size[1]
-}
+dist_list = []
+K_list = []
 
-file_name = date.split(".")[0]
+for _ in range(num_trial):
+    # --- Perform camera calibration ---
+    image_size = (2048, 1536)  
+    index = np.random.choice(len(tot_objp), sample_size, replace=False)
+    ret, K, dist, rvecs, tvecs = cv2.calibrateCamera(
+        tot_objp[index], tot_imgp[index], image_size, None, None
+    )
+    dist_list.append(dist.flatten())
+    K_list.append(K)
 
-with open(f"{root_path}/param/{file_name}.json", "w") as f:
-    json.dump(intrinsics_data, f, indent=4)
+print(np.mean(dist_list, axis=0))
+print(np.std(dist_list, axis=0))
+
+print(np.mean(K_list, axis=0))
+print(np.std(K_list, axis=0))

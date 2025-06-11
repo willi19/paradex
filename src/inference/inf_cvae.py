@@ -5,7 +5,7 @@ import os.path
 import time
 import sys
 import shutil
-from paradex.utils.file_io import shared_path
+from paradex.utils.file_io import shared_dir
 
 import trimesh.sample
 
@@ -18,6 +18,7 @@ import torch.nn as nn
 from paradex.model.PointNetCVAE import PointNetCVAE
 import numpy as np
 from paradex.model.get_models import get_handmodel
+from scipy.spatial.transform import Rotation as R
 
 def get_parser():
     parser = argparse.ArgumentParser()
@@ -56,7 +57,7 @@ if __name__ == '__main__':
                        'identity': identity_map}
     pre_process_contact_map_goal = pre_process_map[args.pre_process]
 
-    logs_basedir = os.path.join(shared_path, "inference", f'{args.name}', f'{args.index}', 'contact_map')
+    logs_basedir = os.path.join(shared_dir, "inference", f'{args.name}', f'{args.index}', 'contact_map')
     os.makedirs(logs_basedir, exist_ok=True)
 
     device = "cuda"
@@ -76,10 +77,18 @@ if __name__ == '__main__':
     object_index = args.index
     
     object_mesh: tm.Trimesh
-    object_mesh = tm.load(os.path.join(shared_path, 'mesh', f'{args.name}.ply'))
+    object_mesh = tm.load(os.path.join(shared_dir, 'mesh', f'{args.name}.ply'))
 
-    wrist_T = np.load(os.path.join(shared_path, 'contact_map', args.name, args.index, "wrist_T.npy"))
-    object_T = np.load(os.path.join(shared_path, 'contact_map', args.name, args.index, "object_pose.npy"))
+    wrist_T = np.load(os.path.join(shared_dir, 'contact_map', args.name, args.index, "wrist_T.npy"))
+    rot_mat = wrist_T[:3, :3]
+
+    # 180도 회전 행렬 (예: Z축 기준)
+    R_flip = R.from_euler('X', 180, degrees=True).as_matrix()
+
+    # 적용
+    wrist_T[:3, :3] = rot_mat @ R_flip
+
+    object_T = np.load(os.path.join(shared_dir, 'contact_map', args.name, args.index, "object_pose.npy"))
 
     gen_grasp_offset = np.zeros((4, 4))
     gen_grasp_offset[2, 0] = -1
@@ -90,8 +99,6 @@ if __name__ == '__main__':
     gen_grasp_offset[3, 3] = 1
     
     object_T = np.linalg.inv(wrist_T) @ object_T# @ gen_grasp_offset
-    # object_T[:3,:3] = object_T[:3,:3] @ gen_grasp_offset[:3,:3]
-    # object_T[:3, 3] = gen_grasp_offset[:3, :3] @ object_T[:3, 3]
     object_mesh.apply_transform(object_T)
 
     for i_sample in range(args.num):

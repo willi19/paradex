@@ -5,3 +5,8 @@ cam_param/*
 *.png
 *.jpg
 data/*
+state/*
+video/*
+data_Icra/*
+grasp/*
+replay/*

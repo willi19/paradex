@@ -114,3 +114,39 @@ class RobotWrapper:
             pose: pin.SE3 = self.data.oMf[link_id]
             link_poses[frame.name] = pose.homogeneous
         return link_poses
+
+    def solve_ik(
+        self,
+        target_pose: npt.NDArray,
+        end_effector_name: str,
+        q_init: npt.NDArray = None,
+        max_iter: int = 1000,
+        tol: float = 1e-7,
+        alpha: float = 5e-2,
+    ) -> npt.NDArray:
+        q = q_init.copy()
+        link_id = self.get_link_index(end_effector_name)
+
+        target_se3 = pin.SE3(target_pose[:3, :3], target_pose[:3, 3])
+        q_min = self.model.lowerPositionLimit
+        q_max = self.model.upperPositionLimit
+
+        for i in range(max_iter):
+            self.compute_forward_kinematics(q)
+            current_se3 = pin.updateFramePlacement(self.model, self.data, link_id)
+
+            # 6D error: log(target⁻¹ * current)
+            error = pin.log(target_se3.inverse() * current_se3).vector
+            if np.linalg.norm(error) < tol:
+                return q, True
+
+            J = pin.computeFrameJacobian(self.model, self.data, q, link_id)
+            lambda_ = 1e-6
+            JTJ = J.T @ J + lambda_ * np.eye(J.shape[1])
+            delta_q = -np.linalg.solve(JTJ, J.T @ error)
+
+            q = self.integrate(q, delta_q, alpha)
+
+            q = np.clip(q, q_min, q_max)
+
+        return q, False

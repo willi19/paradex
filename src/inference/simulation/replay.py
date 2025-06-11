@@ -12,7 +12,7 @@ obj_name = "clock"
 save_video = False
 save_state = False
 view_physics = True
-view_replay = True
+view_replay = False
 headless = False
 
 simulator = simulator(
@@ -34,21 +34,12 @@ for demo_name in ["0"]:
     wrist_T = np.load(os.path.join(shared_dir, 'contact_map', obj_name, demo_name, "wrist_T.npy"))
     obj_T = np.load(os.path.join(shared_dir, 'contact_map', obj_name, demo_name, "object_pose.npy"))
     
-    rot_mat = wrist_T[:3, :3]
-
-    # 180도 회전 행렬 (예: Z축 기준)
-    # R_flip = R.from_euler('X', 180, degrees=True).as_matrix()
-
-    # 적용
-    # wrist_T[:3, :3] = rot_mat @ R_flip
-
-
-    logs_basedir = os.path.join(shared_dir, "inference", f'{obj_name}', f'{demo_name}', 'grasp_pose_10')
-    q_target = np.load(os.path.join(logs_basedir, f'8_{int(learning_rate*1000)}_squeeze.npy'))
-    q_pose = np.load(os.path.join(logs_basedir, f'8.npy'))
+    # logs_basedir = os.path.join(shared_dir, "inference", f'{obj_name}', f'{demo_name}', 'grasp_pose')
+    q_target = np.load(os.path.join(os.path.join(shared_dir, 'contact_map', obj_name, demo_name, "robot_action.npy")))
+    q_pose = np.load(os.path.join(os.path.join(shared_dir, 'contact_map', obj_name, demo_name, "robot_pose.npy")))
     q_pregrasp = 2 * q_pose - q_target
     
-    T = 100
+    T = 200
 
     c2r = load_c2r(os.path.join(demo_path, demo_name))
     # obj_T = np.linalg.inv(c2r) @ obj_T
@@ -57,27 +48,29 @@ for demo_name in ["0"]:
     
     robot_action[:3] = wrist_T[:3, 3]
     robot_action[3:6] = R.from_matrix(wrist_T[:3, :3]).as_euler('XYZ')
-
     robot_pose = np.zeros((22))
     robot_pose[:3] = wrist_T[:3, 3]
     robot_pose[3:6] = R.from_matrix(wrist_T[:3, :3]).as_euler('XYZ')
 
-    import pdb; pdb.set_trace()
+    robot_action[6:] = q_pregrasp
+    robot_pose[6:] = q_pregrasp
+
+    for step in range(50):
+        simulator.step(robot_pose, robot_action, obj_T)
+        
 
     for step in range(T):
         action = (q_pregrasp * (1 - step / T) 
-                 + q_target * (step / T))
+                 + q * (step / T))
         robot_action[6:] = action
         robot_pose[6:] = action
-        # if step >= T // 2:
-        #     robot_pose[6:] = q_pose
+        if step >= T // 2:
+            robot_pose[6:] = q_pose
 
         simulator.step(robot_action, robot_pose, obj_T)#robot_traj[step], obj_traj[step])
         
     for step in range(200):
         robot_action[2] += 0.001
         robot_pose[2] += 0.001
-
-        obj_T[2, 3] += 0.001
         simulator.step(robot_action, robot_pose, obj_T)
 

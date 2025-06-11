@@ -48,7 +48,6 @@ parser.add_argument(
     "--serial",
     type=str,
     required=True,
-    help="Directory to save the video.",
 )
 
 args = parser.parse_args()
@@ -97,8 +96,8 @@ while not should_exit:
 board_corner_list = np.array(board_corner_list)
 datetime_str = time.strftime("%Y%m%d_%H%M%S")
 
-os.makedirs(os.path.join(shared_dir, "intrinsic", serial_num), exist_ok=True)
-np.save(os.path.join(shared_dir, "intrinsic", serial_num, datetime_str + ".npy"), board_corner_list)
+os.makedirs(os.path.join(shared_dir, "intrinsic", "keypoint", serial_num), exist_ok=True)
+np.save(os.path.join(shared_dir, "intrinsic", "keypoint", serial_num, datetime_str + ".npy"), board_corner_list)
 camera.end()
 camera.quit()
 

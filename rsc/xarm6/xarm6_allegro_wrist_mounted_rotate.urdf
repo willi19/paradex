@@ -433,7 +433,6 @@
       <geometry>
         <mesh filename="meshes/allegro/primary_proximal.STL"/>
       </geometry>
-      <origin rpy="0 0 0" xyz="0 0 0.027"/>
     </collision>
     <inertial>
       <mass value="0.0712"/>

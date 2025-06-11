@@ -1,7 +1,7 @@
 import argparse
 import os
 import numpy as np
-from paradex.utils.file_io import shared_path, rsc_path, load_c2r
+from paradex.utils.file_io import shared_dir, rsc_path, load_c2r
 from paradex.visualization.grid_image import grid_image
 from paradex.robot.robot_wrapper import RobotWrapper
 import json
@@ -16,11 +16,11 @@ if __name__ == "__main__":
 
     robot = RobotWrapper(os.path.join(rsc_path, "xarm6", "xarm6_allegro_wrist_mounted_rotate.urdf"))
 
-    name_list = [args.name] if args.name else os.listdir(os.path.join(shared_path, 'processed'))
+    name_list = [args.name] if args.name else os.listdir(os.path.join(shared_dir, 'processed'))
     for name in name_list:
-        root_path = os.path.join(shared_path, 'processed', name)
+        root_path = os.path.join(shared_dir, 'processed', name)
         # index_list = os.listdir(root_path)
-        index_list = ["0"]
+        index_list = ["4"]
         for index in index_list:
             grasp_info_path = os.path.join(root_path, index, 'grasp_info.json')
             if not os.path.exists(grasp_info_path):
@@ -70,7 +70,7 @@ if __name__ == "__main__":
             if grasp_info['success'] == 0 or grasp_info['success'] == -1:
                 continue
                 
-            os.makedirs(os.path.join(shared_path, 'contact_map', name, index), exist_ok=True)
+            os.makedirs(os.path.join(shared_dir, 'contact_map', name, index), exist_ok=True)
             
             contact_value = np.load(os.path.join(root_path, index, 'contact', 'data.npy'))
             contact_value = np.mean(contact_value[start:end+1], axis=0) - contact_value[0]
@@ -80,9 +80,9 @@ if __name__ == "__main__":
             robot_pose = np.load(os.path.join(root_path, index, 'hand', 'state.npy'))
             robot_action = np.load(os.path.join(root_path, index, 'hand', 'action.npy'))
 
-            np.save(os.path.join(shared_path, 'contact_map', name, index, 'contact.npy'), contact_value)
-            np.save(os.path.join(shared_path, 'contact_map', name, index, 'robot_pose.npy'), robot_pose[pose_idx])
-            np.save(os.path.join(shared_path, 'contact_map', name, index, 'robot_action.npy'), robot_action[pose_idx])
+            np.save(os.path.join(shared_dir, 'contact_map', name, index, 'contact.npy'), contact_value)
+            np.save(os.path.join(shared_dir, 'contact_map', name, index, 'robot_pose.npy'), robot_pose[pose_idx])
+            np.save(os.path.join(shared_dir, 'contact_map', name, index, 'robot_action.npy'), robot_action[pose_idx])
 
             # Todo add ContactMap N x (3 + segment * 2)
             
@@ -97,7 +97,6 @@ if __name__ == "__main__":
             # wrist_T = c2r @ wrist_T
 
             obj_pose = pickle.load(open(os.path.join(root_path, index, 'object_tracking', 'trajectory.pickle'), 'rb'))
-            import pdb; pdb.set_trace()
             obj_pose = np.linalg.inv(c2r) @ obj_pose[pose_idx]
-            np.save(os.path.join(shared_path, 'contact_map', name, index, 'object_pose.npy'), obj_pose)#[pose_idx])
-            np.save(os.path.join(shared_path, 'contact_map', name, index, 'wrist_T.npy'), wrist_T)
+            np.save(os.path.join(shared_dir, 'contact_map', name, index, 'object_pose.npy'), obj_pose)#[pose_idx])
+            np.save(os.path.join(shared_dir, 'contact_map', name, index, 'wrist_T.npy'), wrist_T)

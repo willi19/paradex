@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 from paradex.visualization.visualize_plotly import plot_point_cloud, plot_point_cloud_cmap, plot_mesh_from_name
 from paradex.model.set_seed import set_global_seed
 from torch.utils.tensorboard import SummaryWriter
-from paradex.utils.file_io import shared_path
+from paradex.utils.file_io import shared_dir
 import numpy as np
 from paradex.model.get_models import get_handmodel
 
@@ -44,7 +44,7 @@ def visualize_results(object_point_clouds, cmap_values, hand_model, qpos, save_p
 
 
 def set_normal_force_pose(object_pts, opt_q_angle, hand_model, device, learning_rate):
-    step_size = 0.05
+    step_size = 0.1
     contact_threshold = 0.005
     num_object_pts = object_pts.shape[0]
 
@@ -81,8 +81,8 @@ if __name__ == '__main__':
     torch.set_printoptions(precision=4, sci_mode=False, edgeitems=8)
     args, time_tag = get_parser()
     
-    basedir = os.path.join(shared_path, 'inference', args.name, args.index)
-    logs_basedir = os.path.join(basedir, 'grasp_pose')
+    basedir = os.path.join(shared_dir, 'inference', args.name, args.index)
+    logs_basedir = os.path.join(basedir, 'grasp_pose_10')
 
     os.makedirs(logs_basedir, exist_ok=True)
 
@@ -106,7 +106,7 @@ if __name__ == '__main__':
         object_name = cmap_dataset['object_name']
         object_point_cloud = cmap_dataset['object_point_cloud']
         i_sample = cmap_dataset['i_sample']
-        if i_sample != 3:
+        if i_sample not in [3, 8]:
             continue
 
         contact_map_value = cmap_dataset['contact_map_value']
@@ -121,11 +121,11 @@ if __name__ == '__main__':
         min_ind = energy.min(dim=0)[1]
         np.save(os.path.join(logs_basedir, f'{i_sample}.npy'), q_tra[min_ind, -1, :].cpu().numpy())
 
+        q_opt = np.load(os.path.join(basedir, 'grasp_pose_10', f'{i_sample}.npy'))
+        q_opt = torch.tensor(q_opt).float().to(device)
         visualize_results(object_point_cloud, contact_map_value[:,0], handmodel, q_opt, os.path.join(logs_basedir, f'{i_sample}.html'))
 
-        for learning_rate in [0.01, 0.05, 0.1, 0.5]:
-            q_opt = np.load(os.path.join(basedir, 'grasp_pose', f'{i_sample}.npy'))
-            q_opt = torch.tensor(q_opt).float().to(device)
+        for learning_rate in [0.01, 0.05]:
             squeeze_pose = set_normal_force_pose(object_point_cloud[:,:3], q_opt.unsqueeze(0), handmodel, device, learning_rate)
             visualize_results(object_point_cloud, contact_map_value[:,0], handmodel, squeeze_pose[0], os.path.join(logs_basedir, f'{i_sample}_{int(learning_rate*1000)}_squeeze.html'))
 

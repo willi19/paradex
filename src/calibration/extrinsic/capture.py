@@ -28,7 +28,7 @@ terminate_dict = {pc: False for pc in pc_info.keys()}
 start_dict = {pc: False for pc in pc_info.keys()}
 
 saved_corner_img = {serial_num:np.zeros((1536, 2048, 3), dtype=np.uint8) for serial_num in serial_list}
-cur_state = {serial_num:(np.array([]), np.array([])) for serial_num in serial_list}
+cur_state = {serial_num:(np.array([]), np.array([]), 0) for serial_num in serial_list}
 capture_idx = 0
 capture_state = {pc: False for pc in pc_info.keys()}
 
@@ -71,11 +71,11 @@ def listen_socket(pc_name, socket):
             result = data["detect_result"]
             corners = np.array(result["checkerCorner"], dtype=np.float32)
             ids = np.array(result["checkerIDs"], dtype=np.int32).reshape(-1, 1)
-
-            cur_state[serial_num] = (corners, ids)
+            frame = data["frame"]
+            cur_state[serial_num] = (corners, ids, frame)
 
             if result["save"]:
-                draw_charuco_corners_custom(saved_corner_img[serial_num], corners, BOARD_COLORS[0], 5, -1, ids)
+                draw_charuco_corners_custom(saved_corner_img[serial_num], corners, BOARD_COLORS[2], 5, -1, ids)
 
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
@@ -100,9 +100,11 @@ def main_ui_loop():
         grid_image = np.ones((1536+border_px*(grid_rows-1), (2048//grid_rows)*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
         for idx, serial_num in enumerate(serial_list):
             img = saved_corner_img[serial_num].copy()
-            corners, ids = cur_state[serial_num]
+            corners, ids, frame = cur_state[serial_num]
             if corners.shape[0] > 0:
                 draw_charuco_corners_custom(img, corners, BOARD_COLORS[1], 5, -1, ids)
+            img = cv2.putText(img, f"{serial_num} {frame}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 6, (255, 255, 0), 12)
+
             resized_img = cv2.resize(img, (new_W, new_H))
             
             r_idx = idx // grid_cols
@@ -112,6 +114,7 @@ def main_ui_loop():
             c_start = c_idx * (new_W + border_px)
             grid_image[r_start:r_start+resized_img.shape[0], c_start:c_start+resized_img.shape[1]] = resized_img
 
+        grid_image = cv2.resize(grid_image, (int(2048//1.5), int(1536//1.5)))
         cv2.imshow("Grid", grid_image)
         key = cv2.waitKey(1)
         if key == ord('q'):

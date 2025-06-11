@@ -21,9 +21,9 @@ import shutil
 import transforms3d as t3d
 
 hand_name = "inspire"
-arm_name = "xarm"
+arm_name = None# "xarm"
 
-home_wrist_pose = np.array([[0, 1 ,0, 0.5],[0, 0, 1, -0.3],[1, 0, 0, 0.1],[0, 0, 0, 1]])
+home_wrist_pose = np.array([[0, 1 ,0, 0.3],[0, 0, 1, -0.2],[1, 0, 0, 0.2],[0, 0, 0, 1]])
 
 def load_homepose(hand_name):
     if hand_name == "allegro":

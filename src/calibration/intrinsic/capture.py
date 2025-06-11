@@ -123,6 +123,7 @@ while True:
             for saved_corner in saved_board_corners:
                 draw_charuco_corners_custom(image, saved_corner, BOARD_COLORS[0], 5, -1)
 
+            image = cv2.resize(image, (2048 // 2, 1536 // 2))
             cv2.imshow("Charuco Detection", image)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 socket.send_string("quit")

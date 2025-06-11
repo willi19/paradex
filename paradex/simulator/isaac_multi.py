@@ -19,10 +19,12 @@ class simulator:
         fixed=False,
         add_plane=True,
         camera_param=None,
-        contact=None
+        contact=None,
+        num_envs=1
     ):
         self.fixed = fixed
         self.obj_name = obj_name
+        self.num_envs = num_envs
 
         self.view_physics = view_physics
         self.view_replay = view_replay
@@ -35,7 +37,7 @@ class simulator:
 
         self.add_assets(obj_name)
 
-        (self.env, self.actor_handle) = self.load_env()
+        self.load_env()
 
         self.headless = headless
         self.save_video = save_video
@@ -74,7 +76,7 @@ class simulator:
             self.state_path = state_path
             os.makedirs(os.path.dirname(self.state_path), exist_ok=True)
 
-            self.history = {"robot": [], "object": []}
+            self.history = [{"robot": [], "object": []} for _ in range(self.num_envs)]
 
     def set_camera(self, name, camera_position, camera_lookat):
         self.gym.set_camera_location(
@@ -84,15 +86,15 @@ class simulator:
             gymapi.Vec3(*camera_lookat),
         )
 
-    def save_stateinfo(self):
+    def save_stateinfo(self, index):
 
         robot_dof_state = self.gym.get_actor_dof_states(
-            self.env, self.actor_handle["robot"], gymapi.STATE_POS
+            self.env_list[index], self.actor_handle_list[index]["robot"], gymapi.STATE_POS
         )
-        self.history["robot"].append(robot_dof_state["pos"])
+        self.history[index]["robot"].append(robot_dof_state["pos"])
 
         object_rb_state = self.gym.get_actor_rigid_body_states(
-            self.env, self.actor_handle["object"], gymapi.STATE_POS
+            self.env_list[index], self.actor_handle_list[index]["object"], gymapi.STATE_POS
         )
 
         obj_quat = np.array(
@@ -117,35 +119,75 @@ class simulator:
         obj_T[:3, :3] = obj_rotmat
         obj_T[:3, 3] = obj_pos
 
-        self.history["object"].append(obj_T)
+        self.history[index]["object"].append(obj_T)
 
-    def step(self, action, viz_action, obj_pose, sphere_pos=None):
-        if self.obj_name is not None:
-            assert obj_pose.shape == (4, 4)
+    def step(self, action_list, viz_action_list, obj_pose_list):
+        for i in range(self.num_envs):
+            action = action_list[i].astype(np.float32)
+            viz_action = viz_action_list[i].astype(np.float32)
+            obj_pose = obj_pose_list[i].astype(np.float32)
+            
+            env = self.env_list[i]
+            actor_handle = self.actor_handle_list[i]
+            if self.obj_name is not None:
+                assert obj_pose.shape == (4, 4)
 
-            obj_quat = R.from_matrix(obj_pose[:3, :3]).as_quat()
-            obj_pos = obj_pose[:3, 3]
+                obj_quat = R.from_matrix(obj_pose[:3, :3]).as_quat()
+                obj_pos = obj_pose[:3, 3]
 
-        action = action.astype(np.float32)
-        viz_action = viz_action.astype(np.float32)
 
-        if self.view_physics:
-            if self.step_idx == 0:
-                robot_dof_state = self.gym.get_actor_dof_states(
-                    self.env, self.actor_handle["robot"], gymapi.STATE_POS
+            if self.view_physics:
+                if self.step_idx == 0:
+                    robot_dof_state = self.gym.get_actor_dof_states(
+                        env, actor_handle["robot"], gymapi.STATE_POS
+                    )
+
+                    robot_dof_state["pos"] = action
+
+                    self.gym.set_actor_dof_states(
+                        env,
+                        actor_handle["robot"],
+                        robot_dof_state,
+                        gymapi.STATE_POS,
+                    )
+
+                    if self.obj_name is not None:
+                        object_rb_state = self.gym.get_actor_rigid_body_states(
+                            env, actor_handle["object"], gymapi.STATE_POS
+                        )
+                        object_rb_state["pose"]["r"].fill(
+                            (obj_quat[0], obj_quat[1], obj_quat[2], obj_quat[3])
+                        )
+                        object_rb_state["pose"]["p"].fill((obj_pos[0], obj_pos[1], obj_pos[2]))
+
+                        self.gym.set_actor_rigid_body_states(
+                            env,
+                            actor_handle["object"],
+                            object_rb_state,
+                            gymapi.STATE_POS,
+                        )
+                if self.save_state:
+                    self.save_stateinfo(i)
+
+                self.gym.set_actor_dof_position_targets(
+                    env, actor_handle["robot"], action
                 )
 
-                robot_dof_state["pos"] = action
+            if self.view_replay:
+                robot_dof_state = self.gym.get_actor_dof_states(
+                    env, actor_handle["robot_replay"], gymapi.STATE_POS
+                )
+                robot_dof_state["pos"] = viz_action
 
                 self.gym.set_actor_dof_states(
-                    self.env,
-                    self.actor_handle["robot"],
+                    env,
+                    actor_handle["robot_replay"],
                     robot_dof_state,
                     gymapi.STATE_POS,
                 )
                 if self.obj_name is not None:
                     object_rb_state = self.gym.get_actor_rigid_body_states(
-                        self.env, self.actor_handle["object"], gymapi.STATE_POS
+                        env, actor_handle["object_replay"], gymapi.STATE_POS
                     )
                     object_rb_state["pose"]["r"].fill(
                         (obj_quat[0], obj_quat[1], obj_quat[2], obj_quat[3])
@@ -153,47 +195,14 @@ class simulator:
                     object_rb_state["pose"]["p"].fill((obj_pos[0], obj_pos[1], obj_pos[2]))
 
                     self.gym.set_actor_rigid_body_states(
-                        self.env,
-                        self.actor_handle["object"],
+                        env,
+                        actor_handle["object_replay"],
                         object_rb_state,
                         gymapi.STATE_POS,
                     )
-            if self.save_state:
-                self.save_stateinfo()
-            self.gym.set_actor_dof_position_targets(
-                self.env, self.actor_handle["robot"], action
-            )
-
-        if self.view_replay:
-            robot_dof_state = self.gym.get_actor_dof_states(
-                self.env, self.actor_handle["robot_replay"], gymapi.STATE_POS
-            )
-            robot_dof_state["pos"] = viz_action
-
-            self.gym.set_actor_dof_states(
-                self.env,
-                self.actor_handle["robot_replay"],
-                robot_dof_state,
-                gymapi.STATE_POS,
-            )
-            if self.obj_name is not None:
-                object_rb_state = self.gym.get_actor_rigid_body_states(
-                    self.env, self.actor_handle["object_replay"], gymapi.STATE_POS
-                )
-                object_rb_state["pose"]["r"].fill(
-                    (obj_quat[0], obj_quat[1], obj_quat[2], obj_quat[3])
-                )
-                object_rb_state["pose"]["p"].fill((obj_pos[0], obj_pos[1], obj_pos[2]))
-
-                self.gym.set_actor_rigid_body_states(
-                    self.env,
-                    self.actor_handle["object_replay"],
-                    object_rb_state,
-                    gymapi.STATE_POS,
-                )
-            robot_rb_state = self.gym.get_actor_rigid_body_states(
-                self.env, self.actor_handle["robot_replay"], gymapi.STATE_POS
-            )
+                # robot_rb_state = self.gym.get_actor_rigid_body_states(
+                #     self.env, self.actor_handle["robot_replay"], gymapi.STATE_POS
+                # )
 
         self.gym.simulate(self.sim)
         self.gym.fetch_results(self.sim, True)
@@ -229,10 +238,12 @@ class simulator:
             self.history = {}
 
     def load_env(self):
-        actor_handle = {}
-        env = self.gym.create_env(
-            self.sim, gymapi.Vec3(-1, -1, 0), gymapi.Vec3(1, 1, 1), 1
-        )
+        self.env_list = []
+        self.actor_handle_list = []
+
+        spacing = 1.5
+        env_lower = gymapi.Vec3(-spacing, 0.0, -spacing)
+        env_upper = gymapi.Vec3(spacing, spacing, spacing)
 
         robot_pose = gymapi.Transform()
         robot_pose.p = gymapi.Vec3(0, 0, 0)
@@ -241,96 +252,102 @@ class simulator:
         object_pose = gymapi.Transform()
         object_pose.p = gymapi.Vec3(0.5, 0.0, 0.0)
 
-        if self.view_physics:
-            actor_handle["robot"] = self.gym.create_actor(
-                env, self.assets["robot"], robot_pose, "robot", 1, 0
-            )
-
-            props = self.gym.get_actor_dof_properties(env, actor_handle["robot"])
-            props["driveMode"].fill(gymapi.DOF_MODE_POS)
-
-            props["stiffness"][:6] = 1000.0  # pgain for arm
-            props["damping"][:6] = 10.0  # dgain for arm
-
-            props["stiffness"][6:] = 500.0  # pgain for hand
-            props["damping"][6:] = 10.0  # dgain for hand
-
-            self.gym.set_actor_dof_properties(env, actor_handle["robot"], props)
-
-            rigid_prop = self.gym.get_actor_rigid_shape_properties(
-                env, actor_handle["robot"]
-            )
-            rigid_prop[0].restitution = 0.01
-            rigid_prop[0].friction = 0.8
-
-            if self.obj_name is not None:
-                actor_handle["object"] = self.gym.create_actor(
-                    env, self.assets["object"], object_pose, "object", 1, 0
+        for i in range(self.num_envs):
+            actor_handle = {}
+            env = self.gym.create_env(self.sim, env_lower, env_upper, int(np.sqrt(self.num_envs)))
+            
+            if self.view_physics:
+                actor_handle["robot"] = self.gym.create_actor(
+                    env, self.assets["robot"], robot_pose, "robot", 1, 0
                 )
 
-                obj_props = self.gym.get_actor_rigid_shape_properties(
-                    env, actor_handle["object"]
+                props = self.gym.get_actor_dof_properties(env, actor_handle["robot"])
+                props["driveMode"].fill(gymapi.DOF_MODE_POS)
+
+                props["stiffness"][:6] = 1000.0  # pgain for arm
+                props["damping"][:6] = 10.0  # dgain for arm
+
+                props["stiffness"][6:] = 500.0  # pgain for hand
+                props["damping"][6:] = 10.0  # dgain for hand
+
+                self.gym.set_actor_dof_properties(env, actor_handle["robot"], props)
+
+                rigid_prop = self.gym.get_actor_rigid_shape_properties(
+                    env, actor_handle["robot"]
+                )
+                rigid_prop[0].restitution = 0.01
+                rigid_prop[0].friction = 0.8
+
+                if self.obj_name is not None:
+                    actor_handle["object"] = self.gym.create_actor(
+                        env, self.assets["object"], object_pose, "object", 1, 0
+                    )
+
+                    obj_props = self.gym.get_actor_rigid_shape_properties(
+                        env, actor_handle["object"]
+                    )
+
+                    obj_props[0].restitution = 0.01
+                    obj_props[0].friction = 0.8
+
+                    self.gym.set_actor_rigid_shape_properties(
+                        env, actor_handle["object"], obj_props
+                    )
+
+
+            if self.view_replay:
+
+                actor_handle["robot_replay"] = self.gym.create_actor(
+                    env, self.assets["vis_robot"], robot_pose, "robot_replay", 2, 1
                 )
 
-                obj_props[0].restitution = 0.01
-                obj_props[0].friction = 0.8
+                if self.obj_name is not None:
+                    actor_handle["object_replay"] = self.gym.create_actor(
+                        env, self.assets["vis_object"], object_pose, "object_replay", 3, 0
+                    )
 
-                self.gym.set_actor_rigid_shape_properties(
-                    env, actor_handle["object"], obj_props
-                )
+                for obj_name in ["robot_replay", "object_replay"]:
+                    if self.obj_name is None and obj_name == "object_replay":
+                        continue
+                    rigid_body_props = self.gym.get_actor_rigid_body_properties(
+                        env, actor_handle[obj_name]
+                    )
 
+                    for prop in rigid_body_props:
+                        prop.flags = (
+                            gymapi.RIGID_BODY_DISABLE_GRAVITY
+                        )  # Disable gravity flag
 
-        if self.view_replay:
+                    self.gym.set_actor_rigid_body_properties(
+                        env,
+                        actor_handle[obj_name],
+                        rigid_body_props,
+                        recomputeInertia=False,
+                    )
 
-            actor_handle["robot_replay"] = self.gym.create_actor(
-                env, self.assets["vis_robot"], robot_pose, "robot_replay", 2, 1
-            )
+                    props = self.gym.get_actor_dof_properties(env, actor_handle[obj_name])
+                    props["driveMode"].fill(gymapi.DOF_MODE_NONE)
+                    self.gym.set_actor_dof_properties(env, actor_handle[obj_name], props)
 
-            if self.obj_name is not None:
-                actor_handle["object_replay"] = self.gym.create_actor(
-                    env, self.assets["vis_object"], object_pose, "object_replay", 3, 0
-                )
+                for i in range(32):
+                    self.gym.set_rigid_body_color(
+                        env,
+                        actor_handle["robot_replay"],
+                        i,
+                        gymapi.MESH_VISUAL_AND_COLLISION,
+                        gymapi.Vec3(0.4, 0.4, 0.6),
+                    )
 
-            for obj_name in ["robot_replay", "object_replay"]:
-                if self.obj_name is None and obj_name == "object_replay":
-                    continue
-                rigid_body_props = self.gym.get_actor_rigid_body_properties(
-                    env, actor_handle[obj_name]
-                )
-
-                for prop in rigid_body_props:
-                    prop.flags = (
-                        gymapi.RIGID_BODY_DISABLE_GRAVITY
-                    )  # Disable gravity flag
-
-                self.gym.set_actor_rigid_body_properties(
-                    env,
-                    actor_handle[obj_name],
-                    rigid_body_props,
-                    recomputeInertia=False,
-                )
-
-                props = self.gym.get_actor_dof_properties(env, actor_handle[obj_name])
-                props["driveMode"].fill(gymapi.DOF_MODE_NONE)
-                self.gym.set_actor_dof_properties(env, actor_handle[obj_name], props)
-
-            for i in range(32):
-                self.gym.set_rigid_body_color(
-                    env,
-                    actor_handle["robot_replay"],
-                    i,
-                    gymapi.MESH_VISUAL_AND_COLLISION,
-                    gymapi.Vec3(0.4, 0.4, 0.6),
-                )
-
-            if self.obj_name is not None:
-                self.gym.set_rigid_body_color(
-                    env,
-                    actor_handle["object_replay"],
-                    0,
-                    gymapi.MESH_VISUAL_AND_COLLISION,
-                    gymapi.Vec3(0.4, 0.4, 0.6),
-                )
+                if self.obj_name is not None:
+                    self.gym.set_rigid_body_color(
+                        env,
+                        actor_handle["object_replay"],
+                        0,
+                        gymapi.MESH_VISUAL_AND_COLLISION,
+                        gymapi.Vec3(0.4, 0.4, 0.6),
+                    )
+            self.env_list.append(env)
+            self.actor_handle_list.append(actor_handle)
 
         return env, actor_handle
 
@@ -517,45 +534,45 @@ class simulator:
     def load_camera(self, camera_param_dict=None):
         self.camera_handle = {}
         if camera_param_dict is None:
-            camera_props = gymapi.CameraProperties()
-            camera_props.horizontal_fov = 75.0
-            camera_props.width = 2048
-            camera_props.height = 1536
-            camera_handle = self.gym.create_camera_sensor(self.env, camera_props)
-
-            self.gym.set_camera_location(
-                camera_handle,
-                self.env,
-                gymapi.Vec3(2, 0, 1),
-                gymapi.Vec3(0, 0, 0),
-            )
-            self.camera_handle[0] = camera_handle
+            for i in range(self.num_envs):
+                camera_props = gymapi.CameraProperties()
+                camera_props.horizontal_fov = 75.0
+                camera_props.width = 2048
+                camera_props.height = 1536
+                camera_handle = self.gym.create_camera_sensor(self.env_list[i], camera_props)
+                self.gym.set_camera_location(
+                    camera_handle,
+                    self.env_list[i],
+                    gymapi.Vec3(2, 0, 1),
+                    gymapi.Vec3(0, 0, 0),
+                )
+                self.camera_handle[i] = camera_handle
             return
                                                                   
-        for serial_num, camera_param in camera_param_dict.items():
-            # Add a camera to capture frames
-            int_mat, ext_mat = camera_param
-            camera_props = gymapi.CameraProperties()
+        # for serial_num, camera_param in camera_param_dict.items():
+        #     # Add a camera to capture frames
+        #     int_mat, ext_mat = camera_param
+        #     camera_props = gymapi.CameraProperties()
             
-            fx = int_mat[0,0]
-            fy = int_mat[1,1]
-            camera_props.horizontal_fov = np.arctan(2048/(2*fx)) * 2 * 180 / np.pi
-            # camera_props.vertical_fov = np.arctan(1536/(2*fy)) * 2 * 180 / np.pi
+        #     fx = int_mat[0,0]
+        #     fy = int_mat[1,1]
+        #     camera_props.horizontal_fov = np.arctan(2048/(2*fx)) * 2 * 180 / np.pi
+        #     # camera_props.vertical_fov = np.arctan(1536/(2*fy)) * 2 * 180 / np.pi
 
-            camera_props.width = 2048
-            camera_props.height = 1536
-            camera_handle = self.gym.create_camera_sensor(self.env, camera_props)
+        #     camera_props.width = 2048
+        #     camera_props.height = 1536
+        #     camera_handle = self.gym.create_camera_sensor(self.env, camera_props)
 
-            position = ext_mat[:3, 3].tolist()
-            lookat = (position + ext_mat[:3, 2] ).tolist()
+        #     position = ext_mat[:3, 3].tolist()
+        #     lookat = (position + ext_mat[:3, 2] ).tolist()
             
-            self.gym.set_camera_location(
-                camera_handle,
-                self.env,
-                gymapi.Vec3(*position),
-                gymapi.Vec3(*lookat),
-            )
-            self.camera_handle[serial_num] = camera_handle
+        #     self.gym.set_camera_location(
+        #         camera_handle,
+        #         self.env,
+        #         gymapi.Vec3(*position),
+        #         gymapi.Vec3(*lookat),
+        #     )
+        #     self.camera_handle[serial_num] = camera_handle
             
         return 
 
@@ -566,7 +583,22 @@ class simulator:
         if self.save_state:
             pickle.dump(self.history, open(self.state_path, "wb"))
 
-        self.gym.destroy_env(self.env)
+        for i in range(self.num_envs):
+            self.gym.destroy_env(self.env_list[i])
+            # if self.view_physics:
+            #     self.gym.destroy_actor(self.env_list[i], self.actor_handle_list[i]["robot"])
+            #     if self.obj_name is not None:
+            #         self.gym.destroy_actor(self.env_list[i], self.actor_handle_list[i]["object"])
+
+            # if self.view_replay:
+            #     self.gym.destroy_actor(self.env_list[i], self.actor_handle_list[i]["robot_replay"])
+            #     if self.obj_name is not None:
+            #         self.gym.destroy_actor(self.env_list[i], self.actor_handle_list[i]["object_replay"])
+
+            if self.save_video:
+                for name, camera_handle in self.camera_handle.items():
+                    self.gym.destroy_camera_sensor(camera_handle)
+            
         if not self.headless:
             self.gym.destroy_viewer(self.viewer)
         self.gym.destroy_sim(self.sim)

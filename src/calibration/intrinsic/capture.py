@@ -98,6 +98,7 @@ def draw_charuco_corners_custom(image, corners, color=(0, 255, 255), radius=4, t
                 lineType=cv2.LINE_AA
             )
 
+saved_image = np.zeros((1536, 2048, 3), dtype=np.uint8)
 while True:
     msg = socket.recv_string()
     if msg == "terminated":
@@ -114,14 +115,17 @@ while True:
                 save = result["save"]
                 if save:
                     saved_board_corners.append(corners)
+                    draw_charuco_corners_custom(saved_image, corners, BOARD_COLORS[0], 5, -1, ids)
+
                 if corners.shape[0] == 0:
                     print("[Client] No corners detected.")
                     continue
+            
+                plot_img = saved_image.copy()
+                draw_charuco_corners_custom(plot_img, corners, BOARD_COLORS[int(board_id)], 5, -1, ids)
 
-                draw_charuco_corners_custom(image, corners, BOARD_COLORS[int(board_id)], 5, -1, ids)
-
-            for saved_corner in saved_board_corners:
-                draw_charuco_corners_custom(image, saved_corner, BOARD_COLORS[0], 5, -1)
+            # for saved_corner in saved_board_corners:
+            #     draw_charuco_corners_custom(image, saved_corner, BOARD_COLORS[0], 5, -1)
 
             image = cv2.resize(image, (2048 // 2, 1536 // 2))
             cv2.imshow("Charuco Detection", image)

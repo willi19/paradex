@@ -137,12 +137,24 @@ def main_ui_loop():
                     capture_state[pc] = True
                 capture_idx += 1
 
+def wait_for_camera_ready():
+    while True:
+        all_ready = True
+        for pc_name, ready in start_dict.items():
+            if not ready:
+                all_ready = False
+                break
+        if all_ready:
+            break
+        time.sleep(0.1)
+
 # Git pull and client run
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 run_script("python src/calibration/extrinsic/client.py", pc_list)
 
 try:
+    
     for pc_name, info in pc_info.items():
         ip = info["ip"]
         sock = context.socket(zmq.DEALER)
@@ -160,7 +172,7 @@ try:
     # Start per-socket listener
     for pc_name, sock in socket_dict.items():
         threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
-
+    wait_for_camera_ready()
     # Main UI loop
     main_ui_loop()
 

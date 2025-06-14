@@ -60,6 +60,11 @@ def listen_socket(pc_name, socket):
             terminate_dict[pc_name] = True
             continue
 
+        elif msg == "save_finish":
+            capture_state[pc_name] = False
+            print(f"[{pc_name}] Save finished.")
+            continue
+
         try:
             data = json.loads(msg)
         except json.JSONDecodeError:

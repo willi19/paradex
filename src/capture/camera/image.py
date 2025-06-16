@@ -7,7 +7,7 @@ camera = CameraManager("image")
 num_cam = camera.num_cameras
 
 for i in range(1):
-    save_path = f"{shared_dir}/demo_250618/pringles/{i}"
+    save_path = f"{shared_dir}/demo_250618/pringles/{i}/images"
     camera.set_save_dir(save_path)
 
     camera.start()

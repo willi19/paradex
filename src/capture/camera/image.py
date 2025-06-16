@@ -5,8 +5,8 @@ import time
 camera = CameraManager("image")
 num_cam = camera.num_cameras
 
-for i in range(10):
-    save_path = f"erasethis/{i}"
+for i in range(1):
+    save_path = f"/shared_data/demo_250618/pringles/{i}"
     camera.set_save_dir(save_path)
 
     camera.start()

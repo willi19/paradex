@@ -80,6 +80,7 @@ def find_latest_index(directory):
     latest_dir = max(dirs, key=int)    
     return latest_dir
 
+# deprecated
 def load_cam_param(name=None):
     if name == None:
         name = find_latest_directory(cam_param_dir)

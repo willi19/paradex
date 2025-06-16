@@ -8,7 +8,6 @@ from scipy.spatial.transform import Rotation as R
 import pickle
 import transforms3d as t3d  
 from paradex.robot.robot_wrapper import RobotWrapper
-from paradex.geometry.ik import inverse_kinematics
 
 LINK62PALM = np.array(
     [
@@ -22,11 +21,11 @@ LINK62PALM = np.array(
 
 # Viewer setting
 obj_name = "bottle"
-save_video = True
-save_state = True
+save_video = False
+save_state = False
 view_physics = True
-view_replay = False
-headless = True
+view_replay = True
+headless = False
 
 demo_path = "data_Icra/teleoperation/bottle"
 demo_path_list = os.listdir(demo_path)
@@ -38,7 +37,7 @@ robot = RobotWrapper(
 link_index = robot.get_link_index("link6")
 
 for demo_name in demo_path_list:  # demo_path_list:
-    if demo_name < "85":
+    if demo_name != "1":
         continue
     sim = simulator(
         obj_name,
@@ -82,12 +81,13 @@ for demo_name in demo_path_list:  # demo_path_list:
 
         robot_pose = robot_traj[step]
         robot.compute_forward_kinematics(robot_pose)
+        
+        import pdb; pdb.set_trace()
         R_mat_pose = robot.get_link_pose(link_index)
 
         # print(np.linalg.norm(R_mat_pose[:3, 3] - robot_action[:3]))
 
-        q_ik = inverse_kinematics(
-            robot,
+        q_ik, success = robot.solve_ik(
             robot_T,
             "link6",
             q_init=robot_pose,

@@ -15,10 +15,10 @@ from paradex.simulator.isaac import simulator
 LINK62PALM = np.array(
     [
         [0, 1, 0, 0],
-        [0, 0, 1, 0],#0.035],
-        [1, 0, 0, 0],#0.055],
+        [0, 0, 1, 0.035],
+        [1, 0, 0, 0.055],
         [0, 0, 0, 1],
-    ]
+    ], dtype=np.float64
 )
 
 
@@ -59,18 +59,18 @@ def homo2cart(h):
         raise ValueError("Invalid input shape.")
     return np.concatenate([t, axis_angle])
 
-def initialize_teleoperation(save_path):
-    controller = {}
-    if arm_name == "xarm":
-        controller["arm"] = XArmController(save_path)
+# def initialize_teleoperation(save_path):
+#     controller = {}
+#     if arm_name == "xarm":
+#         controller["arm"] = XArmController(save_path)
 
-    if hand_name == "allegro":
-        controller["hand"] = AllegroController(save_path)
+#     if hand_name == "allegro":
+#         controller["hand"] = AllegroController(save_path)
         
-    elif hand_name == "inspire":
-        controller["hand"] = InspireController(save_path)
+#     elif hand_name == "inspire":
+#         controller["hand"] = InspireController(save_path)
     
-    return controller
+#     return controller
 
 
 def get_object_pose():
@@ -127,6 +127,18 @@ def load_demo(demo_name):
         robot.compute_forward_kinematics(robot_traj[i])
         wrist_pose = robot.get_link_pose(link_index)
         
+        # wrist_axangle = target_traj[i, 3:6]
+        # angle = np.linalg.norm(wrist_axangle)
+        # if angle > 1e-6:
+        #     wrist_axis = wrist_axangle / angle
+        # else:
+        #     wrist_axis = np.zeros(3)
+            
+        # wrist_rotmat = t3d.axangles.axangle2mat(wrist_axis, angle)
+
+        # wrist_pose = np.zeros((4, 4))
+        # wrist_pose[:3, :3] = wrist_rotmat
+        # wrist_pose[:3, 3] = robot_traj[i][:3]
         wrist_pose = np.linalg.inv(obj_T[0]) @ wrist_pose
 
         hand_action.append(target_traj[i, 6:])
@@ -168,9 +180,28 @@ def get_traj(tx, ty, theta, wrist_pose_demo):
     return wrist_pose
 
 if __name__ == "__main__":
+    obj_name = "bottle"
+    save_video = False
+    save_state = False
+    view_physics = True
+    view_replay = True
+    headless = False
+
+
+    sim = simulator(
+        obj_name,
+        view_physics,
+        view_replay,
+        headless,
+        save_video,
+        save_state,
+        fixed=True
+    )
+    
+    
     object_pose = get_object_pose()
     tx, ty = object_pose[:2, 3]
-
+    
     theta = determine_theta()
     traj_idx = determine_traj_idx()
     traj_idx = str(traj_idx)
@@ -178,39 +209,52 @@ if __name__ == "__main__":
     obj_pose_demo, wrist_pose_demo, hand_pose = load_demo(traj_idx)
 
     transformed_traj = get_traj(tx, ty, theta, wrist_pose_demo)
-    sensors = initialize_teleoperation(None)
+    # sensors = initialize_teleoperation(None)
     
-    if hand_name is not None:
-        sensors["hand"].set_homepose(hand_pose[0])
-        sensors["hand"].home_robot()
+    # if hand_name is not None:
+    #     sensors["hand"].set_homepose(hand_pose[0])
+    #     sensors["hand"].home_robot()
 
-    if arm_name is not None:
-        sensors["arm"].set_homepose(homo2cart(transformed_traj[0]))
-        sensors["arm"].home_robot()
+    # if arm_name is not None:
+    #     sensors["arm"].set_homepose(homo2cart(transformed_traj[0]))
+    #     sensors["arm"].home_robot()
 
-        home_start_time = time.time()
-        while sensors["arm"].ready_array[0] != 1:
-            if time.time() - home_start_time > 0.3:
-                chime.warning()
-                home_start_time = time.time()
-            time.sleep(0.0008)
-        chime.success()
-
+    #     home_start_time = time.time()
+    #     while sensors["arm"].ready_array[0] != 1:
+    #         if time.time() - home_start_time > 0.3:
+    #             chime.warning()
+    #             home_start_time = time.time()
+    #         time.sleep(0.0008)
+    #     chime.success()
+    robot_pose = np.zeros(22)
+    
     for i in range(len(transformed_traj)):
         l6_pose = transformed_traj[i] @ np.linalg.inv(LINK62PALM)
+        
         arm_action = homo2cart(l6_pose)
         hand_action = hand_pose[i]
 
-        if arm_name is not None:                
-            sensors["arm"].set_target_action(
-                            arm_action
-                    )
-        if hand_name is not None:
-            sensors["hand"].set_target_action(
-                            hand_action
-                        )
+        q_ik, success = robot.solve_ik(
+            l6_pose,
+            "link6",
+            q_init=robot_pose,
+            
+        )
+        robot_pose = q_ik.copy()
+        robot_pose[6:] = hand_action
+        # action = np.concatenate([robot_pose, hand_action])
+        
+        sim.step(robot_pose, robot_pose, object_pose)
+        # if arm_name is not None:                
+        #     sensors["arm"].set_target_action(
+        #                     arm_action
+        #             )
+        # if hand_name is not None:
+        #     sensors["hand"].set_target_action(
+        #                     hand_action
+        #                 )
                     
-        time.sleep(0.1)  # Simulate time taken for each action
+        # time.sleep(0.1)  # Simulate time taken for each action
         print(i, len(transformed_traj), "Robot action executed.")
 
     for key in sensors.keys():

@@ -5,7 +5,7 @@ from paradex.utils.file_io import find_latest_directory, home_path, download_dir
 camera = CameraManager("video")
 num_cam = camera.num_cameras
 
-save_path = f"{shared_dir}/demo_250618/pringles/{i}"
+save_path = f"{shared_dir}/demo_250618/pringles/video"
 camera.set_save_dir(save_path)
 camera.start()
 

@@ -16,4 +16,4 @@ while True:
         break
     time.sleep(0.01)
 camera.end()
-camera.quit() 
+camera.quit()

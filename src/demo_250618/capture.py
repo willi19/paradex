@@ -108,13 +108,13 @@ def main_ui_loop():
     # new_W = 2048 // grid_rows
     # new_H = 1536 // grid_rows
 
-    # while True:
-    #     all_disconnected = True
-    #     for pc_name, terminated in terminate_dict.items():
-    #         if not terminated:
-    #             all_disconnected = False
-    #     if all_disconnected:
-    #         break
+    while True:
+        all_disconnected = True
+        for pc_name, terminated in terminate_dict.items():
+            if not terminated:
+                all_disconnected = False
+        if all_disconnected:
+            break
         
     #     grid_image = np.ones((1536+border_px*(grid_rows-1), (2048//grid_rows)*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
     #     for idx, serial_num in enumerate(serial_list):

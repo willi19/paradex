@@ -110,6 +110,7 @@ while not should_exit:
         
                 
         if detections.mask: detections.mask = detections.mask.tolist()
+        if detections.mask is None: detections.mask = []
         if detections.xyxy: detections.xyxy = detections.xyxy.tolist()
         if detections.confidence: detections.confidence = detections.confidence.tolist()
 

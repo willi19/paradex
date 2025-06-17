@@ -81,21 +81,26 @@ def listen_socket(pc_name, socket):
         serial_num = data["serial_num"]
 
         if data.get("type") == "demo":
-            detections = data["detect_result"]
-            print(detections)
-            detection_results[serial_num] = detections
+            detections_mask = data["detections.mask"]
+            detections_xyxy = data["detections.xyxy"]
+            detections_confidence = data["detections.confidence"]
+
+            detection_results[serial_num] = {}
+            detection_results[serial_num]["mask"] = np.array(detections_mask, dtype=bool)
+            detection_results[serial_num]["xyxy"] = np.array(detections_xyxy, dtype=float)
+            detection_results[serial_num]["confidence"] = torch.tensor(detections_confidence, device=device)
 
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
 def main_ui_loop():
 
-    confidence_dict = {cam_id: detection_results[cam_id].confidence.item() for cam_id in detection_results if detection_results[cam_id].confidence.size > 0 and detection_results[cam_id].confidence > 0.001 and cam_id not in hide_list}
+    confidence_dict = {cam_id: detection_results[cam_id]["confidence"].item() for cam_id in detection_results if detection_results[cam_id]["confidence"].size > 0 and detection_results[cam_id]["confidence"] > 0.001 and cam_id not in hide_list}
     cam_N = 10
     top_n_cams2confidence = sorted(confidence_dict.items(), key=lambda x: x[1], reverse=True)[:cam_N]
     top_n_cams = [cam_id for cam_id, confidence in top_n_cams2confidence]
 
-    mask_dict_org = {cam_id: detection_results[cam_id].mask[0] for cam_id in top_n_cams}
+    mask_dict_org = {cam_id: detection_results[cam_id]["mask"][0] for cam_id in top_n_cams}
     in_mask_points, initial_translate = get_visualhull_ctr(org_scene, mask_dict=mask_dict_org) # Set Initial translation as center of visual hull
 
     print(initial_translate)

@@ -118,7 +118,9 @@ while not should_exit:
 
         msg_dict = {
             "frame": int(last_frame_ind[i]),
-            "detect_result": detections,
+            "detections.mask": detections.mask,
+            "detections.xyxy": detections.xyxy,
+            "detections.confidence": detections.confidence.item()
             "type": "demo",
             "serial_num": serial_num,
         }

@@ -6,7 +6,7 @@ import numpy as np
 import supervision as sv
 import torch
 from tqdm import tqdm
-from inference.models import YOLOWorld
+from inference.models.yolo_world import YOLOWorld
 
 import sys
 from pathlib import Path

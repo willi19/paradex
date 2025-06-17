@@ -62,28 +62,28 @@ class Scene:
         else:
             self.mask_root_dir = None
 
-        hand_action = np.load(root_path/'hand'/'action.npy') # FX16
-        hand_state = np.load(root_path/'hand'/'state.npy') # FX16
-        arm_action = np.load(root_path/'arm'/'action.npy') # FX6
-        arm_state = np.load(root_path/'arm'/'state.npy') # FX6
+        # hand_action = np.load(root_path/'hand'/'action.npy') # FX16
+        # hand_state = np.load(root_path/'hand'/'state.npy') # FX16
+        # arm_action = np.load(root_path/'arm'/'action.npy') # FX6
+        # arm_state = np.load(root_path/'arm'/'state.npy') # FX6
 
-        self.robot_traj = np.concatenate([arm_state, hand_state], axis=1) # FX22
+        # self.robot_traj = np.concatenate([arm_state, hand_state], axis=1) # FX22
 
-        self.C2R = np.load(root_path/'C2R.npy') # FX6
-        self.R2C = np.linalg.inv(self.C2R)
+        # self.C2R = np.load(root_path/'C2R.npy') # FX6
+        # self.R2C = np.linalg.inv(self.C2R)
 
-        if os.path.exists(root_path/'C2M.npy'):
-            self.C2M = np.load(root_path/'C2M.npy')
-        else:
-            self.C2M = None
+        # if os.path.exists(root_path/'C2M.npy'):
+        #     self.C2M = np.load(root_path/'C2M.npy')
+        # else:
+        #     self.C2M = None
 
-        contact_path = root_path/'contact'/'data.npy'
-        self.contact = None
-        if os.path.exists(contact_path):
-            self.contact = np.load(contact_path) # TX15
+        # contact_path = root_path/'contact'/'data.npy'
+        # self.contact = None
+        # if os.path.exists(contact_path):
+        #     self.contact = np.load(contact_path) # TX15
 
         self.rescale_factor = rescale_factor
-        height, width = None, None
+        height, width = 1536, 2048
         self.proj_matrix = {}
         self.cam_params = {}
 
@@ -97,9 +97,9 @@ class Scene:
         # Setting Camera Parameters
         for cam_id in extrinsics_dict:
             extrinsic_np = np.array(extrinsics_dict[cam_id]) # 3X4
-            intrinsic_np = np.array(intrinsics_dict[cam_id]['Intrinsics']).reshape(3,3)
+            intrinsic_np = np.array(intrinsics_dict[cam_id]['intrinsics_undistort']).reshape(3,3)
             intrinsic_np[:2]*=rescale_factor
-            dist = intrinsics_dict[cam_id]['dist_param']
+            dist = intrinsics_dict[cam_id]['dist_params']
             self.cam_params[cam_id] = {'extrinsic':extrinsic_np, 'intrinsic':intrinsic_np.reshape(3,3), 'dist':dist}
             self.cam2extr[cam_id] = extrinsic_np
             self.cam2intr[cam_id] = intrinsic_np

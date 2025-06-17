@@ -120,7 +120,7 @@ while not should_exit:
             "frame": int(last_frame_ind[i]),
             "detections.mask": detections.mask,
             "detections.xyxy": detections.xyxy,
-            "detections.confidence": detections.confidence.item()
+            "detections.confidence": detections.confidence.item(),
             "type": "demo",
             "serial_num": serial_num,
         }

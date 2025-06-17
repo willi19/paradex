@@ -78,7 +78,7 @@ for demo_name in demo_path_list:  # demo_path_list:
         robot_T = np.eye(4)
         robot_T[:3, :3] = link6_mat
         robot_T[:3, 3] = t
-
+        import pdb; pdb.set_trace()
         robot_pose = robot_traj[step]
         robot.compute_forward_kinematics(robot_pose)
         

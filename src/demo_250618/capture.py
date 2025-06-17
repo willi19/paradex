@@ -108,13 +108,13 @@ def main_ui_loop():
     # new_W = 2048 // grid_rows
     # new_H = 1536 // grid_rows
 
-    while True:
-        all_disconnected = True
-        for pc_name, terminated in terminate_dict.items():
-            if not terminated:
-                all_disconnected = False
-        if all_disconnected:
-            break
+    # while True:
+    #     all_disconnected = True
+    #     for pc_name, terminated in terminate_dict.items():
+    #         if not terminated:
+    #             all_disconnected = False
+    #     if all_disconnected:
+    #         break
         
     #     grid_image = np.ones((1536+border_px*(grid_rows-1), (2048//grid_rows)*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
     #     for idx, serial_num in enumerate(serial_list):
@@ -136,26 +136,26 @@ def main_ui_loop():
 
     #     grid_image = cv2.resize(grid_image, (int(2048//1.5), int(1536//1.5)))
     #     cv2.imshow("Grid", grid_image)
-        key = cv2.waitKey(1)
-        if key == ord('q'):
-            print("[Server] Quitting...")
-            for socket in socket_dict.values():
-                socket.send_string("quit")
-            break
-        elif key == ord('c'):
-            print("[Server] Sending capture command.")
-            send_capture = True
-            for pc in pc_info.keys():
-                if capture_state[pc]:
-                    send_capture = False
-                    break
-            if send_capture:
-                global capture_idx, filename
-                os.makedirs(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx)), exist_ok=True)
-                for pc, socket in socket_dict.items():
-                    socket.send_string(f"capture:{capture_idx}")
-                    capture_state[pc] = True
-                capture_idx += 1
+        # key = cv2.waitKey(1)
+        # if key == ord('q'):
+        #     print("[Server] Quitting...")
+        #     for socket in socket_dict.values():
+        #         socket.send_string("quit")
+        #     break
+        # elif key == ord('c'):
+        #     print("[Server] Sending capture command.")
+        #     send_capture = True
+        #     for pc in pc_info.keys():
+        #         if capture_state[pc]:
+        #             send_capture = False
+        #             break
+        #     if send_capture:
+        #         global capture_idx, filename
+        #         os.makedirs(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx)), exist_ok=True)
+        #         for pc, socket in socket_dict.items():
+        #             socket.send_string(f"capture:{capture_idx}")
+        #             capture_state[pc] = True
+        #         capture_idx += 1
 
 # Git pull and client run
 pc_list = list(pc_info.keys())
@@ -182,6 +182,8 @@ try:
         threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
 
     # Main UI loop
+    while True:
+        time.sleep(0.1)  # Prevent busy-waiting
     main_ui_loop()
 
 except Exception as e:

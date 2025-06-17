@@ -83,6 +83,7 @@ save_flag = [False for _ in range(num_cam)]
 save_finish = True
 
 yolo_module = YOLO_MODULE(categories="pringles")
+socket.send_multipart([client_ident, b"yolo module initialized"])
 
 threading.Thread(target=listen_for_commands, daemon=True).start()
 

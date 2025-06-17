@@ -27,7 +27,7 @@ demo_path_list = os.listdir(demo_path)
 demo_path_list.sort()
 
 arm_name = "xarm"
-hand_name = None# "allegro"
+hand_name = "allegro"
 
 obj_mesh = o3d.io.read_triangle_mesh(os.path.join(rsc_path, "bottle", "bottle.obj"))
 
@@ -185,7 +185,7 @@ if __name__ == "__main__":
         sensors["hand"].home_robot()
 
     if arm_name is not None:
-        sensors["arm"].set_homepose(homo2cart(transformed_traj[0] @ np.linalg.inv(LINK62PALM)))
+        sensors["arm"].set_homepose(homo2cart(transformed_traj[0]))
         sensors["arm"].home_robot()
 
         home_start_time = time.time()

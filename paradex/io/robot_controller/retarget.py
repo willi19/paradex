@@ -111,6 +111,8 @@ class retargetor(): # Input is only from Xsens
             hand_action = self.inspire(data["hand_pose"])
         elif self.hand_name == "allegro":
             hand_action = self.allegro(data["hand_pose"])
+        else:
+            hand_action = None
         
         return arm_action, hand_action
 

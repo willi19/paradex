@@ -111,11 +111,11 @@ while not should_exit:
                 
         if detections.mask: detections.mask = detections.mask.tolist()
         if detections.xyxy: detections.xyxy = detections.xyxy.tolist()
+        if detections.confidence: detections.confidence = detections.confidence.tolist()
 
         serial_num = camera.serial_list[i]
 
         save_flag[i] = False
-        print(detections.confidence)
 
         msg_dict = {
             "frame": int(last_frame_ind[i]),
@@ -125,7 +125,7 @@ while not should_exit:
             "type": "demo",
             "serial_num": serial_num,
         }
-        print(detections)
+        print(detections.mask, detections.xyxy, detections.confidence)
         msg_json = json.dumps(msg_dict)
 
         if client_ident is not None:

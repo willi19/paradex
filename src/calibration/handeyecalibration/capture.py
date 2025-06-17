@@ -6,7 +6,7 @@ import json
 import time
 import zmq
 import os
-from paradex.utils.file_io import config_dir, shared_dir
+from paradex.utils.file_io import config_dir, shared_dir, find_latest_directory
 from paradex.io.capture_pc.connect import git_pull, run_script
 import math
 from xarm.wrapper import XArmAPI
@@ -122,7 +122,6 @@ def wait_for_camera_ready():
         
 def wait_for_capture():
     while True:
-        print(capture_state)
         all_captured = True
         for pc_name, in_capture in capture_state.items():
             if in_capture:
@@ -137,7 +136,7 @@ dex_arm = DexArmControl()
 # Git pull and client run
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script("python src/calibration/handeyecalibration/client.py", pc_list)
+# run_script("python src/calibration/handeyecalibration/client.py", pc_list)
 
 for pc_name, info in pc_info.items():
     ip = info["ip"]
@@ -160,18 +159,20 @@ for pc_name, sock in socket_dict.items():
 wait_for_camera_ready()
 
 try:
-    for i in range(10,30):
+    for i in range(20):
         # move robot
-        target_action = np.load(f"hecalib/{i}.npy")
+        target_action = np.load(f"hecalib/{i+10}.npy")
         dex_arm.move_arm(target_action)
+        time.sleep(0.5)
         
         xarm_angles = dex_arm.get_joint_values()
         os.makedirs(f"{shared_dir}/handeye_calibration/{filename}/{i}/image", exist_ok=True)
         np.save(f"{shared_dir}/handeye_calibration/{filename}/{i}/robot", xarm_angles[:6])
         
         for pc_name, sock in socket_dict.items():
+            capture_state[pc_name] = True
             sock.send_string(f"capture:{i}")
-            print(f"[{pc_name}] Start capture {i+1}")
+            print(f"[{pc_name}] Start capture {i}")
         wait_for_capture()
         
 except Exception as e:
@@ -185,4 +186,7 @@ except Exception as e:
 
 dex_arm.quit()
 copy_calib_files(f"/home/temp_id/shared_data/handeye_calibration/{filename}/0")
+for pc_name, sock in socket_dict.items():
+    sock.send_string("quit")
+    sock.close()
     

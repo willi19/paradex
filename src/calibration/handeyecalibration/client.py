@@ -88,6 +88,7 @@ while not should_exit:
     
     camera.set_save_dir(os.path.join(shared_dir, "handeye_calibration", cur_filename, str(current_index)),"image")
     camera.start()
+    print(f"[Server] Camera started for index {current_index}")
     camera.wait_for_capture_end()
 
     socket.send_multipart([client_ident, b"save_finish"])

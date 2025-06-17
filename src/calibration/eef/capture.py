@@ -57,6 +57,7 @@ class DexArmControl:
         while is_error != 0:
             is_error, arm_joint_states = self.arm.get_joint_states(is_radian=True)
             xarm_angles = np.array(arm_joint_states[0])
+            xarm_angles = xarm_angles[:6]  # Get only the first 6 joints
 
         allegro_angles = self.allegro.current_joint_pose.position
         allegro_angles = np.array(allegro_angles)
@@ -164,18 +165,25 @@ for pc_name, sock in socket_dict.items():
 wait_for_camera_ready()
 
 try:
-    for i in range(20):
+    for i in range(3):
         # move robot
         target_action = np.load(f"hecalib/{i+10}.npy")
-        hand_action = np.load(f"data/calibration_pose/hand_{i}.npy")
+        hand_action = np.load(f"data/calibration_pose/hand_{i% 15}.npy")
         dex_arm.move_arm(target_action)
         dex_arm.move_hand(allegro_angles=hand_action)
 
         time.sleep(0.5)
         
         xarm_angles, allegro_angles = dex_arm.get_joint_values()
+        
+        print(f"Capture {i} at {xarm_angles[:6]} with hand {allegro_angles}")
         os.makedirs(f"{shared_dir}/eef/{filename}/{i}/image", exist_ok=True)
-        np.save(f"{shared_dir}/eef/{filename}/{i}/robot", [xarm_angles[:6],allegro_angles])
+        
+        result = np.zeros(len(xarm_angles) + len(allegro_angles))
+        result[:len(xarm_angles)] = xarm_angles[:6]
+        result[len(xarm_angles):] = allegro_angles
+                
+        np.save(f"{shared_dir}/eef/{filename}/{i}/robot", result)
         
         for pc_name, sock in socket_dict.items():
             capture_state[pc_name] = True

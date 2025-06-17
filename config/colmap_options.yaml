@@ -1,0 +1,4 @@
+MapperOptions:
+    ba_refine_focal_length : true
+    ba_refine_principal_point : true
+    ba_refine_extra_params: true

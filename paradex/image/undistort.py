@@ -1,5 +1,7 @@
 import numpy as np
 import cv2
+import os
+import json
 
 def undistort_img(img, intrinsic):
     """
@@ -12,7 +14,7 @@ def undistort_img(img, intrinsic):
     Returns:
         undistorted_img (np.ndarray): Undistorted image
     """
-    undistorted_img = cv2.undistort(img, intrinsic["intrinsics_original"], intrinsic["dist_params"], None, intrinsic["intrinsics_undistort"])
+    undistorted_img = cv2.undistort(img, np.array(intrinsic["original_intrinsics"]), np.array(intrinsic["dist_params"]), None, np.array(intrinsic["intrinsics_undistort"]))
     return undistorted_img
 
 def undistort_points(pts, intrinsic):
@@ -36,3 +38,14 @@ def remap_corners(corners, cammtx, dist_coef, sn, img=None):
     #     cv2.circle(warped, (int(mapped_pixels[idx,0]), int(mapped_pixels[idx,1])), radius=1, color=(255,0,0), thickness=1)
     # cv2.imwrite(f"/home/capture2/Videos/{sn}_overliad.png", warped)
     return mapped_pixels, new_cammtx
+
+if __name__ == "__main__":
+    images = os.listdir("/home/temp_id/shared_data/demo_250618/pringles/0/images")
+    
+    for image in images:
+        img = cv2.imread(f"/home/temp_id/shared_data/demo_250618/pringles/0/images/{image}")
+        cam_id = image.split(".")[0]
+        intrinsic = json.load(open("/home/temp_id/shared_data/demo_250618/pringles/0/cam_param/intrinsics.json", "r"))
+        undistorted_img = undistort_img(img, intrinsic[cam_id])
+        cv2.imwrite(f"/home/temp_id/shared_data/demo_250618/pringles/0/images_undistorted/{image}", undistorted_img)
+    

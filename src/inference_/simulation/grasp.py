@@ -194,7 +194,8 @@ for demo_name in demo_path_list:
     # obj_pose_demo, wrist_pose_demo, hand_pose = load_demo(demo_name)
     
     traj_list_demo = pickle.load(open(os.path.join("grasp", "policy", f"{demo_name}.pickle"), "rb"))
-        
+    traj_list_demo = traj_list_demo[:1]
+    print(traj_list_demo[0]['theta'])
     sim = simulator(
         obj_name,
         view_physics,

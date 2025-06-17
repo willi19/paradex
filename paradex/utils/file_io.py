@@ -1,7 +1,7 @@
 import os
 import json
 import numpy as np
-
+import cv2
 
 rsc_path = os.path.join(
     os.path.dirname(__file__),
@@ -80,6 +80,7 @@ def find_latest_index(directory):
     latest_dir = max(dirs, key=int)    
     return latest_dir
 
+# deprecated
 def load_cam_param(name=None):
     if name == None:
         name = find_latest_directory(cam_param_dir)
@@ -185,6 +186,76 @@ def load_camparam(demo_path):
         extrinsic[serial] = np.array(values).reshape(3, 4)
     return intrinsic, extrinsic
 
+def load_intrinsic():
+    intrinsics = {}
+    intrinsic_path = os.path.join(shared_dir, "intrinsic")
+    cam_list = os.listdir(intrinsic_path)
+    for cam_name in cam_list:
+        param_path = os.path.join(intrinsic_path, cam_name, "param")
+        if os.path.exists(param_path) and len(os.listdir(param_path)) > 0:
+            param_file = find_latest_directory(param_path)
+            param = json.load(open(os.path.join(param_path, param_file), "r"))
+            cammtx = np.array(param["K"]).reshape(3, 3)
+            dist_params = np.array(param["distortion"]).reshape(1, 5)
+            w, h = param["width"], param["height"]
+
+            new_cammtx, roi = cv2.getOptimalNewCameraMatrix(cammtx, dist_params, (w, h), 1, (w, h))
+            intrinsics[cam_name] = {
+                "original_intrinsics": cammtx,
+                "intrinsics_undistort": new_cammtx,
+                "intrinsics_warped": new_cammtx,
+                "dist_params": dist_params,
+                "height": h,  # Scalar values remain unchanged
+                "width": w,
+            }
+    return intrinsics
+
+
 def load_c2r(demo_path):
     C2R = np.load(os.path.join(demo_path, "C2R.npy"))
     return C2R
+
+def load_colmap_camparam(path):
+    import pycolmap
+    reconstruction = pycolmap.Reconstruction(os.path.join(path, "0", "colmap"))
+    cameras, images = dict(), dict()
+    for camera_id, camera in reconstruction.cameras.items():
+        cameras[camera_id] = camera # distortion params
+    for image_id, image in reconstruction.images.items():
+        images[image_id] = image # distortion params    
+
+    intrinsics = dict()
+    extrinsics = dict()
+    
+    for imid in images:
+        serialnum = images[imid].name.split("_")[0][:-4]
+        camid  = images[imid].camera_id
+
+        w, h = cameras[camid].width, cameras[camid].height
+        fx, fy, cx, cy, k1, k2, p1, p2 = cameras[camid].params
+
+        cammtx = np.array([[fx,0.,cx],[0.,fy, cy], [0.,0.,1.]])
+        dist_params = np.array([k1,k2,p1,p2])
+        new_cammtx, roi = cv2.getOptimalNewCameraMatrix(cammtx, dist_params, (w, h), 1, (w, h))
+        mapx, mapy = cv2.initUndistortRectifyMap(cammtx, dist_params, None, new_cammtx, (w, h), 5) # Last argument is image representation mapping option
+        x,y,w,h = roi
+
+        intrinsics[serialnum] = dict()
+        # Save into parameters
+        intrinsics[serialnum]["original_intrinsics"] = cammtx # calibrated
+        intrinsics[serialnum]["intrinsics_undistort"] = new_cammtx # adjusted as pinhole
+        # intrinsics[serialnum]["Intrinsics_warped"] = list(new_cammtx.reshape(-1))
+        # intrinsics[serialnum]["Intrinsics_warped"][2] -= x   # check this to get undistorted information
+        # intrinsics[serialnum]["Intrinsics_warped"][5] -= y
+        intrinsics[serialnum]["height"] = h 
+        intrinsics[serialnum]["width"] = w
+        intrinsics[serialnum]["dist_params"] = dist_params
+
+
+        extrinsics[serialnum] = dict()
+        
+        cam_pose = images[imid].cam_from_world.matrix()
+        
+        extrinsics[serialnum] = cam_pose.tolist()
+    
+    return intrinsics, extrinsics

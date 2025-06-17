@@ -109,8 +109,8 @@ while not should_exit:
             detections.mask[0, int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])] = True
         
                 
-        detections.mask = detections.mask.tolist()
-        detections.xyxy = detections.xyxy.tolist()
+        if detections.mask: detections.mask = detections.mask.tolist()
+        if detections.xyxy: detections.xyxy = detections.xyxy.tolist()
 
         serial_num = camera.serial_list[i]
 

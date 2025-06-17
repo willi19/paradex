@@ -33,6 +33,7 @@ def listen_for_commands():
                 save_flag[i] = True
             current_index = index
             save_finish = False
+            print(f"[Server] Capture command received, index: {index}")
         
         else:
             print(f"[Server] Unknown command: {msg}")
@@ -90,6 +91,7 @@ while not should_exit:
     camera.wait_for_capture_end()
 
     socket.send_multipart([client_ident, b"save_finish"])
+    print(current_index, "save finish")
     save_finish = True
 
     time.sleep(0.01)

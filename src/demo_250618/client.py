@@ -126,7 +126,7 @@ while not should_exit:
             "type": "demo",
             "serial_num": serial_num,
         }
-        print(int(last_frame_ind[i]), detections.mask, detections.xyxy, detections.confidence, serial_num)
+        print(int(last_frame_ind[i]), type(detections.mask), type(detections.xyxy), type(detections.confidence), serial_num)
         msg_json = json.dumps(msg_dict)
 
         if client_ident is not None:

@@ -10,6 +10,7 @@ import numpy as np
 import sys
 
 from yolo_world_module import YOLO_MODULE
+print("yolo module loaded")
 
 should_exit = False 
 client_ident = None 

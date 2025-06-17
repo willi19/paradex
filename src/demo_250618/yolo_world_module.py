@@ -174,7 +174,8 @@ class YOLO_MODULE:
 if __name__ == '__main__':
 
     confidence_threshold=0.001
-    yolo = YOLO_MODULE(categories='robot,toothbrush_holder', confidence_threshold=confidence_threshold)
+    yolo = YOLO_MODULE(categories='pringles')
+    print("yolo module initialized")
     img = cv2.imread('/home/jisoo/teserract_nas/processed/toothbrush_holder/0/rgb_extracted/22684755/00000.jpeg')
     detections = yolo.process_img(img)
 

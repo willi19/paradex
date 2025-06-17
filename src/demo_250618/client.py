@@ -101,11 +101,16 @@ while not should_exit:
 
         
         detections = yolo_module.process_img(last_image, with_segmentation=False)
+        
         if detections.xyxy.size > 0:
             bbox = detections.xyxy[0]
             # detections.bbox_center = bbox[:2] + (bbox[2:] - bbox[:2]) / 2
             detections.mask = np.zeros((1, last_image.shape[0], last_image.shape[1]), dtype=bool)
             detections.mask[0, int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])] = True
+        
+        for key in detections.keys():
+            if type(detections[key]) is np.ndarray:
+                detectons[key] = detections[key].tolist()
 
         serial_num = camera.serial_list[i]
 

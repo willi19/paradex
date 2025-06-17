@@ -165,7 +165,7 @@ def main_ui_loop():
 # Git pull and client run
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-# run_script("python src/demo_250618/client.py", pc_list)
+run_script("python src/demo_250618/client.py", pc_list)
 
 try:
     for pc_name, info in pc_info.items():

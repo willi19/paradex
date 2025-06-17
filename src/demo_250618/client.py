@@ -115,12 +115,13 @@ while not should_exit:
         serial_num = camera.serial_list[i]
 
         save_flag[i] = False
+        print(detections.confidence)
 
         msg_dict = {
             "frame": int(last_frame_ind[i]),
             "detections.mask": detections.mask,
             "detections.xyxy": detections.xyxy,
-            "detections.confidence": detections.confidence.item(),
+            "detections.confidence": detections.confidence,
             "type": "demo",
             "serial_num": serial_num,
         }

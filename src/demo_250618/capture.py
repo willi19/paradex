@@ -136,26 +136,26 @@ def main_ui_loop():
 
     #     grid_image = cv2.resize(grid_image, (int(2048//1.5), int(1536//1.5)))
     #     cv2.imshow("Grid", grid_image)
-    #     key = cv2.waitKey(1)
-    #     if key == ord('q'):
-    #         print("[Server] Quitting...")
-    #         for socket in socket_dict.values():
-    #             socket.send_string("quit")
-    #         break
-    #     elif key == ord('c'):
-    #         print("[Server] Sending capture command.")
-    #         send_capture = True
-    #         for pc in pc_info.keys():
-    #             if capture_state[pc]:
-    #                 send_capture = False
-    #                 break
-    #         if send_capture:
-    #             global capture_idx, filename
-    #             os.makedirs(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx)), exist_ok=True)
-    #             for pc, socket in socket_dict.items():
-    #                 socket.send_string(f"capture:{capture_idx}")
-    #                 capture_state[pc] = True
-    #             capture_idx += 1
+        key = cv2.waitKey(1)
+        if key == ord('q'):
+            print("[Server] Quitting...")
+            for socket in socket_dict.values():
+                socket.send_string("quit")
+            break
+        elif key == ord('c'):
+            print("[Server] Sending capture command.")
+            send_capture = True
+            for pc in pc_info.keys():
+                if capture_state[pc]:
+                    send_capture = False
+                    break
+            if send_capture:
+                global capture_idx, filename
+                os.makedirs(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx)), exist_ok=True)
+                for pc, socket in socket_dict.items():
+                    socket.send_string(f"capture:{capture_idx}")
+                    capture_state[pc] = True
+                capture_idx += 1
 
 # Git pull and client run
 pc_list = list(pc_info.keys())

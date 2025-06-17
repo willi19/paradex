@@ -87,6 +87,7 @@ yolo_module = YOLO_MODULE(categories="pringles")
 threading.Thread(target=listen_for_commands, daemon=True).start()
 
 while not should_exit:
+    print("waiting for camera frame")
     for i in range(num_cam):
         if camera.frame_num[i] == last_frame_ind[i]:
             continue

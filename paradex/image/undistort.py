@@ -14,7 +14,7 @@ def undistort_img(img, intrinsic):
     Returns:
         undistorted_img (np.ndarray): Undistorted image
     """
-    undistorted_img = cv2.undistort(img, np.array(intrinsic["original_intrinsics"]), np.array(intrinsic["dist_params"]), None, np.array(intrinsic["intrinsics_undistort"]))
+    undistorted_img = cv2.undistort(img, np.array(intrinsic["intrinsics_original"]), np.array(intrinsic["dist_params"]), None, np.array(intrinsic["intrinsics_undistort"]))
     return undistorted_img
 
 def undistort_points(pts, intrinsic):

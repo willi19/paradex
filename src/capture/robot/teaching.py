@@ -23,12 +23,12 @@ arm.set_state(0)
 # arm.start_record_trajectory()
 
 # # Analog recording process, here with delay instead
-os.makedirs('hecalib', exist_ok=True)
+os.makedirs('robot_traj', exist_ok=True)
 start_time = time.time()
 idx = 0
 while time.time() - start_time < 30:
     _, pos_aa = arm.get_position_aa(is_radian=True)
-    np.save(f'hecalib/{idx}.npy', pos_aa)
+    np.save(f'robot_traj/{idx}.npy', pos_aa)
     idx += 1
     time.sleep(1)
 # arm.stop_record_trajectory()

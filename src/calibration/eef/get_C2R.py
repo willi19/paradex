@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from paradex.utils.io import handeye_calib_path, find_latest_directory
+from paradex.utils.file_io import handeye_calib_path, find_latest_directory
 import argparse
 import numpy as np
 from numpy.linalg import inv
@@ -29,8 +29,8 @@ if __name__ == "__main__":
         idx1 = index_list[i]
         idx2 = index_list[i+1]
 
-        robot1 = np.load(os.path.join(he_calib_path, idx1, "link5.npy"))
-        robot2 = np.load(os.path.join(he_calib_path, idx2, "link5.npy"))
+        robot1 = np.load(os.path.join(he_calib_path, idx1, "link6.npy"))
+        robot2 = np.load(os.path.join(he_calib_path, idx2, "link6.npy"))
         B_list.append(robot1 @ np.linalg.inv(robot2))
 
         marker_dict1 = np.load(os.path.join(he_calib_path, idx1, "marker_3d.npy"), allow_pickle=True).item()
@@ -62,7 +62,7 @@ if __name__ == "__main__":
     marker_id_list = [261,263,264,265,266]
 
     for idx in index_list:
-        robot = np.load(os.path.join(he_calib_path, idx, "link5.npy"))
+        robot = np.load(os.path.join(he_calib_path, idx, "link6.npy"))
         marker_dict = np.load(os.path.join(he_calib_path, idx, "marker_3d.npy"), allow_pickle=True).item()
 
         for mid in marker_dict:

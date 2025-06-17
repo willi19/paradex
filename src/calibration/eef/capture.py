@@ -11,11 +11,12 @@ from paradex.io.capture_pc.connect import git_pull, run_script
 import math
 from xarm.wrapper import XArmAPI
 import shutil
+from allegro_hand.controller import AllegroController
 
 class DexArmControl:
     def __init__(self, xarm_ip_address="192.168.1.221"):
 
-        # self.allegro = AllegroController()
+        self.allegro = AllegroController()
         self.arm = XArmAPI(xarm_ip_address, report_type="devlop")
 
         self.max_hand_joint_vel = 100.0 / 360.0 * 2 * math.pi  # 100 degree / sec
@@ -57,7 +58,10 @@ class DexArmControl:
             is_error, arm_joint_states = self.arm.get_joint_states(is_radian=True)
             xarm_angles = np.array(arm_joint_states[0])
 
-        return xarm_angles
+        allegro_angles = self.allegro.current_joint_pose.position
+        allegro_angles = np.array(allegro_angles)
+
+        return xarm_angles, allegro_angles
 
     def quit(self):
         self.arm.motion_enable(enable=False)
@@ -137,7 +141,7 @@ dex_arm = DexArmControl()
 # Git pull and client run
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script("python src/calibration/handeyecalibration/client.py", pc_list)
+run_script("python src/calibration/eef/client.py", pc_list)
 
 for pc_name, info in pc_info.items():
     ip = info["ip"]
@@ -163,12 +167,15 @@ try:
     for i in range(20):
         # move robot
         target_action = np.load(f"hecalib/{i+10}.npy")
+        hand_action = np.load(f"data/calibration_pose/hand_{i}.npy")
         dex_arm.move_arm(target_action)
+        dex_arm.move_hand(allegro_angles=hand_action)
+
         time.sleep(0.5)
         
-        xarm_angles = dex_arm.get_joint_values()
-        os.makedirs(f"{shared_dir}/handeye_calibration/{filename}/{i}/image", exist_ok=True)
-        np.save(f"{shared_dir}/handeye_calibration/{filename}/{i}/robot", xarm_angles[:6])
+        xarm_angles, allegro_angles = dex_arm.get_joint_values()
+        os.makedirs(f"{shared_dir}/eef/{filename}/{i}/image", exist_ok=True)
+        np.save(f"{shared_dir}/eef/{filename}/{i}/robot", [xarm_angles[:6],allegro_angles])
         
         for pc_name, sock in socket_dict.items():
             capture_state[pc_name] = True
@@ -186,7 +193,7 @@ except Exception as e:
     dex_arm.quit()    
 
 dex_arm.quit()
-copy_calib_files(f"/home/temp_id/shared_data/handeye_calibration/{filename}/0")
+copy_calib_files(f"/home/temp_id/shared_data/eef/{filename}/0")
 for pc_name, sock in socket_dict.items():
     sock.send_string("quit")
     sock.close()

@@ -11,6 +11,10 @@ def triangulate(corners: np.ndarray, projections: np.ndarray):
     Returns:
         kp3d: (1, 3) matrix containing the triangulated 3D point.
     """
+    if len(corners.shape) == 3:
+        ret = np.array([triangulate(corners[:, i], projections) for i in range(corners.shape[1])])
+        return np.vstack(ret)
+        
     numImg = projections.shape[0]
     if numImg < 2:
         return None  # At least two views are needed for triangulation
@@ -19,7 +23,7 @@ def triangulate(corners: np.ndarray, projections: np.ndarray):
     curY = corners[:, 1]  # y-coordinates
 
     A = np.zeros((numImg * 2, 4))  # (2N, 4) matrix
-
+    
     for i in range(numImg):
         A[2 * i] = curY[i] * projections[i, 2] - projections[i, 1]  # Row for Y
         A[2 * i + 1] = curX[i] * projections[i, 2] - projections[i, 0]  # Row for X
@@ -41,6 +45,19 @@ def ransac_triangulation(corners: np.ndarray, projections: np.ndarray, threshold
     Returns:
         best_kp3d : (4, 3) matrix with filtered 3D keypoints
     """
+    if len(corners.shape) == 3:
+        numImg = projections.shape[0]
+        if numImg <= 2:
+            return None
+        
+        ret = [ransac_triangulation(corners[:, i], projections) for i in range(corners.shape[1])]
+        for r in ret:
+            if r is None:
+                # If any triangulation fails, return None
+                return None
+        
+        return np.vstack(ret)
+    
     best_inliers = 0
     best_kp3d = None
     

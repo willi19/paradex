@@ -114,6 +114,7 @@ while not should_exit:
             "type": "demo",
             "serial_num": serial_num,
         }
+        print(detections)
         msg_json = json.dumps(msg_dict)
 
         if client_ident is not None:

@@ -82,8 +82,7 @@ save_flag = [False for _ in range(num_cam)]
 save_finish = True
 
 while not should_exit:
-    print(save_finish)
-    if not save_finish:
+    if save_finish:
         time.sleep(0.1)
         continue
     
@@ -92,9 +91,7 @@ while not should_exit:
     camera.wait_for_capture_end()
 
     socket.send_multipart([client_ident, b"save_finish"])
-    print(current_index, "save finish")
     save_finish = True
-    print(save_finish)
     time.sleep(0.01)
 
 camera.end()

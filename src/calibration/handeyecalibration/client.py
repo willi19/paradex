@@ -86,7 +86,7 @@ while not should_exit:
         time.sleep(0.1)
         continue
     
-    camera.set_save_dir(os.path.join(shared_dir, "handeye_calibration", cur_filename, str(current_index)))
+    camera.set_save_dir(os.path.join(shared_dir, "handeye_calibration", cur_filename, str(current_index)),"image")
     camera.start()
     camera.wait_for_capture_end()
 

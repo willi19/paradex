@@ -9,7 +9,67 @@ import os
 from paradex.utils.file_io import config_dir, shared_dir
 from paradex.io.capture_pc.connect import git_pull, run_script
 import math
+from xarm.wrapper import XArmAPI
 
+class DexArmControl:
+    def __init__(self, xarm_ip_address="192.168.1.221"):
+
+        # self.allegro = AllegroController()
+        self.arm = XArmAPI(xarm_ip_address, report_type="devlop")
+
+        self.max_hand_joint_vel = 100.0 / 360.0 * 2 * math.pi  # 100 degree / sec
+        self.last_xarm_command = None
+        self.last_allegro_command = None
+
+        self.arm.motion_enable(enable=False)
+        self.arm.motion_enable(enable=True)
+        self.arm.set_mode(0)
+        self.arm.set_state(state=0)
+
+        self.reset()
+
+        print("init complete")
+
+    def reset(self):
+        if self.arm.has_err_warn:
+            self.arm.clean_error()
+
+        self.arm.motion_enable(enable=False)
+        self.arm.motion_enable(enable=True)
+        self.arm.set_mode(0)  # 0: position control, 1: servo control
+        self.arm.set_state(state=0)
+
+
+    def move_arm(self, target_action):
+        self.arm.set_position_aa(axis_angle_pose=target_action, wait=True, is_radian=True, motion_type=1)
+
+    def move_hand(self, allegro_angles):
+        num_steps = 10
+        fps = 100
+        for i in range(num_steps):
+            self.allegro.hand_pose(allegro_angles)
+            time.sleep(1 / fps)
+
+    def get_joint_values(self):
+        is_error = 1
+        while is_error != 0:
+            is_error, arm_joint_states = self.arm.get_joint_states(is_radian=True)
+            xarm_angles = np.array(arm_joint_states[0])
+
+        return xarm_angles
+
+    def quit(self):
+        self.arm.motion_enable(enable=False)
+        self.arm.disconnect()
+
+
+def copy_calib_files(save_path):
+    camparam_dir = os.path.join(shared_dir, "cam_param")
+    camparam_name = find_latest_directory(camparam_dir)
+    camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
+
+    shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"))
+    
 # === SETUP ===
 pc_info = json.load(open(os.path.join(config_dir, "environment", "pc.json"), "r"))
 serial_list = []
@@ -62,15 +122,17 @@ def wait_for_camera_ready():
         
 def wait_for_capture():
     while True:
+        print(capture_state)
         all_captured = True
-        for pc_name, captured in capture_state.items():
-            if not captured:
+        for pc_name, in_capture in capture_state.items():
+            if in_capture:
                 all_captured = False
                 break
         if all_captured:
             break
         time.sleep(0.1)
 
+dex_arm = DexArmControl()
 
 # Git pull and client run
 pc_list = list(pc_info.keys())
@@ -97,16 +159,30 @@ for pc_name, sock in socket_dict.items():
     
 wait_for_camera_ready()
 
-for i in range(5):
-    for pc_name, sock in socket_dict.items():
-        sock.send_string(f"capture:{i}")
-        print(f"[{pc_name}] Start capture {i+1}/5")
-    wait_for_capture()
-    time.sleep(0.5)  # Wait for cameras to stabilize
+try:
+    for i in range(10,30):
+        # move robot
+        target_action = np.load(f"hecalib/{i}.npy")
+        dex_arm.move_arm(target_action)
         
+        xarm_angles = dex_arm.get_joint_values()
+        os.makedirs(f"{shared_dir}/handeye_calibration/{filename}/{i}/image", exist_ok=True)
+        np.save(f"{shared_dir}/handeye_calibration/{filename}/{i}/robot", xarm_angles[:6])
+        
+        for pc_name, sock in socket_dict.items():
+            sock.send_string(f"capture:{i}")
+            print(f"[{pc_name}] Start capture {i+1}")
+        wait_for_capture()
+        
+except Exception as e:
+    print(e)
+    
+    for pc_name, sock in socket_dict.items():
+        sock.send_string("quit")
+        sock.close()
+    
+    dex_arm.quit()    
 
-# except Exception as e:
-#     print(e)
-#     for pc_name, sock in socket_dict.items():
-#         sock.send_string("quit")
-#         sock.close()
+dex_arm.quit()
+copy_calib_files(f"/home/temp_id/shared_data/handeye_calibration/{filename}/0")
+    

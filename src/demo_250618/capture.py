@@ -90,6 +90,7 @@ def listen_socket(pc_name, socket):
             detection_results[serial_num]["xyxy"] = np.array(detections_xyxy, dtype=float)
             detection_results[serial_num]["confidence"] = np.array(detections_confidence)
             
+            print(data["frame"])
             print(detection_results[serial_num]["mask"])
             print(detection_results[serial_num]["xyxy"])
             print(detection_results[serial_num]["confidence"])

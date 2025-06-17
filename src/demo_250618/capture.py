@@ -88,7 +88,7 @@ def listen_socket(pc_name, socket):
             detection_results[serial_num] = {}
             detection_results[serial_num]["mask"] = np.array(detections_mask, dtype=bool)
             detection_results[serial_num]["xyxy"] = np.array(detections_xyxy, dtype=float)
-            detection_results[serial_num]["confidence"] = np.array(detections_confidence, device=device)
+            detection_results[serial_num]["confidence"] = np.array(detections_confidence)
             
             print(detection_results[serial_num]["mask"])
             print(detection_results[serial_num]["xyxy"])

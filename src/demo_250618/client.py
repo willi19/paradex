@@ -94,6 +94,7 @@ while not should_exit:
         last_frame_ind[i] = camera.frame_num[i]
         with camera.locks[i]:
             last_image = camera.image_array[i].copy()
+        print(last_frame_ind[i])
 
         
         detections = yolo_module.process_img(last_image, with_segmentation=False)

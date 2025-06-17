@@ -193,7 +193,8 @@ try:
         threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
 
     # Main UI loop
-
+    while True:
+        time.sleep(0.1)  # Prevent busy-waiting
     main_ui_loop()
 
 except Exception as e:

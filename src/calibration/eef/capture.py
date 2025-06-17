@@ -165,7 +165,7 @@ for pc_name, sock in socket_dict.items():
 wait_for_camera_ready()
 
 try:
-    for i in range(3):
+    for i in range(20):
         # move robot
         target_action = np.load(f"hecalib/{i+10}.npy")
         hand_action = np.load(f"data/calibration_pose/hand_{i% 15}.npy")

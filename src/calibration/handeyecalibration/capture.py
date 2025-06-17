@@ -75,7 +75,7 @@ def wait_for_capture():
 # Git pull and client run
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-# run_script("python src/calibration/extrinsic/client.py", pc_list)
+run_script("python src/calibration/handeyecalibration/client.py", pc_list)
 
 for pc_name, info in pc_info.items():
     ip = info["ip"]

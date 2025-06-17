@@ -108,9 +108,9 @@ while not should_exit:
             detections.mask = np.zeros((1, last_image.shape[0], last_image.shape[1]), dtype=bool)
             detections.mask[0, int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])] = True
         
-        for key in detections.keys():
-            if type(detections[key]) is np.ndarray:
-                detectons[key] = detections[key].tolist()
+                
+        detections.mask = detections.mask.tolist()
+        detections.xyxy = detections.xyxy.tolist()
 
         serial_num = camera.serial_list[i]
 

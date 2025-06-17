@@ -81,6 +81,7 @@ camera.start()
 last_frame_ind = [-1 for _ in range(num_cam)]
 save_flag = [False for _ in range(num_cam)]
 save_finish = True
+socket.send_multipart([client_ident, b"camera_start"])
 
 yolo_module = YOLO_MODULE(categories="pringles")
 socket.send_multipart([client_ident, b"yolo module initialized"])

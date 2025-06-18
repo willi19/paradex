@@ -95,10 +95,10 @@ while not should_exit:
             last_image = camera.image_array[i].copy()
         
         # cv2.imwrite(os.path.join(shared_dir, str(cur_filename), str(last_frame_ind[i]), "images", f"{camera.serial_list[i]}.jpg"), last_image)
-        undistorted_img = undistort_img(last_image, intrinsic[cam_id])
+        serial_num = camera.serial_list[i]
+        undistorted_img = undistort_img(last_image, intrinsic[serial_num])
         cv2.imwrite(os.path.join(shared_dir, str(cur_filename), str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"), undistorted_img)
     
-        serial_num = camera.serial_list[i]
         msg_dict = {
             "frame": int(last_frame_ind[i]),
             "type": "charuco",

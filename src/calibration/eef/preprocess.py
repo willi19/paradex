@@ -6,7 +6,7 @@ from paradex.geometry.triangulate import ransac_triangulation
 from paradex.image.aruco import detect_aruco
 from paradex.image.undistort import undistort_img
 
-from paradex.utils.file_io import handeye_calib_path, find_latest_directory, load_cam_param, rsc_path, handeye_calib_path
+from paradex.utils.file_io import find_latest_directory, load_cam_param, rsc_path, handeye_calib_path, shared_dir
 import argparse
 
 import cv2
@@ -18,6 +18,8 @@ debug = True
 parser = argparse.ArgumentParser()
 parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
 
+handeye_calib_path = os.path.join(shared_dir, "eef")
+
 args = parser.parse_args()
 if args.name is None:
     args.name = find_latest_directory(handeye_calib_path)
@@ -26,7 +28,7 @@ name = args.name
 he_calib_path = os.path.join(handeye_calib_path, name)
 
 robot = RobotWrapper(
-    os.path.join(rsc_path, "xarm6", "xarm6.urdf")
+    os.path.join(rsc_path, "xarm6", "xarm6_allegro_wrist_mounted_rotate.urdf")
 )
 
 link_index = robot.get_link_index("link6")
@@ -72,7 +74,7 @@ for idx in index_list:
             id_cor[id]["cammtx"].append(cammat[serial_num]) 
             
     cor_3d = {id:ransac_triangulation(np.array(id_cor[id]["2d"]), np.array(id_cor[id]["cammtx"])) for id in id_cor}
-    marker_id = [261, 262, 263, 264, 265, 266]#, 11, 13, 14]
+    marker_id = [11, 13, 14]
 
     if debug == True:
         for img_name in img_list:

@@ -14,20 +14,18 @@ from paradex.simulator.isaac import simulator
 
 LINK62PALM = np.array(
     [
-        [0, 1, 0, 0],
-        [0, 0, 1, 0],#0.035],
-        [1, 0, 0, 0],#0.055],
+        [0, -1, 0, 0.0],
+        [1, 0, 0, 0.0],#0.035],
+        [0, 0, 1, -0.18],
         [0, 0, 0, 1],
     ]
 )
-
-
 demo_path = "data_Icra/teleoperation/bottle"
 demo_path_list = os.listdir(demo_path)
 demo_path_list.sort()
 
 arm_name = "xarm"
-hand_name = None# "allegro"
+hand_name = None#"allegro"
 
 obj_mesh = o3d.io.read_triangle_mesh(os.path.join(rsc_path, "bottle", "bottle.obj"))
 
@@ -76,16 +74,22 @@ def initialize_teleoperation(save_path):
 def get_object_pose():
     f = open("data_Icra/teleoperation/bottle/1/obj_traj.pickle", "rb")
     obj_pose = pickle.load(f)["bottle"][0]
+    
+    obj_pose[:2, 3] = np.array([0.57176, 0.047841])  # Adjusted position
     f.close()
     return obj_pose
 
 def determine_theta():
-    return -30
+    return 0
 
 def determine_traj_idx():
     return 1
 
 def load_demo(demo_name):
+    robot_prev = RobotWrapper(
+        os.path.join(rsc_path, "xarm6", "xarm6_allegro_wrist_mounted_rotate_prev.urdf")
+    )
+    
     obj_T = pickle.load(open(os.path.join(demo_path, demo_name, "obj_traj.pickle"), "rb"))['bottle']
     robot_traj = np.load(os.path.join(demo_path, demo_name, "robot_qpos.npy"))
     target_traj = np.load(os.path.join(demo_path, demo_name, "target_qpos.npy"))
@@ -103,8 +107,8 @@ def load_demo(demo_name):
     dist = 0.07
     for step in range(T):
         q_pose = robot_traj[step]
-        robot.compute_forward_kinematics(q_pose)
-        wrist_pose = robot.get_link_pose(link_index)
+        robot_prev.compute_forward_kinematics(q_pose)
+        wrist_pose = robot_prev.get_link_pose(link_index)
     
         obj_wrist_pose = np.linalg.inv(obj_T[step]) @ wrist_pose
         obj_pos = obj_wrist_pose[:2, 3]
@@ -116,6 +120,8 @@ def load_demo(demo_name):
 
     robot_pose = []
     hand_action = []
+    obj_pose = obj_T[start_T].copy()
+    tx, ty = obj_pose[:2, 3]
 
     for i in range(start_T, end_T + 1 + lift_T):
         if i > end_T:
@@ -124,20 +130,31 @@ def load_demo(demo_name):
             hand_action.append(target_traj[end_T, 6:])
             continue
 
-        robot.compute_forward_kinematics(robot_traj[i])
-        wrist_pose = robot.get_link_pose(link_index)
+        robot_prev.compute_forward_kinematics(robot_traj[i])
+        wrist_pose = robot_prev.get_link_pose(link_index)
         
-        wrist_pose = np.linalg.inv(obj_T[0]) @ wrist_pose
+        # wrist_axangle = target_traj[i, 3:6]
+        # angle = np.linalg.norm(wrist_axangle)
+        # if angle > 1e-6:
+        #     wrist_axis = wrist_axangle / angle
+        # else:
+        #     wrist_axis = np.zeros(3)
+            
+        # wrist_rotmat = t3d.axangles.axangle2mat(wrist_axis, angle)
+
+        # wrist_pose = np.zeros((4, 4))
+        # wrist_pose[:3, :3] = wrist_rotmat
+        # wrist_pose[:3, 3] = robot_traj[i][:3]
+        # wrist_pose = np.linalg.inv(obj_T[0]) @ wrist_pose
 
         hand_action.append(target_traj[i, 6:])
-        robot_pose.append(wrist_pose)
+        wrist_pose[:2, 3] -= np.array([tx, ty])  # Adjust position relative to object
+        robot_pose.append(wrist_pose.copy())
     
     robot_pose = np.array(robot_pose)
     hand_action = np.array(hand_action)
-    obj_pose = obj_T[start_T].copy()
     
-    tx, ty = obj_pose[:2, 3]
-
+    
     desired_x = np.array([0, 1, 0])
     current_x = robot_pose[-1, :3, 0][:2]  # x축 방향 (2D)
     theta = np.arctan2(desired_x[1], desired_x[0]) - np.arctan2(current_x[1], current_x[0])
@@ -154,6 +171,7 @@ def load_demo(demo_name):
     robot_pose[:, 2, 3] += (0.08 - robot_pose[0, 2, 3])
 
     robot_pose = np.einsum('ij, kjl -> kil', rot_mat, robot_pose)
+    # import pdb; pdb.set_trace()
     return obj_pose, robot_pose, hand_action
 
 def get_traj(tx, ty, theta, wrist_pose_demo):
@@ -168,8 +186,8 @@ def get_traj(tx, ty, theta, wrist_pose_demo):
     return wrist_pose
 
 if __name__ == "__main__":
-    object_pose = get_object_pose()
-    tx, ty = object_pose[:2, 3]
+    # object_pose = get_object_pose()
+    tx, ty =  0.57176, 0.047841# object_pose[:2, 3]
 
     theta = determine_theta()
     traj_idx = determine_traj_idx()
@@ -185,7 +203,7 @@ if __name__ == "__main__":
         sensors["hand"].home_robot()
 
     if arm_name is not None:
-        sensors["arm"].set_homepose(homo2cart(transformed_traj[0] @ np.linalg.inv(LINK62PALM)))
+        sensors["arm"].set_homepose(homo2cart(transformed_traj[0] @ LINK62PALM))
         sensors["arm"].home_robot()
 
         home_start_time = time.time()
@@ -197,7 +215,7 @@ if __name__ == "__main__":
         chime.success()
 
     for i in range(len(transformed_traj)):
-        l6_pose = transformed_traj[i] @ np.linalg.inv(LINK62PALM)
+        l6_pose = transformed_traj[i] @ LINK62PALM
         arm_action = homo2cart(l6_pose)
         hand_action = hand_pose[i]
 

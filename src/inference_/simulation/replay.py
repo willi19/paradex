@@ -58,8 +58,9 @@ for demo_name in demo_path_list:  # demo_path_list:
 
     T = obj_T.shape[0]
     
-
-    for step in range(T):
+    step = 0
+    while True:
+        step += 1
         robot_action = target_traj[step]
         
         t = robot_action[:3]
@@ -78,11 +79,8 @@ for demo_name in demo_path_list:  # demo_path_list:
         robot_T = np.eye(4)
         robot_T[:3, :3] = link6_mat
         robot_T[:3, 3] = t
-        import pdb; pdb.set_trace()
         robot_pose = robot_traj[step]
         robot.compute_forward_kinematics(robot_pose)
-        
-        import pdb; pdb.set_trace()
         R_mat_pose = robot.get_link_pose(link_index)
 
         # print(np.linalg.norm(R_mat_pose[:3, 3] - robot_action[:3]))

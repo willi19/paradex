@@ -10,6 +10,10 @@ from paradex.utils.file_io import config_dir, shared_dir
 from paradex.io.capture_pc.connect import git_pull, run_script
 import math
 
+from pathlib import Path
+from scene import Scene
+from yolo_world_module import YOLO_MODULE
+
 # === SETUP ===
 pc_info = json.load(open(os.path.join(config_dir, "environment", "pc.json"), "r"))
 serial_list = []
@@ -69,7 +73,9 @@ def listen_socket(pc_name, socket):
         
         serial_num = data["serial_num"]
         if data.get("type") == "charuco":
+            
             result = data["detect_result"]
+            print(result)
             # corners = np.array(result["checkerCorner"], dtype=np.float32)
             # ids = np.array(result["checkerIDs"], dtype=np.int32).reshape(-1, 1)
             frame = data["frame"]
@@ -82,7 +88,7 @@ def listen_socket(pc_name, socket):
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
-def main_loop():
+def main_loop(yolo_module):
     while True:
         current_idx = 0
         cur_cnt = 0
@@ -93,8 +99,68 @@ def main_loop():
                     current_idx = cur_state[serial_num]
                     cur_cnt += 1
         if cur_cnt == len(serial_list):
+            mask_sub_dir = 'mask_hq/%s/%05d'%("pringles", 0)
+            device = torch.device("cuda:0")
+            org_scene = Scene(root_path=Path(root_path), rescale_factor=1.0, mask_dir_nm=mask_sub_dir, device=device)
+
             # DO YOLO
+            detection_results = {}
+            results_img = []
+            for cam_id in org_scene.cam_ids:
+
+                rgb_img = org_scene.get_image_demo(cam_id, fidx)
+                rgb_img = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
+                detections = yolo_module.process_img(rgb_img, with_segmentation=False)
+                # output_image = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
+                # res_vis = yolo_module.annotate_image(output_image, detections, categories=yolo_module.categories, with_confidence=True)
+                # imgs.append(res_vis)
+                if detections.xyxy.size > 0:
+                    detections.bbox_center = detections.xyxy[:, :2] + (detections.xyxy[:, 2:] - detections.xyxy[:, :2]) / 2
+                    detections.mask = np.zeros((1, rgb_img.shape[0], rgb_img.shape[1]), dtype=bool)
+                    detections.mask[:, int(detections.xyxy[0, 1]):int(detections.xyxy[0, 3]), int(detections.xyxy[0, 0]):int(detections.xyxy[0, 2])] = True
+                detection_results[cam_id] = detections
+                canvas = yolo_module.annotate_image(rgb_img, detections, categories=yolo_module.categories, with_confidence=True)
+                canvas = putText(canvas, cam_id, color=(0,0, 255))
+                # print(type(canvas))
+                results_img.append(canvas[::4, ::4])
             # plot grid image
+            cv2.imwrite(f'debug_grid_{fidx}.png',make_grid_image_np(np.array(results_img), 4,6))
+
+            confidence_dict = {cam_id: detection_results[cam_id].confidence.item() for cam_id in detection_results if detection_results[cam_id].confidence.size > 0 and detection_results[cam_id].confidence > 0.001 and cam_id not in hide_list}
+            cam_N = 10
+            top_n_cams2confidence = sorted(confidence_dict.items(), key=lambda x: x[1], reverse=True)[:cam_N]
+            top_n_cams = [cam_id for cam_id, confidence in top_n_cams2confidence]
+            
+            # triangulation_start = time.time()
+            A = []
+            for cam_id in top_n_cams:
+                cx, cy = detection_results[cam_id].bbox_center[0]
+                P = org_scene.proj_matrix[cam_id]
+                A.append(cx * P[2] - P[0])
+                A.append(cy * P[2] - P[1])
+            A = np.stack(A, axis=0)
+            _, _, Vt = np.linalg.svd(A)
+            X_h = Vt[-1]
+            X = X_h[:3] / X_h[3]  # Convert from homogeneous coordinates to 3D point
+            
+            object_output_dir = Path(root_path)/(f'{obj_name}_optim')
+            os.makedirs(object_output_dir, exist_ok=True)
+
+            json.dump(vars(args), open(object_output_dir/'params.json','w'))
+
+            object_final_output_dir = object_output_dir/'final'
+            os.makedirs(object_final_output_dir, exist_ok=True)
+            
+            C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
+            C2R = np.linalg.inv(C2R) # convert to camera coordinate system
+            # print(C2R)
+            initial_translate = X @ C2R[:3, :3].T + C2R[:3, 3] # convert to camera coordinate system
+            print(initial_translate)
+            
+            result_dict = {'t':initial_translate}
+            import pickle
+            pickle.dump(result_dict, open(object_final_output_dir/f'init_transl.pickle','wb'))
+                
         current_idx += 1
     
 # def main_ui_loop():
@@ -170,6 +236,12 @@ pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 run_script("python src/demo_250618/client_mingi.py", pc_list)
 
+
+root_path = "/home/temp_id/shared_data/demo_250618/pringles"
+obj_name = root_path.split("/")[-2]
+
+yolo_module = YOLO_MODULE(categories=obj_name)
+
 try:
     
     for pc_name, info in pc_info.items():
@@ -191,7 +263,7 @@ try:
         threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
     wait_for_camera_ready()
     # Main UI loop
-    main_loop()
+    main_loop(yolo_module)
 
 except Exception as e:
     print(e)

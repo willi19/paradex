@@ -110,7 +110,7 @@ class XArmController:
                 angles = self.arm_target_action_array.copy()
                 angles[:3] *= 1000
 
-                self.arm.set_position_aa(axis_angle_pose=angles,speed=100, is_radian=True, wait=True)
+                self.arm.set_position_aa(axis_angle_pose=angles,speed=100, is_radian=True, wait=True, motion_type=1)
                 self.arm.set_mode(1)
                 self.arm.set_state(state=0)
                 time.sleep(0.1)

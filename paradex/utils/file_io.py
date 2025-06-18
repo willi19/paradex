@@ -108,7 +108,7 @@ def load_cam_param(name=None):
     intrinsic = {}
     for serial, values in intrinsic_data.items():
         intrinsic[serial] = {
-            "intrinsics_original": np.array(values["original_intrinsics"]).reshape(3, 3),
+            "original_intrinsics": np.array(values["original_intrinsics"]).reshape(3, 3),
             "intrinsics_undistort": np.array(values["intrinsics_undistort"]).reshape(3, 3),
             "dist_params": np.array(values["dist_params"]),
             "height": values["height"],  # Scalar values remain unchanged

@@ -224,7 +224,7 @@
   </joint>
 
   <joint name="gripper_base_joint" type="fixed">
-    <origin rpy="0 0 -1.57" xyz="0 0 0.186"/>
+    <origin rpy="0 -1.57 -1.57" xyz="0 0 0.186"/>
     <parent link="link6"/>
     <child link="palm_link"/>
     <axis xyz="0 0 0"/>

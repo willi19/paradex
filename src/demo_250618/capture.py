@@ -85,32 +85,50 @@ def listen_socket(pc_name, socket):
             detections_xyxy = data["detections.xyxy"]
             detections_confidence = data["detections.confidence"]
 
-            detection_results[serial_num] = {}
-            detection_results[serial_num]["mask"] = np.array(detections_mask, dtype=bool)
-            detection_results[serial_num]["xyxy"] = np.array(detections_xyxy, dtype=float)
-            detection_results[serial_num]["confidence"] = np.array(detections_confidence)
+            if data["frame"] not in detection_results:
+                detection_results[data["frame"]] = {}
+            # print(serial_num, data["frame"])
             
-            print(data["frame"])
-            print(detection_results[serial_num]["mask"])
-            print(detection_results[serial_num]["xyxy"])
-            print(detection_results[serial_num]["confidence"])
+            
+            detection_results[data["frame"]][serial_num] = {}
+            detection_results[data["frame"]][serial_num]["mask"] = np.array(detections_mask, dtype=bool)
+            detection_results[data["frame"]][serial_num]["xyxy"] = np.array(detections_xyxy, dtype=float)
+            detection_results[data["frame"]][serial_num]["confidence"] = np.array(detections_confidence)
+            detection_results[data["frame"]][serial_num]["frame_num"] = data["frame"]
+            
+            # if detection_results[serial_num]["mask"].size > 0:
+            #     print(data["frame"])
+            #     print(detection_results[serial_num]["mask"])
+            #     print(detection_results[serial_num]["xyxy"])
+            #     print(detection_results[serial_num]["confidence"])
 
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
 def main_ui_loop():
+    curr_frame = 20
+    while True:
+        
+        if curr_frame in detection_results: print(len(detection_results[curr_frame]))
+        if curr_frame in detection_results and len(detection_results[curr_frame]) > 12:
+            
+            detection_results_curr = detection_results[curr_frame]
+            confidence_dict = {cam_id: detection_results_curr[cam_id]["confidence"][0] for cam_id in detection_results_curr if detection_results_curr[cam_id]["confidence"].size > 0 and detection_results_curr[cam_id]["confidence"][0] > 0.001 and cam_id not in hide_list}
+            # print(confidence_dict)
+            cam_N = 10
+            top_n_cams2confidence = sorted(confidence_dict.items(), key=lambda x: x[1], reverse=True)[:cam_N]
+            top_n_cams = [cam_id for cam_id, confidence in top_n_cams2confidence]
 
-    # while True:
-    confidence_dict = {cam_id: detection_results[cam_id]["confidence"] for cam_id in detection_results if detection_results[cam_id]["confidence"].size > 0 and detection_results[cam_id]["confidence"] > 0.001 and cam_id not in hide_list}
-    cam_N = 10
-    top_n_cams2confidence = sorted(confidence_dict.items(), key=lambda x: x[1], reverse=True)[:cam_N]
-    top_n_cams = [cam_id for cam_id, confidence in top_n_cams2confidence]
+            mask_dict_org = {cam_id: detection_results[cam_id]["mask"][0] for cam_id in top_n_cams}
+            # print(mask_dict_org)
 
-    mask_dict_org = {cam_id: detection_results[cam_id]["mask"][0] for cam_id in top_n_cams}
-    print(mask_dict_org)
-    in_mask_points, initial_translate = get_visualhull_ctr(org_scene, mask_dict=mask_dict_org) # Set Initial translation as center of visual hull
+            in_mask_points, initial_translate = get_visualhull_ctr(org_scene, mask_dict=mask_dict_org) # Set Initial translation as center of visual hull
 
-    print(initial_translate)
+        
+
+        # frame_num = detection_results[detection_results[0]]
+            print(f"{initial_translate}")
+            time.sleep(0.01)
 
 
     # num_images = len(serial_list)
@@ -174,35 +192,35 @@ pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 run_script("python src/demo_250618/client.py", pc_list)
 
-try:
-    for pc_name, info in pc_info.items():
-        ip = info["ip"]
-        sock = context.socket(zmq.DEALER)
-        sock.identity = b"server"
-        sock.connect(f"tcp://{ip}:5556")
-        socket_dict[pc_name] = sock
+# try:
+for pc_name, info in pc_info.items():
+    ip = info["ip"]
+    sock = context.socket(zmq.DEALER)
+    sock.identity = b"server"
+    sock.connect(f"tcp://{ip}:5556")
+    socket_dict[pc_name] = sock
 
-    for pc_name, info in pc_info.items():
-        socket_dict[pc_name].send_string("register")
-        if socket_dict[pc_name].recv_string() == "registered":
-            print(f"[{pc_name}] Registered.")
-        
-        socket_dict[pc_name].send_string("filename:" + filename)
+for pc_name, info in pc_info.items():
+    socket_dict[pc_name].send_string("register")
+    if socket_dict[pc_name].recv_string() == "registered":
+        print(f"[{pc_name}] Registered.")
+    
+    socket_dict[pc_name].send_string("filename:" + filename)
 
-    # Start per-socket listener
-    for pc_name, sock in socket_dict.items():
-        threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
+# Start per-socket listener
+for pc_name, sock in socket_dict.items():
+    threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
 
-    # Main UI loop
-    while True:
-        time.sleep(0.1)  # Prevent busy-waiting
-    main_ui_loop()
+# Main UI loop
+# while True:
+#     time.sleep(0.1)  # Prevent busy-waiting
+main_ui_loop()
 
-except Exception as e:
-    print(e)
-    for pc_name, sock in socket_dict.items():
-        sock.send_string("quit")
-        sock.close()
+# except Exception as e:
+#     print(e)
+#     for pc_name, sock in socket_dict.items():
+#         sock.send_string("quit")
+#         sock.close()
         
 for pc_name, sock in socket_dict.items():
     sock.send_string("quit")

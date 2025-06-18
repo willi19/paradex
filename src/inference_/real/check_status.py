@@ -14,13 +14,12 @@ from paradex.simulator.isaac import simulator
 
 LINK62PALM = np.array(
     [
-        [0, 1, 0, 0],
-        [0, 0, 1, 0.035],
-        [1, 0, 0, 0.055],
+        [0, -1, 0, 0.0],
+        [1, 0, 0, 0.0],#0.035],
+        [0, 0, 1, -0.18],
         [0, 0, 0, 1],
-    ], dtype=np.float64
+    ]
 )
-
 
 demo_path = "data_Icra/teleoperation/bottle"
 demo_path_list = os.listdir(demo_path)
@@ -72,20 +71,29 @@ def homo2cart(h):
     
 #     return controller
 
-
+array([[-0.12324549,  0.08564689,  0.98867343,  0.3965003 ],
+       [ 0.18111348, -0.97759515,  0.10726434, -0.03921698],
+       [ 0.97570921,  0.19228193,  0.10497239,  0.06110497],
+       [ 0.        ,  0.        ,  0.        ,  1.        ]])
 def get_object_pose():
     f = open("data_Icra/teleoperation/bottle/1/obj_traj.pickle", "rb")
     obj_pose = pickle.load(f)["bottle"][0]
+    
+    obj_pose[:2, 3] = np.array([0.57176, 0.047841])  # Adjusted position
     f.close()
     return obj_pose
 
 def determine_theta():
-    return -30
+    return 0
 
 def determine_traj_idx():
     return 1
 
 def load_demo(demo_name):
+    robot_prev = RobotWrapper(
+        os.path.join(rsc_path, "xarm6", "xarm6_allegro_wrist_mounted_rotate_prev.urdf")
+    )
+    
     obj_T = pickle.load(open(os.path.join(demo_path, demo_name, "obj_traj.pickle"), "rb"))['bottle']
     robot_traj = np.load(os.path.join(demo_path, demo_name, "robot_qpos.npy"))
     target_traj = np.load(os.path.join(demo_path, demo_name, "target_qpos.npy"))
@@ -103,8 +111,8 @@ def load_demo(demo_name):
     dist = 0.07
     for step in range(T):
         q_pose = robot_traj[step]
-        robot.compute_forward_kinematics(q_pose)
-        wrist_pose = robot.get_link_pose(link_index)
+        robot_prev.compute_forward_kinematics(q_pose)
+        wrist_pose = robot_prev.get_link_pose(link_index)
     
         obj_wrist_pose = np.linalg.inv(obj_T[step]) @ wrist_pose
         obj_pos = obj_wrist_pose[:2, 3]
@@ -116,6 +124,8 @@ def load_demo(demo_name):
 
     robot_pose = []
     hand_action = []
+    obj_pose = obj_T[start_T].copy()
+    tx, ty = obj_pose[:2, 3]
 
     for i in range(start_T, end_T + 1 + lift_T):
         if i > end_T:
@@ -124,8 +134,8 @@ def load_demo(demo_name):
             hand_action.append(target_traj[end_T, 6:])
             continue
 
-        robot.compute_forward_kinematics(robot_traj[i])
-        wrist_pose = robot.get_link_pose(link_index)
+        robot_prev.compute_forward_kinematics(robot_traj[i])
+        wrist_pose = robot_prev.get_link_pose(link_index)
         
         # wrist_axangle = target_traj[i, 3:6]
         # angle = np.linalg.norm(wrist_axangle)
@@ -139,17 +149,16 @@ def load_demo(demo_name):
         # wrist_pose = np.zeros((4, 4))
         # wrist_pose[:3, :3] = wrist_rotmat
         # wrist_pose[:3, 3] = robot_traj[i][:3]
-        wrist_pose = np.linalg.inv(obj_T[0]) @ wrist_pose
+        # wrist_pose = np.linalg.inv(obj_T[0]) @ wrist_pose
 
         hand_action.append(target_traj[i, 6:])
-        robot_pose.append(wrist_pose)
+        wrist_pose[:2, 3] -= np.array([tx, ty])  # Adjust position relative to object
+        robot_pose.append(wrist_pose.copy())
     
     robot_pose = np.array(robot_pose)
     hand_action = np.array(hand_action)
-    obj_pose = obj_T[start_T].copy()
     
-    tx, ty = obj_pose[:2, 3]
-
+    
     desired_x = np.array([0, 1, 0])
     current_x = robot_pose[-1, :3, 0][:2]  # x축 방향 (2D)
     theta = np.arctan2(desired_x[1], desired_x[0]) - np.arctan2(current_x[1], current_x[0])
@@ -166,6 +175,7 @@ def load_demo(demo_name):
     robot_pose[:, 2, 3] += (0.08 - robot_pose[0, 2, 3])
 
     robot_pose = np.einsum('ij, kjl -> kil', rot_mat, robot_pose)
+    # import pdb; pdb.set_trace()
     return obj_pose, robot_pose, hand_action
 
 def get_traj(tx, ty, theta, wrist_pose_demo):
@@ -183,7 +193,7 @@ if __name__ == "__main__":
     obj_name = "bottle"
     save_video = False
     save_state = False
-    view_physics = True
+    view_physics = False
     view_replay = True
     headless = False
 
@@ -228,18 +238,40 @@ if __name__ == "__main__":
     #     chime.success()
     robot_pose = np.zeros(22)
     
-    for i in range(len(transformed_traj)):
-        l6_pose = transformed_traj[i] @ np.linalg.inv(LINK62PALM)
+    step = 0
+    #while True:
+    for step in range(len(transformed_traj)*5):
+        i = step
+        l6_pose =  transformed_traj[i] @ LINK62PALM
+        l6_idx = robot.get_link_index("link6")
         
-        arm_action = homo2cart(l6_pose)
+        #robot.compute_forward_kinematics(robot_pose)
+        #wrist_pose = robot.get_link_pose(link_index)
+        # l6_pose = robot.get_link_pose(l6_idx)
+        
+        
+        
+        # arm_action = homo2cart(l6_pose)
         hand_action = hand_pose[i]
-
+        import pdb; pdb.set_trace()
         q_ik, success = robot.solve_ik(
             l6_pose,
             "link6",
             q_init=robot_pose,
             
         )
+        # q_ik, success = robot.solve_ik(
+        #     transformed_traj[i],
+        #     "palm_link",
+        #     q_init=robot_pose,
+            
+        # )
+        print(f"Step {i}, IK success: {success}")
+        if not success:
+            robot.compute_forward_kinematics(q_ik)
+            cur_wrist_pose = robot.get_link_pose(link_index)
+            print(cur_wrist_pose[:3, 3]-transformed_traj[i][:3, 3])
+            
         robot_pose = q_ik.copy()
         robot_pose[6:] = hand_action
         # action = np.concatenate([robot_pose, hand_action])
@@ -256,6 +288,3 @@ if __name__ == "__main__":
                     
         # time.sleep(0.1)  # Simulate time taken for each action
         print(i, len(transformed_traj), "Robot action executed.")
-
-    for key in sensors.keys():
-        sensors[key].quit()

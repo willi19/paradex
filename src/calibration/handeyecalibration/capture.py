@@ -160,9 +160,9 @@ for pc_name, sock in socket_dict.items():
 wait_for_camera_ready()
 
 try:
-    for i in range(20):
+    for i in range(6):
         # move robot
-        target_action = np.load(f"hecalib/{i+10}.npy")
+        target_action = np.load(f"hecalib/{i}.npy")
         dex_arm.move_arm(target_action)
         time.sleep(0.5)
         

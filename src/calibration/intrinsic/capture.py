@@ -106,8 +106,8 @@ while True:
         break
     else:
         data = json.loads(msg)
+        plot_img = saved_image.copy()
         if data.get("type") == "charuco":
-            image = np.zeros((1536, 2048, 3), dtype=np.uint8)
             for board_id, result in data["detect_result"].items():
                 corners = np.array(result["checkerCorner"], dtype=np.float32)
                 ids = np.array(result["checkerIDs"], dtype=np.int32).reshape(-1, 1)
@@ -121,14 +121,13 @@ while True:
                     print("[Client] No corners detected.")
                     continue
             
-                plot_img = saved_image.copy()
                 draw_charuco_corners_custom(plot_img, corners, BOARD_COLORS[int(board_id)], 5, -1, ids)
 
             # for saved_corner in saved_board_corners:
             #     draw_charuco_corners_custom(image, saved_corner, BOARD_COLORS[0], 5, -1)
 
-            image = cv2.resize(image, (2048 // 2, 1536 // 2))
-            cv2.imshow("Charuco Detection", image)
+            plot_img = cv2.resize(plot_img, (2048 // 2, 1536 // 2))
+            cv2.imshow("Charuco Detection", plot_img)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 socket.send_string("quit")
                 break

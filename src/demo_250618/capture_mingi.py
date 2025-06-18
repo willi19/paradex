@@ -88,9 +88,9 @@ def listen_socket(pc_name, socket):
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
-def main_loop(yolo_module):
+def main_loop():
+    current_idx = 0
     while True:
-        current_idx = 0
         cur_cnt = 0
         
         for serial_num in serial_list:
@@ -263,7 +263,8 @@ try:
         threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
     wait_for_camera_ready()
     # Main UI loop
-    main_loop(yolo_module)
+    print("press button")
+    main_loop()
 
 except Exception as e:
     print(e)

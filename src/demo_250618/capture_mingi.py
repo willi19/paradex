@@ -97,7 +97,7 @@ def main_loop(yolo_module):
                 if asdf[serial_num] >= current_idx:
                     current_idx = asdf[serial_num]
                     cur_cnt += 1
-        # print(asdf, cur_cnt, current_idx)
+        print(asdf, cur_cnt, current_idx)
         if cur_cnt == len(serial_list):
             mask_sub_dir = 'mask_hq/%s/%05d'%("pringles", 0)
             device = torch.device("cuda:0")

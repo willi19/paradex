@@ -83,8 +83,8 @@ def listen_socket(pc_name, socket):
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
 def main_loop():
+    current_idx = 0
     while True:
-        current_idx = 0
         cur_cnt = 0
         
         for serial_num in serial_list:
@@ -95,6 +95,7 @@ def main_loop():
         if cur_cnt == len(serial_list):
             # DO YOLO
             # plot grid image
+            pass
         current_idx += 1
     
 # def main_ui_loop():

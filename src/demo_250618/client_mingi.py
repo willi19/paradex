@@ -8,6 +8,7 @@ from paradex.image.aruco import detect_charuco, merge_charuco_detection
 import threading
 import numpy as np
 import sys
+import cv2
 
 should_exit = False 
 client_ident = None 
@@ -89,26 +90,11 @@ while not should_exit:
         last_frame_ind[i] = camera.frame_num[i]
         with camera.locks[i]:
             last_image = camera.image_array[i].copy()
-        detect_result = detect_charuco(last_image, board_info)
-        merged_detect_result = merge_charuco_detection(detect_result, board_info)
-
-        serial_num = camera.serial_list[i]
-        merged_detect_result["save"] = save_flag[i]
         
-        if merged_detect_result["checkerIDs"].size != 0:
-            print(f"[{serial_num}] Detected {len(merged_detect_result['checkerIDs'])} corners")
-
-        if save_flag[i]:
-            np.save(os.path.join(shared_dir, "extrinsic", cur_filename, str(current_index), serial_num + "_cor.npy"), merged_detect_result["checkerCorner"])
-            np.save(os.path.join(shared_dir, "extrinsic", cur_filename, str(current_index), serial_num + "_id.npy"), merged_detect_result["checkerIDs"])
-        save_flag[i] = False
-
-        for data_name in ["checkerCorner", "checkerIDs"]:
-            merged_detect_result[data_name] = merged_detect_result[data_name].tolist()
-
+        cv2.imwrite(os.path.join(shared_dir, str(cur_filename), str(last_frame_ind[i]), f"{camera.serial_list[i]}.jpg"), last_image)
+        serial_num = camera.serial_list[i]
         msg_dict = {
             "frame": int(last_frame_ind[i]),
-            "detect_result": merged_detect_result,
             "type": "charuco",
             "serial_num": serial_num,
         }
@@ -117,16 +103,7 @@ while not should_exit:
         if client_ident is not None:
             socket.send_multipart([client_ident, msg_json.encode()])
     
-    all_saved = True
-    for i in range(num_cam):
-        if save_flag[i]:
-            all_saved = False
-            break
-    if all_saved and not save_finish:
-        socket.send_multipart([client_ident, b"save_finish"])
-        save_finish = True
-
-    time.sleep(0.01)
+    time.sleep(0.001)
 
 camera.end()
 camera.quit()

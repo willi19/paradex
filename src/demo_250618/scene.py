@@ -55,6 +55,7 @@ class Scene:
 
         self.device=device
 
+        self.root_path = root_path
         self.video_root_dir = root_path/'video'
         self.extracted_img_root_dir = root_path/'rgb_extracted'
         if mask_dir_nm is not None:
@@ -206,6 +207,17 @@ class Scene:
         video_path = self.video_root_dir/f'{cam_id}.avi'
         if os.path.exists(video_path):
             image_np = read_frame(video_path, fidx)
+            image_np = cv2.cvtColor(cv2.resize(image_np, (self.width, self.height)), cv2.COLOR_BGR2RGB)
+        else:
+            image_np = np.zeros((self.height, self.width, 3))
+        return image_np
+    
+    def get_image_demo(self, cam_id, fidx):
+        # assert fidx<self.ttl_frame_length, f'{fidx} not in the range'
+        video_path = self.root_path/f'{fidx}'/"images_undistorted"/f'{cam_id}.jpg'
+        print(video_path)
+        if os.path.exists(video_path):
+            image_np = cv2.imread(video_path)
             image_np = cv2.cvtColor(cv2.resize(image_np, (self.width, self.height)), cv2.COLOR_BGR2RGB)
         else:
             image_np = np.zeros((self.height, self.width, 3))

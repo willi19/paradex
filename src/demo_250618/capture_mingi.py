@@ -9,6 +9,7 @@ import os
 from paradex.utils.file_io import config_dir, shared_dir
 from paradex.io.capture_pc.connect import git_pull, run_script
 import math
+import torch
 
 from pathlib import Path
 from scene import Scene
@@ -40,7 +41,7 @@ filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 #             cv2.putText(image, str(int(ids[i])), (corner[0] + 5, corner[1] - 5),
 #                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1, lineType=cv2.LINE_AA)
 
-capture_state = {}
+asdf = {}
 
 def listen_socket(pc_name, socket):
     while True:
@@ -73,13 +74,10 @@ def listen_socket(pc_name, socket):
         
         serial_num = data["serial_num"]
         if data.get("type") == "charuco":
-            
-            result = data["detect_result"]
-            print(result)
             # corners = np.array(result["checkerCorner"], dtype=np.float32)
             # ids = np.array(result["checkerIDs"], dtype=np.int32).reshape(-1, 1)
             frame = data["frame"]
-            cur_state[serial_num] = frame
+            asdf[serial_num] = frame
             # cur_state[serial_num] = (corners, ids, frame)
 
             # if result["save"]:
@@ -88,16 +86,18 @@ def listen_socket(pc_name, socket):
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
-def main_loop():
-    current_idx = 0
+def main_loop(yolo_module):
+    current_idx = 1
     while True:
+        os.makedirs(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted"), exist_ok=True)
         cur_cnt = 0
         
         for serial_num in serial_list:
-            if serial_num in cur_state:
-                if cur_state[serial_num] >= current_idx:
-                    current_idx = cur_state[serial_num]
+            if serial_num in asdf:
+                if asdf[serial_num] >= current_idx:
+                    current_idx = asdf[serial_num]
                     cur_cnt += 1
+        # print(asdf, cur_cnt, current_idx)
         if cur_cnt == len(serial_list):
             mask_sub_dir = 'mask_hq/%s/%05d'%("pringles", 0)
             device = torch.device("cuda:0")
@@ -108,7 +108,7 @@ def main_loop():
             results_img = []
             for cam_id in org_scene.cam_ids:
 
-                rgb_img = org_scene.get_image_demo(cam_id, fidx)
+                rgb_img = org_scene.get_image_demo(cam_id, current_idx)
                 rgb_img = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
                 detections = yolo_module.process_img(rgb_img, with_segmentation=False)
                 # output_image = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
@@ -124,7 +124,7 @@ def main_loop():
                 # print(type(canvas))
                 results_img.append(canvas[::4, ::4])
             # plot grid image
-            cv2.imwrite(f'debug_grid_{fidx}.png',make_grid_image_np(np.array(results_img), 4,6))
+            cv2.imwrite(f'debug_grid_{current_idx}.png',make_grid_image_np(np.array(results_img), 4,6))
 
             confidence_dict = {cam_id: detection_results[cam_id].confidence.item() for cam_id in detection_results if detection_results[cam_id].confidence.size > 0 and detection_results[cam_id].confidence > 0.001 and cam_id not in hide_list}
             cam_N = 10
@@ -161,8 +161,8 @@ def main_loop():
             import pickle
             pickle.dump(result_dict, open(object_final_output_dir/f'init_transl.pickle','wb'))
                 
-        current_idx += 1
-    
+            current_idx += 1
+
 # def main_ui_loop():
 #     num_images = len(serial_list)
 #     grid_cols = math.ceil(math.sqrt(num_images))
@@ -242,32 +242,28 @@ obj_name = root_path.split("/")[-2]
 
 yolo_module = YOLO_MODULE(categories=obj_name)
 
-try:
+for pc_name, info in pc_info.items():
+    ip = info["ip"]
+    sock = context.socket(zmq.DEALER)
+    sock.identity = b"server"
+    sock.connect(f"tcp://{ip}:5556")
+    socket_dict[pc_name] = sock
+
+for pc_name, info in pc_info.items():
+    socket_dict[pc_name].send_string("register")
+    if socket_dict[pc_name].recv_string() == "registered":
+        print(f"[{pc_name}] Registered.")
     
-    for pc_name, info in pc_info.items():
-        ip = info["ip"]
-        sock = context.socket(zmq.DEALER)
-        sock.identity = b"server"
-        sock.connect(f"tcp://{ip}:5556")
-        socket_dict[pc_name] = sock
+    socket_dict[pc_name].send_string("filename:" + filename)
 
-    for pc_name, info in pc_info.items():
-        socket_dict[pc_name].send_string("register")
-        if socket_dict[pc_name].recv_string() == "registered":
-            print(f"[{pc_name}] Registered.")
-        
-        socket_dict[pc_name].send_string("filename:" + filename)
+# Start per-socket listener
+for pc_name, sock in socket_dict.items():
+    threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
+wait_for_camera_ready()
+# Main UI loop
+print("press button")
+main_loop(yolo_module)
 
-    # Start per-socket listener
-    for pc_name, sock in socket_dict.items():
-        threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
-    wait_for_camera_ready()
-    # Main UI loop
-    print("press button")
-    main_loop()
-
-except Exception as e:
-    print(e)
-    for pc_name, sock in socket_dict.items():
-        sock.send_string("quit")
-        sock.close()
+for pc_name, sock in socket_dict.items():
+    sock.send_string("quit")
+    sock.close()

@@ -9,6 +9,7 @@ import threading
 import numpy as np
 import sys
 import cv2
+from paradex.image.undistort import undistort_img
 
 should_exit = False 
 client_ident = None 
@@ -81,6 +82,10 @@ save_finish = True
 threading.Thread(target=listen_for_commands, daemon=True).start()
 
 while not should_exit:
+    intrinsic = json.load(open(f"{shared_dir}/demo_250618/pringles/0/cam_param/intrinsics.json", "r"))
+    
+
+
     for i in range(num_cam):
         if camera.frame_num[i] == last_frame_ind[i]:
             continue
@@ -89,7 +94,10 @@ while not should_exit:
         with camera.locks[i]:
             last_image = camera.image_array[i].copy()
         
-        cv2.imwrite(os.path.join(shared_dir, str(cur_filename), str(last_frame_ind[i]), f"{camera.serial_list[i]}.jpg"), last_image)
+        # cv2.imwrite(os.path.join(shared_dir, str(cur_filename), str(last_frame_ind[i]), "images", f"{camera.serial_list[i]}.jpg"), last_image)
+        undistorted_img = undistort_img(last_image, intrinsic[cam_id])
+        cv2.imwrite(os.path.join(shared_dir, str(cur_filename), str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"), undistorted_img)
+    
         serial_num = camera.serial_list[i]
         msg_dict = {
             "frame": int(last_frame_ind[i]),

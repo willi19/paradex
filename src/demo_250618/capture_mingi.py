@@ -95,7 +95,8 @@ def main_loop():
         if cur_cnt == len(serial_list):
             # DO YOLO
             # plot grid image
-            pass
+            
+            print(current_idx)
         current_idx += 1
     
 # def main_ui_loop():
@@ -192,6 +193,7 @@ try:
         threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
     wait_for_camera_ready()
     # Main UI loop
+    print("press button")
     main_loop()
 
 except Exception as e:

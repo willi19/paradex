@@ -64,8 +64,6 @@ if msg.startswith("filename"):
 else:
     sys.exit(1)
 
-board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
-
 try:
     camera = CameraManager("stream", path=None, serial_list=None, syncMode=True)
 except:

@@ -108,6 +108,17 @@ def listen_socket(pc_name, socket):
         # else:
         #     print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
+def wait_for_capture():
+    while True:
+        all_captured = True
+        for pc_name, in_capture in capture_state.items():
+            if in_capture:
+                all_captured = False
+                break
+        if all_captured:
+            break
+        time.sleep(0.1)
+        
 def main_loop(yolo_module, hand_module):
     current_idx = 0
     import matplotlib.pyplot as plt
@@ -347,6 +358,7 @@ obj_name = root_path.split("/")[-2]
 yolo_module = YOLO_MODULE(categories="pringles")
 hand_module = Hand_Module()
 
+print(pc_info)
 for pc_name, info in pc_info.items():
     ip = info["ip"]
     sock = context.socket(zmq.DEALER)
@@ -355,10 +367,12 @@ for pc_name, info in pc_info.items():
     socket_dict[pc_name] = sock
 
 for pc_name, info in pc_info.items():
+    print(pc_name, info)
     socket_dict[pc_name].send_string("register")
+    print(f"[{pc_name}] Registering...")
     if socket_dict[pc_name].recv_string() == "registered":
         print(f"[{pc_name}] Registered.")
-    
+    print(f"[{pc_name}] Sending filename: {filename}")    
     socket_dict[pc_name].send_string("filename:" + filename)
 
 # Start per-socket listener

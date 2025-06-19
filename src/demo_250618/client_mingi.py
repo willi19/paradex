@@ -66,7 +66,7 @@ else:
     sys.exit(1)
 
 try:
-    camera = CameraManager("stream", path=None, serial_list=None, syncMode=True)
+    camera = CameraManager("stream", path=None, serial_list=None, syncMode=False)
 except:
     socket.send_multipart([client_ident, b"camera_error"])
     sys.exit(1)

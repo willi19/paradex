@@ -66,7 +66,7 @@ else:
     sys.exit(1)
 
 try:
-    camera = CameraManager("stream", path=None, serial_list=None, syncMode=False)
+    camera = CameraManager("stream", path=None, serial_list=None, syncMode=True)
 except:
     socket.send_multipart([client_ident, b"camera_error"])
     sys.exit(1)
@@ -76,8 +76,6 @@ num_cam = camera.num_cameras
 
 camera.start()
 last_frame_ind = [-1 for _ in range(num_cam)]
-init_frame_ind = [-1 for _ in range(num_cam)]
-
 save_flag = [False for _ in range(num_cam)]
 save_finish = True
 
@@ -91,23 +89,19 @@ while not should_exit:
     for i in range(num_cam):
         if camera.frame_num[i] == last_frame_ind[i]:
             continue
-        
-        if last_frame_ind[i] == -1 and camera.frame_num[i] > 0:
-            init_frame_ind[i] = camera.frame_num[i]
-            
+
         last_frame_ind[i] = camera.frame_num[i]
         with camera.locks[i]:
             last_image = camera.image_array[i].copy()
         
-        cur_frame_ind = last_frame_ind[i] - init_frame_ind[i]
         # cv2.imwrite(os.path.join(shared_dir, str(cur_filename), str(last_frame_ind[i]), "images", f"{camera.serial_list[i]}.jpg"), last_image)
         serial_num = camera.serial_list[i]
         undistorted_img = undistort_img(last_image, intrinsic[serial_num])
-        print(serial_num, cur_frame_ind, last_frame_ind[i], init_frame_ind[i])
-        cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(cur_frame_ind), "images_undistorted", f"{camera.serial_list[i]}.jpg"), undistorted_img)
+        # print(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"))
+        cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"), undistorted_img)
     
         msg_dict = {
-            "frame": int(cur_frame_ind),
+            "frame": int(last_frame_ind[i]),
             "type": "charuco",
             "serial_num": serial_num,
         }

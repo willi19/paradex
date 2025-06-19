@@ -124,9 +124,9 @@ def main_loop(yolo_module):
         for serial_num in serial_list:
             if serial_num in asdf:
                 if asdf[serial_num] >= current_idx:
-                    current_idx = asdf[serial_num]
+                    # current_idx = asdf[serial_num]
                     cur_cnt += 1
-        # print(asdf, cur_cnt, current_idx)
+        print(asdf, cur_cnt, current_idx)
         if cur_cnt == len(serial_list):
             # current_arm_angles = np.asarray(arm.get_joint_states(is_radian=True)[1][0][:6])
             

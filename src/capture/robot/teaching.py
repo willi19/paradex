@@ -10,7 +10,7 @@ import numpy as np
 
 stop_event = threading.Event()
 save_event = threading.Event()
-save_dir = 'robot_traj'
+save_dir = 'demo_asdf'
 os.makedirs(save_dir, exist_ok=True)
 
 def listen_keyboard():

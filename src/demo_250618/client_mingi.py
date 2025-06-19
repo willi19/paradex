@@ -97,7 +97,7 @@ while not should_exit:
         # cv2.imwrite(os.path.join(shared_dir, str(cur_filename), str(last_frame_ind[i]), "images", f"{camera.serial_list[i]}.jpg"), last_image)
         serial_num = camera.serial_list[i]
         undistorted_img = undistort_img(last_image, intrinsic[serial_num])
-        print(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"))
+        # print(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"))
         cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"), undistorted_img)
     
         msg_dict = {

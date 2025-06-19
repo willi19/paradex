@@ -48,6 +48,7 @@ socket_dict = {}
 terminate_dict = {pc: False for pc in pc_info.keys()}
 start_dict = {pc: False for pc in pc_info.keys()}
 
+saved_corner_img = {serial_num:np.zeros((1536, 2048, 3), dtype=np.uint8) for serial_num in serial_list}
 cur_state = {serial_num:(np.array([]), np.array([]), 0) for serial_num in serial_list}
 capture_idx = 0
 capture_state = {pc: False for pc in pc_info.keys()}

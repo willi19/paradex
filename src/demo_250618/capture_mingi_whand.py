@@ -16,6 +16,9 @@ from scene import Scene
 from yolo_world_module import YOLO_MODULE
 from mediapipe_hand_module import Hand_Module
 from xarm.wrapper import XArmAPI
+
+from paradex.image.undistort import undistort_img
+
 hide_list = ['22641005','22645021','23280594','23180202','22641023','23029839','22640993']
 
 
@@ -120,9 +123,23 @@ def wait_for_capture():
         time.sleep(0.1)
         
 def main_loop(yolo_module, hand_module):
+    intrinsic = json.load(open(f"{shared_dir}/demo_250618/pringles/0/cam_param/intrinsics.json", "r"))
     current_idx = 0
     import matplotlib.pyplot as plt
-
+    os.makedirs(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx+1), "images_undistorted"), exist_ok=True)
+    for pc_name, sock in socket_dict.items():
+        capture_state[pc_name] = True
+        sock.send_string(f"capture:{current_idx}")
+        print(f"[{pc_name}] Start capture {current_idx}")
+    wait_for_capture()
+    
+    # for serial_num in serial_list:
+    #     img = cv2.imread(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images", f"{serial_num}.png"))
+    #     undistorted_img = undistort_img(img, intrinsic[serial_num])
+    #     cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted", f"{serial_num}.jpg"), undistorted_img)
+            
+    time.sleep(0.1) 
+        
     plt.ion()  # interactive mode on
     fig, ax = plt.subplots()
     # imshow_o
@@ -131,25 +148,24 @@ def main_loop(yolo_module, hand_module):
     
     C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
     C2R = np.linalg.inv(C2R) # convert to camera coordinate system
-    intrinsic = json.load(open(f"{shared_dir}/demo_250618/pringles/0/cam_param/intrinsics.json", "r"))
 
     while True:
-        os.makedirs(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted"), exist_ok=True)
+        os.makedirs(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx+1), "images_undistorted"), exist_ok=True)
         cur_cnt = 0
         
         for pc_name, sock in socket_dict.items():
             capture_state[pc_name] = True
-            sock.send_string(f"capture:{current_idx}")
-            print(f"[{pc_name}] Start capture {current_idx}")
+            sock.send_string(f"capture:{current_idx+1}")
+            print(f"[{pc_name}] Start capture {current_idx+1}")
         wait_for_capture()
-        
+        time.sleep(0.1)        
         
         for serial_num in serial_list:
-            img = cv2.imread(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images", f"{serial_num}.jpg"))
+            img = cv2.imread(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images", f"{serial_num}.png"))
             undistorted_img = undistort_img(img, intrinsic[serial_num])
-            cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"), undistorted_img)
+            cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted", f"{serial_num}.jpg"), undistorted_img)
 
-        if cur_cnt == len(serial_list):
+        if True: #cur_cnt == len(serial_list):
             # current_arm_angles = np.asarray(arm.get_joint_states(is_radian=True)[1][0][:6])
             
             # # _, pos_aa = arm.get_position_aa(is_radian=True)

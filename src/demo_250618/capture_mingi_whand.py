@@ -331,7 +331,7 @@ def wait_for_camera_ready():
 # Git pull and client run
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script("python src/demo_250618/client_mingi.py", pc_list)
+# run_script("python src/demo_250618/client_mingi.py", pc_list)
 
 
 root_path = "/home/temp_id/shared_data/demo_250618/pringles"

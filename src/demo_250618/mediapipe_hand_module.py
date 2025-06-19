@@ -46,13 +46,20 @@ class Hand_Module:
     hand_result = {}
     for hand_landmarks, handedness in zip(hand_landmarks_list, handedness_list):
       side = handedness[0].category_name
-      hand_result[side] = []
+      result = []
       for land_mark in hand_landmarks:
+        if land_mark is not None:
         # check threshold if needed.
-        x_px, y_px = solutions.drawing_utils._normalized_to_pixel_coordinates(land_mark.x, land_mark.y, img_w, img_h)
-        hand_result[side].append([x_px, y_px])
-      if len(hand_result[side])>0:
-        hand_result[side] = np.array(hand_result[side])
+          output = solutions.drawing_utils._normalized_to_pixel_coordinates(land_mark.x, land_mark.y, img_w, img_h)
+          if output is not None:
+            x_px, y_px = output
+            result.append([x_px, y_px])
+          else:
+            result.append([0, 0])
+        else:
+          result.append([0, 0])
+      if len(result)>0:
+        hand_result[side] = np.array(result)
 
     return hand_result
 
@@ -116,5 +123,5 @@ if __name__ == "__main__":
     hand_module = Hand_Module()
     image = cv2.imread('/home/jisoo/data2/paradex/test/image_test.png')
     
-    annotated_image, detection_result = hand_module.inference(image)
-    print(detection_result)
+    returned_pixels = hand_module.inference(image)
+    # print(detection_result)

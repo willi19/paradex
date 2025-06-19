@@ -21,7 +21,7 @@ import transforms3d as t3d
 hand_name = "allegro"
 arm_name = "xarm"
 
-home_wrist_pose = np.array([[0, 1 ,0, 0.4],[0, 0, 1, -0.2],[1, 0, 0, 0.3],[0, 0, 0, 1]])
+home_wrist_pose = np.array([[0, 1 ,0, 0.5],[0, 0, 1, -0.1],[1, 0, 0, 0.3],[0, 0, 0, 1]])
 
 def load_homepose(hand_name):
     if hand_name == "allegro":

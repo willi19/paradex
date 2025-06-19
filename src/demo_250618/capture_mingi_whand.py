@@ -14,7 +14,7 @@ import torch
 from pathlib import Path
 from scene import Scene
 from yolo_world_module import YOLO_MODULE
-# from mediapipe_hand_module import Hand_Module
+from mediapipe_hand_module import Hand_Module
 from xarm.wrapper import XArmAPI
 hide_list = ['22641005','22645021','23280594','23180202','22641023','23029839','22640993']
 
@@ -108,7 +108,7 @@ def listen_socket(pc_name, socket):
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
-def main_loop(yolo_module):
+def main_loop(yolo_module, hand_module):
     current_idx = 1
     import matplotlib.pyplot as plt
 
@@ -117,6 +117,9 @@ def main_loop(yolo_module):
     # imshow_o
     imshow_obj = ax.imshow(np.zeros((1536, 3072, 3)))  # Convert BGR to RGB
     plt.pause(0.001)
+    
+    C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
+    C2R = np.linalg.inv(C2R) # convert to camera coordinate system
 
     while True:
         os.makedirs(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted"), exist_ok=True)
@@ -153,7 +156,18 @@ def main_loop(yolo_module):
                     rgb_img = rgb_img.astype(np.uint8)
                     
                 rgb_img = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
-                # hand_detections = hand_module.inference(rgb_img)
+                hand_detections = hand_module.inference(rgb_img)
+                if hand_detections != {}:
+                    print("hand detected")
+                    for side in hand_detections:
+                        if side not in hand_detection_results:
+                            hand_detection_results[side] = {}
+                        for kidx, kpt in enumerate(hand_detections[side]):
+                            if kpt[0] > 0 and kpt[1] > 0:
+                                if kidx not in hand_detection_results[side]:
+                                    hand_detection_results[side][kidx] = []
+                                hand_detection_results[side][kidx].append({'cam_id':cam_id, 'kpt':kpt})
+                                
                 detections = yolo_module.process_img(rgb_img, with_segmentation=False)
                 # output_image = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
                 # res_vis = yolo_module.annotate_image(output_image, detections, categories=yolo_module.categories, with_confidence=True)
@@ -178,6 +192,34 @@ def main_loop(yolo_module):
             top_n_cams2confidence = sorted(confidence_dict.items(), key=lambda x: x[1], reverse=True)[:cam_N]
             top_n_cams = [cam_id for cam_id, confidence in top_n_cams2confidence]
             
+            # hand triangulation
+            triangulated_points = {}
+            for side in hand_detection_results:
+                triangulated_points[side] = {}
+                print(f"hand detection results for {side}: {hand_detection_results[side]}")
+                for kidx in hand_detection_results[side]:
+                    if len(hand_detection_results[side][kidx]) < 2:
+                        continue
+                    print(f"keypoint {kidx} for {side} has {len(hand_detection_results[side][kidx])} detections")
+                    # Triangulation
+                    A = []
+                    for pair in hand_detection_results[side][kidx]:
+                        cam_id = pair['cam_id']
+                        kpt = pair['kpt']
+                        cx, cy = kpt
+                        P = org_scene.proj_matrix[cam_id]
+                        A.append(cx * P[2] - P[0])
+                        A.append(cy * P[2] - P[1])
+                    A = np.stack(A, axis=0)
+                    _, _, Vt = np.linalg.svd(A)
+                    X_h = Vt[-1]
+                    X = X_h[:3] / X_h[3]  # Convert from homogeneous coordinates to 3D point
+                    triangulated_points[side][kidx] = X @ C2R[:3, :3].T + C2R[:3, 3]          
+
+            if len(triangulated_points) > 0:
+                np.save(os.path.join("/home/temp_id/shared_data/demo_250618/pringles/demo_250618_optim/final", 'hand_detections.npy'), triangulated_points)
+            
+            
             # triangulation_start = time.time()
             try:
                 A = []
@@ -199,8 +241,6 @@ def main_loop(yolo_module):
                 object_final_output_dir = object_output_dir/'final'
                 os.makedirs(object_final_output_dir, exist_ok=True)
                 
-                C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
-                C2R = np.linalg.inv(C2R) # convert to camera coordinate system
                 # print(C2R)
                 initial_translate = X @ C2R[:3, :3].T + C2R[:3, 3] # convert to camera coordinate system
                 print(initial_translate)
@@ -298,7 +338,7 @@ root_path = "/home/temp_id/shared_data/demo_250618/pringles"
 obj_name = root_path.split("/")[-2]
 
 yolo_module = YOLO_MODULE(categories="pringles")
-# hand_module = Hand_Module()
+hand_module = Hand_Module()
 
 for pc_name, info in pc_info.items():
     ip = info["ip"]
@@ -334,7 +374,7 @@ print("press button")
 # arm.set_mode(2)
 # arm.set_state(0)
 
-main_loop(yolo_module)
+main_loop(yolo_module, hand_module)
 
 for pc_name, sock in socket_dict.items():
     sock.send_string("quit")

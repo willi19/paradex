@@ -14,6 +14,7 @@ import torch
 from pathlib import Path
 from scene import Scene
 from yolo_world_module import YOLO_MODULE
+from mediapipe_hand_module import Hand_Module
 from xarm.wrapper import XArmAPI
 hide_list = ['22641005','22645021','23280594','23180202','22641023','23029839','22640993']
 
@@ -107,7 +108,7 @@ def listen_socket(pc_name, socket):
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
-def main_loop(yolo_module):
+def main_loop(yolo_module, hand_module):
     current_idx = 1
     import matplotlib.pyplot as plt
 
@@ -295,6 +296,7 @@ root_path = "/home/temp_id/shared_data/demo_250618/pringles"
 obj_name = root_path.split("/")[-2]
 
 yolo_module = YOLO_MODULE(categories="pringles")
+hand_module = Hand_Module()
 
 for pc_name, info in pc_info.items():
     ip = info["ip"]
@@ -330,7 +332,7 @@ print("press button")
 # arm.set_mode(2)
 # arm.set_state(0)
 
-main_loop(yolo_module)
+main_loop(yolo_module, hand_module)
 
 for pc_name, sock in socket_dict.items():
     sock.send_string("quit")

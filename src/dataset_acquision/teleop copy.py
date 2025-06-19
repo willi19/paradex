@@ -18,10 +18,10 @@ import json
 import shutil
 import transforms3d as t3d
 
-hand_name = "allegro"
+hand_name = None#"allegro"
 arm_name = "xarm"
 
-home_wrist_pose = np.array([[0, 1 ,0, 0.4],[0, 0, 1, -0.2],[1, 0, 0, 0.3],[0, 0, 0, 1]])
+home_wrist_pose = np.array([[0, 1 ,0, 0.5],[0, 0, 1, -0.3],[1, 0, 0, 0.1],[0, 0, 0, 1]])
 
 def load_homepose(hand_name):
     if hand_name == "allegro":
@@ -74,18 +74,36 @@ def load_savepath(name):
 
 def initialize_teleoperation(save_path):
     controller = {}
+    if save_path != None:
+        os.makedirs(save_path, exist_ok=True)
+        controller["camera"] = CameraManager(save_path, num_cameras=1, is_streaming=False, syncMode=True)
+        
+
     if arm_name == "xarm":
         controller["arm"] = XArmController(save_path)
 
     if hand_name == "allegro":
         controller["hand"] = AllegroController(save_path)
+        if save_path != None:
+            controller["contact"] = SerialReader(save_path)
+    elif hand_name == "inspire":
+        controller["hand"] = InspireController(save_path)
+    
     
     controller["xsens"] = XSensReceiver()
+
     return controller
 
 
 def main():
-    save_path = "demo_traj"
+    parser = argparse.ArgumentParser(description="Teleoperation for real robot")
+    parser.add_argument("--name", type=str, help="Control mode for robot")
+    args = parser.parse_args()
+    
+    # os.makedirs(os.path.join(capture_path, args.name), exist_ok=True)
+    # save_path = load_savepath(args.name)
+    # print (f"save_path: {save_path}")
+    save_path = None
     sensors = initialize_teleoperation(save_path)
     
     traj_cnt = 2
@@ -186,6 +204,11 @@ def main():
                 print(f"Error: {e}")
                 break
             
+    if save_path != None:
+        json.dump(grasp_range, open(os.path.join(save_path, "grasp_range.json"), 'w'))
+        json.dump(activate_range, open(os.path.join(save_path, "activate_range.json"), 'w'))
+        # copy_calib_files(save_path)
+
     for key in sensors.keys():
         sensors[key].quit()
 

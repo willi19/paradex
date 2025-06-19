@@ -9,13 +9,12 @@ from paradex.utils.file_io import rsc_path
 
 LINK62PALM = np.array(
     [
-        [0, -1, 0, 0],
-        [0, 0, 1, 0],
-        [-1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],#0.035],
+        [1, 0, 0, 0],#0.055],
         [0, 0, 0, 1],
     ]
 )
-
 XSENS2ISAAC = np.array(
     [
         [0, -1, 0, 0],

@@ -120,7 +120,7 @@ def main_loop(yolo_module, hand_module):
     
     C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
     C2R = np.linalg.inv(C2R) # convert to camera coordinate system
-
+    
     while True:
         os.makedirs(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted"), exist_ok=True)
         cur_cnt = 0

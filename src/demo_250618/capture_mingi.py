@@ -306,6 +306,12 @@ for pc_name, info in pc_info.items():
     sock.identity = b"server"
     sock.connect(f"tcp://{ip}:5556")
     socket_dict[pc_name] = sock
+    
+    while True:
+        try:
+            msg = sock.recv(zmq.NOBLOCK)
+        except zmq.Again:
+            break
 
 for pc_name, info in pc_info.items():
     socket_dict[pc_name].send_string("register")

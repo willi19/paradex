@@ -155,6 +155,7 @@ class Camera():
 
     # if Triggered mode
     def configureTrigger(self, nodeMap):
+        print("trigger mode on")
         ptrTriggerMode = ps.CEnumerationPtr(nodeMap.GetNode("TriggerMode"))
         if not ps.IsReadable(ptrTriggerMode):
             # print("Unable to disable trigger mode (node retrieval). Aborting...")

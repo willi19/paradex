@@ -14,6 +14,27 @@ import torch
 from pathlib import Path
 from scene import Scene
 from yolo_world_module import YOLO_MODULE
+from xarm.wrapper import XArmAPI
+hide_list = ['22641005','22645021','23280594','23180202','22641023','23029839','22640993']
+
+
+def make_grid_image_np(images, grid_rows, grid_cols):
+    N, H, W, C = images.shape
+    assert N <= grid_rows * grid_cols, "Grid too small for number of images"
+
+    # Pad if needed
+    if N < grid_rows * grid_cols:
+        pad_num = grid_rows * grid_cols - N
+        pad_images = np.zeros((pad_num, H, W, C), dtype=images.dtype)
+        images = np.concatenate([images, pad_images], axis=0)
+
+    # Reshape into grid
+    images = images.reshape(grid_rows, grid_cols, H, W, C)
+    images = images.transpose(0, 2, 1, 3, 4)  # (rows, H, cols, W, C) -> (rows*H, cols*W, C)
+    grid_image = images.reshape(grid_rows * H, grid_cols * W, C)
+
+    return grid_image
+
 
 # === SETUP ===
 pc_info = json.load(open(os.path.join(config_dir, "environment", "pc.json"), "r"))
@@ -88,6 +109,14 @@ def listen_socket(pc_name, socket):
 
 def main_loop(yolo_module):
     current_idx = 1
+    import matplotlib.pyplot as plt
+
+    plt.ion()  # interactive mode on
+    fig, ax = plt.subplots()
+    # imshow_o
+    imshow_obj = ax.imshow(np.zeros((1536, 3072, 3)))  # Convert BGR to RGB
+    plt.pause(0.001)
+
     while True:
         os.makedirs(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted"), exist_ok=True)
         cur_cnt = 0
@@ -95,10 +124,16 @@ def main_loop(yolo_module):
         for serial_num in serial_list:
             if serial_num in asdf:
                 if asdf[serial_num] >= current_idx:
-                    current_idx = asdf[serial_num]
+                    # current_idx = asdf[serial_num]
                     cur_cnt += 1
         print(asdf, cur_cnt, current_idx)
         if cur_cnt == len(serial_list):
+            # current_arm_angles = np.asarray(arm.get_joint_states(is_radian=True)[1][0][:6])
+            
+            # # _, pos_aa = arm.get_position_aa(is_radian=True)
+            # os.makedirs(os.path.join(shared_dir, "demo_250618", "pringles", "demo_250618", "final", 'arm'), exist_ok=True)
+            # np.save(os.path.join("/home/temp_id/shared_data/demo_250618/pringles/demo_250618_optim/final", 'state.npy'), current_arm_angles)
+            
             mask_sub_dir = 'mask_hq/%s/%05d'%("pringles", 0)
             device = torch.device("cuda:0")
             org_scene = Scene(root_path=Path(root_path), rescale_factor=1.0, mask_dir_nm=mask_sub_dir, device=device)
@@ -109,6 +144,12 @@ def main_loop(yolo_module):
             for cam_id in org_scene.cam_ids:
 
                 rgb_img = org_scene.get_image_demo(cam_id, current_idx)
+                if rgb_img is None or rgb_img.size == 0:
+                    rgb_img = np.zeros((1536, 2048, 3), dtype=np.uint8)
+                    
+                if rgb_img.dtype == np.float64:
+                    rgb_img = rgb_img.astype(np.uint8)
+                    
                 rgb_img = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
                 detections = yolo_module.process_img(rgb_img, with_segmentation=False)
                 # output_image = cv2.cvtColor(rgb_img, cv2.COLOR_RGB2BGR)
@@ -120,11 +161,14 @@ def main_loop(yolo_module):
                     detections.mask[:, int(detections.xyxy[0, 1]):int(detections.xyxy[0, 3]), int(detections.xyxy[0, 0]):int(detections.xyxy[0, 2])] = True
                 detection_results[cam_id] = detections
                 canvas = yolo_module.annotate_image(rgb_img, detections, categories=yolo_module.categories, with_confidence=True)
-                canvas = putText(canvas, cam_id, color=(0,0, 255))
+                # canvas = putText(canvas, cam_id, color=(0,0, 255))
                 # print(type(canvas))
                 results_img.append(canvas[::4, ::4])
             # plot grid image
-            cv2.imwrite(f'debug_grid_{current_idx}.png',make_grid_image_np(np.array(results_img), 4,6))
+            
+            # if key == ord('q'):  # press 'q' to quit
+            #     break
+            # cv2.imwrite(f'debug_grid_{current_idx}.png',make_grid_image_np(np.array(results_img), 4,6))
 
             confidence_dict = {cam_id: detection_results[cam_id].confidence.item() for cam_id in detection_results if detection_results[cam_id].confidence.size > 0 and detection_results[cam_id].confidence > 0.001 and cam_id not in hide_list}
             cam_N = 10
@@ -132,35 +176,45 @@ def main_loop(yolo_module):
             top_n_cams = [cam_id for cam_id, confidence in top_n_cams2confidence]
             
             # triangulation_start = time.time()
-            A = []
-            for cam_id in top_n_cams:
-                cx, cy = detection_results[cam_id].bbox_center[0]
-                P = org_scene.proj_matrix[cam_id]
-                A.append(cx * P[2] - P[0])
-                A.append(cy * P[2] - P[1])
-            A = np.stack(A, axis=0)
-            _, _, Vt = np.linalg.svd(A)
-            X_h = Vt[-1]
-            X = X_h[:3] / X_h[3]  # Convert from homogeneous coordinates to 3D point
-            
-            object_output_dir = Path(root_path)/(f'{obj_name}_optim')
-            os.makedirs(object_output_dir, exist_ok=True)
-
-            json.dump(vars(args), open(object_output_dir/'params.json','w'))
-
-            object_final_output_dir = object_output_dir/'final'
-            os.makedirs(object_final_output_dir, exist_ok=True)
-            
-            C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
-            C2R = np.linalg.inv(C2R) # convert to camera coordinate system
-            # print(C2R)
-            initial_translate = X @ C2R[:3, :3].T + C2R[:3, 3] # convert to camera coordinate system
-            print(initial_translate)
-            
-            result_dict = {'t':initial_translate}
-            import pickle
-            pickle.dump(result_dict, open(object_final_output_dir/f'init_transl.pickle','wb'))
+            try:
+                A = []
+                for cam_id in top_n_cams:
+                    cx, cy = detection_results[cam_id].bbox_center[0]
+                    P = org_scene.proj_matrix[cam_id]
+                    A.append(cx * P[2] - P[0])
+                    A.append(cy * P[2] - P[1])
+                A = np.stack(A, axis=0)
+                _, _, Vt = np.linalg.svd(A)
+                X_h = Vt[-1]
+                X = X_h[:3] / X_h[3]  # Convert from homogeneous coordinates to 3D point
                 
+                object_output_dir = Path(root_path)/(f'{obj_name}_optim')
+                os.makedirs(object_output_dir, exist_ok=True)
+
+                # json.dump(vars(args), open(object_output_dir/'params.json','w'))
+
+                object_final_output_dir = object_output_dir/'final'
+                os.makedirs(object_final_output_dir, exist_ok=True)
+                
+                C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
+                C2R = np.linalg.inv(C2R) # convert to camera coordinate system
+                # print(C2R)
+                initial_translate = X @ C2R[:3, :3].T + C2R[:3, 3] # convert to camera coordinate system
+                print(initial_translate)
+                
+                np.save(os.path.join("/home/temp_id/shared_data/demo_250618/pringles/demo_250618_optim/final", 'init_transl.npy'), initial_translate)
+                            
+                # result_dict = {'t':initial_translate}
+                # import pickle
+                # pickle.dump(result_dict, open(object_final_output_dir/f'init_transl.pickle','wb'))
+                
+                grid_img = make_grid_image_np(np.array(results_img), 4, 6)
+                imshow_obj.set_data(grid_img[..., ::-1])
+                fig.canvas.draw()
+                fig.canvas.flush_events()
+            except ValueError as e:
+                print(f"object not detected: {e}")
+      
             current_idx += 1
 
 # def main_ui_loop():
@@ -240,7 +294,7 @@ run_script("python src/demo_250618/client_mingi.py", pc_list)
 root_path = "/home/temp_id/shared_data/demo_250618/pringles"
 obj_name = root_path.split("/")[-2]
 
-yolo_module = YOLO_MODULE(categories=obj_name)
+yolo_module = YOLO_MODULE(categories="pringles")
 
 for pc_name, info in pc_info.items():
     ip = info["ip"]
@@ -262,6 +316,20 @@ for pc_name, sock in socket_dict.items():
 wait_for_camera_ready()
 # Main UI loop
 print("press button")
+
+# ip = "192.168.1.221"
+# arm = XArmAPI(ip, is_radian=True)
+# if arm.has_err_warn:
+#     arm.clean_error()
+    
+# arm.motion_enable(enable=True)
+# arm.set_mode(0)
+# arm.set_state(state=0)
+
+# # Turn on manual mode before recording
+# arm.set_mode(2)
+# arm.set_state(0)
+
 main_loop(yolo_module)
 
 for pc_name, sock in socket_dict.items():

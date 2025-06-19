@@ -122,13 +122,13 @@ class Scene:
         # first images
         self.height, self.width = int(height*rescale_factor), int(width*rescale_factor)
 
-        for cam_id in self.cam_ids:
-            if os.path.exists(self.video_root_dir/f'{cam_id}.avi'):
-                images_numb = get_frame_number(self.video_root_dir/f'{cam_id}.avi')
-                if self.ttl_frame_length is None or self.ttl_frame_length<images_numb:
-                    self.ttl_frame_length = images_numb
-            else:
-                self.cam_ids.remove(cam_id) # remove if image not exist
+        # for cam_id in self.cam_ids:
+        #     if os.path.exists(self.video_root_dir/f'{cam_id}.avi'):
+        #         images_numb = get_frame_number(self.video_root_dir/f'{cam_id}.avi')
+        #         if self.ttl_frame_length is None or self.ttl_frame_length<images_numb:
+        #             self.ttl_frame_length = images_numb
+        #     else:
+        #         self.cam_ids.remove(cam_id) # remove if image not exist
 
         # self.cam_ids = self.cam_ids[:4]
 
@@ -215,7 +215,7 @@ class Scene:
     def get_image_demo(self, cam_id, fidx):
         # assert fidx<self.ttl_frame_length, f'{fidx} not in the range'
         video_path = self.root_path/f'{fidx}'/"images_undistorted"/f'{cam_id}.jpg'
-        print(video_path)
+        # print(video_path)
         if os.path.exists(video_path):
             image_np = cv2.imread(video_path)
             image_np = cv2.cvtColor(cv2.resize(image_np, (self.width, self.height)), cv2.COLOR_BGR2RGB)

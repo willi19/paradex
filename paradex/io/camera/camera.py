@@ -8,7 +8,7 @@ class Camera():
         exposure_time,
         frame_rate=30,
         mode="video",
-        syncMode=False,
+        syncMode=True,
     ):
         assert mode == "image" or mode == "video" or mode == "stream", "mode must be image or video"
 

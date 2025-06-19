@@ -66,7 +66,7 @@ else:
     sys.exit(1)
 
 try:
-    camera = CameraManager("stream", path=None, serial_list=None, syncMode=True)
+    camera = CameraManager("image", path=None, serial_list=None, syncMode=False)
 except:
     socket.send_multipart([client_ident, b"camera_error"])
     sys.exit(1)
@@ -84,33 +84,45 @@ threading.Thread(target=listen_for_commands, daemon=True).start()
 while not should_exit:
     intrinsic = json.load(open(f"{shared_dir}/demo_250618/pringles/0/cam_param/intrinsics.json", "r"))
     
+    if save_finish:
+        time.sleep(0.1)
+        continue
+    
+    camera.set_save_dir(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images"))
+    camera.start()
+    print(f"[Server] Camera started for index {current_index}")
+    camera.wait_for_capture_end()
 
+    socket.send_multipart([client_ident, b"save_finish"])
+    save_finish = True
+    time.sleep(0.01)
+    
 
-    for i in range(num_cam):
-        if camera.frame_num[i] == last_frame_ind[i]:
-            continue
+    # for i in range(num_cam):
+    #     if camera.frame_num[i] == last_frame_ind[i]:
+    #         continue
 
-        last_frame_ind[i] = camera.frame_num[i]
-        with camera.locks[i]:
-            last_image = camera.image_array[i].copy()
+    #     last_frame_ind[i] = camera.frame_num[i]
+    #     with camera.locks[i]:
+    #         last_image = camera.image_array[i].copy()
         
-        # cv2.imwrite(os.path.join(shared_dir, str(cur_filename), str(last_frame_ind[i]), "images", f"{camera.serial_list[i]}.jpg"), last_image)
-        serial_num = camera.serial_list[i]
-        undistorted_img = undistort_img(last_image, intrinsic[serial_num])
-        # print(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"))
-        cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"), undistorted_img)
+    #     # cv2.imwrite(os.path.join(shared_dir, str(cur_filename), str(last_frame_ind[i]), "images", f"{camera.serial_list[i]}.jpg"), last_image)
+    #     serial_num = camera.serial_list[i]
+    #     undistorted_img = undistort_img(last_image, intrinsic[serial_num])
+    #     # print(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"))
+    #     cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"), undistorted_img)
     
-        msg_dict = {
-            "frame": int(last_frame_ind[i]),
-            "type": "charuco",
-            "serial_num": serial_num,
-        }
-        msg_json = json.dumps(msg_dict)
+    #     msg_dict = {
+    #         "frame": int(last_frame_ind[i]),
+    #         "type": "charuco",
+    #         "serial_num": serial_num,
+    #     }
+    #     msg_json = json.dumps(msg_dict)
 
-        if client_ident is not None:
-            socket.send_multipart([client_ident, msg_json.encode()])
+    #     if client_ident is not None:
+    #         socket.send_multipart([client_ident, msg_json.encode()])
     
-    time.sleep(0.001)
+    # time.sleep(0.001)
 
 camera.end()
 camera.quit()

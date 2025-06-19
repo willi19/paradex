@@ -94,22 +94,22 @@ def listen_socket(pc_name, socket):
             print(f"[{pc_name}] Non-JSON message: {msg}")
             continue
         
-        serial_num = data["serial_num"]
-        if data.get("type") == "charuco":
-            # corners = np.array(result["checkerCorner"], dtype=np.float32)
-            # ids = np.array(result["checkerIDs"], dtype=np.int32).reshape(-1, 1)
-            frame = data["frame"]
-            asdf[serial_num] = frame
-            # cur_state[serial_num] = (corners, ids, frame)
+        # serial_num = data["serial_num"]
+        # if data.get("type") == "charuco":
+        #     # corners = np.array(result["checkerCorner"], dtype=np.float32)
+        #     # ids = np.array(result["checkerIDs"], dtype=np.int32).reshape(-1, 1)
+        #     frame = data["frame"]
+        #     asdf[serial_num] = frame
+        #     # cur_state[serial_num] = (corners, ids, frame)
 
-            # if result["save"]:
-            #     draw_charuco_corners_custom(saved_corner_img[serial_num], corners, BOARD_COLORS[2], 5, -1, ids)
+        #     # if result["save"]:
+        #     #     draw_charuco_corners_custom(saved_corner_img[serial_num], corners, BOARD_COLORS[2], 5, -1, ids)
 
-        else:
-            print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
+        # else:
+        #     print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
 def main_loop(yolo_module, hand_module):
-    current_idx = 1
+    current_idx = 0
     import matplotlib.pyplot as plt
 
     plt.ion()  # interactive mode on
@@ -120,17 +120,24 @@ def main_loop(yolo_module, hand_module):
     
     C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
     C2R = np.linalg.inv(C2R) # convert to camera coordinate system
-    
+    intrinsic = json.load(open(f"{shared_dir}/demo_250618/pringles/0/cam_param/intrinsics.json", "r"))
+
     while True:
         os.makedirs(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted"), exist_ok=True)
         cur_cnt = 0
         
+        for pc_name, sock in socket_dict.items():
+            capture_state[pc_name] = True
+            sock.send_string(f"capture:{current_idx}")
+            print(f"[{pc_name}] Start capture {current_idx}")
+        wait_for_capture()
+        
+        
         for serial_num in serial_list:
-            if serial_num in asdf:
-                if asdf[serial_num] >= current_idx:
-                    # current_idx = asdf[serial_num]
-                    cur_cnt += 1
-        print(asdf, cur_cnt, current_idx)
+            img = cv2.imread(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images", f"{serial_num}.jpg"))
+            undistorted_img = undistort_img(img, intrinsic[serial_num])
+            cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(last_frame_ind[i]), "images_undistorted", f"{camera.serial_list[i]}.jpg"), undistorted_img)
+
         if cur_cnt == len(serial_list):
             # current_arm_angles = np.asarray(arm.get_joint_states(is_radian=True)[1][0][:6])
             

@@ -74,7 +74,6 @@ except:
 socket.send_multipart([client_ident, b"camera_ready"])
 num_cam = camera.num_cameras
 
-camera.start()
 last_frame_ind = [-1 for _ in range(num_cam)]
 save_flag = [False for _ in range(num_cam)]
 save_finish = True

@@ -6,7 +6,7 @@ class Camera():
         camPtr,
         gain,
         exposure_time,
-        frame_rate=30,
+        frame_rate=0.2,
         mode="video",
         syncMode=True,
     ):

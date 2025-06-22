@@ -2,6 +2,7 @@ from paradex.io.camera.camera_loader import CameraManager
 import cv2
 import time
 from paradex.utils.file_io import shared_dir
+import os
 
 camera = CameraManager("stream")
 num_cam = camera.num_cameras

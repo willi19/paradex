@@ -16,7 +16,7 @@ from scene import Scene
 from yolo_world_module import YOLO_MODULE
 from mediapipe_hand_module import Hand_Module
 from paradex.io.robot_controller import XArmController, AllegroController, InspireController
-
+from paradex.image.undistort import undistort_img
 hide_list = ['22641005','22645021','23280594','23180202','22641023','23029839','22640993']
 
 
@@ -66,8 +66,8 @@ filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
 asdf = {}
 
-hand_traj = np.load("asdf")
-arm_traj = np.load("adsf")
+hand_traj = np.load("demo_traj/hand/action.npy")
+arm_traj = np.load("demo_traj/arm/action.npy")
 arm_traj[:,:3] /= 1000
 
 def listen_socket(pc_name, socket):
@@ -113,15 +113,42 @@ def listen_socket(pc_name, socket):
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
+def wait_for_capture():
+    while True:
+        all_captured = True
+        for pc_name, in_capture in capture_state.items():
+            if in_capture:
+                all_captured = False
+                break
+        if all_captured:
+            break
+        
 def main_loop(yolo_module, hand_module):
-    current_idx = 1
+    intrinsic = json.load(open(f"{shared_dir}/demo_250618/pringles/0/cam_param/intrinsics.json", "r"))
+    current_idx = 0
     import matplotlib.pyplot as plt
-
+    os.makedirs(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx+1), "images_undistorted"), exist_ok=True)
+    for pc_name, sock in socket_dict.items():
+        capture_state[pc_name] = True
+        sock.send_string(f"capture:{current_idx}")
+        print(f"[{pc_name}] Start capture {current_idx}")
+    wait_for_capture()
+    
+    # for serial_num in serial_list:
+    #     img = cv2.imread(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images", f"{serial_num}.png"))
+    #     undistorted_img = undistort_img(img, intrinsic[serial_num])
+    #     cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted", f"{serial_num}.jpg"), undistorted_img)
+            
+    # time.sleep(0.05) 
+        
     plt.ion()  # interactive mode on
     fig, ax = plt.subplots()
     # imshow_o
     imshow_obj = ax.imshow(np.zeros((1536, 3072, 3)))  # Convert BGR to RGB
     plt.pause(0.001)
+    
+    C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
+    C2R = np.linalg.inv(C2R) # convert to camera coordinate system
 
     while True:
         if current_idx >= len(hand_traj):
@@ -141,14 +168,19 @@ def main_loop(yolo_module, hand_module):
         hand_angles = hand_controller.hand_state_hist[hand_controller.hand_cnt]
         np.save(os.path.join("/home/temp_id/shared_data/demo_250618/pringles/demo_250618_optim/final", 'hand_state.npy'), hand_angles)
         
+        for pc_name, sock in socket_dict.items():
+            capture_state[pc_name] = True
+            sock.send_string(f"capture:{current_idx+1}")
+            print(f"[{pc_name}] Start capture {current_idx+1}")
+        wait_for_capture()
                            
         for serial_num in serial_list:
-            if serial_num in asdf:
-                if asdf[serial_num] >= current_idx:
-                    # current_idx = asdf[serial_num]
-                    cur_cnt += 1
+            img = cv2.imread(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images", f"{serial_num}.png"))
+            undistorted_img = undistort_img(img, intrinsic[serial_num])
+            cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted", f"{serial_num}.jpg"), undistorted_img)
+
         
-        if cur_cnt == len(serial_list):
+        if True: #cur_cnt == len(serial_list):
             # current_arm_angles = np.asarray(arm.get_joint_states(is_radian=True)[1][0][:6])
             
             # # _, pos_aa = arm.get_position_aa(is_radian=True)

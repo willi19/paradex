@@ -120,7 +120,7 @@ def wait_for_capture():
                 break
         if all_captured:
             break
-        time.sleep(0.1)
+        # time.sleep(0.05)
         
 def main_loop(yolo_module, hand_module):
     intrinsic = json.load(open(f"{shared_dir}/demo_250618/pringles/0/cam_param/intrinsics.json", "r"))
@@ -138,7 +138,7 @@ def main_loop(yolo_module, hand_module):
     #     undistorted_img = undistort_img(img, intrinsic[serial_num])
     #     cv2.imwrite(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images_undistorted", f"{serial_num}.jpg"), undistorted_img)
             
-    time.sleep(0.1) 
+    # time.sleep(0.05) 
         
     plt.ion()  # interactive mode on
     fig, ax = plt.subplots()
@@ -158,7 +158,7 @@ def main_loop(yolo_module, hand_module):
             sock.send_string(f"capture:{current_idx+1}")
             print(f"[{pc_name}] Start capture {current_idx+1}")
         wait_for_capture()
-        time.sleep(0.1)        
+        # time.sleep(0.05)        
         
         for serial_num in serial_list:
             img = cv2.imread(os.path.join(shared_dir, "demo_250618", "pringles", str(current_idx), "images", f"{serial_num}.png"))
@@ -360,7 +360,7 @@ def wait_for_camera_ready():
                 break
         if all_ready:
             break
-        time.sleep(0.1)
+        time.sleep(0.05)
 
 # Git pull and client run
 pc_list = list(pc_info.keys())

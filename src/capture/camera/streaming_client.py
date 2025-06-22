@@ -17,8 +17,8 @@ idx = 0
 start_time = time.time()
 while time.time() - start_time < 20:
     if camera.frame_num[0] != last_frame:
-        start_time = time.time()
-        print(last_frame, time.time() - start_time)
+        asdf = time.time()
+        print(last_frame, time.time() - asdf)
         last_frame = camera.frame_num[0]
         
         with camera.locks[0]:

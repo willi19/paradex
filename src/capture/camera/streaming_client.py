@@ -22,7 +22,7 @@ while time.time() - start_time < 10:
 
         # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         last_image = cv2.resize(last_image, (640, 480))
-        cv2.imwrite(f"{shared_data}/{last_frame}.jpg", last_image)
+        cv2.imwrite(f"{shared_dir}/{last_frame}.jpg", last_image)
         print(last_frame)
 camera.end()
 camera.quit()

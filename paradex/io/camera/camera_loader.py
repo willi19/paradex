@@ -171,7 +171,8 @@ class CameraManager:
             self.connect_flag[index].set()
             self.connect_success[index].set()
 
-        except:
+        except Exception as e:
+            print(f"Failed to connect to camera {serial_num}: {e}")
             self.connect_flag[index].set()
 
             cam.release()    

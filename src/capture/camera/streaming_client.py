@@ -14,6 +14,7 @@ last_frame = -1
 last_image = None
 
 idx = 0 
+start_time = time.time()
 while time.time() - start_time < 10:
     if camera.frame_num[0] != last_frame:
         last_frame = camera.frame_num[0]
@@ -26,6 +27,6 @@ while time.time() - start_time < 10:
         os.makedirs(f"{shared_dir}/tmp/{last_frame}", exist_ok=True)
         last_image = cv2.resize(last_image, (640, 480))
         cv2.imwrite(f"{shared_dir}/tmp/{last_frame}/{serial_num}.jpg", last_image)
-        print(last_frame)
+        print(last_frame, time.time() - start_time)
 camera.end()
 camera.quit()

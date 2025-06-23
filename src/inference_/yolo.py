@@ -9,6 +9,7 @@ import sys
 
 from paradex.model.yolo_world_module import YOLO_MODULE
 from queue import SimpleQueue
+import json
 
 socket = get_socket(5556)
 client_ident = register(socket)
@@ -70,7 +71,6 @@ def camera_thread_func(cam_ind):
 
 def wait_for_cameras_ready():
     while not all(capture_ready):
-        print(capture_ready)
         time.sleep(0.01)
         
 threads = []
@@ -86,7 +86,8 @@ print("All cameras are ready.")
 start_time = time.time()
 while time.time() - start_time < 10:
     if not msg_queue.empty():
-        msg = msg_queue.get()
+        msg_dict = msg_queue.get()
+        msg = json.dumps(msg_dict).encode()
         socket.send_multipart([client_ident, msg])
     else:
         time.sleep(0.001)

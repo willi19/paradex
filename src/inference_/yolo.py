@@ -83,6 +83,8 @@ for i in range(4):
 
 wait_for_cameras_ready()
 print("All cameras are ready.")
+socket.send_multipart([client_ident, b"camera_ready"])
+
 start_time = time.time()
 while time.time() - start_time < 100:
     if not msg_queue.empty():

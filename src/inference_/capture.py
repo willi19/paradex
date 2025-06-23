@@ -108,6 +108,18 @@ def listen_socket(pc_name, socket):
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
+def wait_for_cameras():
+    while True:
+        all_ready = True
+        for pc_name, info in pc_info.items():
+            if not start_dict[pc_name]:
+                all_ready = False
+                break
+        if all_ready:
+            print("All cameras are ready.")
+            break
+        time.sleep(0.1)
+
 def main_ui_loop():
     curr_frame = 1
     cam_N = 10
@@ -178,6 +190,8 @@ for pc_name, info in pc_info.items():
 for pc_name, sock in socket_dict.items():
     threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
 
+wait_for_cameras()
+print("All cameras are ready.")
 # Main UI loop
 # while True:
 #     time.sleep(0.1)  # Prevent busy-waiting

@@ -13,7 +13,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).absolute().parent))
 # from efficient_sam_module import load, inference_with_boxes
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+print(DEVICE, "device is used for inference")
 # from video_module import (
 #     generate_file_name,
 #     calculate_end_frame_index,

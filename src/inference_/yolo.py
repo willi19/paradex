@@ -55,7 +55,7 @@ def camera_thread_func(i):
 
         # 여기서 메시지를 전송하거나 저장 등의 후처리
         # 예: zmq_pub.send_json(msg_dict)
-        print(f"[CAM {i}] Sending data for frame {time.time() - start_time:.2f}, Serial: {camera.serial_list[i]}")
+        print(f"[CAM {i}] Sending data for frame {time.time() - loop_start_time:.2f}, Serial: {camera.serial_list[i]}")
         save_flag[i] = False
 
 

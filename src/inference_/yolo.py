@@ -70,7 +70,8 @@ def camera_thread_func(cam_ind):
 
 def wait_for_cameras_ready():
     while not all(capture_ready):
-        time.sleep(0.1)
+        print(capture_ready)
+        time.sleep(0.01)
         
 threads = []
 

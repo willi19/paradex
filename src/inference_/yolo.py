@@ -80,8 +80,6 @@ for i in range(4):
     t.start()
     threads.append(t)
 
-for t in threads:
-    t.join()
 
 wait_for_cameras_ready()
 print("All cameras are ready.")
@@ -94,5 +92,8 @@ while time.time() - start_time < 10:
         time.sleep(0.001)
 
 end_event.set()
+
+for t in threads:
+    t.join()
 camera.end()
 camera.quit()

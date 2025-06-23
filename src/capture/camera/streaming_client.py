@@ -18,7 +18,7 @@ start_time = time.time()
 while time.time() - start_time < 20:
     asdf = time.time()
     if camera.frame_num[0] != last_frame:
-        print(last_frame, time.time() - asdf)
+        print(last_frame, time.time() - asdf, camera.frame_num[0], last_frame)
         asdf = time.time()
         last_frame = camera.frame_num[0]
         

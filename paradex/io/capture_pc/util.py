@@ -1,3 +1,5 @@
+import numpy as np
+
 def serialize(msg_dict):
     ret = {}
     for key, value in msg_dict.items():

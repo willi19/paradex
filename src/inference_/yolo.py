@@ -28,7 +28,6 @@ save_finish = True
 
 start_time = time.time()
 while time.time() - start_time < 10:
-    print("waiting for camera frame")
     for i in range(num_cam):
         if camera.frame_num[i] == last_frame_ind[i]:
             continue
@@ -36,7 +35,7 @@ while time.time() - start_time < 10:
         last_frame_ind[i] = camera.frame_num[i]
         with camera.locks[i]:
             last_image = camera.image_array[i].copy()
-        print(last_frame_ind[i])
+        print(last_frame_ind[i], time.time())
 
         
         detections = yolo_module.process_img(last_image, with_segmentation=False)

@@ -10,7 +10,7 @@ num_cam = camera.num_cameras
 camera.start()
 start_time = time.time()
 
-last_frame = -1
+last_frame = 0
 last_image = None
 
 idx = 0 

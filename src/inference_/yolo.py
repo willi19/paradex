@@ -22,16 +22,18 @@ def camera_thread_func(i):
         if camera.frame_num[i] == last_frame_ind[i]:
             time.sleep(0.005)
             continue
-
+        
+        loop_start_time = time.time()
         last_frame_ind[i] = camera.frame_num[i]
 
         with camera.locks[i]:
             last_image = camera.image_array[i].copy()
         
-        print(f"[CAM {i}] Frame: {last_frame_ind[i]}, Time: {time.time() - start_time:.2f}")
+        print(f"[CAM {i}] Frame: {last_frame_ind[i]}, Time: {time.time() - start_time:.2f} Cost time: {time.time() - loop_start_time:.4f}s")
         with lock:
             detections = yolo_module.process_img(last_image, with_segmentation=False)
-
+        print(f"[CAM {i}] Detections time: {time.time() - loop_start_time:.4f}s {camera.serial_list[i]}")
+        
         if detections.xyxy.size > 0:
             bbox = detections.xyxy[0]
             detections.mask = np.zeros((1, last_image.shape[0], last_image.shape[1]), dtype=bool)
@@ -53,7 +55,7 @@ def camera_thread_func(i):
 
         # 여기서 메시지를 전송하거나 저장 등의 후처리
         # 예: zmq_pub.send_json(msg_dict)
-
+        print(f"[CAM {i}] Sending data for frame {time.time() - start_time:.2f}, Serial: {camera.serial_list[i]}")
         save_flag[i] = False
 
 

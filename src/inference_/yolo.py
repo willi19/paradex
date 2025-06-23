@@ -27,7 +27,7 @@ save_flag = [False for _ in range(num_cam)]
 save_finish = True
 
 start_time = time.time()
-while time.time() - start_time < 10:
+while time.time() - start_time < 30:
     for i in range(num_cam):
         if camera.frame_num[i] == last_frame_ind[i]:
             continue

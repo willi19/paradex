@@ -31,7 +31,7 @@ def camera_thread_func(cam_ind):
     yolo_module = YOLO_MODULE(categories="pringles")
     serial_num = camera.serial_list[cam_ind]
     capture_ready[cam_ind] = True
-    
+    print(f"Camera {serial_num} is ready.")
     while not end_event.is_set():
 
         if camera.frame_num[cam_ind] == last_frame_ind:

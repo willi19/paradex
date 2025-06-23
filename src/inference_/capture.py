@@ -95,6 +95,7 @@ def listen_socket(pc_name, socket):
             detection_results[data["frame"]][serial_num]["xyxy"] = np.array(detections_xyxy, dtype=float)
             detection_results[data["frame"]][serial_num]["confidence"] = np.array(detections_confidence)
             detection_results[data["frame"]][serial_num]["frame_num"] = data["frame"]
+            print(data)
             
             # if detection_results[serial_num]["mask"].size > 0:
             #     print(data["frame"])
@@ -131,64 +132,8 @@ def main_ui_loop():
             time.sleep(0.01)
 
 
-    # num_images = len(serial_list)
-    # grid_cols = math.ceil(math.sqrt(num_images))
-    # grid_rows = math.ceil(num_images / grid_cols)
-    # border_px = 20
-    # new_W = 2048 // grid_rows
-    # new_H = 1536 // grid_rows
-
-    # while True:
-    #     all_disconnected = True
-    #     for pc_name, terminated in terminate_dict.items():
-    #         if not terminated:
-    #             all_disconnected = False
-    #     if all_disconnected:
-    #         break
-        
-    #     grid_image = np.ones((1536+border_px*(grid_rows-1), (2048//grid_rows)*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
-    #     for idx, serial_num in enumerate(serial_list):
-    #         img = saved_corner_img[serial_num].copy()
-    #         corners, ids, frame = cur_state[serial_num]
-    #         # if corners.shape[0] > 0:
-    #         #     draw_charuco_corners_custom(img, corners, BOARD_COLORS[1], 5, -1, ids)
-    #         img = cv2.putText(img, f"{serial_num} {frame}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 6, (255, 255, 0), 12)
-
-    #         resized_img = cv2.resize(img, (new_W, new_H))
-            
-    #         r_idx = idx // grid_cols
-    #         c_idx = idx % grid_cols
-
-    #         r_start = r_idx * (new_H + border_px)
-    #         c_start = c_idx * (new_W + border_px)
-    #         grid_image[r_start:r_start+resized_img.shape[0], c_start:c_start+resized_img.shape[1]] = resized_img
-
-
-    #     grid_image = cv2.resize(grid_image, (int(2048//1.5), int(1536//1.5)))
-    #     cv2.imshow("Grid", grid_image)
-        # key = cv2.waitKey(1)
-        # if key == ord('q'):
-        #     print("[Server] Quitting...")
-        #     for socket in socket_dict.values():
-        #         socket.send_string("quit")
-        #     break
-        # elif key == ord('c'):
-        #     print("[Server] Sending capture command.")
-        #     send_capture = True
-        #     for pc in pc_info.keys():
-        #         if capture_state[pc]:
-        #             send_capture = False
-        #             break
-        #     if send_capture:
-        #         global capture_idx, filename
-        #         os.makedirs(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx)), exist_ok=True)
-        #         for pc, socket in socket_dict.items():
-        #             socket.send_string(f"capture:{capture_idx}")
-        #             capture_state[pc] = True
-        #         capture_idx += 1
-
 # Git pull and client run
-pc_list = list(pc_info.keys())
+pc_list = ['capture12']#list(pc_info.keys())
 git_pull("merging", pc_list)
 # run_script("python src/demo_250618/client.py", pc_list)
 
@@ -205,7 +150,7 @@ for pc_name, info in pc_info.items():
     if socket_dict[pc_name].recv_string() == "registered":
         print(f"[{pc_name}] Registered.")
     
-    socket_dict[pc_name].send_string("filename:" + filename)
+    # socket_dict[pc_name].send_string("filename:" + filename)
 
 # Start per-socket listener
 for pc_name, sock in socket_dict.items():

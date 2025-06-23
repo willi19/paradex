@@ -1,119 +1,77 @@
-import zmq
-from paradex.utils.file_io import config_dir, shared_dir
-import json
-import os
 from paradex.io.camera.camera_loader import CameraManager
+from paradex.io.capture_pc.client import register, get_socket
+from paradex.io.capture_pc.util import serialize
+
 import time
-from paradex.image.aruco import detect_charuco, merge_charuco_detection
 import threading
 import numpy as np
 import sys
 
-from yolo_world_module import YOLO_MODULE
+from paradex.model.yolo_world_module import YOLO_MODULE
+from queue import SimpleQueue
 
-from threading import Lock
+socket = get_socket(5556)
+client_ident = register(socket)
 
-lock = Lock()
+msg_queue = SimpleQueue()
+end_event = threading.Event()
 
-def camera_thread_func(i):
-    global last_frame_ind, save_flag
-
-    yolo_module = YOLO_MODULE(categories="pringles")
-    while time.time() - start_time < 30:
-        if camera.frame_num[i] == last_frame_ind[i]:
-            time.sleep(0.005)
-            continue
-        
-        loop_start_time = time.time()
-        last_frame_ind[i] = camera.frame_num[i]
-
-        with camera.locks[i]:
-            last_image = camera.image_array[i].copy()
-        
-        print(f"[CAM {i}] Frame: {last_frame_ind[i]}, Time: {time.time() - start_time:.2f} Cost time: {time.time() - loop_start_time:.4f}s")
-        detections = yolo_module.process_img(last_image, with_segmentation=False)
-        print(f"[CAM {i}] Detections time: {time.time() - loop_start_time:.4f}s {camera.serial_list[i]}")
-        
-        if detections.xyxy.size > 0:
-            bbox = detections.xyxy[0]
-            detections.mask = np.zeros((1, last_image.shape[0], last_image.shape[1]), dtype=bool)
-            detections.mask[0, int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])] = True
-
-        if detections.mask is not None: detections.mask = detections.mask.tolist()
-        if detections.mask is None: detections.mask = []
-        if detections.xyxy is not None: detections.xyxy = detections.xyxy.tolist()
-        if detections.confidence is not None: detections.confidence = detections.confidence.tolist()
-
-        msg_dict = {
-            "frame": int(last_frame_ind[i]),
-            "detections.mask": detections.mask,
-            "detections.xyxy": detections.xyxy,
-            "detections.confidence": detections.confidence,
-            "type": "demo",
-            "serial_num": camera.serial_list[i],
-        }
-
-        # 여기서 메시지를 전송하거나 저장 등의 후처리
-        # 예: zmq_pub.send_json(msg_dict)
-        print(f"[CAM {i}] Sending data for frame {time.time() - loop_start_time:.2f}, Serial: {camera.serial_list[i]}")
-        save_flag[i] = False
-
-
-
-print("yolo module initialized")
+capture_ready = [False] * 4
 try:
     camera = CameraManager("stream", path=None, serial_list=None, syncMode=True)
 except:
     sys.exit(1)
 
+
 num_cam = camera.num_cameras
-
 camera.start()
-last_frame_ind = [0 for _ in range(num_cam)]
-save_flag = [False for _ in range(num_cam)]
-save_finish = True
 
-start_time = time.time()
-# while time.time() - start_time < 30:
-#     for i in range(num_cam):
-#         if camera.frame_num[i] == last_frame_ind[i]:
-#             continue
+def camera_thread_func(cam_ind):
+    last_frame_ind = 0
+    yolo_module = YOLO_MODULE(categories="pringles")
+    serial_num = camera.serial_list[cam_ind]
+    capture_ready[cam_ind] = True
+    
+    while not end_event.is_set():
 
-#         last_frame_ind[i] = camera.frame_num[i]
-#         with camera.locks[i]:
-#             last_image = camera.image_array[i].copy()
-#         print(last_frame_ind[i], time.time()-start_time)
-
+        if camera.frame_num[cam_ind] == last_frame_ind:
+            time.sleep(0.005)
+            continue
         
-#         detections = yolo_module.process_img(last_image, with_segmentation=False)
+        loop_start_time = time.time()
+        last_frame_ind = camera.frame_num[cam_ind]
+
+        with camera.locks[cam_ind]:
+            last_image = camera.image_array[cam_ind].copy()
         
-#         if detections.xyxy.size > 0:
-#             bbox = detections.xyxy[0]
-#             # detections.bbox_center = bbox[:2] + (bbox[2:] - bbox[:2]) / 2
-#             detections.mask = np.zeros((1, last_image.shape[0], last_image.shape[1]), dtype=bool)
-#             detections.mask[0, int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])] = True
+        detections = yolo_module.process_img(last_image, with_segmentation=False)
         
-                
-#         if detections.mask is not None: detections.mask = detections.mask.tolist()
-#         if detections.mask is None: detections.mask = []
-#         if detections.xyxy is not None: detections.xyxy = detections.xyxy.tolist()
-#         if detections.confidence is not None: detections.confidence = detections.confidence.tolist()
+        # if detections.xyxy.size > 0:
+        #     bbox = detections.xyxy[0]
+        #     detections.mask = np.zeros((1, last_image.shape[0], last_image.shape[1]), dtype=bool)
+        #     detections.mask[0, int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])] = True
 
-#         serial_num = camera.serial_list[i]
+        # if detections.mask is not None: detections.mask = detections.mask.tolist()
+        # if detections.mask is None: detections.mask = []
+        if detections.xyxy is not None: detections.xyxy = detections.xyxy.tolist()
+        if detections.confidence is not None: detections.confidence = detections.confidence.tolist()
 
-#         save_flag[i] = False
+        msg_dict = serialize({
+            "frame": int(last_frame_ind[cam_ind]),
+            # "detections.mask": detections.mask,
+            "detections.xyxy": detections.xyxy,
+            "detections.confidence": detections.confidence,
+            "type": "demo",
+            "serial_num": serial_num,
+        })
+        
+        msg_queue.put(msg_dict)
 
-#         msg_dict = {
-#             "frame": int(last_frame_ind[i]),
-#             "detections.mask": detections.mask,
-#             "detections.xyxy": detections.xyxy,
-#             "detections.confidence": detections.confidence,
-#             "type": "demo",
-#             "serial_num": serial_num,
-#         }
-#     time.sleep(0.01)
+def wait_for_cameras_ready():
+    while not all(capture_ready):
+        time.sleep(0.1)
+        
 threads = []
-start_time = time.time()
 
 for i in range(4):
     t = threading.Thread(target=camera_thread_func, args=(i,))
@@ -123,5 +81,16 @@ for i in range(4):
 for t in threads:
     t.join()
 
+wait_for_cameras_ready()
+
+start_time = time.time()
+while time.time() - start_time < 10:
+    if not msg_queue.empty():
+        msg = msg_queue.get()
+        socket.send_multipart([client_ident, msg])
+    else:
+        time.sleep(0.001)
+
+end_event.set()
 camera.end()
 camera.quit()

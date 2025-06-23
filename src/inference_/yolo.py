@@ -13,7 +13,7 @@ from yolo_world_module import YOLO_MODULE
 print("yolo module loaded")
 
 yolo_module = YOLO_MODULE(categories="pringles")
-
+print("yolo module initialized")
 try:
     camera = CameraManager("stream", path=None, serial_list=None, syncMode=True)
 except:

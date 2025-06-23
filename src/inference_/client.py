@@ -102,7 +102,7 @@ while not should_exit:
         
         if detections.xyxy.size > 0:
             bbox = detections.xyxy[0]
-            # detections.bbox_center = bbox[:2] + (bbox[2:] - bbox[:2]) / 2
+            detections.bbox_center = bbox[:2] + (bbox[2:] - bbox[:2]) / 2
             detections.mask = np.zeros((1, last_image.shape[0], last_image.shape[1]), dtype=bool)
             detections.mask[0, int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])] = True
         
@@ -123,6 +123,7 @@ while not should_exit:
             "detections.confidence": detections.confidence,
             "type": "demo",
             "serial_num": serial_num,
+            "bbox_center": detections.bbox_center.tolist() if hasattr(detections, 'bbox_center') else None,
         }
         print(int(last_frame_ind[i]), type(detections.mask), type(detections.xyxy), type(detections.confidence), serial_num)
         msg_json = json.dumps(msg_dict)

@@ -84,7 +84,7 @@ for i in range(4):
 wait_for_cameras_ready()
 print("All cameras are ready.")
 start_time = time.time()
-while time.time() - start_time < 10:
+while time.time() - start_time < 100:
     if not msg_queue.empty():
         msg_dict = msg_queue.get()
         msg = json.dumps(msg_dict).encode()

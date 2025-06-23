@@ -81,61 +81,83 @@ def listen_socket(pc_name, socket):
         serial_num = data["serial_num"]
 
         if data.get("type") == "demo":
-            detections_mask = data["detections.mask"]
-            detections_xyxy = data["detections.xyxy"]
-            detections_confidence = data["detections.confidence"]
+            detections_xyxy =  np.array(data["detections.xyxy"], dtype=float)
+            detections_confidence = np.array(data["detections.confidence"], dtype=float)
+            
+            detections_mask = None# data["detections.mask"]
+            detections_bbox_center = None
+            
+            if detections_xyxy.size > 0:
+                detections_bbox_center = detections_xyxy[:, :2] + (detections_xyxy[:, 2:] - detections_xyxy[:, :2]) / 2
+                bbox = detections_xyxy[0]
+                detections_mask = np.zeros((1, 1536, 2048), dtype=bool)
+                detections_mask[0, int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])] = True
 
             if data["frame"] not in detection_results:
                 detection_results[data["frame"]] = {}
-            # print(serial_num, data["frame"])
-            
             
             detection_results[data["frame"]][serial_num] = {}
-            detection_results[data["frame"]][serial_num]["mask"] = np.array(detections_mask, dtype=bool)
-            detection_results[data["frame"]][serial_num]["xyxy"] = np.array(detections_xyxy, dtype=float)
-            detection_results[data["frame"]][serial_num]["confidence"] = np.array(detections_confidence)
+            detection_results[data["frame"]][serial_num]["mask"] = detections_mask
+            detection_results[data["frame"]][serial_num]["xyxy"] = detections_xyxy
+            detection_results[data["frame"]][serial_num]["confidence"] = detections_confidence
             detection_results[data["frame"]][serial_num]["frame_num"] = data["frame"]
-            print(data)
+            detection_results[data["frame"]][serial_num]["bbox_center"] = detections_bbox_center
             
-            # if detection_results[serial_num]["mask"].size > 0:
-            #     print(data["frame"])
-            #     print(detection_results[serial_num]["mask"])
-            #     print(detection_results[serial_num]["xyxy"])
-            #     print(detection_results[serial_num]["confidence"])
-
+            print(f"[{pc_name}] Received data for frame {data['frame']} from {serial_num}. Detections: {len(detections_xyxy)}")
+            
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
 def main_ui_loop():
-    curr_frame = 3
+    curr_frame = 1
+    cam_N = 10
+    C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
+    C2R = np.linalg.inv(C2R) # convert to camera coordinate system
+    
     while True:
         
-        if curr_frame in detection_results: print(len(detection_results[curr_frame]))
-        if curr_frame in detection_results and len(detection_results[curr_frame]) > 12:
+        if curr_frame in detection_results and len(detection_results[curr_frame]) < 24: 
+            time.sleep(0.01)
+            continue
+        
+        if curr_frame in detection_results and len(detection_results[curr_frame]) == 24:
+            detect_img = 0
+            for cam_id in detection_results[curr_frame]:
+                if detection_results[curr_frame][cam_id]["xyxy"].size > 0:
+                    detect_img += 1
+            if detect_img < cam_N:
+                print("Not enough detections, waiting for more...")
+                time.sleep(0.01)
+                curr_frame += 1
+                continue
             
             detection_results_curr = detection_results[curr_frame]
             confidence_dict = {cam_id: detection_results_curr[cam_id]["confidence"][0] for cam_id in detection_results_curr if detection_results_curr[cam_id]["confidence"].size > 0 and detection_results_curr[cam_id]["confidence"][0] > 0.001 and cam_id not in hide_list}
             # print(confidence_dict)
-            cam_N = 10
             top_n_cams2confidence = sorted(confidence_dict.items(), key=lambda x: x[1], reverse=True)[:cam_N]
             top_n_cams = [cam_id for cam_id, confidence in top_n_cams2confidence]
 
-            mask_dict_org = {cam_id: detection_results[cam_id]["mask"][0] for cam_id in top_n_cams}
-            # print(mask_dict_org)
-
-            in_mask_points, initial_translate = get_visualhull_ctr(org_scene, mask_dict=mask_dict_org) # Set Initial translation as center of visual hull
-
-        
-
-        # frame_num = detection_results[detection_results[0]]
+            A = []
+            for cam_id in top_n_cams:
+                cx, cy = detection_results_curr[cam_id]["bbox_center"][0]
+                P = org_scene.proj_matrix[cam_id]
+                A.append(cx * P[2] - P[0])
+                A.append(cy * P[2] - P[1])
+            A = np.stack(A, axis=0)
+            _, _, Vt = np.linalg.svd(A)
+            X_h = Vt[-1]
+            X = X_h[:3] / X_h[3]  # Convert from homogeneous coordinates to 3D point
+            
+            initial_translate = X @ C2R[:3, :3].T + C2R[:3, 3] # convert to camera coordinate system
             print(f"{initial_translate}")
+            curr_frame += 1
             time.sleep(0.01)
 
 
 # Git pull and client run
-pc_list = ['capture12']#list(pc_info.keys())
+pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-# run_script("python src/demo_250618/client.py", pc_list)
+run_script("python src/inference_/yolo.py", pc_list)
 
 # try:
 for pc_name, info in pc_info.items():

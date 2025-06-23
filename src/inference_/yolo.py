@@ -57,7 +57,7 @@ def camera_thread_func(cam_ind):
         if detections.confidence is not None: detections.confidence = detections.confidence.tolist()
 
         msg_dict = serialize({
-            "frame": int(last_frame_ind[cam_ind]),
+            "frame": int(last_frame_ind),
             # "detections.mask": detections.mask,
             "detections.xyxy": detections.xyxy,
             "detections.confidence": detections.confidence,

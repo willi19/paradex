@@ -110,7 +110,7 @@ start_time = time.time()
 threads = []
 start_time = time.time()
 
-for i in range(1):
+for i in range(4):
     t = threading.Thread(target=camera_thread_func, args=(i,))
     t.start()
     threads.append(t)

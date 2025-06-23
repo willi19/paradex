@@ -89,6 +89,7 @@ while time.time() - start_time < 10:
         msg_dict = msg_queue.get()
         msg = json.dumps(msg_dict).encode()
         socket.send_multipart([client_ident, msg])
+        print(msg_dict)
     else:
         time.sleep(0.001)
 

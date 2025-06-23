@@ -106,7 +106,7 @@ def listen_socket(pc_name, socket):
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
 def main_ui_loop():
-    curr_frame = 20
+    curr_frame = 3
     while True:
         
         if curr_frame in detection_results: print(len(detection_results[curr_frame]))
@@ -190,7 +190,7 @@ def main_ui_loop():
 # Git pull and client run
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script("python src/demo_250618/client.py", pc_list)
+# run_script("python src/demo_250618/client.py", pc_list)
 
 # try:
 for pc_name, info in pc_info.items():

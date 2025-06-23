@@ -66,7 +66,8 @@ if msg.startswith("filename"):
 else:
     sys.exit(1)
 
-board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
+yolo_module = YOLO_MODULE(categories="pringles")
+socket.send_multipart([client_ident, b"yolo module initialized"])
 
 try:
     camera = CameraManager("stream", path=None, serial_list=None, syncMode=True)
@@ -82,9 +83,6 @@ last_frame_ind = [-1 for _ in range(num_cam)]
 save_flag = [False for _ in range(num_cam)]
 save_finish = True
 socket.send_multipart([client_ident, b"camera_start"])
-
-yolo_module = YOLO_MODULE(categories="pringles")
-socket.send_multipart([client_ident, b"yolo module initialized"])
 
 threading.Thread(target=listen_for_commands, daemon=True).start()
 

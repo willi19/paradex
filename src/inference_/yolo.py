@@ -18,6 +18,7 @@ lock = Lock()
 def camera_thread_func(i):
     global last_frame_ind, save_flag
 
+    yolo_module = YOLO_MODULE(categories="pringles")
     while time.time() - start_time < 30:
         if camera.frame_num[i] == last_frame_ind[i]:
             time.sleep(0.005)
@@ -30,8 +31,7 @@ def camera_thread_func(i):
             last_image = camera.image_array[i].copy()
         
         print(f"[CAM {i}] Frame: {last_frame_ind[i]}, Time: {time.time() - start_time:.2f} Cost time: {time.time() - loop_start_time:.4f}s")
-        with lock:
-            detections = yolo_module.process_img(last_image, with_segmentation=False)
+        detections = yolo_module.process_img(last_image, with_segmentation=False)
         print(f"[CAM {i}] Detections time: {time.time() - loop_start_time:.4f}s {camera.serial_list[i]}")
         
         if detections.xyxy.size > 0:
@@ -60,7 +60,6 @@ def camera_thread_func(i):
 
 
 
-yolo_module = YOLO_MODULE(categories="pringles")
 print("yolo module initialized")
 try:
     camera = CameraManager("stream", path=None, serial_list=None, syncMode=True)

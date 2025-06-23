@@ -82,7 +82,7 @@ for t in threads:
     t.join()
 
 wait_for_cameras_ready()
-
+print("All cameras are ready.")
 start_time = time.time()
 while time.time() - start_time < 10:
     if not msg_queue.empty():

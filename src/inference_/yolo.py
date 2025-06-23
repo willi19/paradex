@@ -64,7 +64,7 @@ while time.time() - start_time < 10:
             "type": "demo",
             "serial_num": serial_num,
         }
-        print(int(last_frame_ind[i]), type(detections.mask), type(detections.xyxy), type(detections.confidence), serial_num)
+        # print(int(last_frame_ind[i]), type(detections.mask), type(detections.xyxy), type(detections.confidence), serial_num)
         
     time.sleep(0.01)
 

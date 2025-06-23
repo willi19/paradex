@@ -28,6 +28,7 @@ camera.start()
 
 def camera_thread_func(cam_ind):
     last_frame_ind = 0
+    print("asdf")
     yolo_module = YOLO_MODULE(categories="pringles")
     serial_num = camera.serial_list[cam_ind]
     capture_ready[cam_ind] = True

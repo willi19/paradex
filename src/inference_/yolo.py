@@ -11,6 +11,10 @@ import sys
 
 from yolo_world_module import YOLO_MODULE
 
+from threading import Lock
+
+lock = Lock()
+
 def camera_thread_func(i):
     global last_frame_ind, save_flag
 
@@ -25,8 +29,8 @@ def camera_thread_func(i):
             last_image = camera.image_array[i].copy()
         
         print(f"[CAM {i}] Frame: {last_frame_ind[i]}, Time: {time.time() - start_time:.2f}")
-
-        detections = yolo_module.process_img(last_image, with_segmentation=False)
+        with lock:
+            detections = yolo_module.process_img(last_image, with_segmentation=False)
 
         if detections.xyxy.size > 0:
             bbox = detections.xyxy[0]

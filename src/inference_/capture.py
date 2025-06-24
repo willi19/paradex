@@ -58,6 +58,9 @@ parser.add_argument('--rgb_framerate', type=int, default=0, help='Framerate rece
 args = parser.parse_args()
 
 output_dir = Path('/home/temp_id/paradex_processing/visualize/cache')
+if os.path.exist(output_dir):
+    os.rmdir(output_dir)
+    os.makedirs(output_dir)
 transl_dir = output_dir / 'transl'
 transl_dir.mkdir(parents=True, exist_ok=True)
 grid_dir = output_dir / 'grid'

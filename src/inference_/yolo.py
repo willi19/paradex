@@ -63,7 +63,7 @@ def camera_thread_func(cam_ind):
             width, height =  int(camera.width/16), int(camera.height/16)
             resized_rgb = cv2.resize(last_image, (width, height))
         else:
-            resized_rgb = None
+            resized_rgb = 'None'
             
         msg_dict = serialize({
             "frame": int(last_frame_ind),

@@ -132,7 +132,7 @@ def listen_socket(pc_name, socket):
             detection_results[data["frame"]][serial_num]["confidence"] = detections_confidence
             detection_results[data["frame"]][serial_num]["frame_num"] = data["frame"]
             detection_results[data["frame"]][serial_num]["bbox_center"] = detections_bbox_center
-            cur_rgb[serial_num] = np.array(data["resized_rgb"]) if data["frame"]%10 == 0 and data["resized_rgb"] is not None else None
+            cur_rgb[serial_num] = np.array(data["resized_rgb"]) if data["frame"]%10 == 0 and data["resized_rgb"]!='None' else None
             
             print(f"[{pc_name}] Received data for frame {data['frame']} from {serial_num}. Detections: {len(detections_xyxy)} Length: {len(detection_results[data['frame']])}")
             

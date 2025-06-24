@@ -207,7 +207,7 @@ def main_ui_loop():
             print(f"{initial_translate}")
             np.save(os.path.join("/home/temp_id/shared_data/demo_250618/pringles/demo_250618_optim/final", 'init_transl.npy'), initial_translate)
             
-            grid_img = make_grid_img_inorder(cur_rgb, int(1536/8), int(2048/8))
+            grid_img = make_grid_img_inorder(cur_rgb, int(1536/16), int(2048/16))
             
             imshow_obj.set_data(grid_img[..., ::-1])
             fig.canvas.draw()

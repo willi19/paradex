@@ -154,7 +154,7 @@ def wait_for_cameras():
 
 
 def main_ui_loop():
-    curr_frame = 5
+    curr_frame = 10
     cam_N = 10
 
     C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
@@ -207,7 +207,7 @@ def main_ui_loop():
             print(f"{initial_translate}")
             np.save(os.path.join("/home/temp_id/shared_data/demo_250618/pringles/demo_250618_optim/final", 'init_transl.npy'), initial_translate)
             
-            grid_img = make_grid_img_inorder(cur_rgb, int(1536/4), int(2048/4))
+            grid_img = make_grid_img_inorder(cur_rgb, int(1536/8), int(2048/8))
             
             imshow_obj.set_data(grid_img[..., ::-1])
             fig.canvas.draw()

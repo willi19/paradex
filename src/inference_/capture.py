@@ -54,7 +54,14 @@ def make_grid_img_inorder(cur_img_dict, height, width):
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str, required=True)
+parser.add_argument('--rgb_framerate', type=int, default=0, help='Framerate receiving RGB images from cameras, 0 for not receiving RGB images')
 args = parser.parse_args()
+
+output_dir = Path('/home/temp_id/paradex_processing/visualize/cache')
+transl_dir = output_dir / 'transl'
+transl_dir.mkdir(parents=True, exist_ok=True)
+grid_dir = output_dir / 'grid'
+grid_dir.mkdir(parents=True, exist_ok=True)
 
 # make scene
 obj_name = args.root_path.split("/")[-2]
@@ -132,7 +139,7 @@ def listen_socket(pc_name, socket):
             detection_results[data["frame"]][serial_num]["confidence"] = detections_confidence
             detection_results[data["frame"]][serial_num]["frame_num"] = data["frame"]
             detection_results[data["frame"]][serial_num]["bbox_center"] = detections_bbox_center
-            cur_rgb[serial_num] = np.array(data["resized_rgb"]) if data["frame"]%10 == 0 and data["resized_rgb"]!='None' else None
+            cur_rgb[serial_num] = np.array(data["resized_rgb"]) if args.rgb_framerate > 0 and data["frame"]%(args.rgb_framerate) == 0 and data["resized_rgb"]!='None' else None
             
             print(f"[{pc_name}] Received data for frame {data['frame']} from {serial_num}. Detections: {len(detections_xyxy)} Length: {len(detection_results[data['frame']])}")
             
@@ -205,15 +212,12 @@ def main_ui_loop():
             
             initial_translate = X @ C2R[:3, :3].T + C2R[:3, 3] # convert to camera coordinate system
             print(f"{initial_translate}")
-            np.save(os.path.join("/home/temp_id/shared_data/demo_250618/pringles/demo_250618_optim/final", 'init_transl.npy'), initial_translate)
+            np.save(os.path.join(transl_dir, f'transl_{curr_frame}.npy'), initial_translate)
             
             if cur_rgb[serial_list[0]] is not None:
                 grid_img = make_grid_img_inorder(cur_rgb, int(1536/16), int(2048/16))
-                
-                imshow_obj.set_data(grid_img[..., ::-1])
-                fig.canvas.draw()
-                fig.canvas.flush_events()
-                
+                cv2.imwrite(os.path.join(grid_dir, f"grid_{curr_frame}.jpg"), grid_img)    
+            
             curr_frame += 1
             time.sleep(0.01)
 
@@ -221,7 +225,8 @@ def main_ui_loop():
 # Git pull and client run
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script("python src/inference_/yolo.py", pc_list)
+
+run_script(f"python src/inference_/yolo.py --rgb_framerate {args.rgb_framerate}", pc_list)
 
 
 # Connect pc with 5566 TCP

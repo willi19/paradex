@@ -12,6 +12,12 @@ from paradex.model.yolo_world_module import YOLO_MODULE
 from queue import SimpleQueue
 import json
 
+import argparse
+parser = argparse.ArgumentParser()
+parser.add_argument('--rgb_framerate', type=int, default=0, help='Framerate send RGB image to server, 0 for not sending RGB images')
+args = parser.parse_args()
+
+
 socket = get_socket(5556) 
 client_ident = register(socket) # client identity given by server
 
@@ -59,7 +65,7 @@ def camera_thread_func(cam_ind):
         if detections.xyxy is not None: detections.xyxy = detections.xyxy.tolist()
         if detections.confidence is not None: detections.confidence = detections.confidence.tolist()
 
-        if int(last_frame_ind) % 10 == 0:
+        if args.rgb_framerate>0 and int(last_frame_ind) % args.rgb_framerate == 0:
             width, height =  int(camera.width/16), int(camera.height/16)
             resized_rgb = cv2.resize(last_image, (width, height))
         else:

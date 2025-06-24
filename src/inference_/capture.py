@@ -15,20 +15,48 @@ from scene import Scene
 import torch
 from geometry import get_visualhull_ctr
 
+if torch.cuda.is_available():
+    device = torch.device("cuda:0")
+    print(f"CUDA is available. Using device: {torch.cuda.get_device_name(device)}")
+else:
+    device = torch.device("cpu")
+    print("CUDA is not available. Using CPU.")
+
 BOARD_COLORS = [
     (255, 0, 0), (0, 255, 0), (0, 0, 255),
     (255, 255, 0), (255, 0, 255), (0, 255, 255),
     (128, 128, 255)
 ]
 hide_list = ['22641005','22645021','23280594','23180202','22641023','23029839','22640993']
-device = torch.device("cuda:0")
 
+
+def make_grid_img_inorder(cur_img_dict, height, width):
+    
+    big_img_width = width * 6
+    big_img_height = height * 4
+    
+    canvas = np.zeros((big_img_height, big_img_width, 3), dtype=np.uint8)
+
+    for serial_idx, serial_num in enumerate(cur_img_dict):
+        row = serial_idx // 6
+        col = serial_idx % 6
+        x_start = col * width
+        y_start = row * height
+        
+        img = cur_img_dict[serial_num]
+        if img is not None:    
+            canvas[y_start:y_start+height, x_start:x_start+width] = img
+        
+    return canvas
+
+
+# argsparse
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str, required=True)
-
 args = parser.parse_args()
 
+# make scene
 obj_name = args.root_path.split("/")[-2]
 mask_sub_dir = 'mask_hq/%s/%05d'%(obj_name, 0)
 mask_root = Path(args.root_path)/mask_sub_dir
@@ -40,19 +68,20 @@ serial_list = []
 for pc in pc_info.keys():
     serial_list.extend(pc_info[pc]['cam_list'])
 
-context = zmq.Context()
+context = zmq.Context() # socket
 socket_dict = {}
 terminate_dict = {pc: False for pc in pc_info.keys()}
 start_dict = {pc: False for pc in pc_info.keys()}
 
-saved_corner_img = {serial_num:np.zeros((1536, 2048, 3), dtype=np.uint8) for serial_num in serial_list}
-cur_state = {serial_num:(np.array([]), np.array([]), 0) for serial_num in serial_list}
+saved_corner_img = {serial_num :np.zeros((1536, 2048, 3), dtype=np.uint8) for serial_num in serial_list}
+cur_state = {serial_num: (np.array([]), np.array([]), 0) for serial_num in serial_list}
 capture_idx = 0
 capture_state = {pc: False for pc in pc_info.keys()}
 
-filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+# filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
 detection_results = {}
+cur_rgb = {cam_id: None for cam_id in serial_list}
 
 def listen_socket(pc_name, socket):
     while True:
@@ -80,16 +109,17 @@ def listen_socket(pc_name, socket):
         
         serial_num = data["serial_num"]
 
-        if data.get("type") == "demo":
+        if data.get("type") == "demo": # Get yolo output
             detections_xyxy =  np.array(data["detections.xyxy"], dtype=float)
             detections_confidence = np.array(data["detections.confidence"], dtype=float)
             
-            detections_mask = None# data["detections.mask"]
+            detections_mask = None # data["detections.mask"]
             detections_bbox_center = None
             
             if detections_xyxy.size > 0:
                 detections_bbox_center = detections_xyxy[:, :2] + (detections_xyxy[:, 2:] - detections_xyxy[:, :2]) / 2
                 bbox = detections_xyxy[0]
+                # bbox mask.
                 detections_mask = np.zeros((1, 1536, 2048), dtype=bool)
                 detections_mask[0, int(bbox[1]):int(bbox[3]), int(bbox[0]):int(bbox[2])] = True
 
@@ -102,11 +132,13 @@ def listen_socket(pc_name, socket):
             detection_results[data["frame"]][serial_num]["confidence"] = detections_confidence
             detection_results[data["frame"]][serial_num]["frame_num"] = data["frame"]
             detection_results[data["frame"]][serial_num]["bbox_center"] = detections_bbox_center
+            cur_rgb[serial_num] = np.array(data["resized_rgb"])
             
             print(f"[{pc_name}] Received data for frame {data['frame']} from {serial_num}. Detections: {len(detections_xyxy)} Length: {len(detection_results[data['frame']])}")
             
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
+
 
 def wait_for_cameras():
     while True:
@@ -120,11 +152,22 @@ def wait_for_cameras():
             break
         time.sleep(0.1)
 
+
 def main_ui_loop():
     curr_frame = 5
     cam_N = 10
+
     C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
     C2R = np.linalg.inv(C2R) # convert to camera coordinate system
+    
+    # for visualization
+    import matplotlib.pyplot as plt
+    plt.ion()  # interactive mode on
+    fig, ax = plt.subplots()
+    # imshow_o
+    imshow_obj = ax.imshow(np.zeros((1536, 3072, 3)))  # Convert BGR to RGB
+    plt.pause(0.001)
+    
     
     while True:
         
@@ -163,6 +206,12 @@ def main_ui_loop():
             initial_translate = X @ C2R[:3, :3].T + C2R[:3, 3] # convert to camera coordinate system
             print(f"{initial_translate}")
             np.save(os.path.join("/home/temp_id/shared_data/demo_250618/pringles/demo_250618_optim/final", 'init_transl.npy'), initial_translate)
+            
+            grid_img = make_grid_img_inorder(cur_rgb, int(1536/4), int(2048/4))
+            
+            imshow_obj.set_data(grid_img[..., ::-1])
+            fig.canvas.draw()
+            fig.canvas.flush_events()
                 
             curr_frame += 1
             time.sleep(0.01)
@@ -173,7 +222,8 @@ pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 run_script("python src/inference_/yolo.py", pc_list)
 
-# try:
+
+# Connect pc with 5566 TCP
 for pc_name, info in pc_info.items():
     ip = info["ip"]
     sock = context.socket(zmq.DEALER)
@@ -181,6 +231,7 @@ for pc_name, info in pc_info.items():
     sock.connect(f"tcp://{ip}:5556")
     socket_dict[pc_name] = sock
 
+# Check socker registered
 for pc_name, info in pc_info.items():
     socket_dict[pc_name].send_string("register")
     if socket_dict[pc_name].recv_string() == "registered":

@@ -45,8 +45,10 @@ class CameraManager:
         
         self.capture_end_flag = [Event() for _ in range(self.num_cameras)]
 
+        self.height, self.width = 1536, 2048
+
         if self.mode == "stream":
-            self.image_array = np.zeros((self.num_cameras, 1536, 2048, 3), dtype=np.uint8)
+            self.image_array = np.zeros((self.num_cameras, self.height, self.width, 3), dtype=np.uint8)
             self.frame_num = np.zeros((self.num_cameras,), dtype=np.uint64)
             self.locks = [threading.Lock() for _ in range(self.num_cameras)]
 
@@ -137,8 +139,8 @@ class CameraManager:
         videoOption = ps.AVIOption()
 
         videoOption.frameRate = 30
-        videoOption.height = 1536
-        videoOption.width = 2048
+        videoOption.height = self.height
+        videoOption.width = self.width
 
         videoStream.Open(str(savePath), videoOption)
         return videoStream
@@ -223,7 +225,7 @@ class CameraManager:
                 if raw_frame.IsIncomplete():
                     if self.mode == "stream":
                         with self.locks[index]:
-                            np.copyto(self.image_array[index], np.zeros((1536, 2048, 3), dtype=np.uint8))
+                            np.copyto(self.image_array[index], np.zeros((self.height, self.width, 3), dtype=np.uint8))
                             self.frame_num[index] = framenum
                     continue
                 
@@ -234,7 +236,7 @@ class CameraManager:
                     timestamps["pc_time"].append(time.time())
 
                 elif self.mode == "image":
-                    frame = spin2cv(raw_frame, 1536, 2048)
+                    frame = spin2cv(raw_frame, self.height, self.width)
                     cv2.imwrite(save_path, frame)
 
                     self.start_capture.clear()
@@ -242,7 +244,7 @@ class CameraManager:
 
                 elif self.mode == "stream":
                     with self.locks[index]:
-                        np.copyto(self.image_array[index], spin2cv(raw_frame, 1536, 2048))
+                        np.copyto(self.image_array[index], spin2cv(raw_frame, self.height, self.width))
                         self.frame_num[index] = framenum
                 raw_frame.Release()
             

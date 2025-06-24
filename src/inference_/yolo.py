@@ -30,8 +30,9 @@ camera.start()
 
 def camera_thread_func(cam_ind):
     last_frame_ind = 0
-    yolo_module = YOLO_MODULE(categories="pringles")
+    print(f"Before Setting up YOLO module {serial_num}")
     serial_num = camera.serial_list[cam_ind]
+    yolo_module = YOLO_MODULE(categories="pringles")
     capture_ready[cam_ind] = True
     print(f"Camera {serial_num} is ready.")
     while not end_event.is_set():

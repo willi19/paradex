@@ -6,6 +6,7 @@ import json
 import time
 import zmq
 import os
+import shutil
 from paradex.utils.file_io import config_dir, shared_dir
 from paradex.io.capture_pc.connect import git_pull, run_script
 
@@ -58,8 +59,8 @@ parser.add_argument('--rgb_framerate', type=int, default=0, help='Framerate rece
 args = parser.parse_args()
 
 output_dir = Path('/home/temp_id/paradex_processing/visualize/cache')
-if os.path.exist(output_dir):
-    os.rmdir(output_dir)
+if os.path.exists(output_dir):
+    shutil.rmtree(output_dir)
     os.makedirs(output_dir)
 transl_dir = output_dir / 'transl'
 transl_dir.mkdir(parents=True, exist_ok=True)
@@ -216,6 +217,7 @@ def main_ui_loop():
             initial_translate = X @ C2R[:3, :3].T + C2R[:3, 3] # convert to camera coordinate system
             print(f"{initial_translate}")
             np.save(os.path.join(transl_dir, f'transl_{curr_frame}.npy'), initial_translate)
+            np.save(os.path.join(transl_dir, f'transl.npy'), initial_translate)
             
             if cur_rgb[serial_list[0]] is not None:
                 grid_img = make_grid_img_inorder(cur_rgb, int(1536/16), int(2048/16))

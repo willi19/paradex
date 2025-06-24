@@ -24,17 +24,17 @@ try:
 except:
     sys.exit(1)
 
-
 num_cam = camera.num_cameras
 camera.start()
+_ = YOLO_MODULE(categories="pringles")
 
 def camera_thread_func(cam_ind):
     last_frame_ind = 0
-    print(f"Before Setting up YOLO module {serial_num}")
+    # print(f"Before Setting up YOLO module {serial_num}")
     serial_num = camera.serial_list[cam_ind]
     yolo_module = YOLO_MODULE(categories="pringles")
     capture_ready[cam_ind] = True
-    print(f"Camera {serial_num} is ready.")
+    # print(f"Camera {serial_num} is ready.")
     while not end_event.is_set():
 
         if camera.frame_num[cam_ind] == last_frame_ind:
@@ -88,7 +88,7 @@ for i in range(4):
     threads.append(t)
 
 wait_for_cameras_ready()
-print("All cameras are ready.")
+# print("All cameras are ready.")
 socket.send_multipart([client_ident, b"camera_ready"])
 
 start_time = time.time()

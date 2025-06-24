@@ -12,3 +12,4 @@ grasp/*
 replay/*
 *.pyc
 .vscode
+paradex/cache

@@ -6,13 +6,14 @@ import time
 import threading
 import numpy as np
 import sys
+import cv2
 
 from paradex.model.yolo_world_module import YOLO_MODULE
 from queue import SimpleQueue
 import json
 
-socket = get_socket(5556)
-client_ident = register(socket)
+socket = get_socket(5556) 
+client_ident = register(socket) # client identity given by server
 
 msg_queue = SimpleQueue()
 end_event = threading.Event()
@@ -57,6 +58,9 @@ def camera_thread_func(cam_ind):
         if detections.xyxy is not None: detections.xyxy = detections.xyxy.tolist()
         if detections.confidence is not None: detections.confidence = detections.confidence.tolist()
 
+        width, height =  int(camera.width/4), int(camera.height/4)
+        resized_rgb = cv2.resize(last_image, (width, height))
+
         msg_dict = serialize({
             "frame": int(last_frame_ind),
             # "detections.mask": detections.mask,
@@ -64,10 +68,12 @@ def camera_thread_func(cam_ind):
             "detections.confidence": detections.confidence,
             "type": "demo",
             "serial_num": serial_num,
-            "time": time.time()- loop_start_time
+            "time": time.time()- loop_start_time,
+            "resized_rgb": resized_rgb
         })
         
         msg_queue.put(msg_dict)
+
 
 def wait_for_cameras_ready():
     while not all(capture_ready):
@@ -79,7 +85,6 @@ for i in range(4):
     t = threading.Thread(target=camera_thread_func, args=(i,))
     t.start()
     threads.append(t)
-
 
 wait_for_cameras_ready()
 print("All cameras are ready.")

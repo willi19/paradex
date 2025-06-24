@@ -10,3 +10,5 @@ video/*
 data_Icra/*
 grasp/*
 replay/*
+*.pyc
+.vscode

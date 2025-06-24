@@ -103,7 +103,7 @@ def listen_socket(pc_name, socket):
             detection_results[data["frame"]][serial_num]["frame_num"] = data["frame"]
             detection_results[data["frame"]][serial_num]["bbox_center"] = detections_bbox_center
             
-            print(f"[{pc_name}] Received data for frame {data['frame']} from {serial_num}. Detections: {len(detections_xyxy)}")
+            print(f"[{pc_name}] Received data for frame {data['frame']} from {serial_num}. Detections: {len(detections_xyxy)} Length: {len(detection_results[data['frame']])}")
             
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
@@ -121,7 +121,7 @@ def wait_for_cameras():
         time.sleep(0.1)
 
 def main_ui_loop():
-    curr_frame = 1
+    curr_frame = 5
     cam_N = 10
     C2R = np.load(f"{shared_dir}/handeye_calibration/20250617_171318/0/C2R.npy")
     C2R = np.linalg.inv(C2R) # convert to camera coordinate system
@@ -162,6 +162,8 @@ def main_ui_loop():
             
             initial_translate = X @ C2R[:3, :3].T + C2R[:3, 3] # convert to camera coordinate system
             print(f"{initial_translate}")
+            np.save(os.path.join("/home/temp_id/shared_data/demo_250618/pringles/demo_250618_optim/final", 'init_transl.npy'), initial_translate)
+                
             curr_frame += 1
             time.sleep(0.01)
 

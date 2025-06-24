@@ -95,8 +95,6 @@ while not should_exit:
         last_frame_ind[i] = camera.frame_num[i]
         with camera.locks[i]:
             last_image = camera.image_array[i].copy()
-        print(last_frame_ind[i])
-
         
         detections = yolo_module.process_img(last_image, with_segmentation=False)
         
@@ -125,7 +123,7 @@ while not should_exit:
             "serial_num": serial_num,
             "bbox_center": detections.bbox_center.tolist() if hasattr(detections, 'bbox_center') else None,
         }
-        print(int(last_frame_ind[i]), type(detections.mask), type(detections.xyxy), type(detections.confidence), serial_num)
+        
         msg_json = json.dumps(msg_dict)
 
         if client_ident is not None:

@@ -29,7 +29,6 @@ camera.start()
 
 def camera_thread_func(cam_ind):
     last_frame_ind = 0
-    print("asdf")
     yolo_module = YOLO_MODULE(categories="pringles")
     serial_num = camera.serial_list[cam_ind]
     capture_ready[cam_ind] = True
@@ -65,6 +64,7 @@ def camera_thread_func(cam_ind):
             "detections.confidence": detections.confidence,
             "type": "demo",
             "serial_num": serial_num,
+            "time": time.time()- loop_start_time
         })
         
         msg_queue.put(msg_dict)

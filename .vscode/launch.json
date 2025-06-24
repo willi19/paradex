@@ -11,7 +11,9 @@
             "request": "launch",
             "program": "${file}",
             "console": "integratedTerminal",
-            "args": []
+            "args": [
+                "--root_path","/home/temp_id/shared_data/demo_250618/pringles/0", "--rgb_framerate" , "2"
+            ]
         }
     ]
 }

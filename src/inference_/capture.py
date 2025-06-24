@@ -132,7 +132,7 @@ def listen_socket(pc_name, socket):
             detection_results[data["frame"]][serial_num]["confidence"] = detections_confidence
             detection_results[data["frame"]][serial_num]["frame_num"] = data["frame"]
             detection_results[data["frame"]][serial_num]["bbox_center"] = detections_bbox_center
-            cur_rgb[serial_num] = np.array(data["resized_rgb"])
+            cur_rgb[serial_num] = np.array(data["resized_rgb"]) if data["frame"]%10 == 0 and data["resized_rgb"] is not None else None
             
             print(f"[{pc_name}] Received data for frame {data['frame']} from {serial_num}. Detections: {len(detections_xyxy)} Length: {len(detection_results[data['frame']])}")
             
@@ -166,7 +166,7 @@ def main_ui_loop():
     fig, ax = plt.subplots()
     # imshow_o
     imshow_obj = ax.imshow(np.zeros((1536, 3072, 3)))  # Convert BGR to RGB
-    plt.pause(0.001)
+    # plt.pause(0.001)
     
     
     while True:
@@ -207,11 +207,12 @@ def main_ui_loop():
             print(f"{initial_translate}")
             np.save(os.path.join("/home/temp_id/shared_data/demo_250618/pringles/demo_250618_optim/final", 'init_transl.npy'), initial_translate)
             
-            grid_img = make_grid_img_inorder(cur_rgb, int(1536/16), int(2048/16))
-            
-            imshow_obj.set_data(grid_img[..., ::-1])
-            fig.canvas.draw()
-            fig.canvas.flush_events()
+            if cur_rgb[serial_list[0]] is not None:
+                grid_img = make_grid_img_inorder(cur_rgb, int(1536/16), int(2048/16))
+                
+                imshow_obj.set_data(grid_img[..., ::-1])
+                fig.canvas.draw()
+                fig.canvas.flush_events()
                 
             curr_frame += 1
             time.sleep(0.01)

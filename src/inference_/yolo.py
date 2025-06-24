@@ -59,9 +59,12 @@ def camera_thread_func(cam_ind):
         if detections.xyxy is not None: detections.xyxy = detections.xyxy.tolist()
         if detections.confidence is not None: detections.confidence = detections.confidence.tolist()
 
-        width, height =  int(camera.width/16), int(camera.height/16)
-        resized_rgb = cv2.resize(last_image, (width, height))
-
+        if int(last_frame_ind) % 10 == 0:
+            width, height =  int(camera.width/16), int(camera.height/16)
+            resized_rgb = cv2.resize(last_image, (width, height))
+        else:
+            resized_rgb = None
+            
         msg_dict = serialize({
             "frame": int(last_frame_ind),
             # "detections.mask": detections.mask,

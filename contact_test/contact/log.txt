@@ -1,1 +1,0 @@
-[ERROR] Serial error: [Errno 2] could not open port /dev/ttyACM0: [Errno 2] No such file or directory: '/dev/ttyACM0'

@@ -83,12 +83,15 @@ threading.Thread(target=listen_for_commands, daemon=True).start()
 
 while not should_exit:
     for i in range(num_cam):
-        if camera.frame_num[i] == last_frame_ind[i]:
+        frame_id = camera.get_frameid(i)
+        
+        if frame_id == last_frame_ind[i]:
             continue
-
-        last_frame_ind[i] = camera.frame_num[i]
-        with camera.locks[i]:
-            last_image = camera.image_array[i].copy()
+        
+        data = camera.get_data(i)
+        last_frame_ind[i] = data["frameid"]
+        last_image = data["image"]
+        
         detect_result = detect_charuco(last_image, board_info)
         merged_detect_result = merge_charuco_detection(detect_result, board_info)
 

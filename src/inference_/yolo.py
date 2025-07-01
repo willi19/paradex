@@ -101,12 +101,11 @@ wait_for_cameras_ready()
 socket.send_multipart([client_ident, b"camera_ready"])
 
 start_time = time.time()
-while time.time() - start_time < 100:
+while time.time() - start_time < 150:
     if not msg_queue.empty():
         msg_dict = msg_queue.get()
         msg = json.dumps(msg_dict).encode()
         socket.send_multipart([client_ident, msg])
-        print(msg_dict)
     else:
         time.sleep(0.001)
 

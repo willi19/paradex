@@ -2,8 +2,9 @@ import os
 import sys
 import time
 import threading
+import argparse
 
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
+# sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
 from xarm.wrapper import XArmAPI
 import numpy as np

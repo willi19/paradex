@@ -45,6 +45,9 @@ class AllegroController:
         self.shm = {}
         self.create_shared_memory("hand_target_action", action_dof * np.dtype(np.float32).itemsize)
         self.hand_target_action_array = np.ndarray((action_dof,), dtype=np.float32, buffer=self.shm["hand_target_action"].buf)
+        
+        self.create_shared_memory("hand_state", action_dof * np.dtype(np.float32).itemsize)
+        self.hand_state_array = np.ndarray((action_dof,), dtype=np.float32, buffer=self.shm["hand_state"].buf)
 
         self.hand_process = Process(target=self.move_hand)
         self.hand_process.start()
@@ -122,6 +125,7 @@ class AllegroController:
             self.move(action)
             
             self.hand_state_hist[self.hand_cnt] = current_hand_angles.copy()
+            self.hand_state_array[:] = current_hand_angles.copy() 
             self.hand_timestamp[self.hand_cnt] = start_time
 
             self.hand_action_hist[self.hand_cnt] = self.hand_target_action_array.copy()

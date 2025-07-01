@@ -1,7 +1,6 @@
 import threading
 import PySpin as ps
 import json
-from multiprocessing import shared_memory
 from threading import Event
 
 from paradex.io.camera.camera import Camera
@@ -95,15 +94,6 @@ class CameraManager:
         system.ReleaseInstance()
 
         return serial_list
-
-    def create_shared_memory(self, name, size):
-        try:
-            existing_shm = shared_memory.SharedMemory(name=name)
-            existing_shm.close()
-            existing_shm.unlink()
-        except FileNotFoundError:
-            pass
-        self.shm[name] = shared_memory.SharedMemory(create=True, name=name, size=size)
 
     def autoforce_ip(self):
         system = ps.System.GetInstance()
@@ -277,6 +267,20 @@ class CameraManager:
         for p in self.capture_threads:
             p.join()
 
+    def get_frameid(self, index):
+        if self.mode != "stream":
+            return
+        
+        with self.locks[index]:
+            return self.frame_num[index]
+        
+    def get_data(self, index):
+        if self.mode != "stream":
+            return 
+        
+        with self.locks[index]:
+            return {"image":self.image_array[index].copy(), "frameid":self.frame_num[index]}
+        
 if __name__ == "__main__":
     manager = CameraManager(num_cameras=4, duration=180, save_dir="/home/capture16/captures1", is_streaming=False)
     manager.start()

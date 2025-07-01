@@ -177,7 +177,7 @@ try:
         wait_for_capture()
         
 except Exception as e:
-    print(e)
+    print("Error", e)
     
     for pc_name, sock in socket_dict.items():
         sock.send_string("quit")

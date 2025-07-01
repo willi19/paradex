@@ -209,3 +209,34 @@ class retargetor(): # Input is only from Xsens
                 # print(inspire_angles[4], inspire_angles[5])
 
         return inspire_angles
+    
+            
+    def check_straight(self, pose_data):
+        ret = [True, True, True, True] # if one of the joints is not straight, return False
+
+        for finger_id in range(4):
+            for joint_num in range(3):
+                joint_id = finger_id * 4 + joint_num + 5
+
+                if joint_num == 0:
+                    if pose_data[joint_id][2,1] < -0.8:
+                        ret[finger_id] = False
+                else:
+                    rel_pose = np.linalg.inv(pose_data[hand_index.hand_index_parent[joint_id]]) @ pose_data[joint_id]
+                    if rel_pose[2,1] < -0.8:
+                        ret[finger_id] = False
+        return ret
+    
+    def get_state(self, pose_data):
+        straight = self.check_straight(pose_data)
+        if straight[0] and straight[1] and not straight[2] and not straight[3]: # V pose
+            return 2
+        
+        if straight[0] and straight[1] and straight[2] and straight[3]: # Fist pose
+            return 1
+        
+        if straight[0] and not straight[1] and not straight[2] and not straight[3]: # Open pose
+            return 3
+        
+        return 0
+            

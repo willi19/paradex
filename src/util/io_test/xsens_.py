@@ -1,7 +1,7 @@
 from paradex.io.xsens.receiver import XSensReceiver
 import time 
 from multiprocessing import shared_memory, Lock, Value, Event
-from paradex.io.xsens.visualizer import XSensVisualizer
+from paradex.visualization.visualizer import XSensVisualizer
 import threading
 import numpy as np
 

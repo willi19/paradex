@@ -25,6 +25,7 @@ class XArmController:
         self.arm_action_hist = np.zeros((60000, 6), dtype=np.float64)
         self.arm_timestamp = np.zeros((60000, 1), dtype=np.float64)
         
+        
         self.first_home = True
         self.home_cnt = 0
 
@@ -37,6 +38,9 @@ class XArmController:
 
         self.create_shared_memory("arm_target_action", 6 * np.dtype(np.float32).itemsize)
         self.arm_target_action_array = np.ndarray((6,), dtype=np.float32, buffer=self.shm["arm_target_action"].buf)
+        
+        self.create_shared_memory("arm_state", 6 * np.dtype(np.float32).itemsize)
+        self.arm_state_array = np.ndarray((6,), dtype=np.float32, buffer=self.shm["arm_state"].buf)
 
         self.arm_process = Process(target=self.move_arm)
         self.arm_process.start()
@@ -98,6 +102,7 @@ class XArmController:
                 self.arm_timestamp[self.arm_cnt] = start_time
                 
                 self.arm_action_hist[self.arm_cnt] = angles.copy()
+                self.arm_state_array[:] = current_arm_angles.copy()
                 self.arm_cnt += 1
                 
 

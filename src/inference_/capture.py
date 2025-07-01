@@ -16,6 +16,19 @@ from scene import Scene
 import torch
 from geometry import get_visualhull_ctr
 
+import time
+import numpy as np
+import pickle
+import os
+from paradex.utils.metric import get_pickplace_timing, compute_mesh_to_ground_distance
+import open3d as o3d
+from paradex.utils.file_io import rsc_path
+from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.io.robot_controller import XArmController, AllegroController, InspireController
+import transforms3d as t3d
+from scipy.spatial.transform import Rotation as R
+import chime
+
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
     print(f"CUDA is available. Using device: {torch.cuda.get_device_name(device)}")
@@ -30,6 +43,179 @@ BOARD_COLORS = [
 ]
 hide_list = ['22641005','22645021','23280594','23180202','22641023','23029839','22640993']
 
+
+LINK62PALM = np.array(
+    [
+        [0, -1, 0, 0.0],
+        [1, 0, 0, 0.0],#0.035],
+        [0, 0, 1, -0.18],
+        [0, 0, 0, 1],
+    ]
+)
+demo_path = "data_Icra/teleoperation/bottle"
+demo_path_list = os.listdir(demo_path)
+demo_path_list.sort()
+
+arm_name = "xarm"
+hand_name = "allegro"
+
+obj_mesh = o3d.io.read_triangle_mesh(os.path.join(rsc_path, "bottle", "bottle.obj"))
+
+robot = RobotWrapper(
+    os.path.join(rsc_path, "xarm6", "xarm6_allegro_wrist_mounted_rotate.urdf")
+)
+link_index = robot.get_link_index("palm_link")
+lift_T = 100
+
+def homo2cart(h):
+    def project_to_so3(R):
+        U, _, Vt = np.linalg.svd(R)
+        R_proj = U @ Vt
+        if np.linalg.det(R_proj) < 0:
+            U[:, -1] *= -1
+            R_proj = U @ Vt
+        return R_proj
+
+
+    if h.shape == (4, 4):
+        t = h[:3, 3]
+        R = h[:3, :3]
+        
+        R_proj = project_to_so3(R)
+
+        axis, angle = t3d.axangles.mat2axangle(R_proj)
+        axis_angle = axis * angle
+    else:
+        raise ValueError("Invalid input shape.")
+    return np.concatenate([t, axis_angle])
+
+def initialize_teleoperation(save_path):
+    controller = {}
+    if arm_name == "xarm":
+        controller["arm"] = XArmController(save_path)
+
+    if hand_name == "allegro":
+        controller["hand"] = AllegroController(save_path)
+        
+    elif hand_name == "inspire":
+        controller["hand"] = InspireController(save_path)
+    
+    return controller
+
+
+def get_object_pose():
+    f = open("data_Icra/teleoperation/bottle/1/obj_traj.pickle", "rb")
+    obj_pose = pickle.load(f)["bottle"][0]
+    
+    obj_pose[:2, 3] = np.array([0.57176, 0.047841])  # Adjusted position
+    f.close()
+    return obj_pose
+
+def determine_theta():
+    return 0
+
+def determine_traj_idx():
+    return 1
+
+def load_demo(demo_name):
+    robot_prev = RobotWrapper(
+        os.path.join(rsc_path, "xarm6", "xarm6_allegro_wrist_mounted_rotate_prev.urdf")
+    )
+    
+    obj_T = pickle.load(open(os.path.join(demo_path, demo_name, "obj_traj.pickle"), "rb"))['bottle']
+    robot_traj = np.load(os.path.join(demo_path, demo_name, "robot_qpos.npy"))
+    target_traj = np.load(os.path.join(demo_path, demo_name, "target_qpos.npy"))
+
+    T = obj_T.shape[0]
+
+    height_list = []
+
+    for step in range(T):
+        h = compute_mesh_to_ground_distance(obj_T[step], obj_mesh)    
+        height_list.append(h)
+
+    end_T, _ = get_pickplace_timing(height_list)
+    
+    dist = 0.07
+    for step in range(T):
+        q_pose = robot_traj[step]
+        robot_prev.compute_forward_kinematics(q_pose)
+        wrist_pose = robot_prev.get_link_pose(link_index)
+    
+        obj_wrist_pose = np.linalg.inv(obj_T[step]) @ wrist_pose
+        obj_pos = obj_wrist_pose[:2, 3]
+
+        d = np.linalg.norm(obj_pos[:2])
+        if d < dist:
+            start_T = step
+            break
+
+    robot_pose = []
+    hand_action = []
+    obj_pose = obj_T[start_T].copy()
+    tx, ty = obj_pose[:2, 3]
+
+    for i in range(start_T, end_T + 1 + lift_T):
+        if i > end_T:
+            robot_pose.append(robot_pose[-1].copy())
+            robot_pose[-1][2, 3] += 0.001
+            hand_action.append(target_traj[end_T, 6:])
+            continue
+
+        robot_prev.compute_forward_kinematics(robot_traj[i])
+        wrist_pose = robot_prev.get_link_pose(link_index)
+        
+        # wrist_axangle = target_traj[i, 3:6]
+        # angle = np.linalg.norm(wrist_axangle)
+        # if angle > 1e-6:
+        #     wrist_axis = wrist_axangle / angle
+        # else:
+        #     wrist_axis = np.zeros(3)
+            
+        # wrist_rotmat = t3d.axangles.axangle2mat(wrist_axis, angle)
+
+        # wrist_pose = np.zeros((4, 4))
+        # wrist_pose[:3, :3] = wrist_rotmat
+        # wrist_pose[:3, 3] = robot_traj[i][:3]
+        # wrist_pose = np.linalg.inv(obj_T[0]) @ wrist_pose
+
+        hand_action.append(target_traj[i, 6:])
+        wrist_pose[:2, 3] -= np.array([tx, ty])  # Adjust position relative to object
+        robot_pose.append(wrist_pose.copy())
+    
+    robot_pose = np.array(robot_pose)
+    hand_action = np.array(hand_action)
+    
+    
+    desired_x = np.array([0, 1, 0])
+    current_x = robot_pose[-1, :3, 0][:2]  # x축 방향 (2D)
+    theta = np.arctan2(desired_x[1], desired_x[0]) - np.arctan2(current_x[1], current_x[0])
+
+    rot_mat = np.array([
+        [np.cos(theta), -np.sin(theta), 0, 0],
+        [np.sin(theta),  np.cos(theta), 0, 0],
+        [0,              0,             1, 0],
+        [0,              0,             0, 1],
+    ])
+
+    obj_pose[:2, 3] -= np.array([tx, ty])
+    # robot_pose[:, :2, 3] -= np.array([tx, ty])
+    robot_pose[:, 2, 3] += (0.08 - robot_pose[0, 2, 3])
+
+    robot_pose = np.einsum('ij, kjl -> kil', rot_mat, robot_pose)
+    # import pdb; pdb.set_trace()
+    return obj_pose, robot_pose, hand_action
+
+def get_traj(tx, ty, theta, wrist_pose_demo):
+    rot_mat = R.from_euler('z', theta, degrees=True).as_matrix()
+    rot_T = np.eye(4)
+    rot_T[:3, :3] = rot_mat
+
+    wrist_pose = wrist_pose_demo.copy()
+    wrist_pose = np.einsum('ij, kjl -> kil', rot_T, wrist_pose)
+    wrist_pose[:, :2, 3] += np.array([tx, ty]) 
+
+    return wrist_pose
 
 def make_grid_img_inorder(cur_img_dict, height, width):
     
@@ -62,10 +248,13 @@ output_dir = Path('/home/temp_id/paradex_processing/visualize/cache')
 if os.path.exists(output_dir):
     shutil.rmtree(output_dir)
     os.makedirs(output_dir)
+    
 transl_dir = output_dir / 'transl'
 transl_dir.mkdir(parents=True, exist_ok=True)
 grid_dir = output_dir / 'grid'
 grid_dir.mkdir(parents=True, exist_ok=True)
+robot_dir = output_dir / 'robot'
+robot_dir.mkdir(parents=True, exist_ok=True)
 
 # make scene
 obj_name = args.root_path.split("/")[-2]
@@ -179,14 +368,79 @@ def main_ui_loop():
     imshow_obj = ax.imshow(np.zeros((1536, 3072, 3)))  # Convert BGR to RGB
     # plt.pause(0.001)
     
+    # object_pose = get_object_pose()
+    tx, ty =  -1, -1# object_pose[:2, 3]
+
+    theta = determine_theta()
+    traj_idx = determine_traj_idx()
+    traj_idx = str(traj_idx)
     
+    obj_pose_demo, wrist_pose_demo, hand_pose = load_demo(traj_idx)
+
+    transformed_traj = None# get_traj(tx, ty, theta, wrist_pose_demo)
+    sensors = initialize_teleoperation(None)
+    
+    robot_idx = 0
+    robot_init = False
+    last_robot_time = -1
+        
     while True:
         
-        if curr_frame in detection_results and len(detection_results[curr_frame]) < 24: 
+        if tx != -1 and last_robot_time == -1:            
+            if hand_name is not None:
+                sensors["hand"].set_homepose(hand_pose[0])
+                sensors["hand"].home_robot()
+
+            if arm_name is not None:
+                sensors["arm"].set_homepose(homo2cart(transformed_traj[0] @ LINK62PALM))
+                sensors["arm"].home_robot()
+
+                home_start_time = time.time()
+                while sensors["arm"].ready_array[0] != 1:
+                    if time.time() - home_start_time > 0.3:
+                        chime.warning()
+                        home_start_time = time.time()
+                    time.sleep(0.0008)
+                chime.success()
+            
+            robot_init = True
+            last_robot_time = time.time()
+        
+        if last_robot_time != -1 and time.time() - last_robot_time > 0.1 and robot_idx < len(transformed_traj):
+            l6_pose = transformed_traj[robot_idx] @ LINK62PALM
+            arm_action = homo2cart(l6_pose)
+            hand_action = hand_pose[robot_idx]
+
+            if arm_name is not None:                
+                sensors["arm"].set_target_action(
+                                arm_action
+                        )
+                
+                arm_state = sensors["arm"].arm_state_array.copy()
+                print(arm_state)
+                np.save(os.path.join(robot_dir, "arm_state.npy"), arm_state)
+                
+            if hand_name is not None:
+                sensors["hand"].set_target_action(
+                                hand_action
+                            )
+                hand_state = sensors["hand"].hand_state_array.copy()
+                np.save(os.path.join(robot_dir, "hand_state.npy"), hand_state)
+            robot_idx += 1
+            last_robot_time = time.time()
+            print("robot move ", robot_idx)
+                
+                        
+            
+        
+        if last_robot_time != -1 and curr_frame == robot_idx and robot_idx == len(transformed_traj):
+            break
+            
+        if curr_frame in detection_results and len(detection_results[curr_frame]) < 22: 
             time.sleep(0.01)
             continue
         
-        if curr_frame in detection_results and len(detection_results[curr_frame]) == 24:
+        if curr_frame in detection_results and len(detection_results[curr_frame]) >= 22:
             detect_img = 0
             for cam_id in detection_results[curr_frame]:
                 if detection_results[curr_frame][cam_id]["xyxy"].size > 0:
@@ -215,6 +469,11 @@ def main_ui_loop():
             X = X_h[:3] / X_h[3]  # Convert from homogeneous coordinates to 3D point
             
             initial_translate = X @ C2R[:3, :3].T + C2R[:3, 3] # convert to camera coordinate system
+            if tx == -1:
+                tx = initial_translate[0]
+                ty = initial_translate[1] - 0.02
+                transformed_traj = get_traj(tx, ty, theta, wrist_pose_demo)
+            
             print(f"{initial_translate}")
             np.save(os.path.join(transl_dir, f'transl_{curr_frame}.npy'), initial_translate)
             np.save(os.path.join(transl_dir, f'transl.npy'), initial_translate)
@@ -222,10 +481,11 @@ def main_ui_loop():
             if cur_rgb[serial_list[0]] is not None:
                 grid_img = make_grid_img_inorder(cur_rgb, int(1536/16), int(2048/16))
                 cv2.imwrite(os.path.join(grid_dir, f"grid_{curr_frame}.jpg"), grid_img)    
-            
             curr_frame += 1
             time.sleep(0.01)
-
+    
+    for key in sensors.keys():
+        sensors[key].quit()   
 
 # Git pull and client run
 pc_list = list(pc_info.keys())
@@ -266,7 +526,7 @@ main_ui_loop()
 #     for pc_name, sock in socket_dict.items():
 #         sock.send_string("quit")
 #         sock.close()
-        
+
 for pc_name, sock in socket_dict.items():
     sock.send_string("quit")
     sock.close()

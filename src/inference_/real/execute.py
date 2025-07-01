@@ -10,7 +10,6 @@ from paradex.io.robot_controller import XArmController, AllegroController, Inspi
 import transforms3d as t3d
 from scipy.spatial.transform import Rotation as R
 import chime
-from paradex.simulator.isaac import simulator
 
 LINK62PALM = np.array(
     [
@@ -187,7 +186,7 @@ def get_traj(tx, ty, theta, wrist_pose_demo):
 
 if __name__ == "__main__":
     # object_pose = get_object_pose()
-    tx, ty =  0.57176, 0.047841# object_pose[:2, 3]
+    tx, ty =  0.57176, -0.147841# object_pose[:2, 3]
 
     theta = determine_theta()
     traj_idx = determine_traj_idx()

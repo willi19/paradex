@@ -8,8 +8,8 @@ from glob import glob
 import pycolmap
 import cv2
 import multiprocessing as mp
-from paradex.calibration.database import *
-from paradex.calibration.colmap import get_two_view_geometries
+from paradex.colmap.database import *
+from paradex.colmap.colmap import get_two_view_geometries
 from paradex.utils.file_io import find_latest_directory, home_path, download_dir, shared_dir, load_intrinsic
 import tqdm
 import matplotlib.pyplot as plt

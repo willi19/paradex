@@ -66,32 +66,37 @@ last_frame = -1
 
 threading.Thread(target=listen_for_commands, daemon=True).start()
 while not should_exit:
-    if camera.frame_num[0] != last_frame:
-        last_frame = camera.frame_num[0]
-        with camera.locks[0]:
-            last_image = camera.image_array[0].copy()
-        detect_result = detect_charuco(last_image, board_info)
-
-        for board_id, result in detect_result.items():
-            is_save = should_save(result)
-            if is_save:
-                board_corner_list.append(result["checkerCorner"])
-            detect_result[board_id]["save"] = is_save
+    frame_id = camera.get_frameid(0)
         
-            for data_name in ["checkerCorner", "checkerIDs"]:
-                detect_result[board_id][data_name] = detect_result[board_id][data_name].tolist()
-        msg_dict = {
-            "frame": int(last_frame),
-            "detect_result": detect_result,
-            # "image": last_image.tolist(),
-            "type": "charuco"
-        }
-        msg_json = json.dumps(msg_dict)
+    if frame_id == last_frame:
+        continue
+        
+    data = camera.get_data(i)
+    last_frame = data["frameid"]
+    last_image = data["image"]
+        
+    detect_result = detect_charuco(last_image, board_info)
 
-        if client_ident is not None:
-            socket.send_multipart([client_ident, msg_json.encode()])
+    for board_id, result in detect_result.items():
+        is_save = should_save(result)
+        if is_save:
+            board_corner_list.append(result["checkerCorner"])
+        detect_result[board_id]["save"] = is_save
+    
+        for data_name in ["checkerCorner", "checkerIDs"]:
+            detect_result[board_id][data_name] = detect_result[board_id][data_name].tolist()
+    msg_dict = {
+        "frame": int(last_frame),
+        "detect_result": detect_result,
+        # "image": last_image.tolist(),
+        "type": "charuco"
+    }
+    msg_json = json.dumps(msg_dict)
 
-        time.sleep(0.01)
+    if client_ident is not None:
+        socket.send_multipart([client_ident, msg_json.encode()])
+
+    time.sleep(0.01)
 
 board_corner_list = np.array(board_corner_list)
 datetime_str = time.strftime("%Y%m%d_%H%M%S")

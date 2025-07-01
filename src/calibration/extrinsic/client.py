@@ -8,11 +8,12 @@ from paradex.image.aruco import detect_charuco, merge_charuco_detection
 import threading
 import numpy as np
 import sys
+import argparse
+from paradex.io.capture_pc.client import get_socket, register
 
-should_exit = False 
-client_ident = None 
+
+should_exit = False
 current_index = 0 
-cur_filename = "asdf"
 
 def listen_for_commands():
     global should_exit, client_ident
@@ -38,30 +39,14 @@ def listen_for_commands():
             print(f"[Server] Unknown command: {msg}")
             continue
         
+socket = get_socket(5556)
+client_ident = register(socket)
 
-context = zmq.Context()
-socket = context.socket(zmq.ROUTER)
-socket.bind("tcp://*:5556")
+parser = argparse.ArgumentParser()
+parser.add_argument('--save_path', required=True)
+args = parser.parse_args()
 
-ident, msg = socket.recv_multipart()
-msg = msg.decode()
-
-if msg == "register":
-    client_ident = ident  # ← bytes 그대로 저장
-    socket.send_multipart([client_ident, b"registered"])
-    print(f"[Server] Client registered: {ident.decode()}")
-
-else:
-    sys.exit(1)
-
-ident, msg = socket.recv_multipart()
-msg = msg.decode()
-
-if msg.startswith("filename"):
-    _, cur_filename = msg.split(":")
-
-else:
-    sys.exit(1)
+cur_filename = args.save_path
 
 board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
 

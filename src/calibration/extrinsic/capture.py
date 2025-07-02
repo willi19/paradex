@@ -156,7 +156,7 @@ def wait_for_camera_ready():
 # Git pull and client run
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script("python src/calibration/extrinsic/client.py", pc_list)
+run_script(f"python src/calibration/extrinsic/client.py --save_path {filename}", pc_list)
 
 try:
     for pc_name, info in pc_info.items():
@@ -170,8 +170,6 @@ try:
         socket_dict[pc_name].send_string("register")
         if socket_dict[pc_name].recv_string() == "registered":
             print(f"[{pc_name}] Registered.")
-        
-        socket_dict[pc_name].send_string("filename:" + filename)
 
     # Start per-socket listener
     for pc_name, sock in socket_dict.items():

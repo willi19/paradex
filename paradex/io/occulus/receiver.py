@@ -6,16 +6,25 @@ import json
 import os
 from paradex.utils.file_io import config_dir
 import time
+import socket
 
-occulus_joint_name = ["wrist", "forearmstub", 
-              "thumb_trapezium", "thumb_metacarpal", "thumb_proximal", "thumb_distal", 
-              "index_proximal", "index_intermediate", "index_distal",
-              "middle_proximal", "middle_intermediate", "middle_distal",
-              "ring_proximal", "ring_intermediate", "ring_distal",
-              "pinky_metacarpel", "pinky_proximal", "pinky_intermediate", "pinky_distal",
-              "thumb_tip", "index_tip", "middle_tip", "ring_tip", "pinky_tip"]
+#occulus_joint_name = ["wrist", "forearmstub", 
+#              "thumb_trapezium", "thumb_metacarpal", "thumb_proximal", "thumb_distal", 
+#              "index_proximal", "index_intermediate", "index_distal",
+#              "middle_proximal", "middle_intermediate", "middle_distal",
+#              "ring_proximal", "ring_intermediate", "ring_distal",
+#              "pinky_metacarpel", "pinky_proximal", "pinky_intermediate", "pinky_distal",
+#              "thumb_tip", "index_tip", "middle_tip", "ring_tip", "pinky_tip"]
 
-occulus_joint_parent = [-1, 0, 0, 2, 3, 4, 0, 6, 7, 0, 9, 10, 0, 12, 13, 0, 15, 16, 17, 5, 8, 11, 14, 18]
+occulus_joint_name = ["palm", "wrist",
+                      "thumb_metacarpal", "thumb_proximal", "thumb_distal", "thumb_tip",
+                      "index_metacarpal", "index_proximal", "index_intermediate", "index_distal", "index_tip",
+                      "middle_metacarpal", "middle_proximal", "middle_intermediate", "middle_distal", "middle_tip",
+                      "middle_metacarpal", "ring_proximal", "ring_intermediate", "ring_distal", "ring_tip",
+                      "pinky_metacarpel", "pinky_proximal", "pinky_intermediate", "pinky_distal", "pinky_tip"]
+
+
+occulus_joint_parent = [1, -1, 1, 2, 3, 4, 1, 6, 7, 8, 9, 1, 11, 12, 13, 14, 1, 16, 17, 18, 19, 1, 21, 22, 23, 24]
 
 class OculusReceiver:
     def __init__(self):
@@ -28,7 +37,7 @@ class OculusReceiver:
         self.stop_event = Event()
         self.lock = Lock()
         
-        self.recv_thread = Thread(target=self.run)
+        self.recv_thread = Thread(target=self.run, daemon=True)
         self.recv_thread.start()
 
     def get_data(self):
@@ -55,6 +64,8 @@ class OculusReceiver:
             
         
     def parse(self, token):
+        # expect:
+        # Left:0,0,0,0,0,0,0/1,1,1,1,1,1,1|Right:...(same as Left)
         ret = {}
         
         data_string = token.decode().strip()
@@ -71,11 +82,24 @@ class OculusReceiver:
         return ret
     
     def run(self):
-        context = zmq.Context()
-        self.socket = context.socket(zmq.PULL)
-        self.socket.setsockopt(zmq.CONFLATE, 1)
-        self.socket.bind('tcp://{}:{}'.format(self.host_ip, self.port))
+        #context = zmq.Context()
+        #self.socket = context.socket(zmq.PULL)
+        #self.socket.setsockopt(zmq.CONFLATE, 1)
+        #self.socket.bind('tcp://{}:{}'.format(self.host_ip, self.port))
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind((self.host_ip, self.port))
+        sock.settimeout(0.1)
 
+        while not self.stop_event.is_set():
+            try:
+                token, addr = sock.recvfrom(65536)  # 64KB maximally
+                data = self.parse(token)
+                with self.lock:
+                    for name, pose in data.items():
+                        self.hand_pose[name] = pose
+            except socket.timeout:
+                continue
+        '''
         while not self.stop_event.is_set():
             try:
                 token = self.socket.recv(flags=zmq.NOBLOCK)
@@ -85,7 +109,7 @@ class OculusReceiver:
                         self.hand_pose[name] = pose
             except zmq.Again:
                 time.sleep(0.01)
-        
+        '''
 
     def quit(self):
         print("quit")

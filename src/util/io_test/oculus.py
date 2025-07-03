@@ -40,10 +40,10 @@ if __name__ == "__main__":
         visualizer.update_sphere_positions(hand_data_array)
         # visualizer.tick()
         time_lapse = time.time() - start_time
-        if time_lapse > 0.05:
+        if time_lapse > 0.02:
             continue
-        time.sleep(max(0.05 - time_lapse, 0))
-        
+        time.sleep(max(0.02 - time_lapse, 0))
+
     visualizer.stop()    
     occulus.quit()
     

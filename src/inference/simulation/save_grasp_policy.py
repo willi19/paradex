@@ -1,7 +1,7 @@
 import os
 import time
 import pinocchio as pin
-from paradex.simulator.isaac_multi import simulator
+from paradex.simulator.isaac_deprecated import simulator
 from paradex.utils.file_io import rsc_path
 import numpy as np
 from scipy.spatial.transform import Rotation as R
@@ -142,7 +142,7 @@ obj_name = "bottle"
 save_video = False
 save_state = True
 view_physics = True
-view_replay = True
+view_replay = False
 headless = False
 
 
@@ -177,6 +177,17 @@ def get_traj(tx, ty, theta, obj_pose, wrist_pose_demo, hand_pose):
             "palm_link",
             q_init=last_qpos
         )
+        if success:
+            robot.compute_forward_kinematics(last_qpos)
+            cal_wrist_pose = robot.get_link_pose(link_index)
+            if np.linalg.norm(cal_wrist_pose[:3, 3] - wrist_pose[i][:3, 3]) > 0.01:
+                print(f"Position error at step {i}: {np.linalg.norm(cal_wrist_pose[:3, 3] - wrist_pose[i][:3, 3])}")
+                success = False
+            
+            if np.linalg.norm(cal_wrist_pose[:3, :3].T @ wrist_pose[i][:3, :3] - np.eye(3)) > 0.1:
+                print(f"Orientation error at step {i}: {np.linalg.norm(cal_wrist_pose[:3, :3].T @ wrist_pose[i][:3, :3] - np.eye(3))}")
+                success = False
+
         if not success:
             traj_success = False
             break
@@ -191,48 +202,74 @@ def get_traj(tx, ty, theta, obj_pose, wrist_pose_demo, hand_pose):
     return q_pose_list, obj_pose
 
 for demo_name in demo_path_list:
-    # obj_pose_demo, wrist_pose_demo, hand_pose = load_demo(demo_name)
-    
-    traj_list_demo = pickle.load(open(os.path.join("grasp", "policy", f"{demo_name}.pickle"), "rb"))
-    traj_list_demo = traj_list_demo[:1]
-    print(traj_list_demo[0]['theta'])
-    sim = simulator(
-        obj_name,
-        view_physics,
-        view_replay,
-        headless,
-        save_video,
-        save_state,
-        fixed=True,
-        num_envs=len(traj_list_demo)
-    )
-    
-    sim.set_savepath(None, f"grasp/state/{demo_name}.pickle")
-    
-    step = 0
-    while True:
-        q_pose_list = []
-        viz_q_pose_list = []
-        obj_pose_list = []
+    obj_pose_demo, wrist_pose_demo, hand_pose = load_demo(demo_name)
+    traj_list = []
 
-        finished = True
-
-        for i in range(len(traj_list_demo)):
-            traj_info = traj_list_demo[i]
-            if step >= traj_info['q_pose'].shape[0]:
-                q_pose_list.append(traj_info['q_pose'][-1])
-                viz_q_pose_list.append(traj_info['q_pose'][-1].copy())
+    for ty in range(-50, 51, 10):
+        for tx in range(15, 66, 10):
+            if (tx ** 2 + ty ** 2) ** 0.5 > 70:
                 continue
+            for theta in range(0, 361, 45):
+                traj_info = {}
+                traj_info['tx'] = tx
+                traj_info['ty'] = ty
+                traj_info['theta'] = theta
+                traj_info['demo_name'] = demo_name
 
-            finished = False
-            q_pose_list.append(traj_info['q_pose'][step])
-            viz_q_pose_list.append(traj_info['q_pose'][step].copy())
-            obj_pose_list.append(traj_info['obj_pose'].copy())
+                q_pose, obj_pose = get_traj(tx, ty, theta, obj_pose_demo.copy(), wrist_pose_demo, hand_pose)
+                
+                if q_pose is None:
+                    continue
+                traj_info['q_pose'] = q_pose
+                traj_info['obj_pose'] = obj_pose
+                traj_list.append(traj_info)
+    
+    os.makedirs(os.path.join("grasp", "policy"), exist_ok=True)
+    pickle.dump(
+        traj_list,
+        open(os.path.join("grasp", "policy", f"{demo_name}.pickle"), "wb")
+    )
 
-        if finished:
-            break
 
-        sim.step(q_pose_list, viz_q_pose_list, obj_pose_list)
-        step += 1
+    # sim = simulator(
+    #     obj_name,
+    #     view_physics,
+    #     view_replay,
+    #     headless,
+    #     save_video,
+    #     save_state,
+    #     fixed=True,
+    #     num_envs=len(traj_list)
+    # )
 
-    sim.terminate()
+    # sim.load_camera()
+    # sim.set_savepath(None, f"grasp/state/{tx}_{ty}_{theta}/{demo_name}.pickle")
+    
+    # step = 0
+    # while True:
+    #     q_pose_list = []
+    #     viz_q_pose_list = []
+    #     obj_pose = []
+
+    #     finished = True
+
+    #     for i in range(len(traj_list)):
+    #         traj_info = traj_list[i]
+    #         if step >= traj_info['q_pose'].shape[0]:
+    #             q_pose_list.append(traj_info['q_pose'][-1])
+    #             viz_q_pose_list.append(traj_info['q_pose'][-1].copy())
+    #             continue
+
+    #         finished = False
+    #         q_pose_list.append(traj_info['q_pose'][step])
+    #         viz_q_pose_list.append(traj_info['q_pose'][step].copy())
+
+    #         obj_pose.append(traj_info['obj_pose'].copy())
+            
+    #     if finished:
+    #         break
+
+    #     sim.step(q_pose_list, viz_q_pose_list, obj_pose)
+    #     step += 1
+    
+    # sim.terminate()

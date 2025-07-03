@@ -361,11 +361,12 @@ class simulator:
                 gymapi.MESH_VISUAL_AND_COLLISION,
                 gymapi.Vec3(*color),
             )
-    def add_plane(self, distance=0.0525):
+    
+    def add_plane(self):
         # configure the ground plane
         plane_params = gymapi.PlaneParams()
         plane_params.normal = gymapi.Vec3(0, 0, 1)  # z-up!
-        plane_params.distance = distance
+        plane_params.distance = 0.0525
         plane_params.static_friction = 1
         plane_params.dynamic_friction = 0.8
         plane_params.restitution = 0
@@ -457,10 +458,6 @@ class simulator:
             robot_asset_options.armature = 0.001
             robot_asset_options.thickness = 0.002
             
-            robot_asset = self.gym.load_asset(
-                self.sim, asset_root, robot_asset_file, robot_asset_options
-            )
-            
             if self.obj_name is not None:
                 object_asset_options = gymapi.AssetOptions()
                 object_asset_options.override_inertia = True
@@ -471,6 +468,9 @@ class simulator:
                 object_asset_options.vhacd_params = gymapi.VhacdParams()
                 object_asset_options.vhacd_params.resolution = 300000
 
+                robot_asset = self.gym.load_asset(
+                    self.sim, asset_root, robot_asset_file, robot_asset_options
+                )
                 object_asset = self.gym.load_asset(
                     self.sim, asset_root, object_asset_file, object_asset_options
                 )
@@ -496,7 +496,6 @@ class simulator:
             )
 
             self.assets["vis_robot"] = vis_robot_asset
-
 
     def visualize_camera(self, cam_param_dict):
         """

@@ -25,7 +25,6 @@ if __name__ == "__main__":
             hand_data['Right'][i][:3,3] -= init_wrist_pose
             
         visualizer.update_sphere_positions(hand_data['Right'])
-        # visualizer.tick()
         time.sleep(0.1)
         
     visualizer.stop()    

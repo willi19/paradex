@@ -184,8 +184,62 @@ class HandVisualizer(object):
         self.main_vis.update_renderer()  # Request screen refresh
         return
 
+    def tick(self):
+        app = o3d.visualization.gui.Application.instance
+        tick_return = app.run_one_tick()
+        if tick_return:
+            self.main_vis.post_redraw()
+        return tick_return
+
+    def add_plane(self, resolution=128, bound=100, up_vec='z'):
+        def makeGridPlane(bound=100., resolution=128, color = np.array([0.5,0.5,0.5]), up='z'):
+            min_bound = np.array([-bound, -bound])
+            max_bound = np.array([bound, bound])
+            xy_range = np.linspace(min_bound, max_bound, num=resolution)
+            grid_points = np.stack(np.meshgrid(*xy_range.T), axis=-1).astype(np.float32) # asd
+            if up == 'z':
+                grid3d = np.concatenate([grid_points, np.zeros_like(grid_points[:,:,0]).reshape(resolution, resolution, 1)], axis=2)
+            elif up == 'y':
+                grid3d = np.concatenate([grid_points[:,:,0][:,:,None], np.zeros_like(grid_points[:,:,0]).reshape(resolution, resolution, 1), grid_points[:,:,1][:,:,None]], axis=2)
+            elif up == 'x':
+                grid3d = np.concatenate([np.zeros_like(grid_points[:,:,0]).reshape(resolution, resolution, 1), grid_points], axis=2)
+            else:
+                print("Up vector not specified")
+                return None
+            grid3d = grid3d.reshape((resolution**2,3))
+            indices = []
+            for y in range(resolution):
+                for x in range(resolution):  
+                    corner_idx = resolution*y + x 
+                    if x + 1 < resolution:
+                        indices.append((corner_idx, corner_idx + 1))
+                    if y + 1 < resolution:
+                        indices.append((corner_idx, corner_idx + resolution))
+
+            line_set = o3d.geometry.LineSet(
+                points=o3d.utility.Vector3dVector(grid3d),
+                lines=o3d.utility.Vector2iVector(indices),
+            )
+            # line_set.colors = o3d.utility.Vector3dVector(colors)  
+            line_set.paint_uniform_color(color)
+            
+            return line_set
+        plane = makeGridPlane(bound, resolution, up=up_vec)
+        self.main_vis.add_geometry({"name":"floor", "geometry":plane})
+        return
+
+    def remove_plane(self):
+        self.main_vis.remove_geometry({"name":"floor"})
+        return
+
     def add_geometry(self, geometry:dict):
         self.main_vis.add_geometry(geometry["geometry"])
+        
+    def remove_geometry(self, geom_name):
+        self.main_vis.remove_geometry(geom_name)
+    
+    def run(self):
+        self.main_vis.run()
 
     def stop(self):
         self.main_vis.destroy_window()

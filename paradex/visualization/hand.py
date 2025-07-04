@@ -11,35 +11,37 @@ class HandVisualizer(object):
 
         # skeleton_info : List of parent idx, asuume 0 is root(wrist)
         self.num_sphere = len(skeleton_info)*2
-        self.sphere = []
-        self.axes = []
-        self.prev_axis_inv_transforms = []
+        self.sphere = {}
+        
+        self.axes = {}
+        self.prev_axis_inv_transforms = {}
+        
         self.skeleton_info = skeleton_info
 
         self.global_axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2)
         self.add_geometry({"name":"global_axis", "geometry":self.global_axis})
 
         # self.cur_rot = np.array([np.eye(3) for i in range(self.num_sphere)])
-        
-        for i in range(self.num_sphere):
-            self.sphere.append(o3d.geometry.TriangleMesh.create_sphere(radius=0.01))
-            self.sphere[i].paint_uniform_color([0.8, 0.1, 0.1])
-            self.sphere[i].compute_vertex_normals()
-        
-            self.add_geometry({"name":"sphere"+str(i), "geometry":self.sphere[i]})
-
-            axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.03)  # Small axes
-            self.prev_axis_inv_transforms.append(np.eye(4))
+        for side in ['Left', 'Right']:
+            for child, parent in skeleton_info.items():
+                self.sphere[(side, child)] = o3d.geometry.TriangleMesh.create_sphere(radius=0.01)
+                self.sphere[(side, child)].paint_uniform_color([0.8, 0.1, 0.1])
+                self.sphere[(side, child)].compute_vertex_normals()
             
-            self.axes.append(axis)
-            self.add_geometry({"name":"axis"+str(i), "geometry":self.axes[i]})
+                self.add_geometry({"name":"sphere"+ side + str(child), "geometry":self.sphere[(side, child)]})
+
+                axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.03)  # Small axes
+                self.prev_axis_inv_transforms[(side, child)] = np.eye(4)
+                
+                self.axes[(side, child)] = axis
+                self.add_geometry({"name":"axis"+ side + str(child), "geometry":self.axes[(side, child)]})
         
         self.bones = {}
         self.prev_bone_inv_transforms = {}
         
         # Create cylinders (bones) between connected joints
-        for child, parent in enumerate(skeleton_info):
-            if parent == -1:
+        for child, parent in skeleton_info.items():
+            if parent == None:
                 continue
             cylinder_l = o3d.geometry.TriangleMesh.create_cylinder(radius=0.005, height=1)
             cylinder_l.compute_vertex_normals()
@@ -52,15 +54,15 @@ class HandVisualizer(object):
             self.add_geometry({"name":f"bone_l_{parent}_{child}", "geometry":cylinder_l})
             self.add_geometry({"name":f"bone_r_{parent}_{child}", "geometry":cylinder_r})
 
-    def update_bone_positions(self, joint_pos):
+    def update_bone_positions(self, hand_data):
         """
         Update cylinder positions (bones) to connect joints.
         """
-        for child, parent in enumerate(self.skeleton_info):
-            if parent == -1:
+        for child, parent in self.skeleton_info.items():
+            if parent == None:
                 continue
-            self.update_cylinder(child, joint_pos[0], 0) # Left
-            self.update_cylinder(child, joint_pos[1], 1) # Right
+            self.update_cylinder(child, hand_data['Left'], 0) # Left
+            self.update_cylinder(child, hand_data['Right'], 1) # Right
 
             
     def update_cylinder(self, child, joint_pos, hand_idx):
@@ -109,7 +111,7 @@ class HandVisualizer(object):
         # cylinder.rotate(rotation_matrix, center=cylinder.get_center())  # Rotate
         # cylinder.translate(mid_point - np.asarray(cylinder.get_center()), relative=False)  # Move
 
-    def update_axis(self, i, transform_matrix):
+    def update_axis(self, joint_name, transform_matrix):
         """
         Move and orient the axis frame to match the given transformation matrix exactly.
         """
@@ -132,9 +134,9 @@ class HandVisualizer(object):
         T_inv[:3, :3] = R_t
         T_inv[:3, 3] = -R_t @ (transform_matrix[:3, 3])
 
-        self.axes[i].transform(transform_matrix @ self.prev_axis_inv_transforms[i])
-        self.main_vis.update_geometry(self.axes[i])
-        self.prev_axis_inv_transforms[i] = T_inv
+        self.axes[joint_name].transform(transform_matrix @ self.prev_axis_inv_transforms[joint_name])
+        self.main_vis.update_geometry(self.axes[joint_name])
+        self.prev_axis_inv_transforms[joint_name] = T_inv
 
     def center_camera_on_objects(self):
         """
@@ -155,30 +157,21 @@ class HandVisualizer(object):
         view_control.set_constant_z_far(1000)
 
 
-    def update_sphere_positions(self, joint_pos):
+    def update_sphere_positions(self, hand_data):
         """
         Update sphere positions in Open3D.
-        joint_positions: (20, 4, 4) NumPy array containing (x, y, z) positions of joints.
+        joint_positions: (J, 4, 4) NumPy array containing (x, y, z) positions of joints.
         """
-        joint_positions = joint_pos[:,:,:3,3].reshape(-1, 3)
-        #print(joint_positions)
-        for i in range(self.num_sphere):
-        # Remove old sphere
-            # self.main_vis.remove_geometry(f"sphere{i}")
+        for side, joint_dict in hand_data.items():
+            for joint_name, joint_T in joint_dict.items():
+                center = np.asarray(self.sphere[(side, joint_name)].get_center())
+                translation = joint_T[:3, 3] - center
+                self.sphere[(side,joint_name)].translate(translation, relative=True)
+                
+                self.main_vis.update_geometry(self.sphere[(side, joint_name)])
+                self.update_axis((side,joint_name), joint_T)
 
-            # Move the sphere to new position
-            # self.sphere[i].translate(joint_positions[i] - np.asarray(self.sphere[i].get_center()), relative=False)
-            center = np.asarray(self.sphere[i].get_center())
-            translation = joint_positions[i] - center
-            # print(self.sphere[i].get_center())
-            self.sphere[i].translate(translation, relative=True)
-            #self.sphere[i].compute_vertex_normals()
-            # Re-add sphere with updated position
-            # self.main_vis.add_geometry(f"sphere{i}", self.sphere[i])
-            self.main_vis.update_geometry(self.sphere[i])
-            self.update_axis(i, joint_pos[i // len(self.skeleton_info), i % len(self.skeleton_info)])
-
-        self.update_bone_positions(joint_pos)
+        self.update_bone_positions(hand_data)
         self.center_camera_on_objects()
         self.main_vis.poll_events()
         self.main_vis.update_renderer()  # Request screen refresh

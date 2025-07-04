@@ -193,7 +193,12 @@ class XSensReceiver:
         for shm_name, shm in self.shm.items():
             shm.close()
             shm.unlink()
-
+    
+    pose_T = np.eye(4)
+    rot_mat = R.from_quat(quaternion).as_matrix()
+    pose_T[:3,:3] = rot_mat
+    pose_T[:3, 3] = xyz
+            
     def pose_data_parser(self, pose_data):
         data_idx = 0
         total_data_len = len(pose_data)

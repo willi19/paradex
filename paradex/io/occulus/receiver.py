@@ -8,19 +8,11 @@ from paradex.utils.file_io import config_dir
 import time
 import socket
 
-#occulus_joint_name = ["wrist", "forearmstub", 
-#              "thumb_trapezium", "thumb_metacarpal", "thumb_proximal", "thumb_distal", 
-#              "index_proximal", "index_intermediate", "index_distal",
-#              "middle_proximal", "middle_intermediate", "middle_distal",
-#              "ring_proximal", "ring_intermediate", "ring_distal",
-#              "pinky_metacarpel", "pinky_proximal", "pinky_intermediate", "pinky_distal",
-#              "thumb_tip", "index_tip", "middle_tip", "ring_tip", "pinky_tip"]
-
 occulus_joint_name = ["palm", "wrist",
                       "thumb_metacarpal", "thumb_proximal", "thumb_distal", "thumb_tip",
                       "index_metacarpal", "index_proximal", "index_intermediate", "index_distal", "index_tip",
                       "middle_metacarpal", "middle_proximal", "middle_intermediate", "middle_distal", "middle_tip",
-                      "middle_metacarpal", "ring_proximal", "ring_intermediate", "ring_distal", "ring_tip",
+                      "ring_metacarpal", "ring_proximal", "ring_intermediate", "ring_distal", "ring_tip",
                       "pinky_metacarpel", "pinky_proximal", "pinky_intermediate", "pinky_distal", "pinky_tip"]
 
 
@@ -42,9 +34,11 @@ class OculusReceiver:
 
     def get_data(self):
         with self.lock:
+            left_pose = {occulus_joint_name[i]:self.hand_pose['Left'][i] for i in range(len(occulus_joint_name))}
+            right_pose = {occulus_joint_name[i]:self.hand_pose['Right'][i] for i in range(len(occulus_joint_name))}
             return {
-                "Left": self.hand_pose["Left"].copy() if 'Left' in self.hand_pose else None,
-                "Right": self.hand_pose["Right"].copy() if 'Right' in self.hand_pose else None,
+                "Left": left_pose if 'Left' in self.hand_pose else None,
+                "Right": right_pose if 'Right' in self.hand_pose else None,
             }
     
     def parse_handdata(self, hand_data):

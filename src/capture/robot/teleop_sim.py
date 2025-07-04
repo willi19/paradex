@@ -1,9 +1,10 @@
 from paradex.simulator.isaac import Simulator
 from paradex.utils.keyboard_listener import listen_keyboard
-from paradex.retargetor.unimanual import unimanual
+from paradex.retargetor.unimanual import Retargetor
 
 from threading import Event
 import argparse
+import numpy as np
 
 parser = argparse.ArgumentParser()
 
@@ -26,6 +27,13 @@ save_video = False
 save_state = False
 headless = False
 num_envs = 1
+
+retargetor_list = []
+
+home_wrist_pose = np.eye(4)
+for arm_name in args.arm:
+    for hand_name in args.hand:
+        retargetor_list.append(Retargetor(arm_name, hand_name, home_wrist_pose))
 
 sim = Simulator(
                 headless, 
@@ -63,9 +71,13 @@ listen_keyboard({"q":stop_event})
 
 while not stop_event.is_set():
     hand_pose = teleop_device.get_data() #{'Left':{}, 'Right':{}}
-    robot_action = retargeter.retarget(hand_pose)
-    
-    sim.step(0, {"robot":{"right":robot_action},"robot_vis":{"right":robot_action}})
+    env_idx = 0
+    for arm_name in args.arm:
+        for hand_name in args.hand:
+            robot_action = retargetor_list[env_idx].step(hand_pose)
+            sim.step(env_idx, {"robot":{"right":robot_action},"robot_vis":{"right":robot_action}})
+            env_idx += 1
+            
     sim.tick()
     
 sim.save()

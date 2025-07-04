@@ -2,7 +2,8 @@ import open3d as o3d
 import numpy as np
 
 class BodyVisualizer(object):
-    def __init__(self, skeleton_info, head_idx=7, hand_range=(18, 69)):
+    #def __init__(self, skeleton_info, head_idx=7, hand_range=(18, 69)):
+    def __init__(self, skeleton_info, head_idx=1, hand_range=(2, 53)):
         self.width = 2048
         self.height = 1536
         self.hand_range = hand_range
@@ -18,8 +19,8 @@ class BodyVisualizer(object):
         self.prev_axis_inv_transforms = np.zeros((self.num_sphere, 4, 4))
         self.skeleton_info = skeleton_info
 
-        self.global_axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5)
-        self.add_geometry({"name":"global_axis", "geometry":self.global_axis})
+        #self.global_axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5)
+        #self.add_geometry({"name":"global_axis", "geometry":self.global_axis})
 
         # self.cur_rot = np.array([np.eye(3) for i in range(self.num_sphere)])
         
@@ -33,9 +34,9 @@ class BodyVisualizer(object):
                 self.sphere[i].paint_uniform_color([0.1, 0.8, 0.1])
                 axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.1)  # big axis
             else:
-                self.sphere.append(o3d.geometry.TriangleMesh.create_sphere(radius=0.025))
+                self.sphere.append(o3d.geometry.TriangleMesh.create_sphere(radius=0.03))
                 self.sphere[i].paint_uniform_color([0.1, 0.1, 0.8])
-                axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.075)  # middle axes
+                axis = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.5)  # middle axes
             
             self.sphere[i].compute_vertex_normals()
             self.add_geometry({"name":"sphere"+str(i), "geometry":self.sphere[i]})

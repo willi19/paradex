@@ -2,75 +2,106 @@ import os
 import time
 import pinocchio as pin
 from paradex.simulator.isaac import simulator
-from paradex.utils.file_io import shared_dir, load_c2r
+from paradex.utils.file_io import rsc_path
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import pickle
+import transforms3d as t3d  
+from paradex.robot.robot_wrapper import RobotWrapper
+
+LINK62PALM = np.array(
+    [
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [1, 0, 0, 0],
+        [0, 0, 0, 1],
+    ]
+)
+
 
 # Viewer setting
-obj_name = "clock"
+obj_name = "bottle"
 save_video = False
 save_state = False
 view_physics = True
-view_replay = False
+view_replay = True
 headless = False
 
-simulator = simulator(
-    obj_name,
-    view_physics,
-    view_replay,
-    headless,
-    save_video,
-    save_state,
-    fixed=False
-)
-
-demo_path = f"{shared_dir}/processed/{obj_name}"
+demo_path = "data_Icra/teleoperation/bottle"
 demo_path_list = os.listdir(demo_path)
+demo_path_list.sort()
 
-dof_names_list = simulator.get_dof_names()
-learning_rate = 0.05#[0.01, 0.05, 0.1, 0.5]
-for demo_name in ["0"]:
-    wrist_T = np.load(os.path.join(shared_dir, 'contact_map', obj_name, demo_name, "wrist_T.npy"))
-    obj_T = np.load(os.path.join(shared_dir, 'contact_map', obj_name, demo_name, "object_pose.npy"))
-    
-    # logs_basedir = os.path.join(shared_dir, "inference", f'{obj_name}', f'{demo_name}', 'grasp_pose')
-    q_target = np.load(os.path.join(os.path.join(shared_dir, 'contact_map', obj_name, demo_name, "robot_action.npy")))
-    q_pose = np.load(os.path.join(os.path.join(shared_dir, 'contact_map', obj_name, demo_name, "robot_pose.npy")))
-    q_pregrasp = 2 * q_pose - q_target
-    
-    T = 200
+robot = RobotWrapper(
+    os.path.join(rsc_path, "xarm6", "xarm6_allegro_wrist_mounted_rotate.urdf")
+)
+link_index = robot.get_link_index("link6")
 
-    c2r = load_c2r(os.path.join(demo_path, demo_name))
-    # obj_T = np.linalg.inv(c2r) @ obj_T
-    
-    robot_action = np.zeros((22))
-    
-    robot_action[:3] = wrist_T[:3, 3]
-    robot_action[3:6] = R.from_matrix(wrist_T[:3, :3]).as_euler('XYZ')
-    robot_pose = np.zeros((22))
-    robot_pose[:3] = wrist_T[:3, 3]
-    robot_pose[3:6] = R.from_matrix(wrist_T[:3, :3]).as_euler('XYZ')
+for demo_name in demo_path_list:  # demo_path_list:
+    if demo_name != "1":
+        continue
+    sim = simulator(
+        obj_name,
+        view_physics,
+        view_replay,
+        headless,
+        save_video,
+        save_state,
+        fixed=True
+    )
 
-    robot_action[6:] = q_pregrasp
-    robot_pose[6:] = q_pregrasp
+    sim.load_camera()
+    sim.set_savepath(f"replay/video/{demo_name}.mp4", f"replay/state/{demo_name}.pickle")
 
-    for step in range(50):
-        simulator.step(robot_pose, robot_action, obj_T)
+    obj_T = pickle.load(open(os.path.join(demo_path, demo_name, "obj_traj.pickle"), "rb"))['bottle']
+    robot_traj = np.load(os.path.join(demo_path, demo_name, "robot_qpos.npy"))
+    target_traj = np.load(os.path.join(demo_path, demo_name, "target_qpos.npy"))
+
+    T = obj_T.shape[0]
+    
+    step = 0
+    while True:
+        step += 1
+        robot_action = target_traj[step]
         
+        t = robot_action[:3]
+        axis_angle = robot_action[3:6]
+        angle = np.linalg.norm(axis_angle)
+        if angle > 1e-6:
+            axis = axis_angle / angle
+        else:
+            axis = np.zeros(3)
+            
+        link6_mat = t3d.axangles.axangle2mat(axis, angle)
+        R_mat = link6_mat @ LINK62PALM[:3,:3]
+        e = R.from_matrix(R_mat).as_euler('XYZ')
+        robot_action[3:6] = e
 
-    for step in range(T):
-        action = (q_pregrasp * (1 - step / T) 
-                 + q * (step / T))
-        robot_action[6:] = action
-        robot_pose[6:] = action
-        if step >= T // 2:
-            robot_pose[6:] = q_pose
+        robot_T = np.eye(4)
+        robot_T[:3, :3] = link6_mat
+        robot_T[:3, 3] = t
+        robot_pose = robot_traj[step]
+        robot.compute_forward_kinematics(robot_pose)
+        R_mat_pose = robot.get_link_pose(link_index)
 
-        simulator.step(robot_action, robot_pose, obj_T)#robot_traj[step], obj_traj[step])
+        # print(np.linalg.norm(R_mat_pose[:3, 3] - robot_action[:3]))
+
+        q_ik, success = robot.solve_ik(
+            robot_T,
+            "link6",
+            q_init=robot_pose,
+            max_iter=100,
+            tol=1e-4,
+            alpha=1e-1
+        )
+
+        robot.compute_forward_kinematics(q_ik)
+        R_mat_ik = robot.get_link_pose(link_index)
+        # print(np.linalg.norm(R_mat_ik[:3, 3] - R_mat_pose[:3, 3]), "error")
+        # print(np.linalg.norm(R_mat_ik[:3, 3] - robot_action[:3]), "IK error")
+
+        q_ik[:6] = robot_pose[:6]  # Set the first 6 joints to the action
+        q_ik[6:] = robot_action[6:]  # Set the wrist joint angles
         
-    for step in range(200):
-        robot_action[2] += 0.001
-        robot_pose[2] += 0.001
-        simulator.step(robot_action, robot_pose, obj_T)
-
+        sim.step(q_ik, robot_pose, obj_T[step])#robot_traj[step], obj_traj[step])
+    sim.terminate()
+        

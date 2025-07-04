@@ -1,30 +1,21 @@
 import os
-import sys
 import time
-import threading
+from threading import Event
+from paradex.utils.keyboard_listener import listen_keyboard
 import argparse
-
-# sys.path.append(os.path.join(os.path.dirname(__file__), '../../..'))
 
 from xarm.wrapper import XArmAPI
 import numpy as np
 
-stop_event = threading.Event()
-save_event = threading.Event()
-save_dir = 'demo_asdf'
-os.makedirs(save_dir, exist_ok=True)
+stop_event = Event()
+save_event = Event()
+listen_keyboard({'q':stop_event, 'c':save_event})
 
-def listen_keyboard():
-    print("Press 'c' to capture, 'q' to quit.")
-    while not stop_event.is_set():
-        key = input().strip().lower()
-        if key == 'q':
-            stop_event.set()
-        elif key == 'c':
-            save_event.set()
-            
-input_thread = threading.Thread(target=listen_keyboard, daemon=True)
-input_thread.start()
+parser = argparse.ArgumentParser()
+parser.add_argument('--save_path', required=True)
+args = parser.parse_args()
+
+os.makedirs(args.save_path, exist_ok=True)
      
 ip = "192.168.1.221"
 arm = XArmAPI(ip, is_radian=True)
@@ -44,11 +35,12 @@ try:
     while not stop_event.is_set():
         if save_event.is_set():
             _, pos_aa = arm.get_position_aa(is_radian=True)
-            np.save(os.path.join(save_dir, f'{idx}.npy'), pos_aa)
+            np.save(os.path.join(args.save_path, f'{idx}.npy'), pos_aa)
             print(f"Saved pose {idx}: {pos_aa}")
             idx += 1
             save_event.clear()
         time.sleep(0.1)
+        
 except KeyboardInterrupt:
     print("Interrupted by user.")
 

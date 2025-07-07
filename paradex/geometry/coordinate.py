@@ -1,23 +1,27 @@
 import numpy as np
 
-# T ^ {wrist}_{Xsens}
-XSENS2WRIST_Left = np.array([[1, 0, 0, 0], 
+DEVICE2WRIST = {
+    "xarm":np.array([[],[],[],[]]),
+    "franka":np.array([[],[],[],[]]),
+    "allegro":np.array([[],[],[],[]]),
+    "inspire":np.array([[],[],[],[]]),
+    "xsens_left":np.array([[1, 0, 0, 0], 
                              [0, -1, 0, 0],
                              [0, 0, -1, 0],
-                             [0, 0, 0, 1]])
-
-XSENS2WRIST_Right = np.array([[1, 0, 0, 0], 
+                             [0, 0, 0, 1]]),
+    "xsens_right":np.array([[1, 0, 0, 0], 
                               [0, -1, 0, 0],
                               [0, 0, -1, 0],
-                              [0, 0, 0, 1]])
+                              [0, 0, 0, 1]]),
+    "occulus":np.array([[],[],[],[]])
+}
 
-XSENS2GLOBAL = np.array([[1, 0, 0, 0], 
+DEVICE2GLOBAL = {
+    "xsens":np.array([[1, 0, 0, 0], 
                          [0, 1, 0, 0], 
                          [0, 0, 1, 0],
-                         [0, 0, 0, 1]])
-
-VIVE2WRIST = np.array([[1, 0, 0, 0], 
-                        [0, 1, 0, 0], 
-                        [0, 0, 1, 0], 
-                        [0, 0, 0, 1]])
-
+                         [0, 0, 0, 1]]),
+    "occulus":pass,
+    "xarm":pass,
+    "franka":pass
+}

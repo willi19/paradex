@@ -24,6 +24,21 @@ xsens_joint_parent_name = [None,
                       "wrist", "ring_metacarpal", "ring_proximal", "ring_intermediate",
                       "wrist", "pinky_metacarpel", "pinky_proximal", "pinky_intermediate"]
 
+XSENS2WRIST_Left = np.array([[1, 0, 0, 0], 
+                             [0, -1, 0, 0],
+                             [0, 0, -1, 0],
+                             [0, 0, 0, 1]])
+
+XSENS2WRIST_Right = np.array([[1, 0, 0, 0], 
+                              [0, -1, 0, 0],
+                              [0, 0, -1, 0],
+                              [0, 0, 0, 1]])
+
+XSENS2GLOBAL = np.array([[1, 0, 0, 0], 
+                         [0, 1, 0, 0], 
+                         [0, 0, 1, 0],
+                         [0, 0, 0, 1]])
+
 class XSensReceiver:
     def __init__(self) -> None:
         network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
@@ -97,8 +112,8 @@ class XSensReceiver:
                 
                 with self.lock:
                     for i, joint_name in enumerate(xsens_joint_name):
-                        self.hand_pose["Right"][joint_name] = np.linalg.inv(pelvis_pose) @ right_hand_pose[i]
-                        self.hand_pose["Left"][joint_name] = np.linalg.inv(pelvis_pose) @ left_hand_pose[i]
+                        self.hand_pose["Right"][joint_name] = XSENS2GLOBAL @ np.linalg.inv(pelvis_pose) @ right_hand_pose[i] @ np.linalg.inv(XSENS2WRIST_Right)
+                        self.hand_pose["Left"][joint_name] = XSENS2GLOBAL @ np.linalg.inv(pelvis_pose) @ left_hand_pose[i] @ np.linalg.inv(XSENS2WRIST_Right)
     
         self.socket.close()
     

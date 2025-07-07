@@ -45,7 +45,7 @@ if __name__ == "__main__":
                         continue
 
                     for vp in get_video_list(video_dir):
-                        serial = os.path.basename(vp[0]).split("_")[0]
+                        serial = os.path.basename(vp[0]).split("-")[0]
                         video_list.append((vp))
 
             with Pool(processes=cpu_count()) as pool:

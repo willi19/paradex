@@ -13,7 +13,7 @@ def compress_video(video_path_tuple):
     """
 
     video_path, json_path = video_path_tuple  # Unpack tuple
-    serial_num = os.path.basename(video_path).split("_")[0]  # Extract serial number from video filename
+    serial_num = os.path.basename(video_path).split("-")[0]  # Extract serial number from video filename
     # Open the video file using OpenCV
     
     # Read timestamp JSON file safely

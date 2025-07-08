@@ -1,5 +1,6 @@
 import numpy as np
 from paradex.geometry.coordinate import DEVICE2WRIST,  DEVICE2GLOBAL
+from paradex.retargetor.hand_regargetor import inspire, allegro
 
 class Retargetor(): # Input is only from Xsens
     def __init__(self, arm_name=None, hand_name=None, home_pose=None):
@@ -19,9 +20,9 @@ class Retargetor(): # Input is only from Xsens
 
         self.hand_retargetor = None
         if self.hand_name == "inspire":
-            self.hand_retargetor = self.inspire
+            self.hand_retargetor = inspire
         elif self.hand_name == "allegro":
-            self.hand_retargetor = self.allegro
+            self.hand_retargetor = allegro
         else:
             self.hand_retargetor = None
 
@@ -33,11 +34,11 @@ class Retargetor(): # Input is only from Xsens
             self.device2global = np.eye(4)
 
     def get_action(self, data):
-        if self.init_wrist_pose is None:
-            self.init_wrist_pose = data["Right"]["wrist"].copy()
-        
-        delta_wrists_R = self.device2wrist.T @ np.linalg.inv(self.init_wrist_pose[:3,:3]) @ data["hand_pose"][0][:3,:3] @ self.device2wrist
-        delta_wrists_t = data["Right"]["wrist"][:3,3] - self.init_wrist_pose[:3,3]
+        if self.init_human_pose is None:
+            self.init_human_pose = data["Right"]["wrist"].copy()
+        # print(self.device2wrist.T.shape)
+        delta_wrists_R = self.device2wrist.T[:3,:3] @ np.linalg.inv(self.init_human_pose[:3,:3]) @ data["Right"]["wrist"][:3,:3] @ self.device2wrist[:3,:3]
+        delta_wrists_t = data["Right"]["wrist"][:3,3] - self.init_human_pose[:3,3]
 
         robot_wrist_pose = np.zeros((4,4))
         robot_wrist_pose[:3,:3] = self.init_robot_pose[:3,:3] @ delta_wrists_R

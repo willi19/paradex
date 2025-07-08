@@ -5,6 +5,10 @@ from paradex.retargetor.unimanual import Retargetor
 from threading import Event
 import argparse
 import numpy as np
+import time
+import os
+from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.utils.file_io import rsc_path
 
 parser = argparse.ArgumentParser()
 
@@ -36,8 +40,7 @@ for arm_name in args.arm:
         retargetor_list.append(Retargetor(arm_name, hand_name, home_wrist_pose))
 
 sim = Simulator(
-                headless, 
-                num_envs
+                headless
                 )
 
 for arm_name in args.arm:
@@ -69,16 +72,33 @@ for arm_name in args.arm:
 stop_event = Event()
 listen_keyboard({"q":stop_event})
 
+robot = RobotWrapper(
+    os.path.join(rsc_path, "robot", "xarm_allegro.urdf")
+)
+link_index = robot.get_link_index("link6")
+
 while not stop_event.is_set():
+    sim.tick()
     hand_pose = teleop_device.get_data() #{'Left':{}, 'Right':{}}
+    if hand_pose["Right"] == None:
+        continue
     env_idx = 0
     for arm_name in args.arm:
         for hand_name in args.hand:
-            robot_action = retargetor_list[env_idx].step(hand_pose)
-            sim.step(env_idx, {"robot":{"right":robot_action},"robot_vis":{"right":robot_action}})
+            arm_action, hand_action = retargetor_list[env_idx].get_action(hand_pose)
+            arm_action, success = robot.solve_ik(
+                arm_action,
+                "link6",
+                q_init=np.zeros(22),
+                max_iter=100,
+                tol=1e-4,
+                alpha=1e-1
+            )
+            robot_action = np.concatenate([arm_action]).astype(np.float32)
+            sim.step(env_idx, {"robot":{"right":robot_action},"robot_vis":{"right":robot_action}, "object_vis":{}})
             env_idx += 1
+    time.sleep(0.01)
             
-    sim.tick()
     
 sim.save()
 sim.terminate()

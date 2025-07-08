@@ -1,0 +1,19 @@
+<robot name="combined_robot" xmlns:xacro="http://ros.org/wiki/xacro">
+
+  <xacro:arg name="arm_file" default="arm1.urdf"/>
+  <xacro:arg name="hand_file" default="hand1.urdf"/>
+  <xacro:arg name="parent_link" default="arm_end_link"/>
+  <xacro:arg name="child_link" default="hand_base_link"/>
+  <xacro:arg name="xyz" default="0 0 0"/>
+  <xacro:arg name="rpy" default="0 0 0"/>
+
+  <xacro:include filename="$(arg arm_file)" />
+  <xacro:include filename="$(arg hand_file)" />
+
+  <joint name="arm_to_hand" type="fixed">
+    <parent link="$(arg parent_link)"/>
+    <child link="$(arg child_link)"/>
+    <origin xyz="$(arg xyz)" rpy="$(arg rpy)"/>
+  </joint>
+
+</robot>

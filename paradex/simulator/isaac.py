@@ -33,6 +33,9 @@ class Simulator:
 
         self.num_envs = 0
         
+        self.save_state = False
+        self.save_video = False
+        
     def generate_sim(self):
         # 시뮬레이션 설정
         sim_params = gymapi.SimParams()
@@ -60,7 +63,7 @@ class Simulator:
                                              [0, 0, 1, 1],
                                              [0, 0, 0, 1]])):
         position = ext_mat[:3, 3].tolist()
-        lookat = (position + ext_mat[:3, 2] ).tolist()
+        lookat = [0,0,0]#(position + ext_mat[:3, 2] ).tolist()
         
         cam_props = gymapi.CameraProperties()
         self.viewer = self.gym.create_viewer(self.sim, cam_props)
@@ -428,16 +431,14 @@ class Simulator:
         actor_handle = {"robot":{}, "robot_vis":{}, "object":{}, "object_vis":{}}
         env = self.gym.create_env(self.sim, self.env_lower, self.env_upper, 5)
             
-        actor_handle["robot"] = {actor_name : self.load_robot_actor(env, actor_name, arm_name, hand_name) for actor_name, (arm_name, hand_name) in env_info["robot"]} 
-        actor_handle["robot_vis"] = {actor_name : self.load_vis_robot_actor(env, actor_name, arm_name, hand_name) for actor_name, (arm_name, hand_name) in env_info["robot_vis"]}
-        actor_handle["object"] = {actor_name : self.load_object_actor(env, actor_name, obj_name) for actor_name, obj_name in env_info["object"]}
-        actor_handle["object_vis"] = {actor_name : self.load_vis_object_actor(env, actor_name, obj_name) for actor_name, obj_name in env_info["object_vis"]}
+        actor_handle["robot"] = {actor_name : self.load_robot_actor(env, actor_name, arm_name, hand_name) for actor_name, (arm_name, hand_name) in env_info["robot"].items()} 
+        actor_handle["robot_vis"] = {actor_name : self.load_vis_robot_actor(env, actor_name, arm_name, hand_name) for actor_name, (arm_name, hand_name) in env_info["robot_vis"].items()}
+        actor_handle["object"] = {actor_name : self.load_object_actor(env, actor_name, obj_name) for actor_name, obj_name in env_info["object"].items()}
+        actor_handle["object_vis"] = {actor_name : self.load_vis_object_actor(env, actor_name, obj_name) for actor_name, obj_name in env_info["object_vis"].items()}
         
         
         self.env_list.append(env)
         self.actor_handle_list.append(actor_handle)
-
-        self.env_idx += 1
 
     def step(self, idx, action_dict):
         env = self.env_list[idx]
@@ -446,27 +447,28 @@ class Simulator:
         if self.save_state:
             self.save_stateinfo(idx)
         
-        for robot_name, action in action_dict["robot"]:
+        for robot_name, action in action_dict["robot"].items():
             actor = actor_handle["robot"][robot_name]
             self.gym.set_actor_dof_position_targets(
                 env, actor, action
             )
         
-        for robot_name, state in action_dict["robot_vis"]:
+        for robot_name, state in action_dict["robot_vis"].items():
             actor = actor_handle["robot_vis"][robot_name]
+            print(action)
             robot_dof_state = self.gym.get_actor_dof_states(
                 env, actor, gymapi.STATE_POS
             )
             robot_dof_state["pos"] = state
             
             self.gym.set_actor_dof_states(
-                self.env,
-                self.actor_handle["robot_replay"],
+                env,
+                actor,
                 robot_dof_state,
                 gymapi.STATE_POS,
             )
             
-        for obj_name, obj_T in action_dict["object_vis"]:
+        for obj_name, obj_T in action_dict["object_vis"].items():
             actor = actor_handle["object_vis"][obj_name]
             
             obj_quat = R.from_matrix(obj_T[:3, :3]).as_quat()

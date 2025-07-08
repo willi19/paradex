@@ -71,7 +71,7 @@ while not should_exit:
     if frame_id == last_frame:
         continue
         
-    data = camera.get_data(i)
+    data = camera.get_data(0)
     last_frame = data["frameid"]
     last_image = data["image"]
         

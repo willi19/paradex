@@ -14,6 +14,7 @@ class Retargetor(): # Input is only from Xsens
         
         self.home_pose = home_pose.copy() #Init Robot hand wrist pose
         self.cur_pose = home_pose.copy()
+        self.last_arm_pose = home_pose.copy()
 
         self.init_robot_pose = home_pose.copy()
         self.init_human_pose = None
@@ -26,7 +27,7 @@ class Retargetor(): # Input is only from Xsens
         else:
             self.hand_retargetor = None
 
-        if self.arm_name is None:
+        if self.arm_name is not None:
             self.device2wrist = DEVICE2WRIST[self.arm_name].copy()
             self.device2global = DEVICE2GLOBAL[self.arm_name].copy()
         else:
@@ -37,7 +38,7 @@ class Retargetor(): # Input is only from Xsens
         if self.init_human_pose is None:
             self.init_human_pose = data["Right"]["wrist"].copy()
         # print(self.device2wrist.T.shape)
-        delta_wrists_R = self.device2wrist.T[:3,:3] @ np.linalg.inv(self.init_human_pose[:3,:3]) @ data["Right"]["wrist"][:3,:3] @ self.device2wrist[:3,:3]
+        delta_wrists_R = self.device2wrist[:3,:3].T @ np.linalg.inv(self.init_human_pose[:3,:3]) @ data["Right"]["wrist"][:3,:3] @ self.device2wrist[:3,:3]
         delta_wrists_t = data["Right"]["wrist"][:3,3] - self.init_human_pose[:3,3]
 
         robot_wrist_pose = np.zeros((4,4))

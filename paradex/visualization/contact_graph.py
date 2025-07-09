@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import os
 import cv2
 import subprocess
+import time
+
 from dex_robot.utils.file_io import load_contact_value
 from dex_robot.contact.process import process_contact
 from dex_robot.contact.index import sensor_name
@@ -78,3 +80,50 @@ def plot_contact_data(demo_path, output_video_path, time_range=30, sampling_rate
     out.release()
     change_to_h264(temp_video_path, output_video_path)
 
+def live_plot_contact_data(contact_value_queue, stop_event, time_range=30, sampling_rate=30):
+    """실시간 tactile sensor 값을 받아서 시각화한다."""
+    max_samples = time_range * sampling_rate
+    time_axis = np.linspace(0, time_range, max_samples)
+
+    # 초기 데이터 버퍼 (zeros)
+    contact_buffer = np.zeros((max_samples, 15))  # 센서 15개 기준
+    fig, ax = plt.subplots(figsize=(19.2, 10.8))  
+    ax.set_ylim(0, 550)
+    ax.set_xlabel("Time (seconds)")
+    ax.set_ylabel("Contact Sensor Value")
+    ax.set_title("Real-Time Contact Sensor Readings")
+    ax.grid()
+
+    lines = []
+    sensor_name = [f"Sensor {i}" for i in range(15)]
+    for i in range(15):  
+        line, = ax.plot(time_axis, contact_buffer[:, i], label=sensor_name[i])
+        lines.append(line)
+    ax.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+    plt.tight_layout()
+
+    plt.ion()  # interactive mode on
+    plt.show()
+
+    while not stop_event.is_set():
+        try:
+            new_value = contact_value_queue.get(timeout=1.0)  # (1, 15) 또는 (15,) shape
+        except queue.Empty:
+            continue
+
+        if new_value.ndim == 1:
+            new_value = new_value.reshape(1, -1)
+
+        # 버퍼 업데이트: FIFO 방식
+        contact_buffer = np.vstack((contact_buffer[new_value.shape[0]:], new_value))
+
+        # 그래프 업데이트
+        for i, line in enumerate(lines):
+            line.set_ydata(contact_buffer[:, i])
+
+        fig.canvas.draw()
+        fig.canvas.flush_events()
+        time.sleep(1.0 / sampling_rate)  # 실제 센서 주기와 맞추기
+
+    plt.ioff()
+    plt.close()

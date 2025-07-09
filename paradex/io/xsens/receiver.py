@@ -14,15 +14,15 @@ xsens_joint_name = ["wrist",
                     "index_metacarpal", "index_proximal", "index_intermediate", "index_distal", 
                     "middle_metacarpal", "middle_proximal", "middle_intermediate", "middle_distal",
                     "ring_metacarpal", "ring_proximal", "ring_intermediate", "ring_distal",
-                    "pinky_metacarpel", "pinky_proximal", "pinky_intermediate", "pinky_distal"
+                    "pinky_metacarpal", "pinky_proximal", "pinky_intermediate", "pinky_distal"
                     ]
 
 xsens_joint_parent_name = [None,
-                      "wrist", "thumb_metacarpal", "thumb_proximal", "thumb_distal",
+                      "wrist", "thumb_metacarpal", "thumb_proximal",
                       "wrist", "index_metacarpal", "index_proximal", "index_intermediate",
                       "wrist", "middle_metacarpal", "middle_proximal", "middle_intermediate",
                       "wrist", "ring_metacarpal", "ring_proximal", "ring_intermediate",
-                      "wrist", "pinky_metacarpel", "pinky_proximal", "pinky_intermediate"]
+                      "wrist", "pinky_metacarpal", "pinky_proximal", "pinky_intermediate"]
 
 XSENS2WRIST_Left = np.array([[1, 0, 0, 0], 
                              [0, -1, 0, 0],
@@ -48,7 +48,6 @@ class XSensReceiver:
         
         self.host_ip = "0.0.0.0"
         self.port = port
-        print(port)
         
         self.stop_event = Event()
         self.lock = Lock()
@@ -113,7 +112,7 @@ class XSensReceiver:
                 with self.lock:
                     for i, joint_name in enumerate(xsens_joint_name):
                         self.hand_pose["Right"][joint_name] = XSENS2GLOBAL @ np.linalg.inv(pelvis_pose) @ right_hand_pose[i] @ np.linalg.inv(XSENS2WRIST_Right)
-                        self.hand_pose["Left"][joint_name] = XSENS2GLOBAL @ np.linalg.inv(pelvis_pose) @ left_hand_pose[i] @ np.linalg.inv(XSENS2WRIST_Right)
+                        self.hand_pose["Left"][joint_name] = XSENS2GLOBAL @ np.linalg.inv(pelvis_pose) @ left_hand_pose[i] @ np.linalg.inv(XSENS2WRIST_Left)
     
         self.socket.close()
     

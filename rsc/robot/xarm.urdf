@@ -37,14 +37,14 @@
   <link name="link_base">
     <visual>
       <geometry>
-        <mesh filename="meshes/xarm/base.obj"/>
+        <mesh filename="xarm/meshes/base.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <material name="White"/>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/xarm/base.obj"/>
+        <mesh filename="xarm/meshes/base.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </collision>
@@ -57,14 +57,14 @@
   <link name="link1">
     <visual>
       <geometry>
-        <mesh filename="meshes/xarm/link1.obj"/>
+        <mesh filename="xarm/meshes/link1.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <material name="White"/>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/xarm/link1.obj"/>
+        <mesh filename="xarm/meshes/link1.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </collision>
@@ -85,14 +85,14 @@
   <link name="link2">
     <visual>
       <geometry>
-        <mesh filename="meshes/xarm/link2.obj"/>
+        <mesh filename="xarm/meshes/link2.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <material name="White"/>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/xarm/link2.obj"/>
+        <mesh filename="xarm/meshes/link2.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </collision>
@@ -113,14 +113,14 @@
   <link name="link3">
     <visual>
       <geometry>
-        <mesh filename="meshes/xarm/link3.obj"/>
+        <mesh filename="xarm/meshes/link3.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <material name="White"/>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/xarm/link3.obj"/>
+        <mesh filename="xarm/meshes/link3.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </collision>
@@ -141,14 +141,14 @@
   <link name="link4">
     <visual>
       <geometry>
-        <mesh filename="meshes/xarm/link4.obj"/>
+        <mesh filename="xarm/meshes/link4.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <material name="White"/>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/xarm/link4.obj"/>
+        <mesh filename="xarm/meshes/link4.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </collision>
@@ -169,14 +169,14 @@
   <link name="link5">
     <visual>
       <geometry>
-        <mesh filename="meshes/xarm/link5.obj"/>
+        <mesh filename="xarm/meshes/link5.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <material name="White"/>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/xarm/link5.obj"/>
+        <mesh filename="xarm/meshes/link5.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </collision>
@@ -197,14 +197,14 @@
   <link name="link6">
     <visual>
       <geometry>
-        <mesh filename="meshes/xarm/link6.obj"/>
+        <mesh filename="xarm/meshes/link6.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <material name="Silver"/>
     </visual>
     <collision>
       <geometry>
-        <mesh filename="meshes/xarm/link6.obj"/>
+        <mesh filename="xarm/meshes/link6.obj"/>
       </geometry>
       <origin rpy="0 0 0" xyz="0 0 0"/>
     </collision>
@@ -221,36 +221,5 @@
     <axis xyz="0 0 1"/>
     <limit effort="20.0" lower="-6.28318530718" upper="6.28318530718" velocity="3.14"/>
     <dynamics damping="0.0001" friction="0.01"/>
-  </joint>
-
-  <joint name="gripper_base_joint" type="fixed">
-    <origin rpy="0 -1.57 -1.57" xyz="0 0.045 0.045"/>
-    <parent link="link6"/>
-    <child link="palm_link"/>
-    <axis xyz="0 0 0"/>
-  </joint>
-
-  <link name="palm_link">
-    <inertial>
-      <mass value="0.4167"/>
-      <origin rpy="0 0 0" xyz="0 0 0"/>
-      <inertia ixx="1e-4" ixy="0" ixz="0" iyy="1e-4" iyz="0" izz="1e-4"/>
-    </inertial>
-    <visual>
-      <geometry>
-        <mesh filename="meshes/allegro/palm_link.obj"/>
-      </geometry>
-      <origin rpy="0 0 0" xyz="0 0 0 "/>
-      <material name="Grey">
-        <color rgba="0.2 0.2 0.2 1"/>
-      </material>
-    </visual>
-    <collision>
-      <origin rpy="0.0 0 0" xyz="0 0 0"/>
-      <geometry>
-        <mesh filename="meshes/allegro/palm_link.obj"/>
-      </geometry>
-    </collision>
-  </link>
-  
+  </joint>  
 </robot>

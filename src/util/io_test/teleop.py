@@ -22,7 +22,7 @@ if __name__ == "__main__":
 
     skeleton_info = {child:parent for child, parent in zip(xsens_joint_name, xsens_joint_parent_name)}
     visualizer = HandVisualizer(skeleton_info)
-    
+    print(skeleton_info)
     stop_event = Event()
     listen_keyboard({"q":stop_event})
     

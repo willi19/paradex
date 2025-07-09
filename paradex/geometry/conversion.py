@@ -1,14 +1,14 @@
+from scipy.spatial.transform import Rotation as R
 import numpy as np
 import transforms3d as t3d
 
-
-def load_robotwrist_pose(target_state):
+def aa_to_rotmat(aa):
     # target_traj = load_robot_target_traj(...)
     # target_state = target_traj[step]
 
     # target_state is the pid input for the robot
-    translation = target_state[:3]
-    rotation = target_state[3:6]
+    translation = aa[:3]
+    rotation = aa[3:]
 
     # Normalize the vector to get the axis and angle
     angle = np.linalg.norm(rotation)  # Magnitude is the rotation angle
@@ -23,10 +23,3 @@ def load_robotwrist_pose(target_state):
     target_pose[:3, 3] = translation
     target_pose[:3, :3] = rotmat
     return target_pose
-
-
-def get_hand_tip_pos(hand_pos):
-    # tip index: 4, 9, 14, 19, 24
-    tip_idx = [4, 9, 14, 19, 0]
-    tip_pos = hand_pos[:, tip_idx]
-    return tip_pos

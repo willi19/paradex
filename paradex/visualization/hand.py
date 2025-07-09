@@ -172,7 +172,7 @@ class HandVisualizer(object):
                 self.update_axis((side,joint_name), joint_T)
 
         self.update_bone_positions(hand_data)
-        self.center_camera_on_objects()
+        # self.center_camera_on_objects()
         self.main_vis.poll_events()
         self.main_vis.update_renderer()  # Request screen refresh
         return

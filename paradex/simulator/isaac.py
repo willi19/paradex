@@ -100,8 +100,12 @@ class Simulator:
     
     def load_robot_asset(self, arm_name, hand_name):
         robot_name = self.load_robot_name(arm_name, hand_name)    
-        robot_asset_file = f"robot/{robot_name}.urdf"
         
+        if arm_name is not None:
+            robot_asset_file = f"robot/{robot_name}.urdf"
+        else:
+            robot_asset_file = f"robot/{hand_name}_float.urdf"
+            
         robot_asset_options = gymapi.AssetOptions()
         robot_asset_options.fix_base_link = True
         robot_asset_options.armature = 0.001
@@ -455,7 +459,7 @@ class Simulator:
         
         for robot_name, state in action_dict["robot_vis"].items():
             actor = actor_handle["robot_vis"][robot_name]
-            print(action)
+            # print(action)
             robot_dof_state = self.gym.get_actor_dof_states(
                 env, actor, gymapi.STATE_POS
             )
@@ -516,7 +520,7 @@ class Simulator:
         env = self.env_list[idx]
         actor_handle = self.actor_handle_list[idx]
         
-        for robot_name, action in action_dict["robot"]:
+        for robot_name, action in action_dict["robot"].items():
             actor = actor_handle["robot"][robot_name]
             robot_dof_state = self.gym.get_actor_dof_states(
                 env, actor, gymapi.STATE_POS
@@ -529,7 +533,22 @@ class Simulator:
                 robot_dof_state,
                 gymapi.STATE_POS,
             )
-        for obj_name, obj_T in action_dict["object"]:
+        
+        for robot_name, action in action_dict["robot_vis"].items():
+            actor = actor_handle["robot_vis"][robot_name]
+            robot_dof_state = self.gym.get_actor_dof_states(
+                env, actor, gymapi.STATE_POS
+            )
+
+            robot_dof_state["pos"] = action
+            self.gym.set_actor_dof_states(
+                env,
+                actor,
+                robot_dof_state,
+                gymapi.STATE_POS,
+            )
+            
+        for obj_name, obj_T in action_dict["object"].items():
             obj_quat = R.from_matrix(obj_T[:3, :3]).as_quat()
             obj_pos = obj_T[:3, 3]
             

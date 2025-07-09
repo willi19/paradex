@@ -1,0 +1,39 @@
+<?xml version="1.0"?>
+  <launch>
+
+   <!-- 此处为启动gazebo时需要设置的参数，一般无需修改 -->
+   <arg name="paused" default="false"/>
+   <arg name="use_sim_time" default="true"/>
+   <arg name="gui" default="true"/>
+   <arg name="headless" default="false"/>
+   <arg name="debug" default="false"/>
+
+   <!-- 在Gazebo中创建一个新的world，并使用上述参数进行设置，一般无需修改 -->
+   <include file="$(find gazebo_ros)/launch/empty_world.launch">
+      <arg name="debug" value="$(arg debug)" />
+      <arg name="gui" value="$(arg gui)" />
+      <arg name="paused" value="$(arg paused)"/>
+      <arg name="use_sim_time" value="$(arg use_sim_time)"/>
+      <arg name="headless" value="$(arg headless)"/>
+    </include>
+
+    <!-- 导入urdf文件，第一个参数修改为功能包名，第二个参数修改为urdf文件的路径 -->
+    <param name="robot_description" command="$(find xacro)/xacro --inorder $(find urdf_right_12_20)/urdf/urdf_right_12_20.xacro" />  
+    
+    <rosparam file="$(find urdf_right_12_20)/config/gazebo_controller.yaml" command="load" />
+
+  <!-- 在 Gazebo 中生成左手 URDF 模型 -->
+    <node name="spawn_urdf" pkg="gazebo_ros" type="spawn_model" args="-param robot_description -urdf -model urdf_right" />
+
+  <!-- 加载控制器配置 -->
+  <rosparam file="$(find urdf_right_12_20)/config/joint_state_controller.yaml" command="load"/>
+  <rosparam file="$(find urdf_right_12_20)/config/joint_trajectory_controller.yaml" command="load"/>
+  <!-- 启动控制器管理器 -->
+     <node name="controller_spawner" pkg="controller_manager" type="spawner" output="screen"
+    args="joint_state_controller gripper_controller"/>
+    
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" output="screen" />
+      
+    <node name="rqt_joint_trajectory_controller" pkg="rqt_joint_trajectory_controller" type="rqt_joint_trajectory_controller"  />
+
+</launch>

@@ -1,0 +1,55 @@
+一、使用rviz：
+roslaunch urdf_right display.launch 
+控制方式：通过gui可视化界面控制。
+
+二、使用gazebo：
+roslaunch urdf_right gazebo.launch 
+控制方式1：通过rqt可视化界面控制。
+控制方式2：通过topic指令控制(此时要保证rqt可视化界面中控制器状态为关闭)：
+控制指令结构：
+rostopic pub -r 10 /gripper_controller/command trajectory_msgs/JointTrajectory "<message>"
+    rostopic pub: 发布消息命令
+    -r 10: 每秒发布10次
+    /gripper_controller/command: 话题名
+    trajectory_msgs/JointTrajectory: 消息类型 JointTrajectory用于定义多个关节的运动轨迹
+    
+消息内容：
+
+header：
+    seq: 0: 消息的序列号，用于标识消息顺序
+    stamp: {secs: 0, nsecs: 0}: 时间戳，表示该消息的生成时间。这里为 0，发布时会被更新为当前时间。
+    frame_id: '': 关联的坐标系 ID，通常用于定义该消息与哪个坐标系相关联。这里为空，表示没有特定的坐标系。
+
+joint_names：
+     要控制的所有关节的名
+
+points：
+     定义关节的目标位置和其他属性。
+        positions: [1.2, 0.5, 0.5, 0.5, 0.5, 1.08]: 每个值对应于 joint_names 中每个关节的期望位置。
+        velocities: []: 关节的目标速度，留空表示不指定。
+        accelerations: []: 关节的目标加速度，留空表示不指定。
+        effort: []: 关节的目标力或扭矩，留空表示不指定。
+        time_from_start: {secs: 1, nsecs: 0}: 表示从开始到达目标位置所需的时间，这里是 1 秒。
+
+整体控制指令如下：
+rostopic pub -r 10 /gripper_controller/command trajectory_msgs/JointTrajectory "header:
+  seq: 0
+  stamp: {secs: 0, nsecs: 0}
+  frame_id: ''
+joint_names: ['right_index_1_joint', 'right_little_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_thumb_1_joint', 'right_thumb_swing_joint']
+points:
+  - positions: [1.2, 0.5, 0.5, 0.5, 0.5, 1.08]
+    velocities: []
+    accelerations: []
+    effort: []
+    time_from_start: {secs: 1, nsecs: 0}"
+    
+脚本调用topic实现自动化控制：打开right_hand_control.py所在文件夹执行：
+roslaunch urdf_right gazebo.launch 
+python3 right_hand_control.py 
+执行效果：gazebo中模型进行三个动作。
+
+
+
+
+

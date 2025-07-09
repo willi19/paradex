@@ -61,7 +61,7 @@ print("PC Name:", pc_name)
 git_pull("merging", [pc_name]) 
 print(f"[{pc_name}] Git pull complete.")
 
-run_script(os.path.join(f"python src/calibration/intrinsic/client.py --serial {serial_num}"), [pc_name])  # 명령 수신 대기
+# run_script(os.path.join(f"python src/calibration/intrinsic/client.py --serial {serial_num}"), [pc_name])  # 명령 수신 대기
 print(f"[{pc_name}] Client script started.")
 
 context = zmq.Context()

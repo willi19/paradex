@@ -1,6 +1,6 @@
 import serial
 import time
-from multiprocessing import shared_memory, Lock, Value, Event, Process
+from threading import Thread, Event, Lock
 import numpy as np
 import os
 import datetime
@@ -25,8 +25,16 @@ class SerialReader():
         self.exit = Event()
         self.capture_path = os.path.join(save_path,"contact")
 
-        self.recv_process = Process(target=self.run)
+        self.recv_process = Thread(target=self.run)
         self.recv_process.start()
+        
+        self.lock = Lock()
+        
+    def get_data(self):
+        with self.lock:
+            
+            return self.data[self.cnt-1].copy()
+            
         
     def run(self):
         """Runs the serial reader process."""
@@ -41,10 +49,9 @@ class SerialReader():
                 if self.arduino.readable():
                     raw_data = self.arduino.read_until(b'\n')
                     recv_time = time.time()
-                    if tmp < 500:
+                    if tmp < 50:
                         tmp += 1
                         continue
-                    
                     try:
                         decoded_data = raw_data.decode().strip()
                         # print(np.array([float(x) for x in decoded_data.split(" ")]))

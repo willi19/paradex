@@ -13,7 +13,7 @@ occulus_hand_joint_name = ["palm", "wrist",
                       "index_metacarpal", "index_proximal", "index_intermediate", "index_distal", "index_tip",
                       "middle_metacarpal", "middle_proximal", "middle_intermediate", "middle_distal", "middle_tip",
                       "ring_metacarpal", "ring_proximal", "ring_intermediate", "ring_distal", "ring_tip",
-                      "pinky_metacarpel", "pinky_proximal", "pinky_intermediate", "pinky_distal", "pinky_tip"]
+                      "pinky_metacarpal", "pinky_proximal", "pinky_intermediate", "pinky_distal", "pinky_tip"]
 
 
 occulus_hand_joint_parent = [1, -1, 1, 2, 3, 4, 1, 6, 7, 8, 9, 1, 11, 12, 13, 14, 1, 16, 17, 18, 19, 1, 21, 22, 23, 24]
@@ -22,7 +22,7 @@ occulus_hand_joint_parent_name = {'palm': 'wrist', 'wrist': None,
                                   'index_metacarpal': 'wrist', 'index_proximal': 'index_metacarpal', 'index_intermediate': 'index_proximal', 'index_distal': 'index_intermediate', 'index_tip': 'index_distal',
                                   'middle_metacarpal': 'wrist', 'middle_proximal': 'middle_metacarpal', 'middle_intermediate': 'middle_proximal', 'middle_distal': 'middle_intermediate', 'middle_tip': 'middle_distal',
                                   'ring_proximal': 'middle_metacarpal', 'ring_intermediate': 'ring_proximal', 'ring_distal': 'ring_intermediate', 'ring_tip': 'ring_distal',
-                                  'pinky_metacarpel': 'wrist', 'pinky_proximal': 'pinky_metacarpel', 'pinky_intermediate': 'pinky_proximal', 'pinky_distal': 'pinky_intermediate', 'pinky_tip': 'pinky_distal'}
+                                  'pinky_metacarpal': 'wrist', 'pinky_proximal': 'pinky_metacarpal', 'pinky_intermediate': 'pinky_proximal', 'pinky_distal': 'pinky_intermediate', 'pinky_tip': 'pinky_distal'}
 
 occulus_body_joint_name = ["Root", "Hips", "Spine Lower", "Spine Middle", "Spine Upper", "Chest", "Neck", "Head",                                                                   # 0:8
                            "Left Shoulder", "Left Scapula", "Left Arm Upper", "Left Arm Lower", "Left Hand Wrist Twist",                                                            # 8:13
@@ -91,15 +91,13 @@ class OculusReceiver:
             if self.is_body:
                 return self.body_pose.copy() if self.body_pose is not None else None
             else:
-                if 'Left' not in self.hand_pose or 'Right' not in self.hand_pose or 'Head' not in self.hand_pose or 'Root' not in self.hand_pose:
-                    return None
-                else:
-                    return {
-                        "Left": self.hand_pose["Left"].copy(),
-                        "Right": self.hand_pose["Right"].copy(),
-                        "Head": self.hand_pose["Head"].copy(),
-                        "Root": self.hand_pose["Root"].copy()
-                    }
+                ret = {}
+                for id in ['Left','Right','Head','Root']:
+                    if id not in self.hand_pose:
+                        ret[id] = None
+                    else:
+                        ret[id] = self.hand_pose[id].copy()
+                return ret
     
     def parse_posedata(self, pose_data):
         vector_list = pose_data.split("/")

@@ -1,0 +1,857 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- This URDF was automatically created by SolidWorks to URDF Exporter! Originally created by Stephen Brawner (brawner@gmail.com) 
+     Commit Version: 1.6.0-4-g7f85cfe  Build Version: 1.6.7995.38578
+     For more information, please see http://wiki.ros.org/sw_urdf_exporter -->
+<robot
+  name="urdf_right_12_20" xmlns:xacro="http://ros.org/wiki/xacro">
+  
+    <link name="world"/>
+
+    <joint name="R_hand_base_joint" type="fixed">
+      <origin
+      xyz="0.5 0.5 0.001"
+      rpy="3.14  0 1.57" />
+      <parent link="world"/>
+      <child link="base_link"/>
+    </joint>
+  
+  <link
+    name="base_link">
+    <inertial>
+      <origin
+        xyz="-4.91696692515552E-05 -0.00297934158474353 -0.0724838074966582"
+        rpy="0 0 0" />
+      <mass
+        value="0.260034351097693" />
+      <inertia
+        ixx="0.000240584294557413"
+        ixy="1.12900341553271E-06"
+        ixz="5.34716263010627E-07"
+        iyy="0.000284423438713157"
+        iyz="-1.41174524262487E-05"
+        izz="0.000155854672271766" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/base_link.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/base_link.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <link
+    name="right_thumb_1">
+    <inertial>
+      <origin
+        xyz="-0.00178423179132732 0.000649410769092404 0.00488589310434417"
+        rpy="0 0 0" />
+      <mass
+        value="0.00115518743162309" />
+      <inertia
+        ixx="5.98911473694571E-08"
+        ixy="-8.04324266712912E-09"
+        ixz="-3.29346964287939E-09"
+        iyy="4.07201940087006E-08"
+        iyz="1.1987242259973E-09"
+        izz="6.18161684388651E-08" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_thumb_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_thumb_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_thumb_1_joint"
+    type="revolute">
+    <origin
+      xyz="0.0269 0.02101 -0.069"
+      rpy="-3.1416 0 -3.1416" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_thumb_1" />
+    <axis
+      xyz="0 0 -1" />
+    <limit
+      lower="0"
+      upper="1.15"
+      effort="10"
+      velocity="1" />
+  </joint>
+  <link
+    name="right_thumb_2">
+    <inertial>
+      <origin
+        xyz="0.0141071308121962 0.0132720367246953 -0.00905029680056009"
+        rpy="0 0 0" />
+      <mass
+        value="0.016" />
+      <inertia
+        ixx="1.06573287501608E-06"
+        ixy="-7.61985755293293E-08"
+        ixz="-2.57609628655293E-11"
+        iyy="1.06536320559038E-06"
+        iyz="5.09603163270097E-12"
+        izz="1.39688473195303E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_thumb_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_thumb_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_thumb_2_joint"
+    type="revolute">
+    <origin
+      xyz="-0.0063016 0.011924 0.003"
+      rpy="1.5708 0 2.7925" />
+    <parent
+      link="right_thumb_1" />
+    <child
+      link="right_thumb_2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="0.55"
+      effort="10"
+      velocity="1" />
+  </joint>
+  <link
+    name="right_thumb_3">
+    <inertial>
+      <origin
+        xyz="0.00937843602210774 0.00404407714692963 -0.00753947150343212"
+        rpy="0 0 0" />
+      <mass
+        value="0.012" />
+      <inertia
+        ixx="4.67837152048068E-07"
+        ixy="-4.50034504480504E-08"
+        ixz="-7.50604972036399E-11"
+        iyy="3.98821847444202E-07"
+        iyz="-2.80308780973008E-10"
+        izz="4.24792779381109E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_thumb_3.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_thumb_3.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_thumb_3_joint"
+    type="revolute">
+    <origin
+      xyz="0.034968 0.021325 -0.0015"
+      rpy="0 0 0" />
+    <parent
+      link="right_thumb_2" />
+    <child
+      link="right_thumb_3" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="3.14"
+      effort="10"
+      velocity="1" />
+    <mimic
+        joint="right_thumb_2_joint"
+        multiplier="0.60"
+        offset="0" />
+  </joint>
+  <link
+    name="right_thumb_4">
+    <inertial>
+      <origin
+        xyz="0.0109973997213043 0.00131062737520288 -0.0073435196000655"
+        rpy="0 0 0" />
+      <mass
+        value="0.01" />
+      <inertia
+        ixx="6.43617695804108E-07"
+        ixy="-2.57371067432159E-07"
+        ixz="8.83834214745077E-10"
+        iyy="7.63665185138253E-07"
+        iyz="7.47494238463672E-10"
+        izz="9.2568863295396E-07" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_thumb_4.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_thumb_4.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_thumb_4_joint"
+    type="revolute">
+    <origin
+      xyz="0.018887 0.011501 -0.0002"
+      rpy="0 0 0" />
+    <parent
+      link="right_thumb_3" />
+    <child
+      link="right_thumb_4" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="3.14"
+      effort="10"
+      velocity="1" />
+    <mimic
+        joint="right_thumb_2_joint"
+        multiplier="0.8"
+        offset="0" />
+  </joint>
+  <link
+    name="right_index_1">
+    <inertial>
+      <origin
+        xyz="-0.00183546255523356 0.0123552521861834 -0.00664922294778368"
+        rpy="0 0 0" />
+      <mass
+        value="0.00719999389753264" />
+      <inertia
+        ixx="1.28371991025318E-06"
+        ixy="4.21564829206078E-08"
+        ixz="-4.10859703056649E-12"
+        iyy="5.79478432222904E-07"
+        iyz="6.39690407239206E-11"
+        izz="1.32925246769088E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_index_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_index_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_index_1_joint"
+    type="revolute">
+    <origin
+      xyz="0.038679 0.00056467 -0.1564"
+      rpy="-1.5359 0 -1.5708" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_index_1" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="1.6"
+      effort="10"
+      velocity="1" />
+  </joint>
+  <link
+    name="right_index_2">
+    <inertial>
+      <origin
+        xyz="0.000405081354201142 0.0257028143581744 -0.00609275623125877"
+        rpy="0 0 0" />
+      <mass
+        value="0.0096859422185797" />
+      <inertia
+        ixx="2.25513837942244E-06"
+        ixy="4.11239564383381E-07"
+        ixz="-3.94499739658711E-10"
+        iyy="3.91290903748666E-07"
+        iyz="2.79706871963245E-09"
+        izz="2.30200483771215E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_index_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_index_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_index_2_joint"
+    type="revolute">
+    <origin
+      xyz="-0.0016312 0.032734 -0.00055"
+      rpy="0 0 0" />
+    <parent
+      link="right_index_1" />
+    <child
+      link="right_index_2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="3.14"
+      effort="10"
+      velocity="1" />
+    <mimic
+        joint="right_index_1_joint"
+        multiplier="1.05"
+        offset="0" />
+  </joint>
+  <link
+    name="right_middle_1">
+    <inertial>
+      <origin
+        xyz="-0.00229221489529491 0.0122787164691098 -0.00664923691414206"
+        rpy="0 0 0" />
+      <mass
+        value="0.00719999454699651" />
+      <inertia
+        ixx="1.27961146095209E-06"
+        ixy="6.81307502326408E-08"
+        ixz="-6.13869092479439E-12"
+        iyy="5.83570383259162E-07"
+        iyz="6.33401074034573E-11"
+        izz="1.32923656099557E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_middle_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_middle_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_middle_1_joint"
+    type="revolute">
+    <origin
+      xyz="0.0171 0.00056467 -0.157"
+      rpy="-1.5708 0 -1.5708" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_middle_1" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="1.6"
+      effort="10"
+      velocity="1" />
+  </joint>
+  <link
+    name="right_middle_2">
+    <inertial>
+      <origin
+        xyz="7.55635061812504E-05 0.0274472409700489 -0.00610051225570537"
+        rpy="0 0 0" />
+      <mass
+        value="0.0104603374357648" />
+      <inertia
+        ixx="2.75802690517233E-06"
+        ixy="4.66354191789105E-07"
+        ixz="-3.73412436067728E-12"
+        iyy="4.22418749660047E-07"
+        iyz="7.48571284682703E-11"
+        izz="2.80694637912416E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_middle_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_middle_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_middle_2_joint"
+    type="revolute">
+    <origin
+      xyz="-0.0028436 0.032651 -0.00055"
+      rpy="0 0 0" />
+    <parent
+      link="right_middle_1" />
+    <child
+      link="right_middle_2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="3.14"
+      effort="10"
+      velocity="1" />
+    <mimic
+        joint="right_middle_1_joint"
+        multiplier="1.05"
+        offset="0" />
+  </joint>
+  <link
+    name="right_ring_1">
+    <inertial>
+      <origin
+        xyz="-0.00240481178777661 0.0122571709475593 -0.00664923625225445"
+        rpy="0 0 0" />
+      <mass
+        value="0.00719998997814135" />
+      <inertia
+        ixx="1.27830103769765E-06"
+        ixy="7.45073064952646E-08"
+        ixz="-6.73880804360017E-12"
+        iyy="5.84879553082369E-07"
+        iyz="6.3350585052199E-11"
+        izz="1.32923557625193E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_ring_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_ring_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_ring_1_joint"
+    type="revolute">
+    <origin
+      xyz="-0.0045302 0.00056467 -0.15683"
+      rpy="-1.6232 0 -1.5708" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_ring_1" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="1.6"
+      effort="10"
+      velocity="1" />
+  </joint>
+  <link
+    name="right_ring_2">
+    <inertial>
+      <origin
+        xyz="0.000666830906754845 0.0256973412492289 -0.0060927714564012"
+        rpy="0 0 0" />
+      <mass
+        value="0.0096859390369724" />
+      <inertia
+        ixx="2.26332196405867E-06"
+        ixy="3.92172318180451E-07"
+        ixz="-3.65715440420713E-10"
+        iyy="3.83108005467821E-07"
+        iyz="2.80158649618184E-09"
+        izz="2.30200501593561E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_ring_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_ring_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_ring_2_joint"
+    type="revolute">
+    <origin
+      xyz="-0.0031431 0.032624 -0.00055"
+      rpy="0 0 0" />
+    <parent
+      link="right_ring_1" />
+    <child
+      link="right_ring_2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="3.14"
+      effort="10"
+      velocity="1" />
+    <mimic
+        joint="right_ring_1_joint"
+        multiplier="1.05"
+        offset="0" />
+  </joint>
+  <link
+    name="right_little_1">
+    <inertial>
+      <origin
+        xyz="-0.00316844591541324 0.0120823779446085 -0.00664923024026526"
+        rpy="0 0 0" />
+      <mass
+        value="0.00719994987013217" />
+      <inertia
+        ixx="1.26624415714453E-06"
+        ixy="1.17303714016617E-07"
+        ixz="-1.15327375313821E-11"
+        iyy="5.96925804604496E-07"
+        iyz="6.36110319315301E-11"
+        izz="1.32922857962206E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_little_1.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_little_1.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_little_1_joint"
+    type="revolute">
+    <origin
+      xyz="-0.025916 0.00056467 -0.15365"
+      rpy="-1.6755 0 -1.5708" />
+    <parent
+      link="base_link" />
+    <child
+      link="right_little_1" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="1.6"
+      effort="10"
+      velocity="1" />
+  </joint>
+  <link
+    name="right_little_2">
+    <inertial>
+      <origin
+        xyz="0.0204417303421136 -0.00469494170410353 -0.00609999668427265"
+        rpy="0 0 0" />
+      <mass
+        value="0.0075928240732547" />
+      <inertia
+        ixx="2.31546812157118E-07"
+        ixy="-7.27021381773956E-08"
+        ixz="2.3664966486269E-11"
+        iyy="1.27663957628266E-06"
+        iyz="-7.58283070676144E-12"
+        izz="1.23909562166535E-06" />
+    </inertial>
+    <visual>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_little_2.STL" />
+      </geometry>
+      <material
+        name="">
+        <color
+          rgba="1 1 1 1" />
+      </material>
+    </visual>
+    <collision>
+      <origin
+        xyz="0 0 0"
+        rpy="0 0 0" />
+      <geometry>
+        <mesh
+          filename="package://urdf_right_12_20/meshes/right_little_2.STL" />
+      </geometry>
+    </collision>
+  </link>
+  <joint
+    name="right_little_2_joint"
+    type="revolute">
+    <origin
+      xyz="-0.005182 0.032363 -0.00055"
+      rpy="0 0 1.5708" />
+    <parent
+      link="right_little_1" />
+    <child
+      link="right_little_2" />
+    <axis
+      xyz="0 0 1" />
+    <limit
+      lower="0"
+      upper="3.14"
+      effort="10"
+      velocity="1" />
+    <mimic
+        joint="right_little_1_joint"
+        multiplier="1.18"
+        offset="0" />  
+  </joint>
+  
+ <xacro:macro name="controller_plugin_gazebo" params="robot_namespace:=''">
+ <gazebo>
+   <plugin name="gazebo_ros_control" filename="libgazebo_ros_control.so">
+    <robotNamespace>/</robotNamespace>
+    <legacyModeNS>true</legacyModeNS>
+    <controlPeriod>0.001</controlPeriod>
+    <robotSimType>gazebo_ros_control/DefaultRobotHWSim</robotSimType>
+   </plugin>
+  </gazebo>
+  </xacro:macro>
+  
+  <xacro:controller_plugin_gazebo />
+  
+  
+  <!--Transmission for Ros Control-->
+  <xacro:macro name="transmission_block" params="joint_name">
+  <transmission name="tran1">
+   <type>transmission_interface/SimpleTransmission</type>
+   <joint name="${joint_name}">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+   </joint>
+   <actuator name="motor1">
+    <hardwareInterface>hardware_interface/PositionJointInterface</hardwareInterface>
+    <mechanicalReduction>1</mechanicalReduction>
+   </actuator>
+  </transmission>
+  </xacro:macro>
+  
+  <xacro:transmission_block joint_name="right_thumb_1_joint"/>
+  <xacro:transmission_block joint_name="right_thumb_2_joint"/>
+  <xacro:transmission_block joint_name="right_index_1_joint"/>
+  <xacro:transmission_block joint_name="right_middle_1_joint"/>
+  <xacro:transmission_block joint_name="right_ring_1_joint"/>
+  <xacro:transmission_block joint_name="right_little_1_joint"/>
+  
+  <xacro:macro name="mimic_joint_plugin_gazebo" params="name_prefix parent_joint mimic_joint has_pid:=false multiplier:=1.0 offset:=0 sensitiveness:=0.0 max_effort:=1.0 robot_namespace:=''">
+    <gazebo>
+      <plugin name="${name_prefix}_mimic_joint_plugin" filename="libroboticsgroup_gazebo_mimic_joint_plugin.so">
+        <joint>${parent_joint}</joint>
+        <mimicJoint>${mimic_joint}</mimicJoint>
+        <xacro:if value="${has_pid}">  
+          <hasPID />
+        </xacro:if>
+        <multiplier>${multiplier}</multiplier>
+        <offset>${offset}</offset>
+        <sensitiveness>${sensitiveness}</sensitiveness>
+        <maxEffort>${max_effort}</maxEffort> 
+        <xacro:unless value="${robot_namespace == ''}">
+          <robotNamespace>${robot_namespace}</robotNamespace>
+        </xacro:unless>
+      </plugin>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:mimic_joint_plugin_gazebo name_prefix="right_thumb_3_joint"
+    parent_joint="right_thumb_2_joint" mimic_joint="right_thumb_3_joint"
+    has_pid="true" multiplier="1.0" max_effort="10.0" />
+    
+  <xacro:mimic_joint_plugin_gazebo name_prefix="right_thumb_4_joint"
+    parent_joint="right_thumb_2_joint" mimic_joint="right_thumb_4_joint"
+    has_pid="true" multiplier="1.2" max_effort="10.0" />
+    
+  <xacro:mimic_joint_plugin_gazebo name_prefix="right_index_2_joint"
+    parent_joint="right_index_1_joint" mimic_joint="right_index_2_joint"
+    has_pid="true" multiplier="1.0" max_effort="10.0" />
+    
+  <xacro:mimic_joint_plugin_gazebo name_prefix="right_middle_2_joint"
+    parent_joint="right_middle_1_joint" mimic_joint="right_middle_2_joint"
+    has_pid="true" multiplier="1.0" max_effort="10.0" />
+    
+  <xacro:mimic_joint_plugin_gazebo name_prefix="right_ring_2_joint"
+    parent_joint="right_ring_1_joint" mimic_joint="right_ring_2_joint"
+    has_pid="true" multiplier="1.0" max_effort="10.0" />
+    
+  <xacro:mimic_joint_plugin_gazebo name_prefix="right_little_2_joint"
+    parent_joint="right_little_1_joint" mimic_joint="right_little_2_joint"
+    has_pid="true" multiplier="1.0" max_effort="10.0" />  
+  
+</robot>

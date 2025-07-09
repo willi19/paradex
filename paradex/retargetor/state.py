@@ -35,7 +35,7 @@ class HandStateExtractor:
                         ret[finger_id] = False
                 else:
                     parent_joint_name = finger_name + "_" + self.parent[joint_name]
-                    rel_pose = np.linalg.inv(pose_data[parent_joint_name]) @ pose_data[joint_name]
+                    rel_pose = np.linalg.inv(pose_data[parent_joint_name]) @ pose_data[finger_joint_name]
                     if rel_pose[2,1] < -0.8:
                         ret[finger_id] = False
         return ret

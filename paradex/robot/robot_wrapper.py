@@ -40,10 +40,11 @@ class RobotWrapper:
 
     @property
     def link_names(self) -> List[str]:
-        link_names = []
-        for i, frame in enumerate(self.model.frames):
-            link_names.append(frame.name)
-        return link_names
+        return [
+            frame.name
+            for frame in self.model.frames
+            if frame.type == pin.FrameType.BODY
+        ]
 
     @property
     def joint_limits(self):
@@ -134,7 +135,6 @@ class RobotWrapper:
         for i in range(max_iter):
             self.compute_forward_kinematics(q)
             current_se3 = pin.updateFramePlacement(self.model, self.data, link_id)
-
             # 6D error: log(target⁻¹ * current)
             error = pin.log(target_se3.inverse() * current_se3).vector
             if np.linalg.norm(error) < tol:
@@ -148,5 +148,43 @@ class RobotWrapper:
             q = self.integrate(q, delta_q, alpha)
 
             q = np.clip(q, q_min, q_max)
-
         return q, False
+
+    def get_end_links(self) -> List[str]:
+        """
+        Returns names of links (frames of type BODY) that are not referenced
+        as parent by any joint. These are the "end links".
+        """
+        # 모든 link frame들만 추출 (BODY 타입)
+        link_name_to_id = {
+            frame.name: frame.parent
+            for frame in self.model.frames
+            if frame.type == pin.FrameType.BODY
+        }
+
+        all_link_names = set(link_name_to_id.keys())
+        parent_joint_ids = set(self.model.parents[1:])  # joint 0 (universe)는 제외
+
+        # parent로 등장한 joint들이 연결된 링크 이름들 추출
+        parent_link_names = {
+            name for name, jid in link_name_to_id.items() if jid in parent_joint_ids
+        }
+
+        # end links: parent로 단 한 번도 등장하지 않은 링크
+        end_link_names = list(all_link_names - parent_link_names)
+        return end_link_names
+
+    
+    def get_root_link(self) -> str:
+        """Returns the root link name (never appears as a child link)."""
+        all_links = set(self.link_names)
+        print(all_links)
+        child_links = {
+            frame.name
+            for frame in self.model.frames
+            if frame.parent != 0 and frame.type == pin.FrameType.BODY
+        }
+        root_links = list(all_links - child_links)
+        if len(root_links) != 1:
+            raise RuntimeError(f"Ambiguous or missing root link(s): {root_links}")
+        return root_links[0]

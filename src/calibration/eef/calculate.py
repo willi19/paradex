@@ -1,6 +1,6 @@
 import numpy as np
 import os
-from paradex.utils.file_io import shared_dir, find_latest_directory, rsc_path, load_camparam, load_c2r
+from paradex.utils.file_io import shared_dir, find_latest_directory, rsc_path, load_c2r, get_robot_urdf_path
 import argparse
 import numpy as np
 from scipy.linalg import sqrtm
@@ -59,7 +59,7 @@ if __name__ == "__main__":
     B_list = []
 
     robot = RobotWrapper(
-        os.path.join(rsc_path, "xarm6", "xarm6_allegro_wrist_mounted_rotate.urdf")
+        get_robot_urdf_path("xarm", "allegro")
     )
     
     finger_id_list = [11,13,14]

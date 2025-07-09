@@ -1,0 +1,116 @@
+# Note: You MUST load these PID parameters for all joints that are using the
+# PositionJointInterface, otherwise the arm + gripper will act like a giant
+# parachute, counteracting gravity, and causing some of the wheels to lose
+# contact with the ground, so the robot won't be able to properly navigate. See
+# https://github.com/ros-simulation/gazebo_ros_pkgs/issues/612
+gazebo_ros_control:
+  pid_gains:
+    # these gains are used by the gazebo_ros_control plugin    
+    right_thumb_1_joint:
+      p: 0.25
+      i: 0.005
+      d: 0.00165
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+      
+
+    right_thumb_2_joint:
+      p: 0.5
+      i: 0.013
+      d: 0.001
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+      
+
+
+    right_thumb_3_joint:
+      p: 0.3
+      i: 0.0123
+      d: 0.0005
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+
+
+    right_thumb_4_joint:
+      p: 0.3
+      i: 0.0123
+      d: 0.0005
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+      
+    right_index_1_joint:
+      p: 1
+      i: 0.05
+      d: 0.0001
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+    # the following gains are used by the gazebo_mimic_joint plugin
+    right_index_2_joint:
+      p: 1
+      i: 0.05
+      d: 0.0001
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+      
+    right_middle_1_joint:
+      p: 1
+      i: 0.05
+      d: 0.0001
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+      
+
+    right_middle_2_joint:
+      p: 1
+      i: 0.05
+      d: 0.0001
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+
+
+
+    right_ring_1_joint:
+      p: 1
+      i: 0.05
+      d: 0.0001
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+      
+
+    right_ring_2_joint:
+      p: 1
+      i: 0.05
+      d: 0.0001
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+
+
+    right_little_1_joint:
+      p: 1
+      i: 0.05
+      d: 0.0001
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+
+
+    right_little_2_joint:
+      p: 0.1
+      i: 0.05
+      d: 0.0001
+      i_clamp: 0.2
+      antiwindup: false
+      publish_state: true
+
+
+

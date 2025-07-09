@@ -35,7 +35,12 @@ try:
     while not stop_event.is_set():
         if save_event.is_set():
             _, pos_aa = arm.get_position_aa(is_radian=True)
-            np.save(os.path.join(args.save_path, f'{idx}.npy'), pos_aa)
+            _, qpos = arm.get_joint_states()
+            qpos = qpos[0][:6]
+            
+            np.save(os.path.join(args.save_path, f'{idx}_qpos.npy'), qpos)
+            np.save(os.path.join(args.save_path, f'{idx}_aa.npy'), pos_aa)
+            
             print(f"Saved pose {idx}: {pos_aa}")
             idx += 1
             save_event.clear()

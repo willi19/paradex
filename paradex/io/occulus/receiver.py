@@ -96,7 +96,11 @@ class OculusReceiver:
                     if id not in self.hand_pose:
                         ret[id] = None
                     else:
-                        ret[id] = self.hand_pose[id].copy()
+                        if id in ['Left', 'Right']:
+                            ret[id] = {joint_name: self.hand_pose[id][joint_id].copy()
+                                        for joint_id, joint_name in enumerate(occulus_hand_joint_name)}
+                        else:
+                            ret[id] = self.hand_pose[id].copy()
                 return ret
     
     def parse_posedata(self, pose_data):

@@ -5,7 +5,7 @@ import argparse
 import matplotlib.pyplot as plt
 import shutil
 from paradex.io.contact.process import process_contact
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot import RobotWrapper
 from paradex.utils.file_io import rsc_path, capture_path, shared_path
 
 home_path = os.path.expanduser("~")

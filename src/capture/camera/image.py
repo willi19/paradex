@@ -26,7 +26,7 @@ while not stop_event.is_set():
     if not save_event.is_set():
         time.sleep(0.01)
         continue
-    
+    last_idx += 1
     save_path = f"{save_dir}/{last_idx}/image"
     camera.set_save_dir(save_path)
 

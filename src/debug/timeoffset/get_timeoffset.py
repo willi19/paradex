@@ -7,7 +7,7 @@ import cv2
 from paradex.utils.file_io import shared_path, load_camparam, load_c2r, download_path, rsc_path
 from paradex.utils.marker import detect_aruco, triangulate, ransac_triangulation
 import tqdm
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot import RobotWrapper
 
 def fill_framedrop(cam_timestamp):
     frameID = cam_timestamp["frameID"]

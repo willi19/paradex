@@ -1,5 +1,5 @@
 import os
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot import RobotWrapper
 
 import numpy as np
 from paradex.geometry.triangulate import ransac_triangulation

@@ -5,7 +5,7 @@ import os
 from paradex.utils.file_io import get_robot_urdf_path, rsc_path
 from paradex.geometry.coordinate import DEVICE2WRIST
 from scipy.spatial.transform import Rotation as R
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot import RobotWrapper
 
 # currently not in use
 

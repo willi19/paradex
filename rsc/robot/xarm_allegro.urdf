@@ -218,29 +218,15 @@
     <limit effort="20.0" lower="-6.28318530718" upper="6.28318530718" velocity="3.14"/>
     <dynamics damping="0.0001" friction="0.01"/>
   </joint>
-  <!--
-      Material colors
-    -->
-  <!-- Basic colors -->
-  <material name="Black">
-    <color rgba="0.0 0.0 0.0 1.0"/>
-  </material>
-  <material name="Red">
-    <color rgba="0.8 0.0 0.0 1.0"/>
-  </material>
-  <material name="White">
-    <color rgba="1.0 1.0 1.0 1.0"/>
-  </material>
-  <material name="Silver">
-    <color rgba="0.753 0.753 0.753 1.0"/>
-  </material>
-  <!--
-    Base
-  -->
-  <!-- Base link -->
+
+  <joint name="arm_to_hand" type="fixed">
+    <parent link="link6"/>
+    <child link="wrist"/>
+    <origin rpy="0.00000 0.00000 -1.57080" xyz="0.00000 0.00000 0.04500"/>
+  </joint>
   <link name="wrist">
   </link>
-  <joint name="palm_link" type="fixed">
+  <joint name="palm_joint" type="fixed">
     <parent link="wrist"/>
     <child link="palm_link"/>
     <origin rpy="0 0 0" xyz="0.0095 0 0.095"/>
@@ -812,10 +798,5 @@
   </joint>
   <!-- THUMB -->
   <!-- [LINK 12] -->
-  <joint name="arm_to_hand" type="fixed">
-    <parent link="link6"/>
-    <child link="wrist"/>
-    <origin rpy="0.00000 0.00000 -1.57080" xyz="0.00000 0.00000 0.04500"/>
-  </joint>
 </robot>
 

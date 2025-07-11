@@ -33,6 +33,7 @@ if __name__ == "__main__":
         hand_data = receiver.get_data()
         if hand_data['Right'] is None or hand_data['Left'] is None:
             continue
+        print(hand_data)
         if init_wrist_mid_pose is None:
             init_wrist_mid_pose = (hand_data['Right']['wrist'][:3, 3] + hand_data['Left']['wrist'][:3, 3]) / 2
 

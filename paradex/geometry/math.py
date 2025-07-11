@@ -11,6 +11,7 @@ def rigid_transform_3D(A, B):
     
     Returns:
         numpy.ndarray: 4x4 transformation matrix.
+        T @ A = B
     """
     assert A.shape == B.shape, "Input matrices must have the same shape."
 

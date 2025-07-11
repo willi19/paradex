@@ -1,5 +1,5 @@
 import os
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot import RobotWrapper
 
 import numpy as np
 from paradex.geometry.triangulate import ransac_triangulation
@@ -26,7 +26,7 @@ name = args.name
 he_calib_path = os.path.join(handeye_calib_path, name)
 
 robot = RobotWrapper(
-    os.path.join(rsc_path, "xarm6", "xarm6.urdf")
+    os.path.join(rsc_path, "robot", "xarm.urdf")
 )
 
 link_index = robot.get_link_index("link6")

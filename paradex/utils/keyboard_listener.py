@@ -8,4 +8,5 @@ def run(event_dict):
 
 def listen_keyboard(event_dict):   
     input_thread = threading.Thread(target=run, daemon=True, args=(event_dict,))
+    input_thread.daemon = True
     input_thread.start()

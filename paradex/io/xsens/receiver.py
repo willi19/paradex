@@ -119,3 +119,4 @@ class XSensReceiver:
     def quit(self):
         self.stop_event.set()
         self.recv_thread.join()
+        print("Xsens terminate")

@@ -3,9 +3,11 @@ from pymodbus.client import ModbusTcpClient  # pip3 install pymodbus==2.5.3
 import time
 
 import numpy as np
-from multiprocessing import Process, shared_memory, Event, Lock
+from threading import Thread, Event, Lock
 
 import os
+import json
+from paradex.utils.file_io import config_dir
 
 action_dof = 6
 regdict = {
@@ -28,44 +30,45 @@ regdict = {
 
 class InspireController:
     def __init__(self, save_path=None):
-
-        self.home_pose = None
-        self.ip = '192.168.11.210'
-        self.port = 6000
+        network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
+        self.ip = network_config["inspire"]["ip"]
+        self.port = network_config["inspire"]["port"]
+        
+        self.home_pose = np.zeros(action_dof)+500
         
         self.capture_path = save_path
         if save_path is not None:
             os.makedirs(self.capture_path, exist_ok=True)
-
-        self.hand_state_hist = np.zeros((60000, action_dof), dtype=np.float64)
-        self.hand_timestamp = np.zeros((60000, 1), dtype=np.float64)        
-        self.hand_action_hist = np.zeros((60000, action_dof), dtype=np.float64)
-
+        
+        self.cnt = 0
+        
+        T = 60000
+        self.data = {
+            "time":np.zeros((T,1), dtype=np.float64),
+            "position":np.zeros((T, action_dof), dtype=np.float64),
+            "action":np.zeros((T, action_dof), dtype=np.float64),
+            "force":np.zeros((T, action_dof), dtype=np.float64)
+        }
+        
         self.exit = Event()
-
-        self.shm = {}
-        self.create_shared_memory("hand_target_action", action_dof * np.dtype(np.float32).itemsize)
-        self.hand_target_action_array = np.ndarray((action_dof,), dtype=np.float32, buffer=self.shm["hand_target_action"].buf)
-
-        self.hand_process = Process(target=self.move_hand)
-        self.hand_process.start()
+        self.lock = Lock()
+        self.target_action = np.zeros(action_dof)+500
+        
+        self.thread = Thread(target=self.move_hand)
+        self.thread.daemon = True
+        self.thread.start()
 
     def set_homepose(self, home_pose):
         assert home_pose.shape == (action_dof,)
         self.home_pose = home_pose.copy()
-    
-    def create_shared_memory(self, name, size):
-        try:
-            existing_shm = shared_memory.SharedMemory(name=name)
-            existing_shm.close()
-            existing_shm.unlink()
-        except FileNotFoundError:
-            pass
-        self.shm[name] = shared_memory.SharedMemory(create=True, name=name, size=size)
 
-    def home_robot(self):
-        self.hand_target_action_array[:] = self.home_pose.copy()
-
+    def home_robot(self, home_pose=None):
+        if home_pose is None:
+            self.target_action = self.home_pose.copy()
+        else:
+            self.home_pose = home_pose.copy()
+            self.target_action = home_pose.copy()
+        
     def open_modbus(self):
         client = ModbusTcpClient(self.ip, self.port)
         client.connect()
@@ -117,46 +120,58 @@ class InspireController:
             print("Incorrect function call. Usage: reg_name should be one of 'angleSet', 'forceSet', 'speedSet', 'angleAct', 'forceAct', 'errCode', 'statusCode', or 'temp'.")
 
     def move_hand(self):
-        fps = 100
-        self.hand_cnt = 0
+        self.fps = 100
         self.open_modbus()
         self.hand_lock = Lock()
 
         self.write6('speedSet', [1000, 1000, 1000, 1000, 1000, 1000])
-
-
+        self.write6('forceSet', [500, 500, 500, 500, 500, 500])
+        self.write6('angleSet', [1000, 1000, 1000, 1000, 1000, 1000])
+        time.sleep(1)
+        
+        # self.write_register(1009, 1)
+        # while True:
+        #     v = self.read_register(1009, 1)
+        #     print(v)
+        #     if v[0] == 255:
+        #         break
+        #     time.sleep(1)
+                
         while not self.exit.is_set():
             start_time = time.time()
-            action = self.hand_target_action_array.copy().astype(np.int32)
+            with self.lock:
+                action = self.target_action.copy().astype(np.int32)
+            
+            self.write6('angleSet', action)
 
             current_hand_angles = np.asarray(self.read6('angleAct'))
-            self.write6('angleSet', action)
-                
-            self.hand_state_hist[self.hand_cnt] = current_hand_angles.copy()
-            self.hand_timestamp[self.hand_cnt] = start_time
-            self.hand_action_hist[self.hand_cnt] = self.hand_target_action_array.copy()
-            self.hand_cnt += 1
+            current_force = np.asarray(self.read6('forceAct'))
+            # current_action = np.asarray(self.read6('angleSet'))
+            
+            self.data["position"][self.cnt] = current_hand_angles.copy()
+            self.data["time"][self.cnt] = start_time
+            self.data["action"][self.cnt] = action.copy()
+            self.data["force"][self.cnt] = current_force.copy()
+            
+            self.cnt += 1
                 
             
             end_time = time.time()
-            time.sleep(max(0, 1 / fps - (end_time - start_time)))
-        
-        if self.capture_path is not None:    
-            os.makedirs(os.path.join(self.capture_path, "hand"), exist_ok=True)
-            np.save(os.path.join(self.capture_path, "hand", f"state.npy"), self.hand_state_hist[:self.hand_cnt])
-            np.save(os.path.join(self.capture_path, "hand", f"timestamp.npy"), self.hand_timestamp[:self.hand_cnt])
-            np.save(os.path.join(self.capture_path, "hand", f"action.npy"), self.hand_action_hist[:self.hand_cnt])
-        
+            time.sleep(max(0, 1 / self.fps - (end_time - start_time)))
 
     def set_target_action(self, action):
-        self.hand_target_action_array[:] = action.copy()
-        
+        with self.lock:
+            self.target_action = action.copy()
+    
+    def save(self):
+        with self.lock:
+            if self.capture_path is not None:       
+                os.makedirs(os.path.join(self.capture_path, "inspire"), exist_ok=True)
+                for name, value in self.data.items():                     
+                    np.save(os.path.join(self.capture_path, "inspire", f"{name}.npy"), value[:self.cnt])
+                                    
     def quit(self):
         self.exit.set()
-        self.hand_process.join()
-
-        for key in self.shm.keys():
-            self.shm[key].close()
-            self.shm[key].unlink()
-
-        print("Exiting...")
+        self.save()
+        self.thread.join()
+        print("Inspire Exiting...")

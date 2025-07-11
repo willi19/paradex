@@ -60,24 +60,22 @@ def inspire(hand_pose_frame):
         metacarpal = finger_name + "_metacarpal"
         distal = finger_name + "_distal"
         
-        tip_position = (np.linalg.inv(hand_pose_frame["wrist"]) @ hand_pose_frame[distal])[:3, 3]
-        finger_base_position = (np.linalg.inv(hand_pose_frame["wrist"]) @ hand_pose_frame[metacarpal])[:3, 3]
-
-        tip_position = tip_position - finger_base_position
-        tip_direction  = tip_position / np.linalg.norm(tip_position)
-        tip_direction[1] *= -1
+        tip_pos = (np.linalg.inv(hand_pose_frame["wrist"]) @ hand_pose_frame[distal])
         
         if finger_name != "thumb":
-            if tip_direction[1] > 0:
-                y_dir = min(1, ((max(-1.0, tip_direction[1]-0.03)+1) * 1.57) - 1)
-                inspire_angles[4-i] = np.arccos(y_dir) / np.pi * 1000
-            else:
-                y_dir = max(-1, ((max(-1.0, tip_direction[1]-0.03)+1) * 1.57) - 1)
-                inspire_angles[4-i] = np.arccos(y_dir) / np.pi * 1000
-            if finger_name == "index":
-                print(tip_direction, y_dir, inspire_angles[4-i])
+            angle = np.arctan2(tip_pos[2, 1], tip_pos[1, 1])
+            if angle < -np.pi / 2:
+                angle = 2 * np.pi + angle
+            
+            inspire_angles[4-i] = (1-max(0, min(1, angle / np.pi))) * 1000
 
         else:
+            tip_position = tip_pos[:3, 3]
+            finger_base_position = (np.linalg.inv(hand_pose_frame["wrist"]) @ hand_pose_frame[metacarpal])[:3, 3]
+            tip_direction = tip_position - finger_base_position
+            tip_direction  = tip_direction / np.linalg.norm(tip_direction)
+            tip_direction[1] *= -1
+            tip_direction[2] *= -1
             if tip_direction[0] > 0:
                 inspire_angles[5] = 1000 - np.arctan(-tip_direction[2] / abs(tip_direction[0])) / np.pi * 2000
                 inspire_angles[4] = np.arccos(-tip_direction[1]) * 2000 - 1000 # no divide by pi for better range

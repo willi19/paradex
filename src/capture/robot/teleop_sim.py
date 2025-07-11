@@ -8,7 +8,7 @@ import argparse
 import numpy as np
 import time
 import os
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot import RobotWrapper
 from paradex.utils.file_io import rsc_path
 from paradex.geometry.conversion import aa_to_rotmat
 from scipy.spatial.transform import Rotation as R
@@ -150,7 +150,7 @@ while not stop_event.is_set():
                 continue
             
             wrist_pose, hand_action = retargetor_list[env_idx].get_action(hand_pose)
-            robot_action = get_action(arm_name, hand_name, wrist_pose, hand_action)
+            robot_action = get_action(arm_name, hand_name, wrist_pose, hand_action).astype(np.float32)
             
             sim.step(env_idx, {"robot":{"right":robot_action},"robot_vis":{}, "object_vis":{}})
             env_idx += 1

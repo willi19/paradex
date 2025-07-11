@@ -1,51 +1,127 @@
 import time
-import math
-
-from allegro_hand.controller import AllegroController
 from xarm.wrapper import XArmAPI
+from paradex.utils.file_io import config_dir
 
 import numpy as np
-from multiprocessing import Process, shared_memory, Event, Lock
-
+from threading import Thread, Event, Lock
+import json
 import os
 
-xarm_ip_address="192.168.1.221"
+from scipy.spatial.transform import Rotation
+import transforms3d as t3d
+# get_joints_torque : torque(Nm)
+# set_allow_approx_motion
+"""
+Settings allow to avoid overspeed near some singularities using approximate solutions
+Note:
+    1. only available if firmware_version >= 1.9.0
+
+:param on_off: allow or not, True means allow, default is False
+"""
+# set_joint_maxjerk
+# set_joint_maxacc
+
+# Todo : Find PID value
+
+action_dof = 6
 
 class XArmController:
     def __init__(self, save_path=None):
-
-        self.xarm_ip_address = xarm_ip_address
-        self.xarm_home_pose = None#[v for v in xarm_home_pose]#xarm_home_pose.copy()
+        network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
+        self.xarm_ip_address = network_config["xarm"]
+        
+        self.reset()
         
         self.capture_path = save_path
         if save_path is not None:
             os.makedirs(self.capture_path, exist_ok=True)
 
-        self.arm_state_hist = np.zeros((60000, 6), dtype=np.float64)
-        self.arm_action_hist = np.zeros((60000, 6), dtype=np.float64)
-        self.arm_timestamp = np.zeros((60000, 1), dtype=np.float64)
-        
-        
-        self.first_home = True
-        self.home_cnt = 0
-
+        self.lock = Lock()
         self.exit = Event()
-
-        self.shm = {}
-        self.create_shared_memory("ready", 1 * np.dtype(np.int32).itemsize)
-        self.ready_array = np.ndarray((1,), dtype=np.int32, buffer=self.shm["ready"].buf)
-        self.ready_array[0] = -1
-
-        self.create_shared_memory("arm_target_action", 6 * np.dtype(np.float32).itemsize)
-        self.arm_target_action_array = np.ndarray((6,), dtype=np.float32, buffer=self.shm["arm_target_action"].buf)
         
-        self.create_shared_memory("arm_state", 6 * np.dtype(np.float32).itemsize)
-        self.arm_state_array = np.ndarray((6,), dtype=np.float32, buffer=self.shm["arm_state"].buf)
+        T = 60000
+        self.data = {
+            "time":np.zeros((T,1), dtype=np.float64),
+            "position":np.zeros((T, action_dof), dtype=np.float64),
+            "velocity":np.zeros((T, action_dof), dtype=np.float64),
+            "torque":np.zeros((T, action_dof), dtype=np.float64),
+            "action":np.zeros((T, 4, 4), dtype=np.float64),
+            "action_qpos":np.zeros((T, action_dof), dtype=np.float64) # x y z rpy
+        }
+        
+        self.cnt = 0
 
-        self.arm_process = Process(target=self.move_arm)
-        self.arm_process.start()
+        self.target_action = np.array([
+                                [0, 1 ,0, 300],
+                                [0, 0, 1, -200],
+                                [1, 0, 0, 200],
+                                [0, 0, 0, 1]]
+                                )
+        
+        self.homing = False
+        
+        self.init = False
+        self.fps = 50
+        
+        self.thread = Thread(target=self.move_arm)
+        self.thread.daemon = True
+        self.thread.start()
 
+    def is_ready(self):
+        return not self.homing
+
+    def home_robot(self, homepose):
+        assert homepose.shape == (4,4)
+        
+        with self.lock:
+            self.init = True
+            self.homing = True
+            self.target_action = homepose.copy()
+    
+    def set_action(self, action):
+        assert action.shape == (4,4)
+        
+        with self.lock:
+            self.init = True
+            self.target_action = action.copy()
+            
+    def homo2cart(self, h):
+        t = h[:3, 3] * 1000
+        R = h[:3, :3]
+
+        rpy = Rotation.from_matrix(R).as_euler("xyz")
+        return np.concatenate([t, rpy])
+    
+    def homo2aa(self, h):
+        t = h[:3, 3] * 1000
+        R = h[:3, :3]
+
+        axis, angle = t3d.axangles.mat2axangle(R)
+        axis_angle = axis * angle
+        return np.concatenate([t, axis_angle])
+    
+    def get_qpos(self):
+        with self.lock:
+            qpos = np.array(self.arm.get_joint_states(is_radian=True)[1][0])[:6]
+            return qpos
+    
+    def get_position(self):
+        with self.lock:
+            cart = np.array(self.arm.get_position(is_radian=True)[1])
+            pos = np.eye(4)
+            
+            pos[:3,3] = cart[:3] / 1000
+            pos[:3, :3] = Rotation.from_euler('xyz', cart[3:]).as_matrix()
+            
+            return pos
+        
     def reset(self):
+        self.arm = XArmAPI(self.xarm_ip_address, report_type="devlop")
+        self.arm.motion_enable(enable=False)
+        self.arm.motion_enable(enable=True)
+        self.arm.set_mode(0)
+        self.arm.set_state(state=0)
+        
         if self.arm.has_err_warn:
             self.arm.clean_error()
 
@@ -53,97 +129,79 @@ class XArmController:
         self.arm.motion_enable(enable=True)
         self.arm.set_mode(0)  # 0: position control, 1: servo control
         self.arm.set_state(state=0)
-        time.sleep(1)
-
-    def set_homepose(self, home_pose):
-        self.xarm_home_pose = home_pose.copy()
+        time.sleep(0.1)
         
-    def is_ready(self):
-        return self.ready_array[0] == 1
-
-    def create_shared_memory(self, name, size):
-        try:
-            existing_shm = shared_memory.SharedMemory(name=name)
-            existing_shm.close()
-            existing_shm.unlink()
-        except FileNotFoundError:
-            pass
-        self.shm[name] = shared_memory.SharedMemory(create=True, name=name, size=size)
-
-    def home_robot(self):
-        self.arm_target_action_array[:] = self.xarm_home_pose.copy()
-        self.ready_array[0] = 0
-
+        
+        self.arm.set_mode(1)
+        self.arm.set_state(state=0)
+        
+        # self.arm.set_collision_sensitivity(5, wait=True)
+         
     def move_arm(
         self
     ):
-        self.arm = XArmAPI(self.xarm_ip_address, report_type="devlop")
-        self.arm.motion_enable(enable=False)
-        self.arm.motion_enable(enable=True)
-        self.arm.set_mode(0)
-        self.arm.set_state(state=0)
-        
-        self.reset()
-
-        fps = 100
-        self.arm_cnt = 0
+        # Control loop start
         while not self.exit.is_set():
             start_time = time.time()
-            angles = self.arm_target_action_array.copy()
-            angles[:3] *= 1000
-            if self.ready_array[0] == 1:
+            with self.lock:
+                if not self.init:
+                    time.sleep(0.01)
+                    continue
+                    
+                action = self.target_action.copy()
+                cart = self.homo2cart(action.copy())
+                aa = self.homo2aa(action.copy())
                 
-                current_arm_angles = np.asarray(self.arm.get_joint_states(is_radian=True)[1][0][:6])
-                
-
-                self.arm.set_servo_cartesian_aa(angles, is_radian=True, relative=False)
-                
-                self.arm_state_hist[self.arm_cnt] = current_arm_angles.copy()
-                self.arm_timestamp[self.arm_cnt] = start_time
-                
-                self.arm_action_hist[self.arm_cnt] = angles.copy()
-                self.arm_state_array[:] = current_arm_angles.copy()
-                self.arm_cnt += 1
-                
-
-            elif self.ready_array[0] == 0:
-                if not self.first_home:
+                if self.homing:
                     self.arm.set_mode(0)  # 0: position control, 1: servo control
                     self.arm.set_state(state=0)
-                self.first_home = False
-
-                angles = self.arm_target_action_array.copy()
-                angles[:3] *= 1000
-
-                self.arm.set_position_aa(axis_angle_pose=angles,speed=100, is_radian=True, wait=True, motion_type=1)
-                self.arm.set_mode(1)
-                self.arm.set_state(state=0)
-                time.sleep(0.1)
+                    
+                    self.arm.set_position(x = cart[0],
+                                          y = cart[1],
+                                          z = cart[2],
+                                          roll = cart[3],
+                                          pitch = cart[4],
+                                          yaw = cart[5],
+                                          speed=100, 
+                                          is_radian=True, 
+                                          wait=True) # motion_type=1 if necessary to go home but this is too dangerous
+                    self.arm.set_mode(1)
+                    self.arm.set_state(state=0)
+                    time.sleep(0.1)
+                    
+                    self.homing = False
                 
-                self.ready_array[0] = 1
-
+                else:
+                    _, state = self.arm.get_joint_states(is_radian=True)
+                    
+                    self.data["position"][self.cnt] = np.array(state[0])[:6]
+                    self.data["velocity"][self.cnt] = np.array(state[1])[:6]
+                    self.data["torque"][self.cnt] = np.array(state[2])[:6]
+                    self.data["time"][self.cnt, 0] = np.array(start_time)
+                    self.data["action"][self.cnt] = action.copy()
+                    self.data["action_qpos"] = np.array(self.arm.get_inverse_kinematics(cart)[1])[:6]
+                    self.cnt += 1
+                    # print(self.arm.get_position(is_radian=True)[1], cart, "asdf")
+                    #self.arm.set_servo_cartesian(cart.copy(), is_radian=True)
+                    self.arm.set_servo_cartesian_aa(aa, is_radian=True)
+                    
             end_time = time.time()
-            time.sleep(max(0, 1 / fps - (end_time - start_time)))
+            time.sleep(max(0, 1 / self.fps - (end_time - start_time)))
 
-        if self.capture_path is not None:        
-            os.makedirs(os.path.join(self.capture_path, "arm"), exist_ok=True)
-            np.save(os.path.join(self.capture_path, "arm", f"state.npy"), self.arm_state_hist[:self.arm_cnt])
-            np.save(os.path.join(self.capture_path, "arm", f"action.npy"), self.arm_action_hist[:self.arm_cnt])
-            np.save(os.path.join(self.capture_path, "arm", f"timestamp.npy"), self.arm_timestamp[:self.arm_cnt])
             
+
+    def save(self):
+        with self.lock:
+            if self.capture_path is not None:       
+                os.makedirs(os.path.join(self.capture_path, "arm"), exist_ok=True)
+                for name, value in self.data.items():                     
+                    np.save(os.path.join(self.capture_path, "arm", f"{name}.npy"), value[:self.cnt])
+                    
+    def quit(self):
+        self.save()
+        self.exit.set()
+        self.thread.join()
         self.arm.motion_enable(enable=False)
         self.arm.disconnect()
-
-    def set_target_action(self, action):
-        self.arm_target_action_array[:] = action.copy()
+        print("robot terminate")
         
-    def quit(self):
-        self.exit.set()
-        self.arm_process.join()
-
-        for key in self.shm.keys():
-            self.shm[key].close()
-            self.shm[key].unlink()
-
-        print("Exiting...")
-

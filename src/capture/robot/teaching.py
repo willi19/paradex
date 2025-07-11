@@ -30,6 +30,24 @@ arm.set_state(state=0)
 arm.set_mode(2)
 arm.set_state(0)
 
+# print(arm.get_robot_sn())
+# sn = arm.get_robot_sn()
+# print(arm.get_safe_level())
+# print(arm.get_joint_states())
+# print(arm.get_joints_torque())
+arm.set_teach_sensitivity(5)
+
+home_pose = np.array([
+    [0, 1 ,0, 300],
+    [0, 0, 1, -200],
+    [1, 0, 0, 200],
+    [0, 0, 0, 1]])
+pose = np.zeros(6)
+pose[:3] = home_pose[:3,3]
+from scipy.spatial.transform import Rotation as R
+pose[3:] = R.from_matrix(home_pose[:3,:3]).as_euler("xyz")
+print(arm.get_inverse_kinematics(pose))
+
 idx = 0
 try:
     while not stop_event.is_set():

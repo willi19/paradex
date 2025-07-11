@@ -147,6 +147,7 @@ class OculusReceiver:
         while not self.stop_event.is_set():
             try:
                 token, addr = sock.recvfrom(65536)  # 64KB maximally
+                print(token)
                 if self.is_body:
                     data_string = token.decode().strip()
                     if data_string == '':

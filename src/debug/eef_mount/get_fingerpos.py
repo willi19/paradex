@@ -8,7 +8,7 @@ from numpy.linalg import inv
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 from paradex.geometry.math import rigid_transform_3D
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot import RobotWrapper
 from paradex.utils.file_io import rsc_path
 from paradex.utils.file_io import shared_path, load_camparam, load_c2r, download_path, rsc_path
 

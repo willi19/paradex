@@ -162,7 +162,7 @@ wait_for_camera_ready()
 try:
     for i in range(6):
         # move robot
-        target_action = np.load(f"hecalib/{i}.npy")
+        target_action = np.load(f"data/hecalib/{i}.npy")
         dex_arm.move_arm(target_action)
         time.sleep(0.5)
         
@@ -176,18 +176,12 @@ try:
             print(f"[{pc_name}] Start capture {i}")
         wait_for_capture()
         
-except Exception as e:
-    print("Error", e)
-    
+    copy_calib_files(f"/home/temp_id/shared_data/handeye_calibration/{filename}/0")
+
+finally:
     for pc_name, sock in socket_dict.items():
         sock.send_string("quit")
         sock.close()
     
-    dex_arm.quit()    
-
-dex_arm.quit()
-copy_calib_files(f"/home/temp_id/shared_data/handeye_calibration/{filename}/0")
-for pc_name, sock in socket_dict.items():
-    sock.send_string("quit")
-    sock.close()
-    
+    dex_arm.quit()   
+    exit(0) 

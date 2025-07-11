@@ -100,7 +100,6 @@ class Simulator:
     
     def load_robot_asset(self, arm_name, hand_name):
         robot_name = self.load_robot_name(arm_name, hand_name)    
-        
         if arm_name is not None:
             robot_asset_file = f"robot/{robot_name}.urdf"
         else:
@@ -126,7 +125,7 @@ class Simulator:
         self.assets["robot_vis"][robot_name] = vis_robot_asset
             
     def load_object_asset(self, obj_name):
-        object_asset_file = f"{obj_name}/{obj_name}.urdf"
+        object_asset_file = f"object/{obj_name}/{obj_name}.urdf"
 
         object_asset_options = gymapi.AssetOptions()
         object_asset_options.override_inertia = True

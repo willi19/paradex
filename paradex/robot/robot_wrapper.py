@@ -122,15 +122,21 @@ class RobotWrapper:
         end_effector_name: str,
         q_init: npt.NDArray = None,
         max_iter: int = 1000,
-        tol: float = 1e-7,
+        tol: float = 1e-8,
         alpha: float = 5e-2,
     ) -> npt.NDArray:
+        
+        target_pose = target_pose.copy()
+        q_min = self.model.lowerPositionLimit
+        q_max = self.model.upperPositionLimit
+        
+        if q_init is None:
+            q_init = np.random.uniform(low=q_min, high=q_max)
+            
         q = q_init.copy()
         link_id = self.get_link_index(end_effector_name)
 
         target_se3 = pin.SE3(target_pose[:3, :3], target_pose[:3, 3])
-        q_min = self.model.lowerPositionLimit
-        q_max = self.model.upperPositionLimit
 
         for i in range(max_iter):
             self.compute_forward_kinematics(q)
@@ -146,8 +152,8 @@ class RobotWrapper:
             delta_q = -np.linalg.solve(JTJ, J.T @ error)
 
             q = self.integrate(q, delta_q, alpha)
-
             q = np.clip(q, q_min, q_max)
+            
         return q, False
 
     def get_end_links(self) -> List[str]:

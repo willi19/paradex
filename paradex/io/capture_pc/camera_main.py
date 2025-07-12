@@ -12,14 +12,16 @@ class RemoteCameraController():
         port = get_network_info()["remote_camera"]
         
         self.pc_list = []
-        self.serial_list = serial_list
         
-        for pc_name, info in self.pc_info.items():
-            for serial_num in info['cam_list']:
-                if serial_num in serial_list:
-                    self.pc_list.append(pc_name)
-                    break
-        print(self.pc_list)
+        if serial_list is not None:
+            for pc_name, info in self.pc_info.items():
+                for serial_num in info['cam_list']:
+                    if serial_num in serial_list:
+                        self.pc_list.append(pc_name)
+                        break
+        else:
+            self.pc_list = list(self.pc_info.keys())
+            
         self.socket_dict = {pc_name:get_client_socket(self.pc_info[pc_name]["ip"], port) for pc_name in self.pc_list}
         print("asdf")
         print(self.register())
@@ -33,9 +35,12 @@ class RemoteCameraController():
     def wait_for_message(self, message, timeout=-1):
         recv_dict = {pc_name:False for pc_name in self.pc_list}
         start_time = time.time()
+        print("wiat for", message)
         while timeout == -1 or time.time()-start_time < timeout:
             success = True
+            print(recv_dict)
             for pc_name, socket in self.socket_dict.items():
+                print(pc_name)
                 if recv_dict[pc_name]:
                     continue
                 recv_msg = socket.recv_string()
@@ -44,7 +49,7 @@ class RemoteCameraController():
 
                 if not recv_dict[pc_name]:
                     success = False
-            
+            print(recv_dict)
             if success:
                 return True                
             time.sleep(0.01)

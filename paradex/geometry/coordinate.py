@@ -1,6 +1,8 @@
 import numpy as np
 
-# translation is from connector
+# see https://www.notion.so/Coordinate-system-21fee7e093e98037b92dfc69146158cc)}
+
+# T ^ {Wrist : predefined wrist coordinate} _ {Device Wrist coordinate}
 DEVICE2WRIST = {
     "xarm":np.array([[1, 0 ,0 ,0],
                      [0, 0, 1, -0.01],
@@ -33,6 +35,7 @@ DEVICE2WRIST = {
                               [0, 0, 0, 1]]),
 }
 
+# T ^ {Global : predefined global coordinate} _ {Device coordinate}
 DEVICE2GLOBAL = {
     "xarm":np.array([[1, 0, 0, 0], 
                          [0, 1, 0, 0], 

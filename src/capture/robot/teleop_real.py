@@ -4,9 +4,8 @@ import argparse
 import os
 
 from paradex.io.robot_controller import XArmController, AllegroController, InspireController
-from paradex.io.xsens.receiver import XSensReceiver
+from paradex.io.teleop import XSensReceiver, OculusReceiver
 from paradex.io.contact.receiver import SerialReader
-from paradex.io.occulus.receiver import OculusReceiver
 from paradex.retargetor import Unimanual_Retargetor, HandStateExtractor
 from paradex.geometry.coordinate import DEVICE2WRIST
 

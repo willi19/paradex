@@ -4,12 +4,31 @@ import json
 from threading import Event
 
 from paradex.io.camera.camera import Camera
-from paradex.image.convert import spin2cv
 import numpy as np
 import os
 from paradex.utils.file_io import home_path, config_dir
 import time
 import cv2
+
+import numpy as np
+import cv2
+
+def spin2cv(pImg, h, w):
+    """
+    Convert Spinnaker image to OpenCV format.
+
+    Args:
+        pImg: Spinnaker image object
+        h (int): Image height
+        w (int): Image width
+
+    Returns:
+        cvImg (np.ndarray): Converted OpenCV image
+    """
+    image_data = pImg.GetData()
+    cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w))
+    cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)
+    return cvImg
 
 class CameraManager:
     def __init__(self, mode, path = None, serial_list = None, syncMode=True):

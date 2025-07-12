@@ -1,21 +1,10 @@
-0. run autoforce_ip.py whenever you restart the capturePC
+Todo
+1. Refine robot representation
+    Arm : add eef frame and connector frame to the urdf
+    Hand : add wrist frame and connector frame to the urdf
 
-Adjust Exposure in config/lens_info.json
+    Reason : we use wrist frame and eef frame frequently and this will cause problem when arm or hand chages
 
-1. calibration
+    Then fix paradex/robot/RobotWrapper and Unimanual teleop code to retarget with this notation.
 
-Capture images from 16 cameras and save it under directory {root_dir} / frames
-
-python -m src.calibration.calibration.py --root_dir {root_dir}
-
-2. capture
-    capture single image
-    python -m src.capture.image.py --save_folder {folder name}
-
-    capture synchronized video
-    video is saved to ~/captures1
-
-    python -m src.capture.video 
-
-3. realtime hand detection
-    python -m src.process.keypoint_detector
+    

@@ -2,7 +2,7 @@ import time
 import numpy as np
 import pickle
 import os
-from paradex.utils.metric import get_pickplace_timing, compute_mesh_to_ground_distance
+from paradex.inference.metric import get_pickplace_timing, compute_mesh_to_ground_distance
 import open3d as o3d
 from paradex.utils.file_io import rsc_path
 from paradex.robot import RobotWrapper

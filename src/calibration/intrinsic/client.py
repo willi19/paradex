@@ -34,7 +34,7 @@ socket = get_server_socket(5564)
 
 while not camera_loader.exit:
     frame_id = camera_loader.camera.get_frameid(0)
-        
+    print("asdfadsf")
     if frame_id == last_frame:
         continue
         

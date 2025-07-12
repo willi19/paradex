@@ -1,5 +1,4 @@
 import json
-import zmq
 import time
 from paradex.utils.env import get_pcinfo, get_network_info
 from paradex.io.capture_pc.util import get_client_socket
@@ -39,7 +38,6 @@ class RemoteCameraController():
                 if recv_dict[pc_name]:
                     continue
                 recv_msg = socket.recv_string()
-                print(recv_msg)
                 if recv_msg == message:
                     recv_dict[pc_name] = True
 
@@ -70,8 +68,7 @@ class RemoteCameraController():
     def start_capture(self, filename=''):
         message = "start:"+filename
         self.send_message(message)
-        print("start")
-        print(self.wait_for_message("capture_start"))
+        self.wait_for_message("capture_start")
         
     def end_capture(self):
         if self.mode != "image":

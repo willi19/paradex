@@ -1,10 +1,9 @@
 
 import argparse
-import os
 import json
-import os
 import numpy as np
 import cv2
+import os
 
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.io.capture_pc.util import get_client_socket
@@ -47,12 +46,11 @@ args = parser.parse_args()
 serial_num = args.serial
 
 pc_name, pc_info = get_pc_name(serial_num)
-print("PC Name:", pc_name)
 
 git_pull("merging", [pc_name]) 
-# run_script(os.path.join(f"python src/calibration/intrinsic/client.py --serial {serial_num}"), [pc_name])  # 명령 수신 대기
+run_script(os.path.join(f"python src/calibration/intrinsic/client.py --serial {serial_num}"), [pc_name])  # 명령 수신 대기
 
-camera_controller = RemoteCameraController("stream", [serial_num], sync=True)
+camera_controller = RemoteCameraController("stream", [serial_num], sync=False)
 camera_controller.start_capture()
 
 socket = get_client_socket(pc_info["ip"], 5564)
@@ -64,7 +62,6 @@ try:
     while True:
         msg = socket.recv_string()
         data = json.loads(msg)
-        print(data)
         plot_img = saved_image.copy()
         if data.get("type") == "charuco":
             for board_id, result in data["detect_result"].items():
@@ -89,6 +86,6 @@ try:
         else:
             print(f"[Client] Unknown JSON type: {data.get('type')}")
 
-except:
+finally:
     camera_controller.end_capture()
     camera_controller.quit()        

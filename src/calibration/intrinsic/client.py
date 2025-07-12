@@ -40,7 +40,6 @@ while not camera_loader.exit:
     data = camera_loader.camera.get_data(0)
     last_frame = data["frameid"]
     last_image = data["image"]
-    print(data)
     
     detect_result = detect_charuco(last_image, board_info)
 

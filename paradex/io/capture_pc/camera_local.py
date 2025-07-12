@@ -38,7 +38,6 @@ class CameraCommandReceiver():
                 self.send_message("terminated")
             
             if message[:6] == "start:":
-                print("asdfasdf")
                 self.file_name = message.split(":")[1]
                 self.camera.set_save_dir(self.file_name)
                 self.camera.start()
@@ -59,10 +58,8 @@ class CameraCommandReceiver():
     def register(self):
         ident, msg = self.socket.recv_multipart()
         msg = msg.decode()
-        print(msg)
         if msg == "register":
             self.ident = ident
-            print(self.ident)
         self.send_message("registered")   
          
     def initialize_camera(self):
@@ -73,5 +70,3 @@ class CameraCommandReceiver():
         self.serial_list = cam_info["serial_list"]
         self.camera = CameraManager(mode = cam_info["mode"], serial_list=cam_info["serial_list"], syncMode=cam_info["sync"])
         self.send_message("camera_ready")
-        
-        print(cam_info)

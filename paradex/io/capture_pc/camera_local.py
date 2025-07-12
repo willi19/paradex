@@ -1,5 +1,6 @@
 import json
 import threading
+import time
 
 from paradex.utils.env import get_network_info
 from paradex.io.capture_pc.util import get_server_socket
@@ -22,6 +23,7 @@ class CameraCommandReceiver():
     def get_message(self):
         while not self.exit():
             _, message = self.socket.recv_multipart()
+            print(message)
             if message == "quit":
                 self.exit = True
                 self.camera.end()
@@ -41,6 +43,7 @@ class CameraCommandReceiver():
             if message == "stop":
                 self.camera.end()
                 self.send_message("capture_end")
+            time.sleep(0.01)
         
     def send_message(self, message):
         self.socket.send_multipart([self.ident, message.encode('utf-8')])

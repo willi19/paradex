@@ -8,19 +8,19 @@ from paradex.io.camera.camera_loader import CameraManager
 
 class CameraCommandReceiver():
     def __init__(self):  
-        port = get_network_info()["remote_camera"]
-        self.socket = get_server_socket(port)
         self.ident = None
         self.camera = None
         self.exit = False
         self.file_name = None
         
-        self.register()
-        self.initialize_camera()
         
         self.get_thread = threading.Thread(target=self.get_message)
         
     def get_message(self):
+        port = get_network_info()["remote_camera"]
+        self.socket = get_server_socket(port)
+        self.register()
+        self.initialize_camera()
         while not self.exit():
             _, message = self.socket.recv_multipart()
             print(message)

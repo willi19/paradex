@@ -39,6 +39,7 @@ class RemoteCameraController():
                 if recv_dict[pc_name]:
                     continue
                 recv_msg = socket.recv_string()
+                print(recv_msg)
                 if recv_msg == message:
                     recv_dict[pc_name] = True
 
@@ -53,7 +54,6 @@ class RemoteCameraController():
     
     def register(self):
         self.send_message("register")   
-        print("register done")
         return self.wait_for_message("registered")
          
     def initiate_camera(self):
@@ -70,7 +70,8 @@ class RemoteCameraController():
     def start_capture(self, filename=''):
         message = "start:"+filename
         self.send_message(message)
-        self.wait_for_message("capture_start")
+        print("start")
+        print(self.wait_for_message("capture_start"))
         
     def end_capture(self):
         if self.mode != "image":

@@ -21,7 +21,7 @@ occulus_hand_joint_parent_name = {'palm': 'wrist', 'wrist': None,
                                   'thumb_metacarpal': 'wrist', 'thumb_proximal': 'thumb_metacarpal', 'thumb_distal': 'thumb_proximal', 'thumb_tip': 'thumb_distal',
                                   'index_metacarpal': 'wrist', 'index_proximal': 'index_metacarpal', 'index_intermediate': 'index_proximal', 'index_distal': 'index_intermediate', 'index_tip': 'index_distal',
                                   'middle_metacarpal': 'wrist', 'middle_proximal': 'middle_metacarpal', 'middle_intermediate': 'middle_proximal', 'middle_distal': 'middle_intermediate', 'middle_tip': 'middle_distal',
-                                  'ring_proximal': 'middle_metacarpal', 'ring_intermediate': 'ring_proximal', 'ring_distal': 'ring_intermediate', 'ring_tip': 'ring_distal',
+                                  'ring_metacarpal': 'wrist', 'ring_proximal': 'ring_metacarpal', 'ring_intermediate': 'ring_proximal', 'ring_distal': 'ring_intermediate', 'ring_tip': 'ring_distal',
                                   'pinky_metacarpal': 'wrist', 'pinky_proximal': 'pinky_metacarpal', 'pinky_intermediate': 'pinky_proximal', 'pinky_distal': 'pinky_intermediate', 'pinky_tip': 'pinky_distal'}
 
 occulus_body_joint_name = ["Root", "Hips", "Spine Lower", "Spine Middle", "Spine Upper", "Chest", "Neck", "Head",                                                                   # 0:8
@@ -69,6 +69,16 @@ unity2EuclidianPelvis_mat = np.array([
                             ], dtype=float) @ unity2Euclidian_mat
 
 
+OCCULUS2WRIST_Left = np.array([[0, 0 ,1 ,0],
+                                [-1, 0, 0, 0],
+                                [0, 1, 0, 0],
+                                [0, 0, 0, 1]]),
+    
+OCCULUS2WRIST_Right = np.array([[0, 0 ,1 ,0],
+                                [1, 0, 0, 0],
+                                [0, -1, 0, 0],
+                                [0, 0, 0, 1]])
+    
 class OculusReceiver:
     def __init__(self, is_body=False):
         network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
@@ -77,8 +87,8 @@ class OculusReceiver:
 
         self.is_body = is_body
         
-        self.host_ip = "0.0.0.0"
-        self.port = network_config["metaquest"]
+        self.host_ip = network_config["metaquest"]["ip"]
+        self.port = network_config["metaquest"]["port"]
         
         self.stop_event = Event()
         self.lock = Lock()
@@ -144,14 +154,13 @@ class OculusReceiver:
         #self.socket = context.socket(zmq.PULL)
         #self.socket.setsockopt(zmq.CONFLATE, 1)
         #self.socket.bind('tcp://{}:{}'.format(self.host_ip, self.port))
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        sock.bind((self.host_ip, self.port))
-        sock.settimeout(0.1)
-
+        print("asdf")
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock.bind((self.host_ip, self.port))
+        self.sock.settimeout(0.1)
         while not self.stop_event.is_set():
             try:
-                token, addr = sock.recvfrom(65536)  # 64KB maximally
-                print(token)
+                token, addr = self.sock.recvfrom(65536)  # 64KB maximally
                 if self.is_body:
                     data_string = token.decode().strip()
                     if data_string == '':
@@ -161,16 +170,14 @@ class OculusReceiver:
                     data = self.parse_hand(token)
                     if 'Root' not in data:
                         continue
-                    root_model = data['Root']
-
-                    R_t = root_model[0, :3, :3].T
-                    T = np.eye(4)
-                    T[:3, :3] = R_t
-                    T[:3, 3] = -R_t @ root_model[0, :3, 3]
-                    T = np.linalg.inv(root_model)
+                    pelvis_pose = data['Root']
 
                     for name in data.keys():
-                        data[name] = unity2EuclidianPelvis_mat @ (T @ data[name]) @ unity2EuclidianPelvis_mat.T
+                        data[name] = unity2EuclidianPelvis_mat @ (np.linalg.inv(pelvis_pose) @ data[name])
+                        if name == "Right":
+                            data[name] = data[name] @ np.linalg.inv(OCCULUS2WRIST_Right)
+                        if name == "Left":
+                            data[name] = data[name] @ np.linalg.inv(OCCULUS2WRIST_Left)
 
                 with self.lock:
                     if self.is_body:
@@ -185,3 +192,4 @@ class OculusReceiver:
         print("quit")
         self.stop_event.set()
         self.recv_thread.join()
+        self.sock.close()

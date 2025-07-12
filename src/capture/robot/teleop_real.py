@@ -28,14 +28,6 @@ parser.add_argument('--save_path', type=str)
 
 args = parser.parse_args()
 
-if args.device == 'xsens': 
-    from paradex.io.xsens.receiver import XSensReceiver
-    teleop_device = XSensReceiver()
-
-if args.device =='occulus':
-    from paradex.io.occulus.receiver import OculusReceiver
-    teleop_device = OculusReceiver()
-
 def initialize_teleoperation(save_path):
     controller = {}
     

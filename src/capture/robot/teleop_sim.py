@@ -82,8 +82,8 @@ for arm_name in arm_list:
         if arm_name == None and hand_name == None:
             continue
         env_info = {
-            "robot":{"right":(arm_name, hand_name)},
-            "robot_vis":{}, 
+            "robot":{},
+            "robot_vis":{"right":(arm_name, hand_name)}, 
             "object":{},
             "object_vis":{}
         }
@@ -130,7 +130,7 @@ for arm_name in arm_list:
             hand_dof = robot_list[hand_name].dof
         robot_action = get_action(arm_name, hand_name, home_wrist_pose, np.zeros(hand_dof))
         # sim.reset(env_idx, {"robot":{"right":robot_action},"robot_vis":{"right":robot_action}, "object":{}})    
-        sim.reset(env_idx, {"robot":{"right":robot_action},"robot_vis":{}, "object":{}})    
+        sim.reset(env_idx, {"robot":{},"robot_vis":{"right":robot_action}, "object":{}})    
         env_idx += 1
     
 while not stop_event.is_set():
@@ -140,6 +140,7 @@ while not stop_event.is_set():
         continue
     env_idx = 0
     state = state_extractor.get_state(hand_pose['Left'])
+    print(state)
     for arm_name in arm_list:
         for hand_name in hand_list:
             if arm_name == None and hand_name == None:
@@ -152,7 +153,7 @@ while not stop_event.is_set():
             wrist_pose, hand_action = retargetor_list[env_idx].get_action(hand_pose)
             robot_action = get_action(arm_name, hand_name, wrist_pose, hand_action).astype(np.float32)
             
-            sim.step(env_idx, {"robot":{"right":robot_action},"robot_vis":{}, "object_vis":{}})
+            sim.step(env_idx, {"robot":{},"robot_vis":{"right":robot_action}, "object_vis":{}})
             env_idx += 1
     time.sleep(0.01)
             

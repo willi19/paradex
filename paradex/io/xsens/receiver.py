@@ -24,8 +24,8 @@ xsens_joint_parent_name = [None,
                       "wrist", "ring_metacarpal", "ring_proximal", "ring_intermediate",
                       "wrist", "pinky_metacarpal", "pinky_proximal", "pinky_intermediate"]
 
-XSENS2WRIST_Left = np.array([[1, 0, 0, 0], 
-                             [0, -1, 0, 0],
+XSENS2WRIST_Left = np.array([[-1, 0, 0, 0], 
+                             [0, 1, 0, 0],
                              [0, 0, -1, 0],
                              [0, 0, 0, 1]])
 

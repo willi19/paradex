@@ -1,4 +1,5 @@
 from paradex.io.xsens.receiver import XSensReceiver, xsens_joint_name, xsens_joint_parent_name
+from paradex.io.occulus.receiver import OculusReceiver, occulus_hand_joint_name, occulus_hand_joint_parent_name
 from paradex.visualization.hand import HandVisualizer
 
 from threading import Event
@@ -15,14 +16,16 @@ if __name__ == "__main__":
     if args.device == 'xsens': 
         from paradex.io.xsens.receiver import XSensReceiver
         receiver = XSensReceiver()
+        skeleton_info = {child:parent for child, parent in zip(xsens_joint_name, xsens_joint_parent_name)}
+        joint_name_list = xsens_joint_name
 
     if args.device =='occulus':
         from paradex.io.occulus.receiver import OculusReceiver
         receiver = OculusReceiver()
-
-    skeleton_info = {child:parent for child, parent in zip(xsens_joint_name, xsens_joint_parent_name)}
+        skeleton_info = {child:parent for child, parent in occulus_hand_joint_parent_name.items()}
+        joint_name_list = occulus_hand_joint_name
+        
     visualizer = HandVisualizer(skeleton_info)
-    print(skeleton_info)
     stop_event = Event()
     listen_keyboard({"q":stop_event})
     
@@ -33,12 +36,12 @@ if __name__ == "__main__":
         hand_data = receiver.get_data()
         if hand_data['Right'] is None or hand_data['Left'] is None:
             continue
-        print(hand_data)
+        
         if init_wrist_mid_pose is None:
             init_wrist_mid_pose = (hand_data['Right']['wrist'][:3, 3] + hand_data['Left']['wrist'][:3, 3]) / 2
 
         for side in ['Left', 'Right']:
-            for joint_name in xsens_joint_name:
+            for joint_name in joint_name_list:
                 hand_data[side][joint_name][:3, 3] -= init_wrist_mid_pose
             
         visualizer.update_sphere_positions(hand_data)

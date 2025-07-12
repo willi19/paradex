@@ -143,3 +143,11 @@ def detect_charuco(img, boardinfo):
         }
 
     return detection_results
+
+def draw_charuco(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids=None):
+    for i in range(len(corners)):
+        corner = tuple(int(x) for x in corners[i][0])
+        cv2.circle(image, corner, radius, color, thickness)
+        if ids is not None:
+            cv2.putText(image, str(int(ids[i])), (corner[0] + 5, corner[1] - 5),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1, lineType=cv2.LINE_AA)

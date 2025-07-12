@@ -163,6 +163,8 @@ class HandVisualizer(object):
         joint_positions: (J, 4, 4) NumPy array containing (x, y, z) positions of joints.
         """
         for side, joint_dict in hand_data.items():
+            if side not in ['Left', 'Right']:
+                continue
             for joint_name, joint_T in joint_dict.items():
                 center = np.asarray(self.sphere[(side, joint_name)].get_center())
                 translation = joint_T[:3, 3] - center
@@ -171,7 +173,7 @@ class HandVisualizer(object):
                 self.main_vis.update_geometry(self.sphere[(side, joint_name)])
                 self.update_axis((side,joint_name), joint_T)
 
-        self.update_bone_positions(hand_data)
+        # self.update_bone_positions(hand_data)
         # self.center_camera_on_objects()
         self.main_vis.poll_events()
         self.main_vis.update_renderer()  # Request screen refresh

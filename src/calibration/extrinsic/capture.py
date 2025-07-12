@@ -21,7 +21,7 @@ BOARD_COLORS = [
 ]
 
 pc_info = get_pcinfo()
-serial_list = get_serial_list
+serial_list = get_serial_list()
 
 saved_corner_img = {serial_num:np.zeros((1536, 2048, 3), dtype=np.uint8) for serial_num in serial_list}
 cur_state = {serial_num:(np.array([]), np.array([]), 0) for serial_num in serial_list}
@@ -51,9 +51,9 @@ def listen_socket(pc_name, socket):
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script(f"python src/calibration/extrinsic/client.py --save_path {filename}", pc_list)
+# run_script(f"python src/calibration/extrinsic/client.py --save_path {filename}", pc_list)
 
-camera_controller = RemoteCameraController("stream", None, sync=False)
+camera_controller = RemoteCameraController("stream", serial_list, sync=False)
 camera_controller.start_capture()
 
 try:

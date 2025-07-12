@@ -11,6 +11,7 @@ def get_serial_list():
     serial_list = []
     for pc in pc_info.keys():
         serial_list.extend(pc_info[pc]['cam_list'])
+    return serial_list
         
 def get_network_info():
     network_info = json.load(open(os.path.join(config_dir, "environment", "network.json"), "r"))

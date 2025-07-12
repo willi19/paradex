@@ -21,9 +21,10 @@ class RemoteCameraController():
                     break
                     
         self.socket_dict = {pc_name:get_client_socket(self.pc_info[pc_name]["ip"], port) for pc_name in self.pc_list}
-        self.register()
+        print("asdf")
+        print(self.register())
         self.initiate_camera()
-        
+        print("asdfasdf")
         
     def send_message(self, message):
         for pc_name, socket in self.socket_dict.items():

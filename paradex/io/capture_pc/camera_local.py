@@ -30,7 +30,7 @@ class CameraCommandReceiver():
         while not self.exit:
             _, message = self.socket.recv_multipart()
             message = message.decode()
-            
+            print(message)
             if message == "quit":
                 self.exit = True
                 self.camera.end()

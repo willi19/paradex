@@ -13,14 +13,17 @@ class CameraCommandReceiver():
         self.exit = False
         self.file_name = None
         
-        
         self.get_thread = threading.Thread(target=self.get_message)
-        
+        while not self.init:
+            time.sleep(0.01)
+            
     def get_message(self):
         port = get_network_info()["remote_camera"]
         self.socket = get_server_socket(port)
         self.register()
         self.initialize_camera()
+        self.init = True
+        
         while not self.exit():
             _, message = self.socket.recv_multipart()
             print(message)

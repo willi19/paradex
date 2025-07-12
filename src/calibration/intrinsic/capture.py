@@ -64,6 +64,7 @@ try:
     while True:
         msg = socket.recv_string()
         data = json.loads(msg)
+        print(data)
         plot_img = saved_image.copy()
         if data.get("type") == "charuco":
             for board_id, result in data["detect_result"].items():

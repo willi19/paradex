@@ -24,7 +24,6 @@ class RemoteCameraController():
         self.socket_dict = {pc_name:get_client_socket(self.pc_info[pc_name]["ip"], port) for pc_name in self.pc_list}
         print(self.register())
         print(self.initiate_camera())
-        print("asdf")
         
     def send_message(self, message):
         for pc_name, socket in self.socket_dict.items():
@@ -34,17 +33,14 @@ class RemoteCameraController():
         recv_dict = {pc_name:False for pc_name in self.pc_list}
         start_time = time.time()
         while timeout == -1 or time.time()-start_time < timeout:
-            success = False
+            success = True
             for pc_name, socket in self.socket_dict.items():
                 if recv_dict[pc_name]:
                     continue
-                
-                try:
-                    if socket.recv_string() == message:
-                        recv_dict[pc_name] = True
-                except zmq.Again:
-                    print("Timeout occurred")
-                
+                tmp = socket.recv_string()
+                if tmp == message:
+                    recv_dict[pc_name] = True
+
                 if not recv_dict[pc_name]:
                     success = False
             

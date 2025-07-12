@@ -7,7 +7,7 @@ from paradex.io.camera.camera_loader import CameraManager
 
 class CameraCommandReceiver():
     def __init__(self):  
-        port = get_network_info["remote_camera"]
+        port = get_network_info()["remote_camera"]
         self.socket = get_server_socket(port)
         self.ident = None
         self.camera = None

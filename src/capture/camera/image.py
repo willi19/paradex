@@ -20,7 +20,7 @@ parser.add_argument('--save_path', required=True)
 args = parser.parse_args()
 
 save_dir = os.path.join(shared_dir, args.save_path)
-last_idx = find_latest_directory(save_dir) if os.path.exists(save_dir) else -1
+last_idx = find_latest_directory(save_dir) if os.path.exists(save_dir) else 0
 
 while not stop_event.is_set():
     if not save_event.is_set():

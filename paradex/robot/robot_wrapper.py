@@ -124,35 +124,38 @@ class RobotWrapper:
         max_iter: int = 1000,
         tol: float = 1e-8,
         alpha: float = 5e-2,
+        try_num : int = 10
     ) -> npt.NDArray:
         
         target_pose = target_pose.copy()
         q_min = self.model.lowerPositionLimit
         q_max = self.model.upperPositionLimit
         
-        if q_init is None:
-            q_init = np.random.uniform(low=q_min, high=q_max)
-            
-        q = q_init.copy()
-        link_id = self.get_link_index(end_effector_name)
+        for try_cnt in range(try_num):
+            if try_cnt != 0 or q_init is None:
+                q = np.random.uniform(low=q_min, high=q_max)
+            else:
+                q = q_init.copy()
+                
+            link_id = self.get_link_index(end_effector_name)
 
-        target_se3 = pin.SE3(target_pose[:3, :3], target_pose[:3, 3])
+            target_se3 = pin.SE3(target_pose[:3, :3], target_pose[:3, 3])
 
-        for i in range(max_iter):
-            self.compute_forward_kinematics(q)
-            current_se3 = pin.updateFramePlacement(self.model, self.data, link_id)
-            # 6D error: log(target⁻¹ * current)
-            error = pin.log(target_se3.inverse() * current_se3).vector
-            if np.linalg.norm(error) < tol:
-                return q, True
+            for i in range(max_iter):
+                self.compute_forward_kinematics(q)
+                current_se3 = pin.updateFramePlacement(self.model, self.data, link_id)
+                # 6D error: log(target⁻¹ * current)
+                error = pin.log(target_se3.inverse() * current_se3).vector
+                if np.linalg.norm(error) < tol:
+                    return q, True
 
-            J = pin.computeFrameJacobian(self.model, self.data, q, link_id)
-            lambda_ = 1e-6
-            JTJ = J.T @ J + lambda_ * np.eye(J.shape[1])
-            delta_q = -np.linalg.solve(JTJ, J.T @ error)
+                J = pin.computeFrameJacobian(self.model, self.data, q, link_id)
+                lambda_ = 1e-6
+                JTJ = J.T @ J + lambda_ * np.eye(J.shape[1])
+                delta_q = -np.linalg.solve(JTJ, J.T @ error)
 
-            q = self.integrate(q, delta_q, alpha)
-            q = np.clip(q, q_min, q_max)
+                q = self.integrate(q, delta_q, alpha)
+                q = np.clip(q, q_min, q_max)
             
         return q, False
 

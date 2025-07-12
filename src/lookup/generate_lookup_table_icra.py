@@ -4,7 +4,7 @@ import numpy as np
 from paradex.robot import RobotWrapper
 import pickle
 import open3d as o3d
-from paradex.utils.metric import get_pickplace_timing, compute_mesh_to_ground_distance
+from paradex.inference.metric import get_pickplace_timing, compute_mesh_to_ground_distance
 
 obj_mesh = o3d.io.read_triangle_mesh(os.path.join(rsc_path, "object", "bottle", "bottle.obj"))
 

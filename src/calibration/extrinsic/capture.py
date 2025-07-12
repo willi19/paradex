@@ -34,7 +34,7 @@ capture_state = {pc: False for pc in pc_info.keys()}
 
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
-def draw_charuco_corners_custom(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids=None):
+def draw_charuco(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids=None):
     for i in range(len(corners)):
         corner = tuple(int(x) for x in corners[i][0])
         cv2.circle(image, corner, radius, color, thickness)
@@ -80,7 +80,7 @@ def listen_socket(pc_name, socket):
             cur_state[serial_num] = (corners, ids, frame)
 
             if result["save"]:
-                draw_charuco_corners_custom(saved_corner_img[serial_num], corners, BOARD_COLORS[2], 5, -1, ids)
+                draw_charuco(saved_corner_img[serial_num], corners, BOARD_COLORS[2], 5, -1, ids)
 
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
@@ -107,7 +107,7 @@ def main_ui_loop():
             img = saved_corner_img[serial_num].copy()
             corners, ids, frame = cur_state[serial_num]
             if corners.shape[0] > 0:
-                draw_charuco_corners_custom(img, corners, BOARD_COLORS[1], 5, -1, ids)
+                draw_charuco(img, corners, BOARD_COLORS[1], 5, -1, ids)
             img = cv2.putText(img, f"{serial_num} {frame}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 6, (255, 255, 0), 12)
 
             resized_img = cv2.resize(img, (new_W, new_H))

@@ -1,4 +1,3 @@
-import subprocess
 import argparse
 import numpy as np
 import os
@@ -6,22 +5,7 @@ from paradex.utils.file_io import get_robot_urdf_path, rsc_path
 from paradex.geometry.coordinate import DEVICE2WRIST
 from scipy.spatial.transform import Rotation as R
 from paradex.robot import RobotWrapper
-
-# currently not in use
-
-def generate_urdf(xacro_path, output_path, args_dict):
-    # Prepare command
-    cmd = ["xacro", str(xacro_path)]
-
-    # Add arguments
-    for key, value in args_dict.items():
-        cmd.append(f"{key}:={value}")
-
-    # Write output to file
-    with open(output_path, "w") as f:
-        subprocess.run(cmd, stdout=f, check=True)
-
-    print(f"Generated URDF saved to: {output_path}")
+from paradex.robot.urdf import generate_urdf
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

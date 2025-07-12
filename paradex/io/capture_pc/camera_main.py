@@ -19,7 +19,7 @@ class RemoteCameraController():
                 if serial_num in serial_list:
                     self.pc_list.append(pc_name)
                     break
-                    
+        print(self.pc_list)
         self.socket_dict = {pc_name:get_client_socket(self.pc_info[pc_name]["ip"], port) for pc_name in self.pc_list}
         print("asdf")
         print(self.register())

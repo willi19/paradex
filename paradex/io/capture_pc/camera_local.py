@@ -15,6 +15,7 @@ class CameraCommandReceiver():
         self.init = False
         
         self.get_thread = threading.Thread(target=self.get_message)
+        self.get_thread.start()
         while not self.init:
             time.sleep(0.01)
             

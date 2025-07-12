@@ -92,7 +92,7 @@ class CameraManager:
             raise RuntimeError("Failed to connect to all cameras.")
 
     def set_save_dir(self, save_dir):
-        self.save_dir["save_dir"] = save_dir
+        self.save_dir = save_dir
 
     def get_serial_list(self):
         system = ps.System.GetInstance()
@@ -216,8 +216,8 @@ class CameraManager:
                         timestamps = dict([("timestamps", []), ("frameID", []), ("pc_time", [])])
 
                     if self.mode == "image":
-                        os.makedirs(self.save_dir["save_dir"], exist_ok=True)
-                        save_path = os.path.join(self.save_dir["save_dir"], f"{serial_num}.png")
+                        os.makedirs(self.save_dir, exist_ok=True)
+                        save_path = os.path.join(self.save_dir, f"{serial_num}.png")
                     
                     if self.mode == "stream":
                         self.frame_num[index] = 0

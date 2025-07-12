@@ -22,12 +22,12 @@ class CameraCommandReceiver():
     def get_message(self):
         port = get_network_info()["remote_camera"]
         self.socket = get_server_socket(port)
-        print("asdfasdf")
+        
         self.register()
         self.initialize_camera()
         self.init = True
         
-        while not self.exit():
+        while not self.exit:
             _, message = self.socket.recv_multipart()
             print(message)
             if message == "quit":

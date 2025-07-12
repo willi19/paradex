@@ -62,3 +62,4 @@ class CameraCommandReceiver():
         self.camera = CameraManager(mode = cam_info["mode"], serial_list=cam_info["serial_list"], syncMode=cam_info["sync"])
         self.send_message("camera_ready")
         
+        print(cam_info)

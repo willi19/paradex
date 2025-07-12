@@ -37,6 +37,7 @@ class CameraCommandReceiver():
                 self.send_message("terminated")
             
             if message[:5] == "start:":
+                print("asdfasdf")
                 self.file_name = message.split(":")[1]
                 self.camera.set_save_dir(self.file_name)
                 self.camera.start()

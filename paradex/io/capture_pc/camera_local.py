@@ -30,13 +30,14 @@ class CameraCommandReceiver():
         while not self.exit:
             _, message = self.socket.recv_multipart()
             message = message.decode()
+            
             if message == "quit":
                 self.exit = True
                 self.camera.end()
                 self.camera.quit()
                 self.send_message("terminated")
             
-            if message[:5] == "start:":
+            if message[:6] == "start:":
                 print("asdfasdf")
                 self.file_name = message.split(":")[1]
                 self.camera.set_save_dir(self.file_name)

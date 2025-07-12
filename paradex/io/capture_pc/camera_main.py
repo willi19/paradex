@@ -33,7 +33,7 @@ class RemoteCameraController():
     def wait_for_message(self, message, timeout=-1):
         recv_dict = {pc_name:False for pc_name in self.pc_list}
         start_time = time.time()
-        while timeout != -1 and time.time()-start_time < timeout:
+        while timeout == -1 or time.time()-start_time < timeout:
             success = False
             for pc_name, socket in self.socket_dict.items():
                 if recv_dict[pc_name]:

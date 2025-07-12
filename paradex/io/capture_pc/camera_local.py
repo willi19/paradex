@@ -12,6 +12,7 @@ class CameraCommandReceiver():
         self.camera = None
         self.exit = False
         self.file_name = None
+        self.init = False
         
         self.get_thread = threading.Thread(target=self.get_message)
         while not self.init:

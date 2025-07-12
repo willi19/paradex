@@ -22,6 +22,9 @@ class RemoteCameraController():
                     break
                     
         self.socket_dict = {pc_name:get_client_socket(self.pc_info[pc_name]["ip"], port) for pc_name in self.pc_list}
+        self.register()
+        self.initiate_camera()
+        
         
     def send_message(self, message):
         for pc_name, socket in self.socket_dict.items():
@@ -35,8 +38,8 @@ class RemoteCameraController():
             for pc_name, socket in self.socket_dict.items():
                 if recv_dict[pc_name]:
                     continue
-                tmp = socket.recv_string()
-                if tmp == message:
+                recv_msg = socket.recv_string()
+                if recv_msg == message:
                     recv_dict[pc_name] = True
 
                 if not recv_dict[pc_name]:

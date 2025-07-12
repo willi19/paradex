@@ -43,13 +43,12 @@ class CameraCommandReceiver():
                 self.send_message("capture_end")
         
     def send_message(self, message):
-        self.socket.send_multipart([self.ident, message])
+        self.socket.send_multipart([self.ident, message.encode('utf-8')])
     
     def register(self):
         ident, msg = self.socket.recv_multipart()
         msg = msg.decode()
         if msg == "register":
-            self.socket.send_multipart([ident, b"registered"])
             self.ident = ident
             
         self.send_message("registered")   

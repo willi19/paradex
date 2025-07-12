@@ -50,7 +50,7 @@ pc_name, pc_info = get_pc_name(serial_num)
 print("PC Name:", pc_name)
 
 git_pull("merging", [pc_name]) 
-run_script(os.path.join(f"python src/calibration/intrinsic/client.py --serial {serial_num}"), [pc_name])  # 명령 수신 대기
+# run_script(os.path.join(f"python src/calibration/intrinsic/client.py --serial {serial_num}"), [pc_name])  # 명령 수신 대기
 
 camera_controller = RemoteCameraController("stream", [serial_num], sync=True)
 camera_controller.start_capture()

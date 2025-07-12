@@ -189,50 +189,6 @@ def plot_contact(demo_path, output_video_path, overwrite=True):
     subprocess.run(["rm", "-r", temp_path])
     print(f"Saved contact video: {output_video_path}")
 
-def plot_pose(demo_path, output_video_path, overwrite=True):
-    if not overwrite and os.path.exists(output_video_path):
-        print(f"Skipping existing projection file: {output_video_path}")
-        return
-    
-    simulator = sim(
-        None,
-        view_physics=False,
-        view_replay=True,
-        headless=True,
-        save_video=True,
-        save_state=False,
-        fixed=False,
-        add_plane=False
-    )
-
-    try:
-        robot_traj = load_robot_traj(demo_path)
-        
-    except Exception as e:
-        print("File not found {}".format(e))
-        return
-    
-    temp_path = output_video_path.replace(".mp4", "_temp.mp4")
-    os.makedirs(os.path.dirname(temp_path), exist_ok=True)
-
-    simulator.load_camera()
-    simulator.set_savepath(temp_path, output_video_path)
-    
-    T = robot_traj.shape[0]
-    for step in range(T):
-        state = robot_traj[step]
-        state[:6] = 0
-        
-        simulator.step(state, state, None)
-    simulator.save()
-
-    os.makedirs(os.path.dirname(output_video_path), exist_ok=True)
-    # for vid_name in os.listdir(temp_path):
-    #     change_to_h264(os.path.join(temp_path, vid_name), os.path.join(output_video_path, vid_name))
-    change_to_h264(temp_path, output_video_path)
-    subprocess.run(["rm", "-r", temp_path])
-    print(f"Saved pose video: {output_video_path}")
-
 def plot_overlay(obj_name, index, overwrite=True):
     intrinsic, _ = load_camparam(f"{download_path}/processed/{obj_name}/{index}")
     

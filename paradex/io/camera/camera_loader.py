@@ -31,7 +31,7 @@ def spin2cv(pImg, h, w):
     return cvImg
 
 class CameraManager:
-    def __init__(self, mode, path = None, serial_list = None, syncMode=True):
+    def __init__(self, mode, serial_list = None, syncMode=True):
         self.exit = Event()
         self.start_capture = Event()
 
@@ -76,7 +76,6 @@ class CameraManager:
         self.lens_info = json.load(open(os.path.join(config_dir, "camera/lens_info.json"), "r"))
         self.cam_info = json.load(open(os.path.join(config_dir,"camera/camera.json"), "r"))
 
-        self.save_dir = {"save_dir" : path}
         self.capture_threads = [
             threading.Thread(target=self.run_camera, args=(i,))
             for i in range(self.num_cameras)

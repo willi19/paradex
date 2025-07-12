@@ -51,7 +51,7 @@ cur_filename = args.save_path
 board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
 
 try:
-    camera = CameraManager("stream", path=None, serial_list=None, syncMode=True)
+    camera = CameraManager("stream", serial_list=None, syncMode=True)
 except:
     socket.send_multipart([client_ident, b"camera_error"])
     sys.exit(1)

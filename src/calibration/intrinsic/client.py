@@ -1,33 +1,15 @@
-import zmq
 from paradex.utils.file_io import config_dir, shared_dir
 import json
 import os
-from paradex.io.camera.camera_loader import CameraManager
-import cv2
+from paradex.io.capture_pc.camera_local import CameraCommandReceiver
+from paradex.io.capture_pc.util import get_server_socket
+
 import time
-import argparse
 from paradex.image.aruco import detect_charuco
-import threading
 import numpy as np
 
-should_exit = False  # 공유 변수로 종료 제어
-client_ident = None  # 메인 PC에서 온 ident 저장용
 board_corner_list = []
-
-def listen_for_commands():
-    global should_exit, client_ident
-    while True:
-        ident, msg = socket.recv_multipart()
-        msg = msg.decode()
-
-        if msg == "register":
-            client_ident = ident  # ← bytes 그대로 저장
-            socket.send_multipart([client_ident, b"registered"])
-            print(f"[Server] Client registered: {ident.decode()}")
-        elif msg == "quit":
-            print(f"[Server] Received quit from client")
-            should_exit = True
-            break
+board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
 
 def should_save(result):
     corner = result["checkerCorner"]
@@ -43,35 +25,20 @@ def should_save(result):
 
     return True
 
-parser = argparse.ArgumentParser(description="Capture intrinsic camera calibration.")
-parser.add_argument(
-    "--serial",
-    type=str,
-    required=True,
-)
-
-args = parser.parse_args()
-serial_num = args.serial
-
-context = zmq.Context()
-socket = context.socket(zmq.ROUTER)
-socket.bind("tcp://*:5556")
-
-board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
-
-camera = CameraManager("stream", path=None, serial_list=[serial_num], syncMode=False)
-camera.start()
-
+camera_loader = CameraCommandReceiver()
 last_frame = -1
 
-threading.Thread(target=listen_for_commands, daemon=True).start()
-while not should_exit:
-    frame_id = camera.get_frameid(0)
+ident = camera_loader.ident
+serial_num = camera_loader.serial_list[0]
+socket = get_server_socket(5564)
+
+while not camera_loader.exit:
+    frame_id = camera_loader.camera.get_frameid(0)
         
     if frame_id == last_frame:
         continue
         
-    data = camera.get_data(0)
+    data = camera_loader.camera.get_data(0)
     last_frame = data["frameid"]
     last_image = data["image"]
         
@@ -85,15 +52,15 @@ while not should_exit:
     
         for data_name in ["checkerCorner", "checkerIDs"]:
             detect_result[board_id][data_name] = detect_result[board_id][data_name].tolist()
+    
     msg_dict = {
+        "type": "charuco",
         "frame": int(last_frame),
-        "detect_result": detect_result,
-        "type": "charuco"
+        "detect_result": detect_result
     }
     msg_json = json.dumps(msg_dict)
 
-    if client_ident is not None:
-        socket.send_multipart([client_ident, msg_json.encode()])
+    socket.send_multipart([ident, msg_json.encode()])
 
     time.sleep(0.01)
 
@@ -102,8 +69,3 @@ datetime_str = time.strftime("%Y%m%d_%H%M%S")
 
 os.makedirs(os.path.join(shared_dir, "intrinsic", serial_num, "keypoint"), exist_ok=True)
 np.save(os.path.join(shared_dir, "intrinsic", serial_num, "keypoint", datetime_str + ".npy"), board_corner_list)
-camera.end()
-camera.quit()
-
-if client_ident is not None:
-    socket.send_multipart([client_ident, b"terminate"])

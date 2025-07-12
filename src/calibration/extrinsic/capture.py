@@ -1,5 +1,4 @@
 import threading
-import queue
 import numpy as np
 import cv2
 import json
@@ -8,6 +7,7 @@ import zmq
 import os
 from paradex.utils.file_io import config_dir, shared_dir
 from paradex.io.capture_pc.connect import git_pull, run_script
+from paradex.image.aruco import draw_charuco
 import math
 
 BOARD_COLORS = [
@@ -77,6 +77,13 @@ def listen_socket(pc_name, socket):
 
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
+            
+img = saved_corner_img[serial_num].copy()
+corners, ids, frame = cur_state[serial_num]
+if corners.shape[0] > 0:
+    draw_charuco(img, corners, BOARD_COLORS[1], 5, -1, ids)
+img = cv2.putText(img, f"{serial_num} {frame}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 6, (255, 255, 0), 12)
+
 
 def main_ui_loop():
     num_images = len(serial_list)

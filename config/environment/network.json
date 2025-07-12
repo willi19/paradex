@@ -8,5 +8,7 @@
     "inspire":{
         "ip":"192.168.11.210",
         "port":6000
-    }
+    },
+    "remote_camera":5563,
+    "remote_data":5564
 }

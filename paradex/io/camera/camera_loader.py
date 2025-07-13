@@ -200,9 +200,10 @@ class CameraManager:
                     break
             if self.exit.is_set():
                 break
-            self.capture_end_flag[index].clear()
             
             init = True
+            self.capture_end_flag[index].clear()
+            print("capture start")
             while self.start_capture.is_set():
                 if init:
                     cam.start()

@@ -3,6 +3,10 @@ from typing import Tuple, List, Dict
 import numpy as np
 import cv2
 
+from paradex.image.undistort import undistort_img
+from paradex.geometry.triangulate import ransac_triangulation
+from paradex.utils.cam_param import get_cammtx
+
 aruco_type = ["4X4_50", "4X4_100", "4X4_250", "4X4_1000",
                 "5X5_50", "5X5_100", "5X5_250", "5X5_1000",
                 "6X6_50", "6X6_100", "6X6_250", "6X6_1000",
@@ -153,8 +157,37 @@ def draw_charuco(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids
             cv2.putText(image, str(int(ids[i])), (corner[0] + 5, corner[1] - 5),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1, lineType=cv2.LINE_AA)
 
-def draw_aruco():
-    pass
+def draw_aruco(img, kypt, ids=None, color=(255, 0, 0)):
+    for idx, corner in enumerate(kypt):
+        corner = corner.squeeze().astype(int)
+        if ids is not None:
+            cv2.putText(img, str(ids[idx]), tuple(corner[0]), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
 
-def triangulate_marker():
-    pass
+        for i in range(4):
+            cv2.circle(img, tuple(corner[i]), 3, color, -1) # red circle for corners
+
+def triangulate_marker(img_dict, intrinsic, extrinsic): 
+    cammat = get_cammtx(intrinsic, extrinsic)
+    
+    id_cor = {}
+    for serial_num, img in img_dict.items():
+        if serial_num not in cammat:
+            continue
+        
+        undist_img = undistort_img(img.copy(), intrinsic[serial_num])
+        undist_kypt, ids = detect_aruco(undist_img) # Tuple(np.ndarray(1, 4, 2)), np.ndarray(N, 1)
+        
+        if ids is None:
+            continue
+        
+        ids = ids.reshape(-1)
+        for id, k in zip(ids,undist_kypt):
+            k = k.squeeze()
+            
+            if id not in id_cor:
+                id_cor[id] = {"2d": [], "cammtx": []}
+            id_cor[id]["2d"].append(k)
+            id_cor[id]["cammtx"].append(cammat[serial_num]) 
+            
+    cor_3d = {id:ransac_triangulation(np.array(id_cor[id]["2d"]), np.array(id_cor[id]["cammtx"])) for id in id_cor}
+    return cor_3d

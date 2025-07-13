@@ -24,25 +24,26 @@ def copy_calib_files(save_path):
 pc_info = get_pcinfo()
 pc_list = list(pc_info.keys())
 
-camera_loader = RemoteCameraController("image", None)
-filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
 dex_arm = XArmController()
 git_pull("merging", pc_list)
 run_script("python src/calibration/handeyecalibration/client.py", pc_list)
 
+camera_loader = RemoteCameraController("image", None)
+filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+
 try:
-    for i in range(6):
-        target_action = np.load(f"data/hecalib/{i}.npy")
+    for i in range(1):
+        target_action = np.load(f"data/hecalib/{i}_qpos.npy")
         dex_arm.home_robot(target_action)
         
         time.sleep(0.5)
         
-        xarm_angles = dex_arm.get_position()
+        wrist6d = dex_arm.get_position()
         os.makedirs(f"{shared_dir}/handeye_calibration/{filename}/{i}/image", exist_ok=True)
-        np.save(f"{shared_dir}/handeye_calibration/{filename}/{i}/robot", xarm_angles[:6])
+        np.save(f"{shared_dir}/handeye_calibration/{filename}/{i}/robot", wrist6d[:6])
         
-        camera_loader.start_capture(f'shared_dir/handeye_calibration/{filename}/{i}/image')
+        camera_loader.start_capture(f'shared_data/handeye_calibration/{filename}/{i}/image')
         camera_loader.end_capture()
         
     copy_calib_files(f"/home/temp_id/shared_data/handeye_calibration/{filename}/0")

@@ -41,7 +41,6 @@ class RemoteCameraController():
                 if recv_dict[pc_name]:
                     continue
                 recv_msg = socket.recv_string()
-                print(recv_msg)
                 if recv_msg == message:
                     recv_dict[pc_name] = True
 

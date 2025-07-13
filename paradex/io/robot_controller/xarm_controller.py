@@ -77,11 +77,9 @@ class XArmController:
 
     def home_robot(self, homepose):
         assert homepose.shape == (4,4) or homepose.shape == (6,)
-        
         if homepose.shape == (6,):
-            self.robot_model.compute_forward_kinematics(homepose.copy)
+            self.robot_model.compute_forward_kinematics(homepose.copy())
             homepose = self.robot_model.get_link_pose(self.last_link_id)
-            print("homepose", homepose)
         with self.lock:
             self.init = True
             self.homing = True

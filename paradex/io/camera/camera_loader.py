@@ -201,6 +201,8 @@ class CameraManager:
             if self.exit.is_set():
                 break
 
+            self.capture_end_flag[index].clear()
+            
             init = True
             while self.start_capture.is_set():
                 if init:
@@ -222,7 +224,6 @@ class CameraManager:
                     if self.mode == "stream":
                         self.frame_num[index] = 0
 
-                    self.capture_end_flag[index].clear()
                     init = False
 
                 if self.exit.is_set():

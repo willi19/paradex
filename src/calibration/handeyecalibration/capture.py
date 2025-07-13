@@ -33,7 +33,7 @@ camera_loader = RemoteCameraController("image", None)
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
 try:
-    for i in range(1):
+    for i in range(2):
         target_action = np.load(f"data/hecalib/{i}_qpos.npy")
         dex_arm.home_robot(target_action)
         

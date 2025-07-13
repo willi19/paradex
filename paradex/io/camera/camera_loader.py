@@ -205,7 +205,7 @@ class CameraManager:
                 if init:
                     cam.start()
                     if self.mode == "video":
-                        save_dir = f"{home_path}/captures{index // 2 + 1}/{self.save_dir['save_dir']}"
+                        save_dir = f"{home_path}/captures{index // 2 + 1}/{self.save_dir}"
                         os.makedirs(save_dir, exist_ok=True)
 
                         save_path = os.path.join(save_dir, f"{serial_num}")

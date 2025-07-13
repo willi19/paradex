@@ -48,7 +48,6 @@ class CameraCommandReceiver():
                 
                 if self.mode == "image":
                     self.camera.wait_for_capture_end()
-                    print("waiting")
                     self.send_message("capture_end")
                                 
             if message == "stop":

@@ -24,7 +24,9 @@ class RemoteCameraController():
             
         self.socket_dict = {pc_name:get_client_socket(self.pc_info[pc_name]["ip"], port) for pc_name in self.pc_list}
         self.register()
+        print("register")
         self.initiate_camera()
+        print("init camera")
         
     def send_message(self, message):
         for pc_name, socket in self.socket_dict.items():
@@ -33,11 +35,9 @@ class RemoteCameraController():
     def wait_for_message(self, message, timeout=-1):
         recv_dict = {pc_name:False for pc_name in self.pc_list}
         start_time = time.time()
-        print("wiat for", message)
         while timeout == -1 or time.time()-start_time < timeout:
             success = True
             for pc_name, socket in self.socket_dict.items():
-                print(pc_name)
                 if recv_dict[pc_name]:
                     continue
                 recv_msg = socket.recv_string()
@@ -46,7 +46,6 @@ class RemoteCameraController():
 
                 if not recv_dict[pc_name]:
                     success = False
-            print(recv_dict)
             if success:
                 return True                
             time.sleep(0.01)

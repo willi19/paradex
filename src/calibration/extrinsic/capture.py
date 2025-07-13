@@ -16,7 +16,7 @@ from paradex.image.aruco import draw_charuco
 from paradex.image.merge import merge_image
 
 BOARD_COLORS = [
-    (255, 0, 0), 
+    (0, 0, 255), 
     (0, 255, 0)
 ]
 
@@ -51,7 +51,7 @@ def listen_socket(pc_name, socket):
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script(f"python src/calibration/extrinsic/client.py --save_path {filename}", pc_list)
+# run_script(f"python src/calibration/extrinsic/client.py --save_path {filename}", pc_list)
 
 camera_controller = RemoteCameraController("stream", None, sync=False)
 camera_controller.start_capture()

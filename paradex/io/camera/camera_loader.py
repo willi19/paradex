@@ -192,7 +192,6 @@ class CameraManager:
 
             return 
 
-        self.capture_end_flag[index].set()
         while not self.exit.is_set():
             while not self.start_capture.is_set():
                 time.sleep(0.01)
@@ -202,7 +201,6 @@ class CameraManager:
                 break
             
             init = True
-            self.capture_end_flag[index].clear()
             print("capture start")
             while self.start_capture.is_set():
                 if init:
@@ -250,6 +248,7 @@ class CameraManager:
                     cv2.imwrite(save_path, frame)
 
                     self.start_capture.clear()
+                    self.capture_end_flag[index].set()
                     break
 
                 elif self.mode == "stream":
@@ -264,7 +263,6 @@ class CameraManager:
                 )
                 videostream.Close()
             cam.stop()
-            self.capture_end_flag[index].set()
             
         
         cam.release()
@@ -277,6 +275,8 @@ class CameraManager:
             self.capture_end_flag[i].wait()    
 
     def start(self):
+        for index in range(self.num_cameras):
+            self.capture_end_flag[index].clear()
         self.start_capture.set()
 
     def end(self):

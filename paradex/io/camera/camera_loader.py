@@ -245,7 +245,7 @@ class CameraManager:
 
                 elif self.mode == "image":
                     frame = spin2cv(raw_frame, self.height, self.width)
-                    print(save_path)
+                    print(save_path, "image")
                     cv2.imwrite(save_path, frame)
 
                     self.start_capture.clear()

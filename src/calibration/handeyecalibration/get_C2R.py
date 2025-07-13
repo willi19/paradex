@@ -1,79 +1,118 @@
-import numpy as np
 import os
-from paradex.utils.file_io import handeye_calib_path, find_latest_directory
+import cv2
 import argparse
 import numpy as np
-from numpy.linalg import inv
-import numpy as np
-from scipy.spatial.transform import Rotation as R
-from paradex.geometry.math import rigid_transform_3D
+
+from paradex.image.aruco import detect_aruco, triangulate_marker, draw_aruco
+from paradex.image.undistort import undistort_img
 from paradex.geometry.Tsai_Lenz import solve
+from paradex.geometry.conversion import project, to_homo
+from paradex.utils.file_io import handeye_calib_path, find_latest_directory, load_cam_param, rsc_path, handeye_calib_path
+from paradex.utils.cam_param import get_cammtx
+from paradex.geometry.math import rigid_transform_3D
 
-marker_id_list = [261,262,263,264,265,266]
+marker_id = [261, 262, 263, 264, 265, 266]
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
-    args = parser.parse_args()
-    if args.name is None:
-        args.name = find_latest_directory(handeye_calib_path)
+args = parser.parse_args()
+if args.name is None:
+    args.name = find_latest_directory(handeye_calib_path)
+
+name = args.name
+he_calib_path = os.path.join(handeye_calib_path, name)
+
+intrinsic, extrinsic = load_cam_param(os.path.join(he_calib_path, "0", "cam_param"))
+cammtx = get_cammtx(intrinsic, extrinsic)
+
+index_list = os.listdir(he_calib_path)
+
+robot_cor = []
+cam_cor = []
+
+for idx in index_list:
+    robot_cor.append(np.load(os.path.join(he_calib_path, idx, "robot.npy")))
     
-    he_calib_path = os.path.join(handeye_calib_path, args.name)
-    index_list = os.listdir(os.path.join(he_calib_path))
-
-    A_list = []
-    B_list = []
-
-    for i in range(len(index_list)-1):
-        idx1 = index_list[i]
-        idx2 = index_list[i+1]
-
-        robot1 = np.load(os.path.join(he_calib_path, idx1, "link6.npy"))
-        robot2 = np.load(os.path.join(he_calib_path, idx2, "link6.npy"))
-        B_list.append(robot1 @ np.linalg.inv(robot2))
-
-        marker_dict1 = np.load(os.path.join(he_calib_path, idx1, "marker_3d.npy"), allow_pickle=True).item()
-        marker_dict2 = np.load(os.path.join(he_calib_path, idx2, "marker_3d.npy"), allow_pickle=True).item()
-
-        marker1 = []
-        marker2 = []
-        for mid in marker_dict1:
-            if mid in marker_dict2:
-                if mid in marker_id_list:
-                    marker1.append(marker_dict1[mid])
-                    marker2.append(marker_dict2[mid])
+    if os.path.exists(os.path.join(he_calib_path, idx, "marker_3d.npy")):
+        marker_3d = np.load(os.path.join(he_calib_path, idx, "marker_3d.npy"), allow_pickle=True).item()
+        cam_cor.append(marker_3d)
+        continue
         
-        marker1 = np.vstack(marker1)
-        marker2 = np.vstack(marker2)
+    img_dir = os.path.join(he_calib_path, idx, "image")
+    
+    img_dict = {}
+    for img_name in os.listdir(img_dir):
+        img_dict[img_name.split(".")[0]] = cv2.imread(os.path.join(img_dir, img_name))
+        
+    cor_3d = triangulate_marker(img_dict, intrinsic, extrinsic)
 
-        A_list.append(rigid_transform_3D(marker2, marker1))
-
-
-    X = np.eye(4)
-    theta, b_x = solve(A_list, B_list)
-    X[0:3, 0:3] = theta
-    X[0:3, -1] = b_x.flatten()
-    for i in range(len(index_list)-1):
-        print(A_list[i] @ X - X @ B_list[i])
-    np.save(os.path.join(he_calib_path, "0", "C2R.npy"), X)
-
-    marker_pos = {}
-    marker_id_list = [261,263,264,265,266]
-
-    for idx in index_list:
-        robot = np.load(os.path.join(he_calib_path, idx, "link6.npy"))
-        marker_dict = np.load(os.path.join(he_calib_path, idx, "marker_3d.npy"), allow_pickle=True).item()
-
-        for mid in marker_dict:
-            if mid not in marker_pos:
-                marker_pos[mid] = []
-            # marker_dict[mid] :4x3
-            marker_pos[mid].append(np.linalg.inv(robot) @ np.linalg.inv(X) @ np.hstack((marker_dict[mid], np.ones((marker_dict[mid].shape[0], 1)))).T)
+    for serial_num, img in img_dict.items():
+        if serial_num not in cammtx:
+            continue
+        
+        undist_img = undistort_img(img, intrinsic[serial_num])
+        undist_kypt, ids = detect_aruco(undist_img)
+        
+        if ids is None:
+            continue
+        draw_aruco(undist_img, undist_kypt, ids, (0, 0, 255))
+        
+        for mid in marker_id:
+            if mid not in ids or cor_3d[mid] is None:
+                continue
+            pt_2d = project(cammtx[serial_num], cor_3d[mid])
+            draw_aruco(undist_img, [pt_2d], None, (255, 0, 0))
             
-    # for mid in marker_pos:
-    #     # import pdb; pdb.set_trace()
-    #     print(np.std(marker_pos[mid], axis=0))
-    #     marker_pos[mid] = np.mean(marker_pos[mid], axis=0)
+        os.makedirs(os.path.join(he_calib_path, idx, "debug"), exist_ok=True)
+        cv2.imwrite(os.path.join(he_calib_path, idx, "debug", f"{serial_num}.png"), undist_img)
+
+    marker_3d = {}
+    for mid in marker_id:
+        if mid not in cor_3d or cor_3d[mid] is None:
+            continue
+        marker_3d[mid] = cor_3d[mid]
+    np.save(os.path.join(he_calib_path, idx, "marker_3d.npy"), marker_3d)
+    cam_cor.append(marker_3d)
+
+A_list = []
+B_list = []
+
+for i in range(len(index_list)-1):
+    B_list.append(robot_cor[i] @ np.linalg.inv(robot_cor[i+1]))
+    
+    marker1 = []
+    marker2 = []
+    for mid in cam_cor[i]:
+        if mid in cam_cor[i+1]:
+            if mid in marker_id:
+                marker1.append(cam_cor[i][mid])
+                marker2.append(cam_cor[i+1][mid])
+    
+    marker1 = np.vstack(marker1)
+    marker2 = np.vstack(marker2)
+    A_list.append(rigid_transform_3D(marker2, marker1))
+
+X = np.eye(4)
+theta, b_x = solve(A_list, B_list)
+X[0:3, 0:3] = theta
+X[0:3, -1] = b_x.flatten()
+for i in range(len(index_list)-1):
+    print(A_list[i] @ X - X @ B_list[i], "error")
+    
+np.save(os.path.join(he_calib_path, "0", "C2R.npy"), X)
+print(extrinsic['22640993'])
+marker_pos = {}
+
+for idx in range(len(index_list)):
+    for mid in cam_cor[idx]:
+        if mid not in marker_pos:
+            marker_pos[mid] = []
+        marker_cam_pose = to_homo(cam_cor[idx][mid])
+        marker_pos[mid].append((np.linalg.inv(robot_cor[idx]) @ np.linalg.inv(X) @ marker_cam_pose.T).T)
         
-    np.save(os.path.join(he_calib_path, "0", "marker_pos.npy"), marker_pos)
+for mid in marker_pos:
+    print(np.std(np.array(marker_pos[mid]), axis=0), "marker offset error")
+    marker_pos[mid] = np.mean(marker_pos[mid], axis=0)
+    
+np.save(os.path.join(he_calib_path, "0", "marker_pos.npy"), marker_pos)

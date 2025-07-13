@@ -14,7 +14,7 @@ save_event = Event()
 listen_keyboard({'q':stop_event, 'c':save_event})
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--save_path', required=True)
+parser.add_argument('--save_path')
 args = parser.parse_args()
 
 os.makedirs(args.save_path, exist_ok=True)
@@ -46,7 +46,7 @@ try:
             np.save(os.path.join(args.save_path, f'{idx}_qpos.npy'), qpos)
             np.save(os.path.join(args.save_path, f'{idx}_aa.npy'), wrist_pos)
             
-            print(f"Saved pose {idx}: {pos_aa}")
+            print(f"Saved pose {idx}: {wrist_pos}")
             idx += 1
             save_event.clear()
         time.sleep(0.1)

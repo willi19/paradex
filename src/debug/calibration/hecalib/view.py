@@ -1,5 +1,5 @@
 import os
-from paradex.utils.file_io import shared_dir
+from paradex.utils.file_io import shared_dir, handeye_calib_path
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import numpy as np
@@ -69,61 +69,25 @@ color_list = [[1, 0, 0],
               [1, 1, ]]
 
 if __name__ == "__main__":
-    name_list = ["20250713_205300", "20250713_192523", "20250713_195450", "20250713_200124", "20250713_205250"]
-    point_list = {}
-    camera_point = np.array([[0,0,0,1], [0.05,0,0.05,1], [0,0.05,0.05,1], [-0.05,0,0.05,1], [0,-0.05,0.05,1]])
+    name_list = ["20250714_031905" , "20250714_031906", "20250714_031907", "20250714_031908", "20250714_031909"]
     
     for name in name_list:
-        root_dir = os.path.join(cam_param_dir, name)
-        intrinsics = json.load(open(os.path.join(root_dir, "intrinsics.json")))
-        extrinsics = json.load(open(os.path.join(root_dir, "extrinsics.json")))
-        point_list[name] = {}
+        root_dir = os.path.join(handeye_calib_path, name, "0")
+        intrinsics = json.load(open(os.path.join(root_dir, "cam_param", "intrinsics.json")))
+        extrinsics = json.load(open(os.path.join(root_dir, "cam_param", "extrinsics.json")))
+        c2r = np.load(os.path.join(root_dir, "C2R.npy"))
+        # print(np.array(extrinsics['22640993']))
+        # c2r = np.eye(4)
+        
         extrinsic_dict[name] = {}
-        for serial_num, intmat in intrinsics.items():
-            if serial_num not in intrinsic_dict.keys():
-                intrinsic_dict[serial_num] = {"orig":[], "dist":[]}
-            intrinsic_dict[serial_num]["orig"].append(intmat['original_intrinsics'])
-            intrinsic_dict[serial_num]["dist"].append(intmat['dist_params'])
-
+        
         for serial_num, extmat in extrinsics.items():                
             extrinsic_serial = {}
-            extrinsic_dict[name][serial_num] = np.array(extmat)
-            extmat_tmp = np.eye(4)
-            extmat_tmp[:3,:] = extmat
-            extmat_tmp = np.linalg.inv(extmat_tmp)
-            point_list[name][serial_num] = (np.array(extmat) @ camera_point.T).T
+            ext_robot = np.eye(4)
+            ext_robot[:3,:] = extmat
             
-    for serial_num, data in intrinsic_dict.items():
-        mean = np.mean(data["dist"], axis=0)
-        std = np.std(data["dist"], axis=0)
-        # print(serial_num, std / mean, len(data["dist"]))
-    
-    root_name = name_list[0]
-    
-    for name in name_list[1:]:
-        A = []
-        B = []
-        for serial_name in point_list[root_name].keys():
-            if serial_name not in point_list[name]:
-                continue
-            A.append(point_list[name][serial_name].copy())
-            B.append(point_list[root_name][serial_name].copy())
-        
-        A = np.concatenate(A,  axis=0)
-        B = np.concatenate(B, axis=0)
-        
-        T = rigid_transform_3D(A, B)
-        # print(A)
-        # print(((T[:3,:3] @ A.T + T[:3,3:]).T - B))
-        
-        
-        for serial_name, ext in extrinsic_dict[name].items():
-            extmat = np.eye(4)
-            extmat[:3,:] = ext
-            extrinsic_dict[name][serial_name] = T @ extmat
+            extrinsic_dict[name][serial_num] = ext_robot @ c2r
             
-            root_extmat = np.eye(4)
-            root_extmat[:3,:] = extrinsic_dict[root_name][serial_name]
             
     extrinsic_serial = {}
     for name, data in extrinsic_dict.items():
@@ -138,17 +102,25 @@ if __name__ == "__main__":
     o3d_visuals.append(coordinate_frame)  # Adding a reference frame
 
     for serial_num, data in extrinsic_serial.items():
-        data = np.array(data)
-        rots = R.from_matrix(data[:,:3,:3])  # (N, 4)
+        tmp_data = []
+        for d in data:
+            T = np.eye(4)
+            T[:3,:] = np.array(d)
+            
+            tmp_data.append(np.linalg.inv(T))
+        
+        tmp_data = np.array(tmp_data)
+        rots = R.from_matrix(tmp_data[:,:3,:3])  # (N, 4)
         log_rots = rots.as_rotvec()     # (N, 3) ← log-map: axis × angle
         
         mean_rotvec = np.mean(log_rots, axis=0)
         std_rotvec = np.std(log_rots, axis=0)
         
-        mean_trans = np.mean(data[:,:3,3], axis=0)
-        std_trans = np.mean(data[:,:3,3], axis=0)
+        mean_trans = np.mean(tmp_data[:,:3,3], axis=0)
+        std_trans = np.std(tmp_data[:,:3,3], axis=0)
         
         print(serial_num, std_rotvec, std_trans) 
+        
         for i, ext in enumerate(data):
             extrinsic_matrix = np.array(ext)
             camera_pyramid, sphere = draw_camera_pyramid(extrinsic_matrix, scale=0.1, color=color_list[i])

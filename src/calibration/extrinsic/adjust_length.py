@@ -67,7 +67,6 @@ if __name__ == "__main__":
             kypt = np.load(os.path.join(root_dir, index, kypt_file))
 
             if serial_num not in intrinsics.keys():
-                print(serial_num)
                 continue
             
             int_mat = np.array(intrinsics[serial_num]['original_intrinsics'])
@@ -123,6 +122,9 @@ if __name__ == "__main__":
             ids = np.load(os.path.join(root_dir, index, f"{kypt_file.split('_')[0]}_id.npy"))
             serial_num = kypt_file.split("_")[0]
 
+            if serial_num not in extrinsics:
+                print(serial_num)
+                continue
             int_mat = np.array(intrinsics[serial_num]['original_intrinsics'])
             ext_mat = np.array(extrinsics[serial_num])
             int_dist = np.array(intrinsics[serial_num]['dist_params'])

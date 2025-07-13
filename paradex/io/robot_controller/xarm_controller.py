@@ -1,14 +1,17 @@
 import time
-from xarm.wrapper import XArmAPI
-from paradex.utils.file_io import config_dir
+from scipy.spatial.transform import Rotation
+import transforms3d as t3d
 
 import numpy as np
 from threading import Thread, Event, Lock
 import json
 import os
 
-from scipy.spatial.transform import Rotation
-import transforms3d as t3d
+from xarm.wrapper import XArmAPI
+
+from paradex.utils.file_io import config_dir, rsc_path
+from paradex.robot import RobotWrapper
+
 # get_joints_torque : torque(Nm)
 # set_allow_approx_motion
 """
@@ -62,6 +65,8 @@ class XArmController:
         
         self.init = False
         self.fps = 50
+        self.robot_model = RobotWrapper(os.path.join(rsc_path, "robot", "xarm.urdf"))
+        self.last_link_id = self.robot_model.get_link_index("link6")
         
         self.thread = Thread(target=self.move_arm)
         self.thread.daemon = True
@@ -71,8 +76,12 @@ class XArmController:
         return not self.homing
 
     def home_robot(self, homepose):
-        assert homepose.shape == (4,4)
+        assert homepose.shape == (4,4) or homepose.shape == (6,)
         
+        if homepose.shape == (6,):
+            self.robot_model.compute_forward_kinematics(homepose.copy)
+            homepose = self.robot_model.get_link_pose(self.last_link_id)
+            print("homepose", homepose)
         with self.lock:
             self.init = True
             self.homing = True
@@ -81,6 +90,10 @@ class XArmController:
     def set_action(self, action):
         assert action.shape == (4,4)
         
+        if homepose.shape == (6,):
+            self.robot_model.compute_forward_kinematics(homepose.copy)
+            homepose = self.robot_model.get_link_pose(self.last_link_id)
+            
         with self.lock:
             self.init = True
             self.target_action = action.copy()

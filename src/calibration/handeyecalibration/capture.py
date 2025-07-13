@@ -6,11 +6,12 @@ import os
 import shutil
 import argparse
 
-from paradex.utils.file_io import shared_dir, find_latest_directory
+from paradex.utils.file_io import shared_dir, find_latest_directory, rsc_path
 from paradex.utils.env import get_pcinfo
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.robot_controller import XArmController
+from paradex.robot import RobotWrapper
 
 def copy_calib_files(save_path):
     camparam_dir = os.path.join(shared_dir, "cam_param")
@@ -32,7 +33,6 @@ run_script("python src/calibration/handeyecalibration/client.py", pc_list)
 
 try:
     for i in range(6):
-        # move robot
         target_action = np.load(f"data/hecalib/{i}.npy")
         dex_arm.home_robot(target_action)
         

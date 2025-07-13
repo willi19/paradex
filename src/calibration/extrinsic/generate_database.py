@@ -8,7 +8,7 @@ from glob import glob
 import pycolmap
 import cv2
 import multiprocessing as mp
-import tqdm
+from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 
 from paradex.utils.file_io import find_latest_directory, shared_dir, load_intrinsic, config_dir
@@ -97,6 +97,7 @@ if __name__ == "__main__":
         name = args.name
 
     intrinsics_dict = load_intrinsic()
+    extrinsics_dict = json.load(open(os.path.join(shared_dir, "cam_param", "20250713_205300", "extrinsics.json")))
     num_cameras = len(camera_index)
 
     root_dir = os.path.join(download_dir, name)
@@ -151,6 +152,10 @@ if __name__ == "__main__":
     for i in range(1, num_cameras+1): # add 50 cameras
         cur_serial = camera_index_inv[i]
         intrinsic = intrinsics_dict[cur_serial]
+        extrinsic = np.array(extrinsics_dict[cur_serial])
+        
+        prior_q = R.from_matrix(extrinsic[:3,:3]).as_quat()
+        prior_t = extrinsic[:3, 3]
         
         width = intrinsic["width"]
         height = intrinsic["height"]
@@ -165,7 +170,7 @@ if __name__ == "__main__":
 
         # OPENCV, (fx, fy, cx, cy, k1, k2, p1, p2) considered
         camera_id = db.add_camera(4, width, height, np.array([fx,fy, cx, cy, k1, k2, p1, p2]), 0)
-        image_id = db.add_image(f"{cur_serial}.jpg", camera_id)
+        image_id = db.add_image(f"{cur_serial}.jpg", camera_id, prior_q, prior_t)
         kypt_offset[cur_serial] = 0
         image_id_dict[cur_serial] = image_id
         camera_id_dict[cur_serial] = camera_id

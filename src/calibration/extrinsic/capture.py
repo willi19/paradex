@@ -51,7 +51,7 @@ def listen_socket(pc_name, socket):
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-# run_script(f"python src/calibration/extrinsic/client.py --save_path {filename}", pc_list)
+run_script(f"python src/calibration/extrinsic/client.py --save_path {filename}", pc_list)
 
 camera_controller = RemoteCameraController("stream", None, sync=False)
 camera_controller.start_capture()
@@ -68,7 +68,7 @@ try:
             img = saved_corner_img[serial_num].copy()
             corners, ids, frame = cur_state[serial_num]
             if corners.shape[0] > 0:
-                draw_charuco(img, corners, BOARD_COLORS[0], 5, -1, ids)
+                draw_charuco(img, corners[:,0], BOARD_COLORS[0], 5, -1, ids)
             img = cv2.putText(img, f"{serial_num} {frame}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 6, (255, 255, 0), 12)
             img_dict[serial_num] = img   
         
@@ -89,7 +89,7 @@ try:
                 np.save(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx), serial_num + "_cor.npy"), corners)
                 np.save(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx), serial_num + "_id.npy"), ids)
                 if corners.shape[0] > 0:
-                    draw_charuco(saved_corner_img[serial_num], corners, BOARD_COLORS[1], 5, -1, ids)
+                    draw_charuco(saved_corner_img[serial_num], corners[:,0], BOARD_COLORS[1], 5, -1, ids)
             capture_idx += 1
 
 finally:

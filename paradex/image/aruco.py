@@ -147,7 +147,6 @@ def detect_charuco(img, boardinfo):
 def draw_charuco(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids=None):
     color = [int(x) for x in color]
     for i in range(len(corners)):
-        print(corners[i])
         corner = tuple(int(x) for x in corners[i])
         cv2.circle(image, corner, radius, color, thickness)
         if ids is not None:

@@ -1,156 +1,156 @@
-import threading
-import queue
-import numpy as np
-import cv2
-import json
-import time
-import zmq
 import os
-from paradex.utils.file_io import config_dir, shared_dir
-from paradex.io.capture_pc.connect import git_pull, run_script
-import math
+from paradex.utils.file_io import shared_dir
+import numpy as np
+from scipy.spatial.transform import Rotation as R
+import numpy as np
+from paradex.geometry.math import rigid_transform_3D
+import json
+import open3d as o3d
 
-BOARD_COLORS = [
-    (255, 0, 0), (0, 255, 0), (0, 0, 255),
-    (255, 255, 0), (255, 0, 255), (0, 255, 255),
-    (128, 128, 255)
-]
+cam_param_dir = os.path.join(shared_dir, "cam_param")
+dir = "config"
 
-# === SETUP ===
-pc_info = json.load(open(os.path.join(config_dir, "environment", "pc.json"), "r"))
-serial_list = []
-for pc in pc_info.keys():
-    serial_list.extend(pc_info[pc]['cam_list'])
+intrinsic_dict = {}
+extrinsic_dict = {}
 
-context = zmq.Context()
-socket_dict = {}
-terminate_dict = {pc: False for pc in pc_info.keys()}
-start_dict = {pc: False for pc in pc_info.keys()}
+def draw_camera_pyramid(extrinsic_matrix, scale=0.1, color=(1, 0, 0)):
+    """
+    Draws a camera as a pyramid in 3D using Open3D.
+    
+    :param extrinsic_matrix: 3x4 or 4x4 numpy array defining the camera's extrinsic matrix.
+    :param scale: Scale factor for the camera size.
+    """
+    # Convert 3x4 to 4x4 if necessary
+    if extrinsic_matrix.shape == (3, 4):
+        extrinsic_matrix = np.vstack((extrinsic_matrix, [0, 0, 0, 1]))
+    
+    # Extract translation (camera center)
+    camera_center = - np.linalg.inv(extrinsic_matrix[:3, :3]) @ extrinsic_matrix[:3, 3]
+    
+    # Define camera pyramid points in camera coordinate system
+    pyramid_points = np.array([
+        [-0.05, -0.05, 0.1],  # Bottom-left
+        [0.05, -0.05, 0.1],   # Bottom-right
+        [0.05, 0.05, 0.1],    # Top-right
+        [-0.05, 0.05, 0.1],   # Top-left
+        [0, 0, 0]         # Apex (camera position)
+    ]) * scale * 10
+    
+    # Transform pyramid points to world coordinates
+    pyramid_points = (np.linalg.inv(extrinsic_matrix[:3, :3]) @ pyramid_points.T).T + camera_center
+    
+    # Define pyramid edges
+    lines = [
+        [0, 1], [1, 2], [2, 3], [3, 0],  # Base edges
+        [0, 4], [1, 4], [2, 4], [3, 4]   # Side edges to apex
+    ]
+    
+    # Define colors for lines
+    colors = [color, color, color, color,
+              color, color, color, color]  # Side edges in green
+    
+    line_set = o3d.geometry.LineSet()
+    line_set.points = o3d.utility.Vector3dVector(pyramid_points)
+    line_set.lines = o3d.utility.Vector2iVector(lines)
+    line_set.colors = o3d.utility.Vector3dVector(colors)
+    
+    # Create a sphere at the camera center
+    sphere = o3d.geometry.TriangleMesh.create_sphere(radius=scale * 0.2)
+    sphere.translate(camera_center)
+    sphere.paint_uniform_color(color)  # Blue sphere
+    
+    return line_set, sphere
 
-saved_corner_img = {serial_num:np.zeros((1536, 2048, 3), dtype=np.uint8) for serial_num in serial_list}
-cur_state = {serial_num:(np.array([]), np.array([]), 0) for serial_num in serial_list}
-capture_idx = 0
-capture_state = {pc: False for pc in pc_info.keys()}
+color_list = [[1, 0, 0],
+              [0, 1, 0],
+              [0, 0, 1],
+              [1, 1, 0],
+              [1, 0, 1],
+              [1, 1, ]]
 
-filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+if __name__ == "__main__":
+    name_list = ["20250713_205300", "20250713_192523", "20250713_195450", "20250713_200124", "20250713_205250"]
+    point_list = {}
+    camera_point = np.array([[0,0,0,1], [0.05,0,0.05,1], [0,0.05,0.05,1], [-0.05,0,0.05,1], [0,-0.05,0.05,1]])
+    
+    for name in name_list:
+        root_dir = os.path.join(cam_param_dir, name)
+        intrinsics = json.load(open(os.path.join(root_dir, "intrinsics.json")))
+        extrinsics = json.load(open(os.path.join(root_dir, "extrinsics.json")))
+        point_list[name] = {}
+        extrinsic_dict[name] = {}
+        for serial_num, intmat in intrinsics.items():
+            if serial_num not in intrinsic_dict.keys():
+                intrinsic_dict[serial_num] = {"orig":[], "dist":[]}
+            intrinsic_dict[serial_num]["orig"].append(intmat['original_intrinsics'])
+            intrinsic_dict[serial_num]["dist"].append(intmat['dist_params'])
 
-def draw_charuco_corners_custom(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids=None):
-    for i in range(len(corners)):
-        corner = tuple(int(x) for x in corners[i][0])
-        cv2.circle(image, corner, radius, color, thickness)
-        if ids is not None:
-            cv2.putText(image, str(int(ids[i])), (corner[0] + 5, corner[1] - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1, lineType=cv2.LINE_AA)
-
-def main_ui_loop():
-    num_images = len(serial_list)
-    grid_cols = math.ceil(math.sqrt(num_images))
-    grid_rows = math.ceil(num_images / grid_cols)
-    border_px = 20
-
-    new_W = 2048 // grid_rows
-    new_H = 1536 // grid_rows
-
-    while True:
-        all_disconnected = True
-        for pc_name, terminated in terminate_dict.items():
-            if not terminated:
-                all_disconnected = False
-        if all_disconnected:
-            break
-        
-        grid_image = np.ones((1536+border_px*(grid_rows-1), (2048//grid_rows)*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
-        for idx, serial_num in enumerate(serial_list):
-            img = saved_corner_img[serial_num].copy()
-            corners, ids, frame = cur_state[serial_num]
-            if corners.shape[0] > 0:
-                draw_charuco_corners_custom(img, corners, BOARD_COLORS[1], 5, -1, ids)
-            img = cv2.putText(img, f"{serial_num} {frame}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 6, (255, 255, 0), 12)
-
-            resized_img = cv2.resize(img, (new_W, new_H))
+        for serial_num, extmat in extrinsics.items():                
+            extrinsic_serial = {}
+            extrinsic_dict[name][serial_num] = np.array(extmat)
+            point_list[name][serial_num] = (np.array(extmat) @ camera_point.T).T
             
-            r_idx = idx // grid_cols
-            c_idx = idx % grid_cols
-
-            r_start = r_idx * (new_H + border_px)
-            c_start = c_idx * (new_W + border_px)
-            grid_image[r_start:r_start+resized_img.shape[0], c_start:c_start+resized_img.shape[1]] = resized_img
-
-        grid_image = cv2.resize(grid_image, (int(2048//1.5), int(1536//1.5)))
-        cv2.imshow("Grid", grid_image)
-        key = cv2.waitKey(1)
-        if key == ord('q'):
-            print("[Server] Quitting...")
-            for socket in socket_dict.values():
-                socket.send_string("quit")
-            break
-        elif key == ord('c'):
-            print("[Server] Sending capture command.")
-            send_capture = True
-            for pc in pc_info.keys():
-                if capture_state[pc]:
-                    send_capture = False
-                    break
-            if send_capture:
-                global capture_idx, filename
-                os.makedirs(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx)), exist_ok=True)
-                for pc, socket in socket_dict.items():
-                    socket.send_string(f"capture:{capture_idx}")
-                    capture_state[pc] = True
-                capture_idx += 1
-
-num_images = len(serial_list)
-grid_cols = math.ceil(math.sqrt(num_images))
-grid_rows = math.ceil(num_images / grid_cols)
-border_px = 20
-
-new_W = 2048 // grid_rows
-new_H = 1536 // grid_rows
-
-
-keypoint_path = os.path.join(f"{shared_dir}/extrinsic")
-keypoint_file = os.listdir(keypoint_path)[-1]
-keypoint_list = os.listdir(os.path.join(keypoint_path, keypoint_file))
-
-output_path = f"extrinsic_demo.mp4"
-# os.makedirs("extrinsic_demo")
-
-frame_size = ((2048//grid_rows)*grid_cols+border_px*(grid_cols-1), 1536+border_px*(grid_rows-1))  # (W, H)
-fps = 5  # 10 frames per second
-
-# fourcc: 코덱 설정 (mp4는 'mp4v' 또는 'avc1' 추천)
-fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-video_writer = cv2.VideoWriter(output_path, fourcc, fps, frame_size)
-
-img_dict = {serial_name :np.zeros((1536, 2048, 3), dtype=np.uint8) for serial_name in serial_list}
-
-for fidx in keypoint_list:
-    keypoint_file_list = os.listdir(os.path.join(keypoint_path, keypoint_file, fidx))
-    for keypoint_name in keypoint_file_list:
-        if "cor" not in keypoint_name:
-            continue
-        serial_num = keypoint_name.split("_")[0]
+    for serial_num, data in intrinsic_dict.items():
+        mean = np.mean(data["dist"], axis=0)
+        std = np.std(data["dist"], axis=0)
+        # print(serial_num, std / mean, len(data["dist"]))
+    
+    root_name = name_list[0]
+    
+    for name in name_list[1:]:
+        A = []
+        B = []
+        for serial_name in point_list[root_name].keys():
+            if serial_name not in point_list[name]:
+                continue
+            A.append(point_list[name][serial_name].copy())
+            B.append(point_list[root_name][serial_name].copy())
         
-        corners = np.load(os.path.join(keypoint_path, keypoint_file, fidx, keypoint_name))
-        ids = np.load(os.path.join(keypoint_path, keypoint_file, fidx, f"{serial_num}_id.npy"))
-        if corners.shape[0] == 0:
-            continue
+        A = np.concatenate(A,  axis=0)
+        B = np.concatenate(B, axis=0)
         
-        draw_charuco_corners_custom(img_dict[serial_num], corners, BOARD_COLORS[2], 5, -1, ids)
-
-    grid_image = np.ones((1536+border_px*(grid_rows-1), (2048//grid_rows)*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
-    for idx, serial_num in enumerate(serial_list):
-        img = img_dict[serial_num].copy()
-        img = cv2.putText(img, f"{serial_num} {fidx}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 6, (255, 255, 0), 12)
-
-        resized_img = cv2.resize(img, (new_W, new_H))
+        T = rigid_transform_3D(A, B)
+        # print(A)
+        # print(((T[:3,:3] @ A.T + T[:3,3:]).T - B))
         
-        r_idx = idx // grid_cols
-        c_idx = idx % grid_cols
+        
+        for serial_name, ext in extrinsic_dict[name].items():
+            extmat = np.eye(4)
+            extmat[:3,:] = ext
+            extrinsic_dict[name][serial_name] = T @ extmat
+            
+            root_extmat = np.eye(4)
+            root_extmat[:3,:] = extrinsic_dict[root_name][serial_name]
+            
+    extrinsic_serial = {}
+    for name, data in extrinsic_dict.items():
+        for serial_num, extmat in data.items():
+            if serial_num not in extrinsic_serial.keys():
+                extrinsic_serial[serial_num] = []
+                
+            extrinsic_serial[serial_num].append(extmat[:3,:])
 
-        r_start = r_idx * (new_H + border_px)
-        c_start = c_idx * (new_W + border_px)
-        grid_image[r_start:r_start+resized_img.shape[0], c_start:c_start+resized_img.shape[1]] = resized_img
+    o3d_visuals = []
+    coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0, 0, 0])
+    o3d_visuals.append(coordinate_frame)  # Adding a reference frame
 
-    video_writer.write(grid_image)
-video_writer.release()
+    for serial_num, data in extrinsic_serial.items():
+        data = np.array(data)
+        rots = R.from_matrix(data[:,:3,:3])  # (N, 4)
+        log_rots = rots.as_rotvec()     # (N, 3) ← log-map: axis × angle
+        
+        mean_rotvec = np.mean(log_rots, axis=0)
+        std_rotvec = np.std(log_rots, axis=0)
+        
+        mean_trans = np.mean(data[:,:3,3], axis=0)
+        std_trans = np.mean(data[:,:3,3], axis=0)
+        
+        print(serial_num, std_rotvec, std_trans) 
+        for i, ext in enumerate(data):
+            extrinsic_matrix = np.array(ext)
+            camera_pyramid, sphere = draw_camera_pyramid(extrinsic_matrix, scale=0.1, color=color_list[i])
+            o3d_visuals.append(camera_pyramid)
+            o3d_visuals.append(sphere)
+        
+    
+    o3d.visualization.draw_geometries(o3d_visuals)

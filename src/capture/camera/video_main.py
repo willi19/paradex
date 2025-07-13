@@ -17,7 +17,7 @@ args = parser.parse_args()
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script(f"python src/capture/camera/video_client.py", pc_list)
+# run_script(f"python src/capture/camera/video_client.py", pc_list)
 
 camera_loader = RemoteCameraController("video", None)
 
@@ -35,13 +35,14 @@ try:
             continue
         
         end_capture.clear()
-        camera_loader.start_capture(f'shared_data/{args.save_path}/{capture_idx}/image')
+        camera_loader.start_capture(f'{args.save_path}')
         
         while not end_capture.is_set():
             time.sleep(0.01)
             continue
         
         camera_loader.end_capture()
+        print("end_capture")
         start_capture.clear()
         
         capture_idx += 1

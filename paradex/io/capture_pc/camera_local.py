@@ -1,10 +1,12 @@
 import json
 import threading
 import time
+import os
 
 from paradex.utils.env import get_network_info
 from paradex.io.capture_pc.util import get_server_socket
 from paradex.io.camera.camera_loader import CameraManager
+from paradex.utils.file_io import home_path
 
 class CameraCommandReceiver():
     def __init__(self):  
@@ -30,7 +32,7 @@ class CameraCommandReceiver():
         while not self.exit:
             _, message = self.socket.recv_multipart()
             message = message.decode()
-            print(message)
+    
             if message == "quit":
                 self.exit = True
                 self.camera.end()
@@ -39,7 +41,9 @@ class CameraCommandReceiver():
             
             if message[:6] == "start:":
                 self.file_name = message.split(":")[1]
-                self.camera.set_save_dir(self.file_name)
+                if self.mode == "image":
+                    self.camera.set_save_dir(os.path.join(home_path, self.file_name))
+                    
                 self.camera.start()
                 self.send_message("capture_start")
                 
@@ -58,7 +62,6 @@ class CameraCommandReceiver():
     def register(self):
         ident, msg = self.socket.recv_multipart()
         msg = msg.decode()
-        print(msg)
         if msg == "register":
             self.ident = ident
         self.send_message("registered")   

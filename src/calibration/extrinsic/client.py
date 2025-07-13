@@ -31,9 +31,6 @@ while not camera_loader.exit:
         detect_result = detect_charuco(last_image, board_info)
         merged_detect_result = merge_charuco_detection(detect_result, board_info)
         
-        if merged_detect_result["checkerIDs"].size != 0:
-            print(f"[{serial_num}] Detected {len(merged_detect_result['checkerIDs'])} corners")
-
         for data_name in ["checkerCorner", "checkerIDs"]:
             merged_detect_result[data_name] = merged_detect_result[data_name].tolist()
 

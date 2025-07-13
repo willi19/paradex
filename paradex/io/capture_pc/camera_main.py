@@ -23,10 +23,8 @@ class RemoteCameraController():
             self.pc_list = list(self.pc_info.keys())
             
         self.socket_dict = {pc_name:get_client_socket(self.pc_info[pc_name]["ip"], port) for pc_name in self.pc_list}
-        print("asdf")
-        print(self.register())
+        self.register()
         self.initiate_camera()
-        print("asdfasdf")
         
     def send_message(self, message):
         for pc_name, socket in self.socket_dict.items():
@@ -38,7 +36,6 @@ class RemoteCameraController():
         print("wiat for", message)
         while timeout == -1 or time.time()-start_time < timeout:
             success = True
-            print(recv_dict)
             for pc_name, socket in self.socket_dict.items():
                 print(pc_name)
                 if recv_dict[pc_name]:

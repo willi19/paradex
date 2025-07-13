@@ -8,21 +8,13 @@ from glob import glob
 import pycolmap
 import cv2
 import multiprocessing as mp
-from paradex.colmap.database import *
-from paradex.colmap.colmap import get_two_view_geometries
-from paradex.utils.file_io import find_latest_directory, home_path, download_dir, shared_dir, load_intrinsic
 import tqdm
 import matplotlib.pyplot as plt
 
-def draw_keypoint(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids=None):
-    for i in range(len(corners)):
-        corner = tuple(int(x) for x in corners[i])
-        color = (int(color[0]), int(color[1]), int(color[2]))
-        cv2.circle(image, corner, radius, color, thickness)
-        if ids is not None:
-            cv2.putText(image, str(int(ids[i])), (corner[0] + 5, corner[1] - 5),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 1, lineType=cv2.LINE_AA)
-
+from paradex.utils.file_io import find_latest_directory, shared_dir, load_intrinsic, config_dir
+from paradex.colmap.database import *
+from paradex.colmap.colmap import get_two_view_geometries
+from paradex.image.aruco import draw_charuco
 
 download_dir = os.path.join(shared_dir, "extrinsic")
 config_dir = "config"
@@ -49,7 +41,6 @@ def parallel_processing(tot_kypt_matches, tot_kypt_dict, cam_keys):
     for twoviewgeom in results:
         if twoviewgeom is not None:
             db.add_two_view_geometry(*twoviewgeom)
-    
     
 def load_keypoint(root_dir):
     index_list = os.listdir(root_dir)
@@ -83,8 +74,6 @@ def load_keypoint(root_dir):
 
 
 if __name__ == "__main__":
-    import time
-    start_time = time.time()
     parser = argparse.ArgumentParser(description="Manage timestamped directories.")
     parser.add_argument("--name", type=str, help="Name of the directory to detect keypoint.")
     parser.add_argument("--latest", action="store_true", help="Split the latest video files.")
@@ -112,7 +101,7 @@ if __name__ == "__main__":
 
     root_dir = os.path.join(download_dir, name)
     keypoint_dict = load_keypoint(os.path.join(root_dir))
-
+    
     N = max(keypoint_dict.keys()) + 1
     colormap = plt.cm.get_cmap("hsv", N)
     index2color = {idx: tuple((np.array(colormap(i)[:3]) * 255).astype(int)) for i, idx in enumerate(keypoint_dict)}
@@ -131,7 +120,7 @@ if __name__ == "__main__":
             if cor.shape[0] == 0:
                 continue
             
-            draw_keypoint(images_dict[serial_num], cor, color = index2color[int(index)])
+            draw_charuco(images_dict[serial_num], cor, color = index2color[int(index)])
             
             minmax_id[index]["max"] = max(minmax_id[index]["max"], np.max(ids))
             minmax_id[index]["min"] = min(minmax_id[index]["min"], np.min(ids))
@@ -219,7 +208,6 @@ if __name__ == "__main__":
             tot_kypt_dict[serial_1].append(kypt_data[serial_1]["corners"])
             kypt_offset[serial_1] += len(kypt_data[serial_1]["ids"])
         
-    
     for serial_num, kypt_list in tot_kypt_dict.items():
         kypt_list = np.vstack(kypt_list)
         tot_kypt_dict[serial_num] = kypt_list
@@ -237,16 +225,5 @@ if __name__ == "__main__":
     
     parallel_processing(tot_kypt_matches, tot_kypt_dict, cam_keys)
 
-     
-    
-
     db.commit()
     db.close()
-    print("--- %s seconds ---" % (time.time() - start_time))
-
-    # colmap failes to much try colmap gui
-    # mapperOptions = pycolmap.IncrementalPipelineOptions(options['MapperOptions'])
-    # maps = pycolmap.incremental_mapping(database_path, ".", out_pose_dir, options = mapperOptions)
-    # maps[0].write_text(out_pose_dir)
-
-    # recon = maps[0]

@@ -51,7 +51,7 @@ def listen_socket(pc_name, socket):
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-# run_script(f"python src/calibration/extrinsic/client.py --save_path {filename}", pc_list)
+run_script(f"python src/calibration/extrinsic/client.py --save_path {filename}", pc_list)
 
 camera_controller = RemoteCameraController("stream", None, sync=False)
 camera_controller.start_capture()

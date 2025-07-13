@@ -1,5 +1,3 @@
-from paradex.io.xsens.receiver import XSensReceiver, xsens_joint_name, xsens_joint_parent_name
-from paradex.io.occulus.receiver import OculusReceiver, occulus_hand_joint_name, occulus_hand_joint_parent_name
 from paradex.visualization.hand import HandVisualizer
 
 from threading import Event
@@ -14,13 +12,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.device == 'xsens': 
-        from paradex.io.xsens.receiver import XSensReceiver
+        from paradex.io.teleop import XSensReceiver, xsens_joint_name, xsens_joint_parent_name
         receiver = XSensReceiver()
         skeleton_info = {child:parent for child, parent in zip(xsens_joint_name, xsens_joint_parent_name)}
         joint_name_list = xsens_joint_name
 
     if args.device =='occulus':
-        from paradex.io.occulus.receiver import OculusReceiver
+        from paradex.io.teleop import OculusReceiver, occulus_hand_joint_name, occulus_hand_joint_parent_name
         receiver = OculusReceiver()
         skeleton_info = {child:parent for child, parent in occulus_hand_joint_parent_name.items()}
         joint_name_list = occulus_hand_joint_name

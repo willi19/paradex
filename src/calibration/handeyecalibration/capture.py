@@ -1,17 +1,13 @@
-import threading
 import numpy as np
 import time
-import zmq
 import os
 import shutil
-import argparse
 
-from paradex.utils.file_io import shared_dir, find_latest_directory, rsc_path
+from paradex.utils.file_io import shared_dir, find_latest_directory
 from paradex.utils.env import get_pcinfo
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.robot_controller import XArmController
-from paradex.robot import RobotWrapper
 
 def copy_calib_files(save_path):
     camparam_dir = os.path.join(shared_dir, "cam_param")

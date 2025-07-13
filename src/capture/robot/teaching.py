@@ -17,7 +17,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--save_path')
 args = parser.parse_args()
 
-os.makedirs(args.save_path, exist_ok=True)
+if args.save_path is not None:
+    os.makedirs(args.save_path, exist_ok=True)
      
 ip = "192.168.1.221"
 arm = XArmAPI(ip, is_radian=True)
@@ -35,7 +36,7 @@ arm.set_state(0)
 idx = 0
 try:
     while not stop_event.is_set():
-        if save_event.is_set():
+        if save_event.is_set() and not args.save_path is None:
             _, pos_aa = arm.get_position_aa(is_radian=True)
             _, qpos = arm.get_joint_states()
             qpos = qpos[0][:6]

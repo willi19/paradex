@@ -204,9 +204,9 @@ class XArmController:
     def save(self):
         with self.lock:
             if self.capture_path is not None:       
-                os.makedirs(os.path.join(self.capture_path, "arm"), exist_ok=True)
+                os.makedirs(os.path.join(self.capture_path, "xarm"), exist_ok=True)
                 for name, value in self.data.items():                     
-                    np.save(os.path.join(self.capture_path, "arm", f"{name}.npy"), value[:self.cnt])
+                    np.save(os.path.join(self.capture_path, "xarm", f"{name}.npy"), value[:self.cnt])
                     
     def quit(self):
         self.save()

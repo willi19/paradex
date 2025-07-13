@@ -7,7 +7,7 @@ from paradex.image.aruco import detect_aruco, triangulate_marker, draw_aruco
 from paradex.image.undistort import undistort_img
 from paradex.geometry.Tsai_Lenz import solve
 from paradex.geometry.conversion import project, to_homo
-from paradex.utils.file_io import handeye_calib_path, find_latest_directory, load_cam_param, handeye_calib_path
+from paradex.utils.file_io import find_latest_directory, load_cam_param, rsc_path, shared_dir
 from paradex.utils.cam_param import get_cammtx
 from paradex.geometry.math import rigid_transform_3D
 
@@ -18,7 +18,7 @@ parser.add_argument("--name", type=str, default=None, help="Name of the calibrat
 
 args = parser.parse_args()
 if args.name is None:
-    args.name = find_latest_directory(handeye_calib_path)
+    args.name = find_latest_directory(os.path.join(shared_dir, "all"))
 
 name = args.name
 he_calib_path = os.path.join(handeye_calib_path, name)
@@ -101,6 +101,7 @@ for i in range(len(index_list)-1):
     print(A_list[i] @ X - X @ B_list[i], "error")
     
 np.save(os.path.join(he_calib_path, "0", "C2R.npy"), X)
+print(extrinsic['22640993'])
 marker_pos = {}
 
 for idx in range(len(index_list)):

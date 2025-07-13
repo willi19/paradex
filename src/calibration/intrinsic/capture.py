@@ -71,12 +71,12 @@ try:
                 save = result["save"]
                 if save:
                     saved_board_corners.append(corners)
-                    draw_charuco(saved_image, corners, BOARD_COLORS[0], 5, -1, ids)
+                    draw_charuco(saved_image, corners[:,0], BOARD_COLORS[0], 5, -1, ids)
 
                 if corners.shape[0] == 0:
                     continue
             
-                draw_charuco(plot_img, corners, BOARD_COLORS[int(board_id)], 5, -1, ids)
+                draw_charuco(plot_img, corners[:,0], BOARD_COLORS[int(board_id)], 5, -1, ids)
 
             plot_img = cv2.resize(plot_img, (2048 // 2, 1536 // 2))
             cv2.imshow("Charuco Detection", plot_img)

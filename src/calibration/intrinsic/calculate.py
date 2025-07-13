@@ -44,7 +44,6 @@ for serial_num in serial_list:
         date = find_latest_directory(kypt_path)
 
     kypt = np.load(os.path.join(kypt_path, date), allow_pickle=True)
-
     chessboard_size = (10, 7)  # number of inner corners
     square_size = 0.025  # in meters or whatever unit you choose
 

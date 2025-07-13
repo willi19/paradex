@@ -36,16 +36,18 @@ wrist_rot = np.array([[0, 0, 1, 0],
                       [0, 0, 0, 1]])
 try:
     cnt = 0
-    for x in range(30, 61, 2):
-        for y in range(-30, 31, 2):
-            if np.sqrt(x**2 + y**2) > 0.62:
+    for row_i, x in enumerate(range(30, 65, 1)):
+        for y in range(-30, 31, 1):
+            if np.sqrt(x**2 + y**2) > 65:
                 continue
+            
             target_action = wrist_rot.copy()
-            target_action[0, 3] = x
-            target_action[1, 3] = y
+            target_action[0, 3] = x / 100
+            target_action[1, 3] = y / 100 if row_i % 2 == 0 else -y / 100
+            
             dex_arm.home_robot(target_action)
         
-            time.sleep(0.5)
+            time.sleep(0.1)
             
             wrist6d = dex_arm.get_position()
             os.makedirs(f"{shared_dir}/all_in_one/{filename}/{cnt}/image", exist_ok=True)
@@ -53,6 +55,7 @@ try:
             
             camera_loader.start_capture(f'shared_data/all_in_one/{filename}/{cnt}/image')
             camera_loader.end_capture()
+            cnt += 1
         
     copy_calib_files(f"/home/temp_id/shared_data/all_in_one/{filename}/0")
 

@@ -200,7 +200,6 @@ class CameraManager:
                     break
             if self.exit.is_set():
                 break
-
             self.capture_end_flag[index].clear()
             
             init = True

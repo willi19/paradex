@@ -27,7 +27,7 @@ pc_list = list(pc_info.keys())
 
 dex_arm = XArmController()
 git_pull("merging", pc_list)
-run_script("python src/calibration/handeyecalibration/client.py", pc_list)
+# run_script("python src/calibration/handeyecalibration/client.py", pc_list)
 
 camera_loader = RemoteCameraController("image", None)
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())

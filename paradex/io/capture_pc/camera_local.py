@@ -43,6 +43,9 @@ class CameraCommandReceiver():
                 self.file_name = message.split(":")[1]
                 if self.mode == "image":
                     self.camera.set_save_dir(os.path.join(home_path, self.file_name))
+                elif self.mode == "video":
+                    self.camera.set_save_dir(self.file_name)
+                    
                 self.camera.start()
                 self.send_message("capture_start")
                 

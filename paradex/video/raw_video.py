@@ -73,7 +73,7 @@ def fill_dropped_frames(video_path, load_info, process_frame, process_result, pr
         return f"{video_path}:already exist"
     
     info = load_info(video_path)
-    return f"{video_path}: {e} error during loading info"            
+    # return f"{video_path}: {e} error during loading info"            
     
     timestamp_dict = json.load(open(timestamp_path))
     frame_ids = np.array(timestamp_dict["frameID"])

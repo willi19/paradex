@@ -16,7 +16,7 @@ def check_valid(timestamp):
     ts_diff = ts_array[1:] - ts_array[:-1]
     
     interval = ts_diff / fid_diff
-    
+    print(interval)
     if np.max(interval) > np.min(interval) * 1.5:
         return False
     

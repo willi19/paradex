@@ -25,7 +25,7 @@ def load_info(video_path):
     return cam_param
 
 start_time = time.time()
-rvp = RawVideoProcessor("capture_", process_frame=process_frame, load_info=load_info, overwrite=True)
+rvp = RawVideoProcessor("capture_", process_frame=process_frame, load_info=load_info, overwrite=False)
 while not rvp.finished():
     time.sleep(0.01)
     

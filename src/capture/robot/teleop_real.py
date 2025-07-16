@@ -3,7 +3,7 @@ import numpy as np
 import argparse
 import os
 
-from paradex.io.robot_controller import XArmController, AllegroController, InspireController
+from paradex.io.robot_controller import XArmController, AllegroController, InspireController, FrankaController
 from paradex.io.teleop import XSensReceiver, OculusReceiver
 from paradex.io.contact.receiver import SerialReader
 from paradex.retargetor import Unimanual_Retargetor, HandStateExtractor
@@ -33,6 +33,9 @@ def initialize_teleoperation(save_path):
     if args.arm == "xarm":
         controller["arm"] = XArmController(save_path)
 
+    if args.arm == "franka":
+        controller["franka"] = FrankaController(save_path)
+        
     if args.hand == "allegro":
         controller["hand"] = AllegroController(save_path)
         if save_path != None:

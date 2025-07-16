@@ -28,21 +28,28 @@ end_capture = Event()
 
 listen_keyboard({"s":start_capture, "q":stop_event, "e" : end_capture})
 
-save_path = os.path.join(shared_dir, "capture_", "hri", args.save_path)
+save_path = os.path.join("capture_", "hri", args.obj_name)
+shared_path = os.path.join(shared_dir, save_path)
 last_capture_idx = -1
 
 if os.path.exists(save_path):
-    last_capture_idx = max(os.listdir(save_path), key=lambda x:int(x))
+    last_capture_idx = max(os.listdir(shared_path), key=lambda x:int(x))
+else:
+    os.makedirs(shared_path)
+    
 try:
     capture_idx = last_capture_idx + 1
     while not stop_event.is_set():
         if not start_capture.is_set():
             time.sleep(0.01)
             continue
-        copy_calib_files(f'{save_path}/{capture_idx}')
+            
+        os.makedirs(f'{shared_path}/{capture_idx}')
+        copy_calib_files(f'{shared_path}/{capture_idx}')
         
         end_capture.clear()
         camera_loader.start_capture(f'{save_path}/{capture_idx}')
+        print("start_capture")
         
         while not end_capture.is_set():
             time.sleep(0.01)

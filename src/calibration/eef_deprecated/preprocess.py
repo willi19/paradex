@@ -6,7 +6,7 @@ from paradex.geometry.triangulate import ransac_triangulation
 from paradex.image.aruco import detect_aruco
 from paradex.image.undistort import undistort_img
 
-from paradex.utils.file_io import find_latest_directory, load_cam_param, rsc_path, handeye_calib_path, shared_dir
+from paradex.utils.file_io import find_latest_directory, load_current_camparam, rsc_path, handeye_calib_path, shared_dir
 import argparse
 
 import cv2
@@ -32,7 +32,7 @@ robot = RobotWrapper(
 )
 
 link_index = robot.get_link_index("link6")
-intrinsic, extrinsic = load_cam_param(os.path.join(he_calib_path, "0", "cam_param"))
+intrinsic, extrinsic = load_current_camparam(os.path.join(he_calib_path, "0", "cam_param"))
 cammat = {}
 for serial_num in list(intrinsic.keys()):
     int_mat = intrinsic[serial_num]["intrinsics_undistort"]

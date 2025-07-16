@@ -20,7 +20,7 @@ pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 run_script(f"python src/dataset_acquision/hri/video_client.py", pc_list)
 
-camera_loader = RemoteCameraController("video", None)
+camera_loader = RemoteCameraController("video", None, sync=True)
 
 stop_event = Event()
 start_capture = Event()
@@ -32,23 +32,24 @@ save_path = os.path.join("capture_", "hri", args.obj_name)
 shared_path = os.path.join(shared_dir, save_path)
 last_capture_idx = -1
 
-if os.path.exists(save_path):
-    last_capture_idx = max(os.listdir(shared_path), key=lambda x:int(x))
+if os.path.exists(shared_path):
+    last_capture_idx = int(max(os.listdir(shared_path), key=lambda x:int(x)))
 else:
-    os.makedirs(shared_path)
+    os.makedirs(shared_path, exist_ok=True)
     
 try:
     capture_idx = last_capture_idx + 1
+    print(capture_idx)
     while not stop_event.is_set():
         if not start_capture.is_set():
             time.sleep(0.01)
             continue
             
-        os.makedirs(f'{shared_path}/{capture_idx}')
+        os.makedirs(f'{shared_path}/{capture_idx}', exist_ok=True)
         copy_calib_files(f'{shared_path}/{capture_idx}')
         
         end_capture.clear()
-        camera_loader.start_capture(f'{save_path}/{capture_idx}')
+        camera_loader.start_capture(f'{save_path}/{capture_idx}/videos')
         print("start_capture")
         
         while not end_capture.is_set():

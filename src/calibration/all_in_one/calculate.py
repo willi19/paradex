@@ -7,7 +7,7 @@ from paradex.image.aruco import detect_aruco, triangulate_marker, draw_aruco
 from paradex.image.undistort import undistort_img
 from paradex.geometry.Tsai_Lenz import solve
 from paradex.geometry.conversion import project, to_homo
-from paradex.utils.file_io import find_latest_directory, load_cam_param, rsc_path, shared_dir
+from paradex.utils.file_io import find_latest_directory, load_current_camparam, rsc_path, shared_dir
 from paradex.image.cam_param import get_cammtx
 from paradex.geometry.math import rigid_transform_3D
 
@@ -23,7 +23,7 @@ if args.name is None:
 name = args.name
 he_calib_path = os.path.join(handeye_calib_path, name)
 
-intrinsic, extrinsic = load_cam_param(os.path.join(he_calib_path, "0", "cam_param"))
+intrinsic, extrinsic = load_current_camparam(os.path.join(he_calib_path, "0", "cam_param"))
 cammtx = get_cammtx(intrinsic, extrinsic)
 
 index_list = os.listdir(he_calib_path)

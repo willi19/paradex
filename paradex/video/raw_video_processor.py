@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 import os
 import json
-from multiprocessing import Pool, shared_memory, Manager
+from multiprocessing import Pool, shared_memory, Manager, Value
 from paradex.utils.file_io import home_path
 from paradex.video.raw_video import *
 
@@ -10,24 +10,28 @@ from paradex.video.raw_video import *
 # Every files will be deleted during processing
 
 class RawVideoProcessor():
-    def __init__(self, save_path, process_frame=None, preserve=True, overwrite=True):
+    def __init__(self, save_path, load_info=None, process_result=None, process_frame=None, preserve=True, overwrite=True):
         self.save_path = save_path
         self.manager = Manager()
-        
         
         self.log = []
         self.video_path_list = get_videopath_list(f"{home_path}/captures1/{save_path}") + \
                                 get_videopath_list(f"{home_path}/captures2/{save_path}")
         self.remove_invalid()
         
-        self.cur_state = self.manager.dict({vid_path:0 for vid_path in self.valid_video_path_list})
+        # self.cur_state = self.manager.dict({vid_path:0 for vid_path in self.valid_video_path_list})
         self.total_frame = {vid_path:len(load_timestamp(vid_path)["frameID"]) for vid_path in self.valid_video_path_list}
         
         self.valid_video_path_list.sort()
         
         self.process_frame = process_frame # function that gets video_path & image for data processing and saving
+        self.load_info = load_info
+        self.process_result = process_result
+               
         self.preserve = preserve
         self.overwrite = overwrite
+        
+        self.frame_counter = {vid_path:self.manager.Value('i', 0) for vid_path in self.valid_video_path_list}
         
         self.pool = Pool()
         self.process()
@@ -57,7 +61,7 @@ class RawVideoProcessor():
         self.log.append("ERROR in process:", e)
         
     def process(self):
-        self.process_list = [self.pool.apply_async(fill_dropped_frames, args=(vid_path, self.process_frame, self.preserve, self.overwrite), callback=self.async_callback, error_callback=self.error_callback)
+        self.process_list = [self.pool.apply_async(fill_dropped_frames, args=(vid_path, self.load_info, self.process_frame, self.process_result, self.preserve, self.overwrite, self.frame_counter[vid_path]), callback=self.async_callback, error_callback=self.error_callback)
                         for vid_path in self.valid_video_path_list]
             
        

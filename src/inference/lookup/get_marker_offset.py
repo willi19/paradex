@@ -1,7 +1,7 @@
 from paradex.image.aruco import detect_aruco
 from paradex.image.undistort import undistort_img
 
-from paradex.utils.file_io import shared_dir, find_latest_directory, load_cam_param
+from paradex.utils.file_io import shared_dir, find_latest_directory, load_current_camparam
 import os
 import cv2
 from paradex.geometry.triangulate import ransac_triangulation
@@ -13,7 +13,7 @@ camparam_dir = os.path.join(shared_dir, "cam_param")
 camparam_name = find_latest_directory(camparam_dir)
 camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
 
-intrinsic, extrinsic = load_cam_param(os.path.join(camparam_path))
+intrinsic, extrinsic = load_current_camparam(os.path.join(camparam_path))
 cammat = {}
 for serial_num in list(intrinsic.keys()):
     int_mat = intrinsic[serial_num]["intrinsics_undistort"]

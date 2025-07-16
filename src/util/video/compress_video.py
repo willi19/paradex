@@ -5,7 +5,7 @@ import os
 import argparse
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
-from paradex.utils.io import find_latest_directory, shared_dir, load_cam_param, capture_path_list, get_video_list
+from paradex.utils.io import find_latest_directory, shared_dir, load_current_camparam, capture_path_list, get_video_list
 import json
 
 def process_video(args):

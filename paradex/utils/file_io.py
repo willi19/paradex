@@ -82,7 +82,7 @@ def find_latest_index(directory):
     return latest_dir
 
 # deprecated
-def load_cam_param_prev(name=None):
+def load_current_camparam_prev(name=None):
     if name == None:
         name = find_latest_directory(cam_param_dir)
     intrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "intrinsics.json")))
@@ -102,7 +102,7 @@ def load_cam_param_prev(name=None):
         extrinsic[serial] = np.array(values).reshape(3, 4)
     return intrinsic, extrinsic
 
-def load_cam_param(name=None):
+def load_current_camparam(name=None):
     if name == None:
         name = find_latest_directory(cam_param_dir)
     intrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "intrinsics.json")))
@@ -122,7 +122,7 @@ def load_cam_param(name=None):
         extrinsic[serial] = np.array(values).reshape(3, 4)
     return intrinsic, extrinsic
 
-def load_cam_param_temp(name=None):
+def load_current_camparam_temp(name=None):
     if name == None:
         name = find_latest_directory(cam_param_dir)
     intrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "intrinsics.json")))
@@ -296,4 +296,4 @@ def copy_calib_files(save_path):
     camparam_name = find_latest_directory(camparam_dir)
     camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
 
-    shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"))
+    shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"), dirs_exist_ok=True)

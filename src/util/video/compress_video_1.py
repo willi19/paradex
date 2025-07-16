@@ -10,7 +10,7 @@ def find_avi_json_pairs(folder):
         for f in files:
             if f.endswith(".avi"):
                 video_path = os.path.join(root, f)
-                json_path = video_path.replace(".avi", ".json")  # 예: 같은 폴더에 같은 이름의 .json이 있다고 가정
+                json_path = video_path.replace("-0000.avi", "_timestamps.json")  # 예: 같은 폴더에 같은 이름의 .json이 있다고 가정
                 video_json_pairs.append((video_path, json_path))
     return video_json_pairs
 

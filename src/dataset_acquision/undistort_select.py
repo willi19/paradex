@@ -4,7 +4,7 @@ import os
 import argparse
 from tqdm import tqdm
 from multiprocessing import Pool, cpu_count
-from paradex.utils.io import find_latest_directory, shared_dir, load_cam_param, capture_path_list, get_video_list
+from paradex.utils.io import find_latest_directory, shared_dir, load_current_camparam, capture_path_list, get_video_list
 import json
 
 def process_video(args):
@@ -25,7 +25,7 @@ if __name__ == "__main__":
 
     if args.name_list == None:
         args.name_list = os.listdir(os.path.join(capture_path_list[0], "capture"))
-    intrinsics, extrinsics = load_cam_param(args.cam_param)
+    intrinsics, extrinsics = load_current_camparam(args.cam_param)
 
     for name in args.name_list:
         try:

@@ -55,56 +55,72 @@ def get_savepath(path):
             relative = os.path.relpath(path, prefix)
             return os.path.join(relative)
 
-def fill_dropped_frames(video_path, process_frame, preserve, overwrite): # process_frame=None, preserve = True):
+def get_serialnum(video_path):
+    return os.path.basename(video_path).split("-")[0]
+
+def fill_dropped_frames(video_path, load_info, process_frame, process_result, preserve, overwrite, frame_counter=None): # process_frame=None, preserve = True):
+    timestamp_path = get_timestamp_path(video_path)
+    serial_num = get_serialnum(video_path)
+    out_path = os.path.join(os.path.dirname(video_path), f"{serial_num}.avi")
+    nas_path = os.path.join(shared_dir, get_savepath(out_path))
+    nas_path = os.path.join(os.path.dirname(nas_path), "video", os.path.basename(nas_path))
+    
+    data_list = []
+    
+    if os.path.exists(nas_path) and not overwrite:
+        return f"{video_path}:already exist"
+    
     try:
-        timestamp_path = get_timestamp_path(video_path)
-        serial_num = os.path.basename(video_path).split("-")[0]
-        out_path = os.path.join(os.path.dirname(video_path), f"{serial_num}.avi")
-        nas_path = os.path.join(shared_dir, get_savepath(out_path))
-        
-        if os.path.exists(nas_path) and not overwrite:
-            return f"{video_path}:already exist"
-        
-        
-        timestamp_dict = json.load(open(timestamp_path))
-        frame_ids = np.array(timestamp_dict["frameID"])
-        
-        cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        
-        fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # <-- 프레임 단위 압축
-        
-        out = cv2.VideoWriter(out_path, fourcc, fps, (w, h))
-        
-        last_frame = 0
-
-        for fid in frame_ids:
-            while last_frame + 1 < fid:
-                black_frame = np.zeros((h, w, 3), dtype=np.uint8)
-                out.write(black_frame)
-                last_frame += 1
-                
-            ret, frame = cap.read()
-            last_frame += 1
-            if process_frame is not None:
-                try:
-                    frame = process_frame(frame, serial_num, fid)
-                except Exception as e:
-                    return f"{video_path}:{str(e)}"
-            out.write(frame)
-        cap.release()
-        out.release()
-
-        if not preserve:
-            os.remove(video_path)
-            os.remove(timestamp_path)
-            
-        # upload video and remove previous one if preserve is False
-        copy_file(out_path, nas_path)
-        os.remove(out_path)
-        return f"{video_path}:success"
-        
+        info = load_info(video_path)
     except Exception as e:
-            return f"{video_path}:{str(e)}"
+        return f"{video_path}: {e} error during loading info"            
+    
+    timestamp_dict = json.load(open(timestamp_path))
+    frame_ids = np.array(timestamp_dict["frameID"])
+    
+    cap = cv2.VideoCapture(video_path)
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    
+    fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # <-- 프레임 단위 압축
+    
+    out = cv2.VideoWriter(out_path, fourcc, fps, (w, h))
+    
+    last_frame = 0
+
+    for fid in frame_ids:
+        while last_frame + 1 < fid:
+            black_frame = np.zeros((h, w, 3), dtype=np.uint8)
+            out.write(black_frame)
+            last_frame += 1
+            
+        ret, frame = cap.read()
+        last_frame += 1
+        if process_frame is not None:
+            try:
+                frame, data = process_frame(frame, info, fid)
+                data_list.append(data)
+            except Exception as e:
+                return f"{video_path}:{str(e)} during processing frame {last_frame}"
+        if frame_counter is not None:      
+            frame_counter = last_frame
+        out.write(frame)
+    cap.release()
+    out.release()
+
+    if process_result is not None:
+        try:
+            process_result(video_path, data_list)
+        except Exception as e:
+            return f"{video_path}:{str(e)} during processing result"
+            
+    if not preserve:
+        os.remove(video_path)
+        os.remove(timestamp_path)
+        
+    # upload video and remove previous one if preserve is False
+    copy_file(out_path, nas_path)
+    os.remove(out_path)
+    return f"{video_path}:success"
+    

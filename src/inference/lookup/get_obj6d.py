@@ -1,5 +1,5 @@
 import numpy as np
-from paradex.utils.file_io import find_latest_directory, handeye_calib_path, shared_dir, load_cam_param, find_latest_index
+from paradex.utils.file_io import find_latest_directory, handeye_calib_path, shared_dir, load_current_camparam, find_latest_index
 import os
 from paradex.geometry.math import rigid_transform_3D
 from paradex.geometry.triangulate import ransac_triangulation
@@ -16,7 +16,7 @@ camparam_dir = os.path.join(shared_dir, "cam_param")
 camparam_name = find_latest_directory(camparam_dir)
 camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
 
-intrinsic, extrinsic = load_cam_param(os.path.join(camparam_path))
+intrinsic, extrinsic = load_current_camparam(os.path.join(camparam_path))
 
 cammat = {}
 for serial_num in list(intrinsic.keys()):

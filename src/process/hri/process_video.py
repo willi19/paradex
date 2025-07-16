@@ -17,9 +17,11 @@ def process_result():
 
 def load_info(video_path):
     save_path = get_savepath(video_path)
+    serial_num = get_serialnum(video_path)
+    
     cam_param_path = os.path.join(shared_dir, os.path.dirname(save_path))
     
-    cam_param = load_camparam(cam_param_path)
+    cam_param = load_camparam(cam_param_path)[0][serial_num]
     return cam_param
 
 start_time = time.time()

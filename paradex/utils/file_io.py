@@ -2,6 +2,7 @@ import os
 import json
 import numpy as np
 import cv2
+import shutil
 
 rsc_path = os.path.join(
     os.path.dirname(__file__),
@@ -288,3 +289,11 @@ def get_robot_urdf_path(arm_name=None, hand_name=None):
         return os.path.join(rsc_path, "robot", arm_name+".urdf")
     
     return os.path.join(rsc_path, "robot", f"{arm_name}_{hand_name}.urdf")
+
+
+def copy_calib_files(save_path):
+    camparam_dir = os.path.join(shared_dir, "cam_param")
+    camparam_name = find_latest_directory(camparam_dir)
+    camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
+
+    shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"))

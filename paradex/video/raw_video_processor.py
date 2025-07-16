@@ -58,6 +58,7 @@ class RawVideoProcessor():
         self.log.append(result)
         
     def error_callback(self, e):
+        print(e)
         self.log.append("ERROR in process:", e)
         
     def process(self):

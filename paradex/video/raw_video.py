@@ -71,9 +71,10 @@ def fill_dropped_frames(video_path, load_info, process_frame, process_result, pr
     
     if os.path.exists(nas_path) and not overwrite:
         return f"{video_path}:already exist"
-    
-    info = load_info(video_path)
-    # return f"{video_path}: {e} error during loading info"            
+    try:
+        info = load_info(video_path)
+    except Exception as e:
+        return f"{video_path}: {e} error during loading info"            
     
     timestamp_dict = json.load(open(timestamp_path))
     frame_ids = np.array(timestamp_dict["frameID"])
@@ -100,9 +101,10 @@ def fill_dropped_frames(video_path, load_info, process_frame, process_result, pr
         if process_frame is not None:
             try:
                 frame, data = process_frame(frame, info, fid)
-                data_list.append(data)
             except Exception as e:
                 return f"{video_path}:{str(e)} during processing frame {last_frame}"
+            data_list.append(data)
+        
         if frame_counter is not None:      
             frame_counter = last_frame
         out.write(frame)

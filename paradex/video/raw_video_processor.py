@@ -58,13 +58,11 @@ class RawVideoProcessor():
         self.log.append(result)
         
     def error_callback(self, e):
-        print(e)
         self.log.append("ERROR in process:", e)
         
     def process(self):
         self.process_list = [self.pool.apply_async(fill_dropped_frames, args=(vid_path, self.load_info, self.process_frame, self.process_result, self.preserve, self.overwrite, self.frame_counter[vid_path]), callback=self.async_callback, error_callback=self.error_callback)
-                        for vid_path in self.valid_video_path_list]
-            
+                        for vid_path in self.valid_video_path_list]    
        
     def finished(self):
         return all(r.ready() for r in self.process_list)

@@ -81,27 +81,6 @@ def find_latest_index(directory):
     latest_dir = max(dirs, key=int)    
     return latest_dir
 
-# deprecated
-def load_current_camparam_prev(name=None):
-    if name == None:
-        name = find_latest_directory(cam_param_dir)
-    intrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "intrinsics.json")))
-    intrinsic = {}
-    for serial, values in intrinsic_data.items():
-        intrinsic[serial] = {
-            "intrinsics_original": np.array(values["original_intrinsics"]).reshape(3, 3),
-            "intrinsics_undistort": np.array(values["Intrinsics"]).reshape(3, 3),
-            "intrinsics_warped": np.array(values["Intrinsics_warped"]).reshape(3, 3),
-            "dist_params": np.array(values["dist_param"]),
-            "height": values["height"],  # Scalar values remain unchanged
-            "width": values["width"],
-        }
-    extrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "extrinsics.json")))
-    extrinsic = {}
-    for serial, values in extrinsic_data.items():
-        extrinsic[serial] = np.array(values).reshape(3, 4)
-    return intrinsic, extrinsic
-
 def load_current_camparam(name=None):
     if name == None:
         name = find_latest_directory(cam_param_dir)
@@ -117,26 +96,6 @@ def load_current_camparam(name=None):
         }
         
     extrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "extrinsics.json")))
-    extrinsic = {}
-    for serial, values in extrinsic_data.items():
-        extrinsic[serial] = np.array(values).reshape(3, 4)
-    return intrinsic, extrinsic
-
-def load_current_camparam_temp(name=None):
-    if name == None:
-        name = find_latest_directory(cam_param_dir)
-    intrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "intrinsics.json")))
-    intrinsic = {}
-    for serial, values in intrinsic_data.items():
-        intrinsic[serial] = {
-            "intrinsics_original": np.array(values["original_intrinsics"]).reshape(3, 3),
-            "intrinsics_undistort": np.array(values["Intrinsics"]).reshape(3, 3),
-            "intrinsics_warped": np.array(values["Intrinsics_warped"]).reshape(3, 3),
-            "dist_params": np.array(values["dist_param"]),
-            "height": values["height"],  # Scalar values remain unchanged
-            "width": values["width"],
-        }
-    extrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "extrinsics_temp.json")))
     extrinsic = {}
     for serial, values in extrinsic_data.items():
         extrinsic[serial] = np.array(values).reshape(3, 4)
@@ -194,10 +153,9 @@ def load_camparam(demo_path):
     intrinsic = {}
     for serial, values in intrinsic_data.items():
         intrinsic[serial] = {
-            "intrinsics_original": np.array(values["original_intrinsics"]).reshape(3, 3),
-            "intrinsics_undistort": np.array(values["Intrinsics"]).reshape(3, 3),
-            "intrinsics_warped": np.array(values["Intrinsics_warped"]).reshape(3, 3),
-            "dist_params": np.array(values["dist_param"]),
+            "original_intrinsics": np.array(values["original_intrinsics"]).reshape(3, 3),
+            "intrinsics_undistort": np.array(values["intrinsics_undistort"]).reshape(3, 3),
+            "dist_params": np.array(values["dist_params"]),
             "height": values["height"],  # Scalar values remain unchanged
             "width": values["width"],
         }

@@ -46,7 +46,6 @@ class RawVideoProcessor():
                 continue
             
             timestamp = json.load(open(timestamp_path))
-            print(video_path)
             if not check_valid(timestamp):
                 self.log.append(f"{video_path} : sync or lan cable connection unstable")
                 os.remove(video_path)

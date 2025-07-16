@@ -10,7 +10,6 @@ import time
 import os
 from paradex.robot import RobotWrapper
 from paradex.utils.file_io import rsc_path
-from paradex.geometry.conversion import aa_to_rotmat
 from scipy.spatial.transform import Rotation as R
 
 parser = argparse.ArgumentParser()
@@ -23,11 +22,11 @@ parser.add_argument('--object', type=str, nargs="+", default=[])
 args = parser.parse_args()
 
 if args.device == 'xsens': 
-    from paradex.io.xsens.receiver import XSensReceiver
+    from paradex.io.teleop import XSensReceiver
     teleop_device = XSensReceiver()
 
 if args.device =='occulus':
-    from paradex.io.occulus.receiver import OculusReceiver
+    from paradex.io.teleop import OculusReceiver
     teleop_device = OculusReceiver()
 
 save_video = False
@@ -37,12 +36,10 @@ num_envs = 1
 
 retargetor_list = []
 
-qpos_init = np.load("homepose/0_qpos.npy").astype(np.float32)
-init_pose = np.load("homepose/0_aa.npy")
+qpos_init = np.zeros(6)
+init_pose = np.zeros(6)
 
-home_wrist_pose = aa_to_rotmat(init_pose)
-home_wrist_pose[:3, 3] /= 1000
-
+home_wrist_pose = np.array([[1,0,0,300],[0,1,0,400], [0,0,1,200],[0,0,0,1]])
 arm_list = [None if s.lower() == "none" else s for s in args.arm]
 hand_list = [None if s.lower() == "none" else s for s in args.hand]
     
@@ -136,11 +133,11 @@ for arm_name in arm_list:
 while not stop_event.is_set():
     sim.tick()
     hand_pose = teleop_device.get_data() #{'Left':{}, 'Right':{}}
+    print(hand_pose)
     if hand_pose["Right"] == None:
         continue
     env_idx = 0
     state = state_extractor.get_state(hand_pose['Left'])
-    print(state)
     for arm_name in arm_list:
         for hand_name in hand_list:
             if arm_name == None and hand_name == None:
@@ -151,6 +148,7 @@ while not stop_event.is_set():
                 continue
             
             wrist_pose, hand_action = retargetor_list[env_idx].get_action(hand_pose)
+            print(wrist_pose)
             robot_action = get_action(arm_name, hand_name, wrist_pose, hand_action).astype(np.float32)
             
             sim.step(env_idx, {"robot":{},"robot_vis":{"right":robot_action}, "object_vis":{}})

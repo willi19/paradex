@@ -39,7 +39,6 @@ class AllegroController:
         self.hand_timestamp = np.zeros((60000, 1), dtype=np.float64)        
         self.hand_action_hist = np.zeros((60000, action_dof), dtype=np.float64)
 
-
         self.exit = Event()
 
         self.shm = {}
@@ -135,10 +134,10 @@ class AllegroController:
             time.sleep(max(0, 1 / fps - (end_time - start_time)))
         
         if self.capture_path is not None:
-            os.makedirs(os.path.join(self.capture_path, "hand"), exist_ok=True)
-            np.save(os.path.join(self.capture_path, "hand", f"state.npy"), self.hand_state_hist[:self.hand_cnt])
-            np.save(os.path.join(self.capture_path, "hand", f"timestamp.npy"), self.hand_timestamp[:self.hand_cnt])
-            np.save(os.path.join(self.capture_path, "hand", f"action.npy"), self.hand_action_hist[:self.hand_cnt])
+            os.makedirs(os.path.join(self.capture_path), exist_ok=True)
+            np.save(os.path.join(self.capture_path, f"state.npy"), self.hand_state_hist[:self.hand_cnt])
+            np.save(os.path.join(self.capture_path, f"timestamp.npy"), self.hand_timestamp[:self.hand_cnt])
+            np.save(os.path.join(self.capture_path, f"action.npy"), self.hand_action_hist[:self.hand_cnt])
         
 
     def set_target_action(self, action):

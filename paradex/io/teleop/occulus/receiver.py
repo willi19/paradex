@@ -186,6 +186,7 @@ class OculusReceiver:
                         for name, pose in data.items():
                             self.hand_pose[name] = pose
             except socket.timeout:
+                print("asdfasdf")
                 continue
 
     def quit(self):

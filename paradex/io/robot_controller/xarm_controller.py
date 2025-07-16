@@ -88,9 +88,9 @@ class XArmController:
     def set_action(self, action):
         assert action.shape == (4,4)
         
-        if homepose.shape == (6,):
-            self.robot_model.compute_forward_kinematics(homepose.copy)
-            homepose = self.robot_model.get_link_pose(self.last_link_id)
+        if action.shape == (6,):
+            self.robot_model.compute_forward_kinematics(action.copy())
+            action = self.robot_model.get_link_pose(self.last_link_id)
             
         with self.lock:
             self.init = True
@@ -204,9 +204,9 @@ class XArmController:
     def save(self):
         with self.lock:
             if self.capture_path is not None:       
-                os.makedirs(os.path.join(self.capture_path, "xarm"), exist_ok=True)
+                os.makedirs(os.path.join(self.capture_path), exist_ok=True)
                 for name, value in self.data.items():                     
-                    np.save(os.path.join(self.capture_path, "xarm", f"{name}.npy"), value[:self.cnt])
+                    np.save(os.path.join(self.capture_path, f"{name}.npy"), value[:self.cnt])
                     
     def quit(self):
         self.save()

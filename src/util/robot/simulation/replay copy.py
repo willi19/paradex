@@ -35,7 +35,7 @@ prev_urdf_file = os.path.join(rsc_path, "robot", "xarm_allegroprev.urdf")
 robot_prev = RobotWrapper(prev_urdf_file)
 link_id_prev = robot_prev.get_link_index("palm_link")
 
-demo_path = "data_Icra/teleoperation/bottle"
+demo_path = f"{shared_dir}/data_Icra/teleoperation/bottle"
 demo_name = "1"
 
 obj_T = pickle.load(open(os.path.join(demo_path, demo_name, "obj_traj.pickle"), "rb"))['bottle']

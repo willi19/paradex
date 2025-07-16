@@ -35,7 +35,7 @@ try:
             continue
         
         end_capture.clear()
-        camera_loader.start_capture(f'{args.save_path}')
+        camera_loader.start_capture(f'{args.save_path}/{capture_idx}')
         
         while not end_capture.is_set():
             time.sleep(0.01)

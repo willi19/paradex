@@ -166,9 +166,9 @@ class InspireController:
     def save(self):
         with self.lock:
             if self.capture_path is not None:       
-                os.makedirs(os.path.join(self.capture_path, "inspire"), exist_ok=True)
+                os.makedirs(os.path.join(self.capture_path), exist_ok=True)
                 for name, value in self.data.items():                     
-                    np.save(os.path.join(self.capture_path, "inspire", f"{name}.npy"), value[:self.cnt])
+                    np.save(os.path.join(self.capture_path, f"{name}.npy"), value[:self.cnt])
                                     
     def quit(self):
         self.exit.set()

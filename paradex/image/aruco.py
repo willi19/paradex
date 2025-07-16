@@ -5,7 +5,7 @@ import cv2
 
 from paradex.image.undistort import undistort_img
 from paradex.geometry.triangulate import ransac_triangulation
-from paradex.utils.cam_param import get_cammtx
+from paradex.image.cam_param import get_cammtx
 
 aruco_type = ["4X4_50", "4X4_100", "4X4_250", "4X4_1000",
                 "5X5_50", "5X5_100", "5X5_250", "5X5_1000",

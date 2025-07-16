@@ -13,7 +13,7 @@ hand_name = None
 robot = RobotWrapper(os.path.join(rsc_path, "robot", "xarm.urdf"))
 link_id = robot.get_link_index("palm_link")
 
-demo_path = "data_Icra/teleoperation/bottle"
+demo_path = f"{shared_dir}/data_Icra/teleoperation/bottle"
 demo_name = "1"
 
 obj_T = pickle.load(open(os.path.join(demo_path, demo_name, "obj_traj.pickle"), "rb"))['bottle']

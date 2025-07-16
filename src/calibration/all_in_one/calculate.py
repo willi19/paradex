@@ -8,7 +8,7 @@ from paradex.image.undistort import undistort_img
 from paradex.geometry.Tsai_Lenz import solve
 from paradex.geometry.conversion import project, to_homo
 from paradex.utils.file_io import find_latest_directory, load_cam_param, rsc_path, shared_dir
-from paradex.utils.cam_param import get_cammtx
+from paradex.image.cam_param import get_cammtx
 from paradex.geometry.math import rigid_transform_3D
 
 marker_id = [261, 262, 263, 264, 265, 266]

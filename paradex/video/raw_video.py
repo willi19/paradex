@@ -17,9 +17,11 @@ def check_valid(timestamp):
     
     interval = ts_diff / fid_diff
     if np.size(interval) == 0:
+        print("no timestamp")
         return False
     
     if np.max(interval) > np.min(interval) * 1.5:
+        print(np.min(interval), np.max(interval))
         return False
     
     return True

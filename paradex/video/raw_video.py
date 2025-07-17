@@ -92,12 +92,9 @@ def fill_dropped_frames(video_path, load_info, process_frame, process_result, pr
     
     out = cv2.VideoWriter(out_path, fourcc, fps, (w, h))
     
-    last_frame = magic_number
+    last_frame = 0
 
     for fid in frame_ids:
-        if last_frame >= fid:
-            continue
-        
         while last_frame + 1 < fid:
             black_frame = np.zeros((h, w, 3), dtype=np.uint8)
             out.write(black_frame)

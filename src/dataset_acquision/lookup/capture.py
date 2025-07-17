@@ -97,9 +97,9 @@ while not exit:
     os.makedirs(f'{shared_path}/{capture_idx}', exist_ok=True)
     copy_calib_files(f'{shared_path}/{capture_idx}')
         
-    sensors['arm'].start()
-    sensors['hand'].start()
-    sensors['camera'].start()
+    sensors['arm'].start(f"{shared_path}/{capture_idx}/{args.arm}")
+    sensors['hand'].start(f"{shared_path}/{capture_idx}/{args.hand}")
+    sensors['camera'].start(f"{save_path}/{capture_idx}/videos")
     sensors['timecode_receiver'].start()
     sensors["signal_generator"].on(1)
     
@@ -111,63 +111,3 @@ while not exit:
 
 for sensor_name, sensor in sensors.items():
     sensor.quit()
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-stop_event = Event()
-start_capture = Event()
-end_capture = Event()
-
-    
-try:
-    capture_idx = last_capture_idx + 1
-    while not stop_event.is_set():
-        if not start_capture.is_set():
-            time.sleep(0.01)
-            continue
-            
-        os.makedirs(f'{shared_path}/{capture_idx}', exist_ok=True)
-        copy_calib_files(f'{shared_path}/{capture_idx}')
-        
-        end_capture.clear()
-        camera_loader.start_capture(f'{save_path}/{capture_idx}/videos')
-        print("start_capture")
-        
-        while not end_capture.is_set():
-            time.sleep(0.01)
-            continue
-        
-        camera_loader.end_capture()
-        print("end_capture")
-        start_capture.clear()
-        
-        capture_idx += 1
-        
-finally:
-    camera_loader.quit()
-    

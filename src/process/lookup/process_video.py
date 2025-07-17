@@ -24,6 +24,7 @@ def process_frame(frame, info, fid):
 
 def process_result(video_path, data_list, frame_ids):
     save_path = os.path.join(os.path.dirname(os.path.dirname(video_path)), "marker2D")
+    os.makedirs(save_path, exist_ok=True)
     file_name = get_serialnum(video_path) + ".npy"
     
     result = {fid:data_list[i] for i, fid in enumerate(frame_ids)}

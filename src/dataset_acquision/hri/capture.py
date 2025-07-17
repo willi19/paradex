@@ -48,6 +48,7 @@ else:
     
 try:
     capture_idx = last_capture_idx + 1
+    chime.warning()
     while not stop_event.is_set():
         if not start_capture.is_set():
             time.sleep(0.01)

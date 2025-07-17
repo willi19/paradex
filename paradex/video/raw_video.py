@@ -16,12 +16,12 @@ def check_valid(timestamp):
     ts_diff = ts_array[1:] - ts_array[:-1]
     
     interval = ts_diff / fid_diff
-    print(interval)
     if np.size(interval) == 0:
         print("no timestamp")
         return False
     
     if np.max(interval) > np.min(interval) * 1.5:
+        print(interval)
         print(np.min(interval), np.max(interval))
         return False
     

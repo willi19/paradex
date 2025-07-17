@@ -24,8 +24,8 @@ def process_frame(frame, info, fid):
 
 def process_result(video_path, data_list, frame_ids):
     save_path = get_savepath(video_path)
-    
     save_path = os.path.join(os.path.dirname(os.path.dirname(save_path)), "marker2D")
+    print(save_path)
     os.makedirs(save_path, exist_ok=True)
     file_name = get_serialnum(video_path) + ".npy"
     

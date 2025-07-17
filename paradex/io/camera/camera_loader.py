@@ -31,7 +31,7 @@ class CameraManager:
     def __init__(self, mode, serial_list = None, syncMode=True):
         self.exit = Event()
         self.start_capture = Event()
-
+    
         self.mode = mode
         if self.mode == "image":
             syncMode = False

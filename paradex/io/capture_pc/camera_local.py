@@ -37,7 +37,9 @@ class CameraCommandReceiver():
                 if message == "quit":
                     self.exit = True
                     self.camera.end()
+                    print("end")
                     self.camera.quit()
+                    print("quit")
                     self.send_message("terminated")
                 
                 if message[:6] == "start:":

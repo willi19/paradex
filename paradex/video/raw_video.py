@@ -6,6 +6,8 @@ import json
 from paradex.utils.upload_file import copy_file
 from paradex.utils.file_io import shared_dir, home_path
 
+magic_number = 5
+
 def check_valid(timestamp):
     assert "frameID" in timestamp and "timestamps" in timestamp
     
@@ -20,7 +22,7 @@ def check_valid(timestamp):
         print("no timestamp")
         return False
     
-    if np.max(interval) > np.min(interval) * 1.5:
+    if np.max(interval[magic_number:]) > np.min(interval[magic_number:]) * 1.5:
         print(interval)
         print(np.min(interval), np.max(interval))
         return False
@@ -90,9 +92,12 @@ def fill_dropped_frames(video_path, load_info, process_frame, process_result, pr
     
     out = cv2.VideoWriter(out_path, fourcc, fps, (w, h))
     
-    last_frame = 0
+    last_frame = magic_number
 
     for fid in frame_ids:
+        if last_frame >= fid:
+            continue
+        
         while last_frame + 1 < fid:
             black_frame = np.zeros((h, w, 3), dtype=np.uint8)
             out.write(black_frame)

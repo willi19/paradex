@@ -33,8 +33,8 @@ try:
             time.sleep(0.01)
             continue
         
-        camera_loader.start_capture(f'shared_data/{args.save_path}/{capture_idx}/image')
-        camera_loader.end_capture()
+        camera_loader.start(f'shared_data/{args.save_path}/{capture_idx}/image')
+        camera_loader.end()()
         capture_idx += 1
         save_event.clear()
         

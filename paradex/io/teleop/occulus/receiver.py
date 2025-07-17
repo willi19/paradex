@@ -154,10 +154,9 @@ class OculusReceiver:
         #self.socket = context.socket(zmq.PULL)
         #self.socket.setsockopt(zmq.CONFLATE, 1)
         #self.socket.bind('tcp://{}:{}'.format(self.host_ip, self.port))
-        print("asdf")
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.sock.bind((self.host_ip, self.port))
-        self.sock.settimeout(0.1)
+        # self.sock.settimeout(0.1)
         while not self.stop_event.is_set():
             try:
                 token, addr = self.sock.recvfrom(65536)  # 64KB maximally

@@ -33,12 +33,13 @@ class InspireController:
         network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
         self.ip = network_config["inspire"]["ip"]
         self.port = network_config["inspire"]["port"]
+        self.capture_path = None
         
-        self.home_pose = np.zeros(action_dof)+500
+        self.home_pose = np.zeros(action_dof)+800
         
         self.exit = Event()
         self.lock = Lock()
-        self.target_action = np.zeros(action_dof)+500
+        self.target_action = np.zeros(action_dof)+800
         
         self.thread = Thread(target=self.move_hand)
         self.thread.daemon = True

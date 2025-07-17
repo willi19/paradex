@@ -45,7 +45,7 @@ if os.path.exists(shared_path):
     last_capture_idx = int(max(os.listdir(shared_path), key=lambda x:int(x)))
 else:
     os.makedirs(shared_path, exist_ok=True)
-    
+
 try:
     capture_idx = last_capture_idx + 1
     chime.warning()
@@ -57,7 +57,7 @@ try:
         copy_calib_files(f'{shared_path}/{capture_idx}')
         
         end_capture.clear()
-        camera_loader.start_capture(f'{save_path}/{capture_idx}/videos')
+        camera_loader.start(f'{save_path}/{capture_idx}/videos')
         print("start_capture")
         signal_generator.on(1)
         chime.info()
@@ -66,7 +66,7 @@ try:
             time.sleep(0.01)
             continue
         
-        camera_loader.end_capture()
+        camera_loader.end()()
         print("end_capture")
         start_capture.clear()
         signal_generator.off(1)

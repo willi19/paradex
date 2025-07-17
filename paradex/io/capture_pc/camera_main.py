@@ -67,12 +67,12 @@ class RemoteCameraController():
         self.send_message(message)
         return self.wait_for_message("camera_ready")
     
-    def start_capture(self, filename=''):
+    def start(self, filename=''):
         message = "start:"+filename
         self.send_message(message)
         self.wait_for_message("capture_start")
         
-    def end_capture(self):
+    def end(self):
         if self.mode != "image":
             self.send_message("stop")
         self.wait_for_message("capture_end")   

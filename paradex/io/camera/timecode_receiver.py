@@ -9,7 +9,7 @@ class TimecodeReceiver():
         self
     ):
         self.timestamps = dict([("timestamps", []), ("frameID", []), ("pc_time", [])])
-
+        self.autoforce_ip()
         self.exit = Event()
         self.start_capture = Event()
         self.cam_start = Event()
@@ -23,6 +23,34 @@ class TimecodeReceiver():
         
         self.wait_for_connection()
 
+    def autoforce_ip(self):
+        system = ps.System.GetInstance()
+        interfaceList = system.GetInterfaces() # virtual port included
+        for pInterface in interfaceList:
+            nodeMapInterface = pInterface.GetTLNodeMap()
+            camera_list = pInterface.GetCameras()
+            cam_num = len(camera_list)
+            camera_list.Clear()
+
+            if cam_num == 1:
+                curIPNode = nodeMapInterface.GetNode("GevDeviceIPAddress")    
+                if ps.IsAvailable(curIPNode) and ps.IsReadable(curIPNode):
+                    ip_int = ps.CIntegerPtr(curIPNode).GetValue()
+                
+                ip_str = f"{(ip_int >> 24) & 0xFF}.{(ip_int >> 16) & 0xFF}.{(ip_int >> 8) & 0xFF}.{ip_int & 0xFF}"
+                if ip_str[:2] != "11":
+                    ptrAutoForceIP = nodeMapInterface.GetNode("GevDeviceAutoForceIP")
+                    if ps.IsAvailable(ptrAutoForceIP) and ps.IsWritable(ptrAutoForceIP) and ps.IsWritable(pInterface.TLInterface.DeviceSelector.GetAccessMode()):
+                        pInterface.TLInterface.DeviceSelector.SetValue(0)
+                        pInterface.TLInterface.GevDeviceAutoForceIP.Execute()
+
+            del pInterface
+            
+        
+        interfaceList.Clear()
+        system.ReleaseInstance()
+        return
+    
     def wait_for_connection(self):
         self.connect_flag.wait()
         

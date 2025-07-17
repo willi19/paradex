@@ -28,7 +28,9 @@ class AllegroController:
         self.current_joint_pose = DEFAULT_VAL
         self.grav_comp = DEFAULT_VAL
         self.cmd_joint_state = DEFAULT_VAL
-    
+        
+        self.capture_path = None
+        
         self.allegro_home_pose = np.zeros(16)
         
         self.exit = Event()

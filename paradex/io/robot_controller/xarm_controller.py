@@ -32,6 +32,7 @@ class XArmController:
     def __init__(self):
         network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
         self.xarm_ip_address = network_config["xarm"]
+        self.save_path = None
         
         self.reset()
         

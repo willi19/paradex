@@ -11,7 +11,7 @@ from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.utils.env import get_pcinfo, get_serial_list
 from paradex.utils.file_io import shared_dir, copy_calib_files
 
-from paradex.io.robot_controller import XArmController, AllegroController, InspireController, FrankaController
+from paradex.io.robot_controller import get_arm, get_hand # XArmController, AllegroController, InspireController# , FrankaController
 from paradex.io.teleop import XSensReceiver, OculusReceiver
 from paradex.io.signal_generator.UTGE900 import UTGE900
 from paradex.io.camera.timecode_receiver import TimecodeReceiver
@@ -19,35 +19,79 @@ from paradex.io.camera.timecode_receiver import TimecodeReceiver
 from paradex.retargetor import Unimanual_Retargetor, HandStateExtractor
 from paradex.geometry.coordinate import DEVICE2WRIST
 
+import numpy as np
+
 def initialize_device(args):
     controller = {}
     
-    if args.arm == "xarm":
-        controller["arm"] = XArmController()
-
-    if args.arm == "franka":
-        controller["franka"] = FrankaController()
-        
-    if args.hand == "allegro":
-        controller["hand"] = AllegroController()
-        
-    elif args.hand == "inspire":
-        controller["hand"] = InspireController()
+    controller["arm"] = get_arm(args.arm)
+    controller["hand"] = get_hand(args.hand)
     
     if args.device == "xsens":
         controller["teleop"] = XSensReceiver()
     if args.device == "occulus":
         controller["teleop"] = OculusReceiver()
 
-    controller["camera"] = RemoteCameraController("image", serial_list=None, sync=True)
+    controller["camera"] = RemoteCameraController("video", serial_list=None, sync=True)
     controller["signal_generator"] = UTGE900()
     controller["timecode_receiver"] = TimecodeReceiver()
     
     return controller
 
+def move_robot(sensors):
+    
+    exit_counter = 0
+    stop_counter = 0
+    
+    state_hist = []
+    state_time = []
+    
+    while True:
+        data = sensors["teleop"].get_data()
+        if data["Right"] is None:
+            continue
+        state = state_extractor.get_state(data['Left'])
+        
+        state_hist.append(state)
+        state_time.append(time.time())
+            
+        if state == 0:
+            wrist_pose, hand_action = retargetor.get_action(data)
+            if args.hand is not None:
+                sensors["hand"].set_target_action(hand_action)
+            
+            if args.arm is not None:
+                sensors["arm"].set_action(wrist_pose.copy())
+                
+        if state == 1:
+            retargetor.pause()
+            continue
+        
+        if state == 2:
+            stop_counter += 1
+        
+        else:
+            stop_counter = 0
+            
+        if state == 3:
+            exit_counter += 1
+        
+        else:
+            exit_counter = 0
+            
+        if exit_counter > 10:
+            return "exit", state_hist, state_time
+    
+        if stop_counter > 10:
+            return "stop", state_hist, state_time
+     
 # === SETUP ===
 pc_info = get_pcinfo()
 serial_list = get_serial_list()
+
+pc_list = list(pc_info.keys())
+git_pull("merging", pc_list)
+run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--arm", choices=['xarm', 'franka'])
@@ -69,45 +113,52 @@ while not sensors["arm"].is_ready():
         
 retargetor = Unimanual_Retargetor(args.arm, args.hand, home_pose)
 
-pc_list = list(pc_info.keys())
-git_pull("merging", pc_list)
-run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
-
 save_path = os.path.join("capture_", "lookup", args.obj_name, args.grasp_type)
 shared_path = os.path.join(shared_dir, save_path)
 last_capture_idx = -1
 
-if os.path.exists(shared_path):
+if os.path.exists(shared_path) and len(os.listdir(shared_path)) > 0:
     last_capture_idx = int(max(os.listdir(shared_path), key=lambda x:int(x)))
 else:
     os.makedirs(shared_path, exist_ok=True)
 
-exit = False
-start = False
-
-while not exit:
+while True:
     capture_idx = last_capture_idx + 1
     # prepare for capture, move robot and object
-    while not start:
-        pass
-    
-    # start
     chime.info()
     
+    msg, state_hist, state_time = move_robot(sensors)
+    if msg == "exit":
+        break
+    
+    # start
     os.makedirs(f'{shared_path}/{capture_idx}', exist_ok=True)
     copy_calib_files(f'{shared_path}/{capture_idx}')
         
     sensors['arm'].start(f"{shared_path}/{capture_idx}/{args.arm}")
     sensors['hand'].start(f"{shared_path}/{capture_idx}/{args.hand}")
     sensors['camera'].start(f"{save_path}/{capture_idx}/videos")
-    sensors['timecode_receiver'].start()
+    sensors['timecode_receiver'].start(f"{shared_path}/{capture_idx}/timestamp")
     sensors["signal_generator"].on(1)
     
-    while start:
-        pass
-    # Do capture
+    chime.info()
+    
+    msg, state_hist, state_time = move_robot(sensors)
+        
+    sensors["arm"].end()
+    sensors["hand"].end()
+    sensors["camera"].end()
+    sensors['timecode_receiver'].end()
+    
+    np.save(state_hist, f"{shared_path}/{capture_idx}/state/state.npy")
+    np.save(state_time, f"{shared_path}/{capture_idx}/state/time.npy")
     
     sensors['signal_generator'].off(1)
+    
+    chime.success()
+    if msg == "exit":
+        break
 
 for sensor_name, sensor in sensors.items():
+    print(sensor_name)
     sensor.quit()

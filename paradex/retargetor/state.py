@@ -16,7 +16,7 @@ class HandStateExtractor:
         if straight[0] and straight[1] and straight[2] and straight[3]: # Fist pose
             return 1
         
-        if straight[0] and not straight[1] and not straight[2] and not straight[3]: # Open pose
+        if straight[0] and not straight[1] and not straight[2] and straight[3]: # Spider pose
             return 3
         
         return 0

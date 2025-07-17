@@ -3,7 +3,7 @@ import numpy as np
 import argparse
 import os
 
-from paradex.io.robot_controller import XArmController, AllegroController, InspireController, FrankaController
+from paradex.io.robot_controller import get_arm, get_hand
 from paradex.io.teleop import XSensReceiver, OculusReceiver
 from paradex.io.contact.receiver import SerialReader
 from paradex.retargetor import Unimanual_Retargetor, HandStateExtractor
@@ -27,22 +27,10 @@ parser.add_argument('--save_path', type=str)
 
 args = parser.parse_args()
 
-def initialize_teleoperation(save_path):
+def initialize_teleoperation():
     controller = {}
-    
-    if args.arm == "xarm":
-        controller["arm"] = XArmController(save_path)
-
-    if args.arm == "franka":
-        controller["franka"] = FrankaController(save_path)
-        
-    if args.hand == "allegro":
-        controller["hand"] = AllegroController(save_path)
-        if save_path != None:
-            controller["contact"] = SerialReader(save_path)
-    
-    elif args.hand == "inspire":
-        controller["hand"] = InspireController(save_path)
+    controller["arm"] = get_arm(args.arm)
+    controller["hand"] = get_hand(args.hand)
     
     if args.device == "xsens":
         controller["teleop"] = XSensReceiver()
@@ -53,7 +41,7 @@ def initialize_teleoperation(save_path):
 
 def main():    
     save_path = args.save_path
-    sensors = initialize_teleoperation(save_path)
+    sensors = initialize_teleoperation()
     
     state_extractor = HandStateExtractor()
     home_pose = np.eye(4) # Don't care
@@ -77,6 +65,10 @@ def main():
             time.sleep(0.0008)
         chime.success()
     
+    for sensor_name in ["arm", "hand"]:
+        if sensors[sensor_name] is not None:
+            sensors[sensor_name].start(save_path)
+                
     while True:
         data = sensors["teleop"].get_data()
         if data["Right"] is None:
@@ -99,7 +91,11 @@ def main():
             sensors["arm"].set_action(wrist_pose.copy())
             
         time.sleep(0.03)
-        
+    
+    for sensor_name in ["arm", "hand"]:
+        if sensors[sensor_name] is not None:
+            sensors[sensor_name].end()
+              
     for key in sensors.keys():
         sensors[key].quit()
         

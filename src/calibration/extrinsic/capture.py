@@ -54,7 +54,7 @@ git_pull("merging", pc_list)
 run_script(f"python src/calibration/extrinsic/client.py --save_path {filename}", pc_list)
 
 camera_controller = RemoteCameraController("stream", None, sync=False)
-camera_controller.start_capture()
+camera_controller.start()
 
 try:
     socket_dict = {name:get_client_socket(pc_info["ip"], 5564) for name, pc_info in pc_info.items()}
@@ -93,5 +93,5 @@ try:
             capture_idx += 1
 
 finally:
-    camera_controller.end_capture()
+    camera_controller.end()
     camera_controller.quit()        

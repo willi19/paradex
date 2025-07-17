@@ -27,7 +27,7 @@ pc_list = list(pc_info.keys())
 
 dex_arm = get_arm(arm_name)
 git_pull("merging", pc_list)
-# run_script("python src/calibration/all_in_one/client.py", pc_list)
+run_script("python src/calibration/all_in_one/client.py", pc_list)
 
 camera_loader = RemoteCameraController("image", None)
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())

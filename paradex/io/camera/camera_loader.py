@@ -285,7 +285,8 @@ class CameraManager:
     def start(self, save_dir=None):
         self.save_dir = save_dir
         for index in range(self.num_cameras):
-            self.capture_end_flag[index].clear()
+            if self.save_dir is not None:
+                self.capture_end_flag[index].clear()
             if self.syncMode:
                 self.cam_start_flag[index].clear()
             
@@ -297,7 +298,8 @@ class CameraManager:
         for i in range(self.num_cameras):
             self.save_finish_flag.clear()
         self.start_capture.clear()
-        self.wait_for_saveend()
+        if self.save_dir is not None:
+            self.wait_for_saveend()
 
     def quit(self):
         self.exit.set()

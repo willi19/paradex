@@ -56,8 +56,7 @@ class InspireController:
             }
             
     def end(self):
-        with self.lock:
-            self.save()
+        self.save()
                     
     def set_homepose(self, home_pose):
         assert home_pose.shape == (action_dof,)

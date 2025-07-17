@@ -42,9 +42,17 @@ class CameraCommandReceiver():
                 
                 if message[:6] == "start:":
                     self.file_name = message.split(":")[1]
+                        
                     if self.mode == "image":
-                        self.camera.start(os.path.join(home_path, self.file_name))
+                        if len(self.file_name) == 0:
+                            self.file_name = None
+                        else:
+                            self.file_name = os.path.join(home_path, self.file_name)
+                        self.camera.start(self.file_name)
+                        
                     elif self.mode == "video":
+                        if len(self.file_name) == 0:
+                            self.file_name = None
                         self.camera.start(self.file_name)
                     else:
                         self.camera.start()

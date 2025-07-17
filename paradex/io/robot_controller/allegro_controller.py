@@ -49,8 +49,7 @@ class AllegroController:
             }
             
     def end(self):
-        with self.lock:
-            self.save()
+        self.save()
 
     def _sub_callback_joint_state(self, data):
         self.current_joint_pose = data

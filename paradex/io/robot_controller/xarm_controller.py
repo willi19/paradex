@@ -77,8 +77,7 @@ class XArmController:
 
             
     def end(self):
-        with self.lock:
-            self.save()
+        self.save()
         
     def wait_for_save(self):
         self.save_event.wait()

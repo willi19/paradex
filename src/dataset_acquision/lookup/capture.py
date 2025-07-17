@@ -9,7 +9,7 @@ chime.theme('pokemon')
 from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.utils.env import get_pcinfo, get_serial_list
-from paradex.utils.file_io import shared_dir, copy_calib_files
+from paradex.utils.file_io import shared_dir, copy_calib_files, load_latest_C2R
 
 from paradex.io.robot_controller import get_arm, get_hand # XArmController, AllegroController, InspireController# , FrankaController
 from paradex.io.teleop import XSensReceiver, OculusReceiver
@@ -89,6 +89,8 @@ def move_robot(sensors):
 pc_info = get_pcinfo()
 serial_list = get_serial_list()
 
+c2r = load_latest_C2R()
+
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 # run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
@@ -122,8 +124,8 @@ if os.path.exists(shared_path) and len(os.listdir(shared_path)) > 0:
 else:
     os.makedirs(shared_path, exist_ok=True)
 
+capture_idx = last_capture_idx + 1
 while True:
-    capture_idx = last_capture_idx + 1
     # prepare for capture, move robot and object
     chime.info()
     
@@ -134,15 +136,16 @@ while True:
     # start
     os.makedirs(f'{shared_path}/{capture_idx}', exist_ok=True)
     copy_calib_files(f'{shared_path}/{capture_idx}')
+    np.save(f'{shared_path}/{capture_idx}/C2R.npy', c2r)
         
-    sensors['arm'].start(f"{shared_path}/{capture_idx}/{args.arm}")
-    sensors['hand'].start(f"{shared_path}/{capture_idx}/{args.hand}")
+    sensors['arm'].start(f"{shared_path}/{capture_idx}/raw/{args.arm}")
+    sensors['hand'].start(f"{shared_path}/{capture_idx}/raw/{args.hand}")
     sensors['camera'].start(f"{save_path}/{capture_idx}/videos")
-    sensors['timecode_receiver'].start(f"{shared_path}/{capture_idx}/timestamp")
+    sensors['timecode_receiver'].start(f"{shared_path}/{capture_idx}/raw/timestamp")
     sensors["signal_generator"].on(1)
     
+    print("start")
     chime.info()
-    
     msg, state_hist, state_time = move_robot(sensors)
         
     sensors["arm"].end()
@@ -150,14 +153,17 @@ while True:
     sensors["camera"].end()
     sensors['timecode_receiver'].end()
     
-    np.save(state_hist, f"{shared_path}/{capture_idx}/state/state.npy")
-    np.save(state_time, f"{shared_path}/{capture_idx}/state/time.npy")
+    os.makedirs(f"{shared_path}/{capture_idx}/state")
+    np.save(f"{shared_path}/{capture_idx}/raw/state/state.npy", state_hist)
+    np.save(f"{shared_path}/{capture_idx}/raw/state/time.npy", state_time)
     
     sensors['signal_generator'].off(1)
     
     chime.success()
     if msg == "exit":
         break
+    
+    capture_idx += 1
 
 for sensor_name, sensor in sensors.items():
     print(sensor_name)

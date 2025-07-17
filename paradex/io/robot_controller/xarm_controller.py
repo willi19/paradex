@@ -198,7 +198,12 @@ class XArmController:
                         self.data["torque"].append(np.array(state[2])[:6])
                         self.data["time"].append(np.array(start_time))
                         self.data["action"].append(action.copy())
-                        self.data["action_qpos"].append(np.array(self.arm.get_inverse_kinematics(cart)[1])[:6])
+                        
+                        success, ik = self.arm.get_inverse_kinematics(cart)
+                        if success != 0:
+                            ik = - np.ones(6)
+                            
+                        self.data["action_qpos"].append(np.array(ik)[:6])
                     
                     # print(self.arm.get_position(is_radian=True)[1], cart, "asdf")
                     #self.arm.set_servo_cartesian(cart.copy(), is_radian=True)
@@ -213,7 +218,7 @@ class XArmController:
         with self.lock:
             if self.save_path is not None:       
                 os.makedirs(os.path.join(self.save_path), exist_ok=True)
-                for name, value in self.data.items():                     
+                for name, value in self.data.items():          
                     np.save(os.path.join(self.save_path, f"{name}.npy"), np.array(value))
                     self.data[name] = []
             self.save_path = None

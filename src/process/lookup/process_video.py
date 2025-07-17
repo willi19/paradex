@@ -1,19 +1,33 @@
+import os
+from multiprocessing import Pool
+import time
+import numpy as np
+
 from paradex.video.raw_video_processor import RawVideoProcessor
 from paradex.video.raw_video import get_savepath, get_serialnum
 
 from paradex.utils.file_io import shared_dir, load_camparam
 from paradex.image.undistort import undistort_img
-import os
-from multiprocessing import Pool
-import time
+from paradex.image.aruco import detect_aruco
 
 def process_frame(frame, info, fid):
     intrinsic = info
     frame = undistort_img(frame.copy(), intrinsic)
-    return frame, None
+    
+    undist_kypt, ids = detect_aruco(frame)
+    data = {}
+    
+    for id, corner in zip(ids, undist_kypt):
+        data[int(id)] = corner.squeeze()
+            
+    return frame, data
 
-def process_result():
-    pass
+def process_result(video_path, data_list, frame_ids):
+    save_path = os.path.join(os.path.dirname(os.path.dirname(video_path)), "marker2D")
+    file_name = get_serialnum(video_path) + ".npy"
+    
+    result = {fid:data_list[i] for i, fid in enumerate(frame_ids)}
+    np.save(os.path.join(save_path, file_name), result)
 
 def load_info(video_path):
     save_path = get_savepath(video_path)

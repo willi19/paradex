@@ -16,6 +16,7 @@ class TimecodeReceiver():
         self.connect_flag = Event()
         self.save_end = Event()
         
+        self.save_path = None
         self.lock = Lock()
         
         self.thread = Thread(target=self.run)
@@ -61,10 +62,7 @@ class TimecodeReceiver():
         self.save_end.wait()
         
     def start(self, save_path=None):
-        if save_path is not None:
-            self.save_path = os.path.join(save_path, "camera_timestamp")
-        else:
-            self.save_path = None
+        self.save_path = save_path
             
         self.start_capture.set()
         self.wait_for_cam_start()
@@ -73,6 +71,7 @@ class TimecodeReceiver():
         self.save_end.clear()
         self.start_capture.clear()
         self.wait_for_save()
+        self.save_path = None
         
     def get_data(self):
         with self.lock:
@@ -153,6 +152,9 @@ class TimecodeReceiver():
 
     def quit(self):
         """Stops the serial reader process."""
+        if self.save_path is not None:
+            self.end()
+            
         self.exit.set()
         self.thread.join()
 

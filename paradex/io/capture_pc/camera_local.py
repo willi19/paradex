@@ -26,38 +26,41 @@ class CameraCommandReceiver():
         self.socket = get_server_socket(port)
         
         self.register()
-        self.initialize_camera()
-        self.init = True
+        try:
+            self.initialize_camera()
+            self.init = True
         
-        while not self.exit:
-            _, message = self.socket.recv_multipart()
-            message = message.decode()
-            print(message)
-            if message == "quit":
-                self.exit = True
-                self.camera.end()
-                self.camera.quit()
-                self.send_message("terminated")
-            
-            if message[:6] == "start:":
-                self.file_name = message.split(":")[1]
-                if self.mode == "image":
-                    self.camera.set_save_dir(os.path.join(home_path, self.file_name))
-                elif self.mode == "video":
-                    self.camera.set_save_dir(self.file_name)
-                    
-                self.camera.start()
-                self.send_message("capture_start")
-                print("capture_start")
+            while not self.exit:
+                _, message = self.socket.recv_multipart()
+                message = message.decode()
+                if message == "quit":
+                    self.exit = True
+                    self.camera.end()
+                    self.camera.quit()
+                    self.send_message("terminated")
                 
-                if self.mode == "image":
-                    self.camera.wait_for_capture_end()
+                if message[:6] == "start:":
+                    self.file_name = message.split(":")[1]
+                    if self.mode == "image":
+                        self.camera.start(os.path.join(home_path, self.file_name))
+                    elif self.mode == "video":
+                        self.camera.start(self.file_name)
+                    else:
+                        self.camera.start()
+                        
+                    self.send_message("capture_start")
+                    print("capture_start")
+                    
+                    if self.mode == "image":
+                        self.camera.wait_for_capture_end()
+                        self.send_message("capture_end")
+                                    
+                if message == "stop":
+                    self.camera.end()
                     self.send_message("capture_end")
-                                
-            if message == "stop":
-                self.camera.end()
-                self.send_message("capture_end")
-            time.sleep(0.01)
+                time.sleep(0.01)
+        except:
+            self.send_message("error")
         
     def send_message(self, message):
         self.socket.send_multipart([self.ident, message.encode('utf-8')])

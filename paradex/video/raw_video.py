@@ -65,7 +65,6 @@ def fill_dropped_frames(video_path, load_info, process_frame, process_result, pr
     serial_num = get_serialnum(video_path)
     out_path = os.path.join(os.path.dirname(video_path), f"{serial_num}.avi")
     nas_path = os.path.join(shared_dir, get_savepath(out_path))
-    nas_path = os.path.join(os.path.dirname(nas_path), "video", os.path.basename(nas_path))
     
     data_list = []
     

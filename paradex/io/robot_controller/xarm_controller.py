@@ -29,31 +29,18 @@ Note:
 action_dof = 6
 
 class XArmController:
-    def __init__(self, save_path=None):
+    def __init__(self):
         network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
         self.xarm_ip_address = network_config["xarm"]
         
         self.reset()
         
-        self.capture_path = save_path
-        if save_path is not None:
-            os.makedirs(self.capture_path, exist_ok=True)
-
         self.lock = Lock()
+        
         self.exit = Event()
+        self.start_event = Event()
+        self.save_event = Event()
         
-        T = 60000
-        self.data = {
-            "time":np.zeros((T,1), dtype=np.float64),
-            "position":np.zeros((T, action_dof), dtype=np.float64),
-            "velocity":np.zeros((T, action_dof), dtype=np.float64),
-            "torque":np.zeros((T, action_dof), dtype=np.float64),
-            "action":np.zeros((T, 4, 4), dtype=np.float64),
-            "action_qpos":np.zeros((T, action_dof), dtype=np.float64) # x y z rpy
-        }
-        
-        self.cnt = 0
-
         self.target_action = np.array([
                                 [0, 1 ,0, 300],
                                 [0, 0, 1, -200],
@@ -64,7 +51,7 @@ class XArmController:
         self.homing = False
         
         self.init = False
-        self.fps = 50
+        self.fps = 100
         self.robot_model = RobotWrapper(os.path.join(rsc_path, "robot", "xarm.urdf"))
         self.last_link_id = self.robot_model.get_link_index("link6")
         
@@ -75,6 +62,26 @@ class XArmController:
     def is_ready(self):
         return not self.homing
 
+    def start(self, save_path=None):            
+        with self.lock:
+            self.save_path = save_path
+            self.data = {
+                "time":[],# np.zeros((T,1), dtype=np.float64),
+                "position":[],# np.zeros((T, action_dof), dtype=np.float64),
+                "velocity":[],# np.zeros((T, action_dof), dtype=np.float64),
+                "torque":[],# np.zeros((T, action_dof), dtype=np.float64),
+                "action":[], #np.zeros((T, 4, 4), dtype=np.float64),
+                "action_qpos":[] #np.zeros((T, action_dof), dtype=np.float64) # x y z rpy
+            }
+
+            
+    def end(self):
+        with self.lock:
+            self.save()
+        
+    def wait_for_save(self):
+        self.save_event.wait()
+        
     def home_robot(self, homepose):
         assert homepose.shape == (4,4) or homepose.shape == (6,)
         if homepose.shape == (6,):
@@ -185,13 +192,14 @@ class XArmController:
                 else:
                     _, state = self.arm.get_joint_states(is_radian=True)
                     
-                    self.data["position"][self.cnt] = np.array(state[0])[:6]
-                    self.data["velocity"][self.cnt] = np.array(state[1])[:6]
-                    self.data["torque"][self.cnt] = np.array(state[2])[:6]
-                    self.data["time"][self.cnt, 0] = np.array(start_time)
-                    self.data["action"][self.cnt] = action.copy()
-                    self.data["action_qpos"] = np.array(self.arm.get_inverse_kinematics(cart)[1])[:6]
-                    self.cnt += 1
+                    if self.save_path is not None:
+                        self.data["position"].append(np.array(state[0])[:6])
+                        self.data["velocity"].append(np.array(state[1])[:6])
+                        self.data["torque"].append(np.array(state[2])[:6])
+                        self.data["time"].append(np.array(start_time))
+                        self.data["action"].append(action.copy())
+                        self.data["action_qpos"].append(np.array(self.arm.get_inverse_kinematics(cart)[1])[:6])
+                    
                     # print(self.arm.get_position(is_radian=True)[1], cart, "asdf")
                     #self.arm.set_servo_cartesian(cart.copy(), is_radian=True)
                     self.arm.set_servo_cartesian_aa(aa, is_radian=True)
@@ -203,10 +211,12 @@ class XArmController:
 
     def save(self):
         with self.lock:
-            if self.capture_path is not None:       
-                os.makedirs(os.path.join(self.capture_path), exist_ok=True)
+            if self.save_path is not None:       
+                os.makedirs(os.path.join(self.save_path), exist_ok=True)
                 for name, value in self.data.items():                     
-                    np.save(os.path.join(self.capture_path, f"{name}.npy"), value[:self.cnt])
+                    np.save(os.path.join(self.save_path, f"{name}.npy"), np.array(value))
+                    self.data[name] = []
+            self.save_path = None
                     
     def quit(self):
         self.save()

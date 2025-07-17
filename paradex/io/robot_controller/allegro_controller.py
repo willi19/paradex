@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from multiprocessing import Process, shared_memory, Event, Lock
+from threading import Thread, Event, Lock
 
 import os
 
@@ -23,34 +23,32 @@ DEFAULT_VAL = None
 action_dof = 16
 
 class AllegroController:
-    def __init__(self, save_path=None):
+    def __init__(self):
         
         self.current_joint_pose = DEFAULT_VAL
         self.grav_comp = DEFAULT_VAL
         self.cmd_joint_state = DEFAULT_VAL
     
-        self.allegro_home_pose = None
+        self.allegro_home_pose = np.zeros(16)
         
-        self.capture_path = save_path
-        if save_path is not None:
-            os.makedirs(self.capture_path, exist_ok=True)
-
-        self.hand_state_hist = np.zeros((60000, action_dof), dtype=np.float64)
-        self.hand_timestamp = np.zeros((60000, 1), dtype=np.float64)        
-        self.hand_action_hist = np.zeros((60000, action_dof), dtype=np.float64)
-
         self.exit = Event()
-
-        self.shm = {}
-        self.create_shared_memory("hand_target_action", action_dof * np.dtype(np.float32).itemsize)
-        self.hand_target_action_array = np.ndarray((action_dof,), dtype=np.float32, buffer=self.shm["hand_target_action"].buf)
+        self.lock = Lock()
         
-        self.create_shared_memory("hand_state", action_dof * np.dtype(np.float32).itemsize)
-        self.hand_state_array = np.ndarray((action_dof,), dtype=np.float32, buffer=self.shm["hand_state"].buf)
-
-        self.hand_process = Process(target=self.move_hand)
+        self.hand_process = Thread(target=self.move_hand)
         self.hand_process.start()
 
+    def start(self, save_path):
+        if save_path is not None:
+            self.capture_path = save_path
+            self.data = {
+                "action":[],
+                "time":[],
+                "state":[]
+            }
+            
+    def end(self):
+        with self.lock:
+            self.save()
 
     def _sub_callback_joint_state(self, data):
         self.current_joint_pose = data
@@ -65,9 +63,9 @@ class AllegroController:
         return np.clip(action, -value, value)
     
     def move(self, desired_action = np.zeros(action_dof), absolute = True):
-        if self.current_joint_pose == DEFAULT_VAL:
-            print('No joint data received!')
-            return
+        # if self.current_joint_pose == DEFAULT_VAL:
+        #     print('No joint data received!')
+        #     return
 
         action = self._clip(desired_action, MAX_ANGLE)
         current_angles = self.current_joint_pose.position
@@ -86,17 +84,12 @@ class AllegroController:
     def set_homepose(self, allegro_home_pose):
         self.allegro_home_pose = allegro_home_pose.copy()
     
-    def create_shared_memory(self, name, size):
-        try:
-            existing_shm = shared_memory.SharedMemory(name=name)
-            existing_shm.close()
-            existing_shm.unlink()
-        except FileNotFoundError:
-            pass
-        self.shm[name] = shared_memory.SharedMemory(create=True, name=name, size=size)
-
     def home_robot(self):
         self.hand_target_action_array[:] = self.allegro_home_pose.copy()
+    
+    def get_data(self):
+        with self.lock:
+            return np.asarray(self.current_joint_pose.position)
         
     def move_hand(self):
         fps = 100
@@ -116,33 +109,34 @@ class AllegroController:
         while not self.exit.is_set():
         
             start_time = time.time()
-            action = self.hand_target_action_array.copy()
-            if self.current_joint_pose == DEFAULT_VAL:
-                current_hand_angles = np.zeros(action_dof)
-            else:
-                current_hand_angles = np.asarray(self.current_joint_pose.position)
-            self.move(action)
-            
-            self.hand_state_hist[self.hand_cnt] = current_hand_angles.copy()
-            self.hand_state_array[:] = current_hand_angles.copy() 
-            self.hand_timestamp[self.hand_cnt] = start_time
+            with self.lock:
+                action = self.hand_target_action_array.copy()
+                if self.current_joint_pose == DEFAULT_VAL:
+                    current_hand_angles = np.zeros(action_dof)
+                else:
+                    current_hand_angles = np.asarray(self.current_joint_pose.position)
+                self.move(action)
+                
+                self.data["state"].append(current_hand_angles.copy())
+                self.data["time"].append(start_time)
 
-            self.hand_action_hist[self.hand_cnt] = self.hand_target_action_array.copy()
-            self.hand_cnt += 1
+                self.data["action"].append(self.hand_target_action_array.copy())
 
-            end_time = time.time()
-            time.sleep(max(0, 1 / fps - (end_time - start_time)))
+                end_time = time.time()
+                time.sleep(max(0, 1 / fps - (end_time - start_time)))
         
-        if self.capture_path is not None:
-            os.makedirs(os.path.join(self.capture_path), exist_ok=True)
-            np.save(os.path.join(self.capture_path, f"state.npy"), self.hand_state_hist[:self.hand_cnt])
-            np.save(os.path.join(self.capture_path, f"timestamp.npy"), self.hand_timestamp[:self.hand_cnt])
-            np.save(os.path.join(self.capture_path, f"action.npy"), self.hand_action_hist[:self.hand_cnt])
-        
-
     def set_target_action(self, action):
         self.hand_target_action_array[:] = action.copy()
-        
+    
+    def save(self):
+        with self.lock:
+            if self.capture_path is not None:       
+                os.makedirs(os.path.join(self.capture_path), exist_ok=True)
+                for name, value in self.data.items():                     
+                    np.save(os.path.join(self.capture_path, f"{name}.npy"), np.array(value))
+                    self.data[name] = value
+            self.capture_path = None
+            
     def quit(self):
         self.exit.set()
         self.hand_process.join()

@@ -1,17 +1,14 @@
-import threading
-import PySpin as ps
 import json
-from threading import Event
+from threading import Event, Lock, Thread
+import time
+import numpy as np
+import cv2
+import os
+
+import PySpin as ps
 
 from paradex.io.camera.camera import Camera
-import numpy as np
-import os
 from paradex.utils.file_io import home_path, config_dir
-import time
-import cv2
-
-import numpy as np
-import cv2
 
 def spin2cv(pImg, h, w):
     """
@@ -61,14 +58,17 @@ class CameraManager:
         self.connect_flag = [Event() for _ in range(self.num_cameras)]
         self.connect_success = [Event() for _ in range(self.num_cameras)]
         
+        self.cam_start_flag = [Event() for _ in range(self.num_cameras)]
         self.capture_end_flag = [Event() for _ in range(self.num_cameras)]
+        
+        self.save_finish_flag = [Event() for _ in range(self.num_cameras)]
 
         self.height, self.width = 1536, 2048
 
         if self.mode == "stream":
             self.image_array = np.zeros((self.num_cameras, self.height, self.width, 3), dtype=np.uint8)
             self.frame_num = np.zeros((self.num_cameras,), dtype=np.uint64)
-            self.locks = [threading.Lock() for _ in range(self.num_cameras)]
+            self.locks = [Lock() for _ in range(self.num_cameras)]
 
         self.camera_threads = []
         self.syncMode = syncMode
@@ -77,7 +77,7 @@ class CameraManager:
         self.cam_info = json.load(open(os.path.join(config_dir,"camera/camera.json"), "r"))
 
         self.capture_threads = [
-            threading.Thread(target=self.run_camera, args=(i,))
+            Thread(target=self.run_camera, args=(i,))
             for i in range(self.num_cameras)
         ]
 
@@ -90,9 +90,6 @@ class CameraManager:
             for i in range(self.num_cameras):
                 self.capture_threads[i].join()
             raise RuntimeError("Failed to connect to all cameras.")
-
-    def set_save_dir(self, save_dir):
-        self.save_dir = save_dir
 
     def get_serial_list(self):
         system = ps.System.GetInstance()
@@ -161,6 +158,14 @@ class CameraManager:
                 return False
         return True
     
+    def wait_for_camstart(self):
+        for i in range(self.num_cameras):
+            self.cam_start_flag[i].wait()
+            
+    def wait_for_saveend(self):
+        for i in range(self.num_cameras):
+            self.capture_end_flag[i].wait()
+    
     def run_camera(self, index):
         serial_num = self.serial_list[index]
 
@@ -200,29 +205,32 @@ class CameraManager:
             if self.exit.is_set():
                 break
             
-            init = True
+            if self.mode == "video":
+                save_dir = f"{home_path}/captures{index // 2 + 1}/{self.save_dir}"
+                os.makedirs(save_dir, exist_ok=True)
+
+                save_path = os.path.join(save_dir, f"{serial_num}")
+                videostream = self.get_videostream(save_path)
+
+                timestamp_path = os.path.join(save_dir, f"{serial_num}_timestamps.json")
+                timestamps = dict([("timestamps", []), ("frameID", []), ("pc_time", [])])
+
+            if self.mode == "image":
+                os.makedirs(self.save_dir, exist_ok=True)
+                save_path = os.path.join(self.save_dir, f"{serial_num}.png")
+            
+            if self.mode == "stream":
+                self.frame_num[index] = 0
+
+            cam.start()  
+            if self.syncMode:
+                self.cam_start_flag[index].set()
+            # Todo
+            # Potential error part. If we use automatic sync then we might start signal generator before starting the camera
+            # We handle this by waiting 1 second but we should track with thread
+            # cam start takes 0.02 second so should not be a problem(maybe)
+            
             while self.start_capture.is_set():
-                if init:
-                    cam.start()
-                    if self.mode == "video":
-                        save_dir = f"{home_path}/captures{index // 2 + 1}/{self.save_dir}"
-                        os.makedirs(save_dir, exist_ok=True)
-
-                        save_path = os.path.join(save_dir, f"{serial_num}")
-                        videostream = self.get_videostream(save_path)
-
-                        timestamp_path = os.path.join(save_dir, f"{serial_num}_timestamps.json")
-                        timestamps = dict([("timestamps", []), ("frameID", []), ("pc_time", [])])
-
-                    if self.mode == "image":
-                        os.makedirs(self.save_dir, exist_ok=True)
-                        save_path = os.path.join(self.save_dir, f"{serial_num}.png")
-                    
-                    if self.mode == "stream":
-                        self.frame_num[index] = 0
-
-                    init = False
-
                 if self.exit.is_set():
                     break
                 raw_frame = cam.get_image()
@@ -262,6 +270,8 @@ class CameraManager:
                 videostream.Close()
             cam.stop()
             
+            self.capture_end_flag[index].set()
+            
         
         cam.release()
         del camPtr
@@ -272,13 +282,22 @@ class CameraManager:
         for i in range(self.num_cameras):
             self.capture_end_flag[i].wait()    
 
-    def start(self):
+    def start(self, save_dir=None):
+        self.save_dir = save_dir
         for index in range(self.num_cameras):
             self.capture_end_flag[index].clear()
+            if self.syncMode:
+                self.cam_start_flag[index].clear()
+            
         self.start_capture.set()
-
+        if self.syncMode:
+            self.wait_for_camstart()
+            
     def end(self):
+        for i in range(self.num_cameras):
+            self.save_finish_flag.clear()
         self.start_capture.clear()
+        self.wait_for_saveend()
 
     def quit(self):
         self.exit.set()

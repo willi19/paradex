@@ -1,4 +1,3 @@
-import pyrender
 import numpy as np
 import cv2
 import plotly.graph_objects as go
@@ -20,6 +19,7 @@ def project_point(verts, cammtx, image, color=(255, 0, 0)):
     return image
 
 def project_mesh(image, mesh, intrinsic, extrinsic, obj_T=None):
+    import pyrender
     material = pyrender.MetallicRoughnessMaterial(
         baseColorFactor=[1.0, 0.2, 0.2, 0.4],  
         metallicFactor=0.2,

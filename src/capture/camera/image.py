@@ -20,7 +20,7 @@ parser.add_argument('--save_path', required=True)
 args = parser.parse_args()
 
 save_dir = os.path.join(shared_dir, args.save_path)
-last_idx = find_latest_directory(save_dir) if os.path.exists(save_dir) else 0
+last_idx = int(find_latest_directory(save_dir)) if os.path.exists(save_dir) else 0
 
 while not stop_event.is_set():
     if not save_event.is_set():
@@ -28,9 +28,8 @@ while not stop_event.is_set():
         continue
     last_idx += 1
     save_path = f"{save_dir}/{last_idx}/image"
-    camera.set_save_dir(save_path)
-
-    camera.start()
+    
+    camera.start(save_path)
     camera.wait_for_capture_end()
     save_event.clear()
 

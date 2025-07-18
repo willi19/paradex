@@ -255,3 +255,7 @@ def copy_calib_files(save_path):
     camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
 
     shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"), dirs_exist_ok=True)
+    
+def load_latest_C2R():
+    name = find_latest_directory(handeye_calib_path)
+    return load_c2r(os.path.join(handeye_calib_path, name, "0"))

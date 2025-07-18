@@ -7,7 +7,7 @@ from paradex.utils.file_io import shared_dir, find_latest_directory
 from paradex.utils.env import get_pcinfo
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.io.capture_pc.camera_main import RemoteCameraController
-from paradex.io.robot_controller import XArmController
+from paradex.io.robot_controller import get_arm
 
 def copy_calib_files(save_path):
     camparam_dir = os.path.join(shared_dir, "cam_param")
@@ -17,11 +17,13 @@ def copy_calib_files(save_path):
     shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"))
     
 # === SETUP ===
+arm_name = "xarm"
+
 pc_info = get_pcinfo()
 pc_list = list(pc_info.keys())
 
 
-dex_arm = XArmController()
+dex_arm = get_arm(arm_name)
 git_pull("merging", pc_list)
 run_script("python src/calibration/handeyecalibration/client.py", pc_list)
 
@@ -39,8 +41,8 @@ try:
         os.makedirs(f"{shared_dir}/handeye_calibration/{filename}/{i}/image", exist_ok=True)
         np.save(f"{shared_dir}/handeye_calibration/{filename}/{i}/robot", wrist6d)
         
-        camera_loader.start_capture(f'shared_data/handeye_calibration/{filename}/{i}/image')
-        camera_loader.end_capture()
+        camera_loader.start(f'shared_data/handeye_calibration/{filename}/{i}/image')
+        camera_loader.end()
         
     copy_calib_files(f"/home/temp_id/shared_data/handeye_calibration/{filename}/0")
 

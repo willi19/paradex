@@ -51,7 +51,7 @@ git_pull("merging", [pc_name])
 run_script(os.path.join(f"python src/calibration/intrinsic/client.py --serial {serial_num}"), [pc_name])  # 명령 수신 대기
 
 camera_controller = RemoteCameraController("stream", [serial_num], sync=False)
-camera_controller.start_capture()
+camera_controller.start()
 
 socket = get_client_socket(pc_info["ip"], 5564)
 
@@ -87,5 +87,5 @@ try:
             print(f"[Client] Unknown JSON type: {data.get('type')}")
 
 finally:
-    camera_controller.end_capture()
+    camera_controller.end()
     camera_controller.quit()        

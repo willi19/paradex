@@ -6,6 +6,7 @@ from paradex.geometry.triangulate import ransac_triangulation
 import cv2
 from paradex.image.undistort import undistort_img
 from paradex.image.aruco import detect_aruco
+from paradex.image.projection import get_cammtx
 
 obj_name = "pringles"
 
@@ -17,12 +18,7 @@ camparam_name = find_latest_directory(camparam_dir)
 camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
 
 intrinsic, extrinsic = load_current_camparam(os.path.join(camparam_path))
-
-cammat = {}
-for serial_num in list(intrinsic.keys()):
-    int_mat = intrinsic[serial_num]["intrinsics_undistort"]
-    ext_mat = extrinsic[serial_num]
-    cammat[serial_num] = int_mat @ ext_mat
+cammat = get_cammtx(intrinsic, extrinsic)
     
 # inf_id = find_latest_index(os.path.join(shared_dir, "inference", obj_name))
 

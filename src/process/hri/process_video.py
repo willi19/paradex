@@ -19,13 +19,13 @@ def load_info(video_path):
     save_path = get_savepath(video_path)
     serial_num = get_serialnum(video_path)
     
-    cam_param_path = os.path.join(shared_dir, os.path.dirname(save_path))
+    cam_param_path = os.path.join(shared_dir, os.path.dirname(os.path.dirname(save_path)))
     cam_param = load_camparam(cam_param_path)[0][serial_num]
     
     return cam_param
 
 start_time = time.time()
-rvp = RawVideoProcessor("capture_", process_frame=process_frame, load_info=load_info, overwrite=False)
+rvp = RawVideoProcessor("capture_/hri", process_frame=process_frame, load_info=load_info, overwrite=False)
 while not rvp.finished():
     time.sleep(0.01)
     

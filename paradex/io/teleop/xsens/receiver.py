@@ -90,7 +90,8 @@ class XSensReceiver:
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.socket.bind((self.host_ip, self.port))
-
+        self.socket.settimeout(None)
+        
         header_format = "!6s I B B I B B B B 2s H"
         header_struct = struct.Struct(header_format)
         

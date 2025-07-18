@@ -86,8 +86,7 @@ while not should_exit:
         time.sleep(0.1)
         continue
     
-    camera.set_save_dir(os.path.join(shared_dir, "eef", cur_filename, str(current_index),"image"))
-    camera.start()
+    camera.start(os.path.join(shared_dir, "eef", cur_filename, str(current_index),"image"))
     print(f"[Server] Camera started for index {current_index}")
     camera.wait_for_capture_end()
 

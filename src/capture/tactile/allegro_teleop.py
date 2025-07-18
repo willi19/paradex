@@ -1,7 +1,7 @@
 
 import numpy as np
 
-from paradex.io.robot_controller import AllegroController
+from paradex.io.robot_controller import get_hand
 from paradex.io.xsens.receiver import XSensReceiver
 from paradex.io.contact.receiver import SerialReader
 from paradex.retargetor.unimanual import Retargetor
@@ -13,15 +13,11 @@ from paradex.utils.keyboard_listener import listen_keyboard
 import matplotlib.pyplot as plt
 from collections import deque
 
-
-hand_name = "allegro"
-
 def initialize_teleoperation(save_path):
     controller = {}        
 
-    if hand_name == "allegro":
-        controller["hand"] = AllegroController(save_path)
-        controller["contact"] = SerialReader(save_path)
+    controller["hand"] = get_hand("allegro")
+    controller["contact"] = SerialReader(save_path)
         
     controller["xsens"] = XSensReceiver()
 
@@ -57,16 +53,15 @@ def main():
     stop_event = threading.Event()
     listen_keyboard({"q":stop_event})
 
-    retargetor = Retargetor(None, hand_name, np.eye(4))
+    retargetor = Retargetor(None, "allegro", np.eye(4))
 
     home_hand_pose = np.zeros(16)
     while not stop_event.is_set():
         if stop_event.is_set():
             break
 
-        if hand_name is not None:
-            sensors["hand"].set_homepose(home_hand_pose)
-            sensors["hand"].home_robot()
+        sensors["hand"].set_homepose(home_hand_pose)
+        sensors["hand"].home_robot()
             
         data = sensors["xsens"].get_data()
         if data['Right'] == None:

@@ -1,28 +1,87 @@
 import time
 import json
 import PySpin as ps
-
-from paradex.io.camera.camera_setting import CameraConfig
 import os
-from multiprocessing import Event, Process
+from threading import Event, Thread, Lock
 
-class TimecodeReceiver(CameraConfig):
+class TimecodeReceiver():
     def __init__(
-        self,
-        save_path
+        self
     ):
         self.timestamps = dict([("timestamps", []), ("frameID", []), ("pc_time", [])])
-        self.save_path = os.path.join(save_path, "camera_timestamp")
-
+        self.autoforce_ip()
         self.exit = Event()
-        self.recv_process = Process(target=self.run)
-        self.recv_process.start()
+        self.start_capture = Event()
+        self.cam_start = Event()
+        self.connect_flag = Event()
+        self.save_end = Event()
+        
+        self.save_path = None
+        self.lock = Lock()
+        
+        self.thread = Thread(target=self.run)
+        self.thread.start()
+        
+        self.wait_for_connection()
 
+    def autoforce_ip(self):
+        system = ps.System.GetInstance()
+        interfaceList = system.GetInterfaces() # virtual port included
+        for pInterface in interfaceList:
+            nodeMapInterface = pInterface.GetTLNodeMap()
+            camera_list = pInterface.GetCameras()
+            cam_num = len(camera_list)
+            camera_list.Clear()
+
+            if cam_num == 1:
+                curIPNode = nodeMapInterface.GetNode("GevDeviceIPAddress")    
+                if ps.IsAvailable(curIPNode) and ps.IsReadable(curIPNode):
+                    ip_int = ps.CIntegerPtr(curIPNode).GetValue()
+                
+                ip_str = f"{(ip_int >> 24) & 0xFF}.{(ip_int >> 16) & 0xFF}.{(ip_int >> 8) & 0xFF}.{ip_int & 0xFF}"
+                if ip_str[:2] != "11":
+                    ptrAutoForceIP = nodeMapInterface.GetNode("GevDeviceAutoForceIP")
+                    if ps.IsAvailable(ptrAutoForceIP) and ps.IsWritable(ptrAutoForceIP) and ps.IsWritable(pInterface.TLInterface.DeviceSelector.GetAccessMode()):
+                        pInterface.TLInterface.DeviceSelector.SetValue(0)
+                        pInterface.TLInterface.GevDeviceAutoForceIP.Execute()
+
+            del pInterface
+            
+        
+        interfaceList.Clear()
+        system.ReleaseInstance()
+        return
+    
+    def wait_for_connection(self):
+        self.connect_flag.wait()
+        
+    def wait_for_cam_start(self):
+        self.cam_start.wait()
+    
+    def wait_for_save(self):
+        self.save_end.wait()
+        
+    def start(self, save_path=None):
+        self.save_path = save_path
+            
+        self.start_capture.set()
+        self.wait_for_cam_start()
+    
+    def end(self):
+        self.save_end.clear()
+        self.start_capture.clear()
+        self.wait_for_save()
+        self.save_path = None
+        
+    def get_data(self):
+        with self.lock:
+            return self.cur_frame, self.frame_time
+    
     def run(self):
         system = ps.System.GetInstance()
         cam_list = system.GetCameras()
 
-        if cam_list.GetSize() <= 1:
+        if cam_list.GetSize() < 1:
             print(f"No cameras found. Exiting...")
             cam_list.Clear()
             system.ReleaseInstance()
@@ -35,39 +94,69 @@ class TimecodeReceiver(CameraConfig):
         self.nodeMap = self.cam.GetNodeMap()  #
         
         self.configureSettings(self.nodeMap)
-        self.cam.BeginAcquisition()
-
+        self.connect_flag.set()
+        
+        self.cur_frame = -1
+        self.frame_time = -1
+        
         while not self.exit.is_set():
-            pImageRaw = self.cam.GetNextImage()  # get from buffer
-            framenum = pImageRaw.GetFrameID()
-            capture_time = time.time()
-            if not pImageRaw.IsIncomplete():
-                chunkData = pImageRaw.GetChunkData()
-                ts = chunkData.GetTimestamp()
-                self.timestamps["timestamps"].append(ts)
-                self.timestamps["frameID"].append(framenum)
-                self.timestamps["pc_time"].append(capture_time)
-
-            else:
-                print(ps.Image_GetImageStatusDescription(pImageRaw.GetImageStatus()))
+            while not self.start_capture.is_set():
+                time.sleep(0.01)
+                if self.exit.is_set():
+                    break
+            if self.exit.is_set():
+                break
             
-            pImageRaw.Release()
+            self.cam.BeginAcquisition()
+            self.cam_start.set()
+            
+            while self.start_capture.is_set():
+                if self.exit.is_set():
+                    break
+                
+                pImageRaw = self.cam.GetNextImage()  # get from buffer
+                framenum = pImageRaw.GetFrameID()
+                capture_time = time.time()
+                
+                if not pImageRaw.IsIncomplete():
+                    chunkData = pImageRaw.GetChunkData()
+                    ts = chunkData.GetTimestamp()
+                    
+                    self.timestamps["timestamps"].append(ts)
+                    self.timestamps["frameID"].append(framenum)
+                    self.timestamps["pc_time"].append(capture_time)
+                    
+                    with self.lock:
+                        self.cur_frame = framenum
+                        self.frame_time = capture_time
+                        
+                else:
+                    print(ps.Image_GetImageStatusDescription(pImageRaw.GetImageStatus()))
+            
+                pImageRaw.Release()
 
-        os.makedirs(self.VideoPath, exist_ok=True)
-        json.dump(
-            self.timestamps, open(os.path.join(self.VideoPath,"camera_timestamp.json"), "w"), indent="\t"
-        )
+            if self.save_path is not None:
+                os.makedirs(self.save_path, exist_ok=True)
+                json.dump(
+                    self.timestamps, open(os.path.join(self.save_path,"camera_timestamp.json"), "w"), indent="\t"
+                )
+                
+            self.cam.EndAcquisition()
+            self.save_end.set()
 
-        self.cam.EndAcquisition()
         self.cam.DeInit()
-
+        del self.cam
+        
         cam_list.Clear()
         system.ReleaseInstance()
 
     def quit(self):
         """Stops the serial reader process."""
+        if self.save_path is not None:
+            self.end()
+            
         self.exit.set()
-        self.recv_process.join()
+        self.thread.join()
 
     def configureThroughPut(self, nodeMap):
         # Set throughput limit 

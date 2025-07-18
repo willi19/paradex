@@ -118,7 +118,7 @@ obj_ry = obj_ry / np.linalg.norm(obj_ry)
 obj_rz = np.cross(obj_rx, obj_ry)
 obj_rz = obj_rz / np.linalg.norm(obj_rz)
 
-obj_trans = (p1+p2+p3+p4) / 4 + obj_rz * 0.05
+obj_trans = (p1+p2+p3+p4) / 4 + obj_rz * 0.096
 
 obj_T = np.eye(4)
 obj_T[:3,0] = obj_rx

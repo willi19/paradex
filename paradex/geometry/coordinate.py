@@ -4,14 +4,14 @@ import numpy as np
 
 # T ^ {Wrist : predefined wrist coordinate} _ {Device Wrist coordinate}
 DEVICE2WRIST = {
-    # "xarm":np.array([[1, 0 ,0 ,0],
-    #                  [0, 0, 1, -0.01],
-    #                  [0, -1, 0, 0],
-    #                  [0, 0, 0, 1]]),
-    "xarm":np.array([[1/np.sqrt(2), 0, -1/np.sqrt(2),0],[0, 1, 0, 0],[1/np.sqrt(2), 0, 1/np.sqrt(2), 0],[0, 0, 0, 1]]) @ np.array([[1, 0 ,0 ,0],
+    "xarm":np.array([[1, 0 ,0 ,0],
                      [0, 0, 1, -0.01],
                      [0, -1, 0, 0],
                      [0, 0, 0, 1]]),
+    # "xarm":np.array([[1/np.sqrt(2), 0, -1/np.sqrt(2),0],[0, 1, 0, 0],[1/np.sqrt(2), 0, 1/np.sqrt(2), 0],[0, 0, 0, 1]]) @ np.array([[1, 0 ,0 ,0],
+    #                  [0, 0, 1, -0.01],
+    #                  [0, -1, 0, 0],
+    #                  [0, 0, 0, 1]]),
     
     "franka":np.array([[1, 0 ,0 ,0],
                        [0, 0, 1, 0],

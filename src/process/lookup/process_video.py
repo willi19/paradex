@@ -17,6 +17,10 @@ def process_frame(frame, info, fid):
     undist_kypt, ids = detect_aruco(frame)
     data = {}
     
+    if ids is None:
+        return frame, data
+    
+    
     for id, corner in zip(ids, undist_kypt):
         data[int(id)] = corner.squeeze()
             

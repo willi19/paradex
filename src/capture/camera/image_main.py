@@ -34,7 +34,7 @@ try:
             continue
         
         camera_loader.start(f'shared_data/{args.save_path}/{capture_idx}/image')
-        camera_loader.end()()
+        camera_loader.end()
         capture_idx += 1
         save_event.clear()
         

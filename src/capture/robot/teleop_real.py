@@ -45,7 +45,7 @@ def main():
     
     state_extractor = HandStateExtractor()
     home_pose = np.eye(4) # Don't care
-    if "arm" in sensors:
+    if "arm" in sensors and sensors["arm"] is not None:
         home_pose = sensors["arm"].get_position().copy()
     # home_pose = np.array([
     #                     [0, 1 ,0, 0.3],
@@ -55,7 +55,7 @@ def main():
     #                     )
     
     retargetor = Unimanual_Retargetor(args.arm, args.hand, home_pose)
-    if "arm" in sensors:
+    if "arm" in sensors and sensors["arm"] is not None:
         sensors["arm"].home_robot(home_pose)
         home_start_time = time.time()
         while not sensors["arm"].is_ready():
@@ -74,6 +74,7 @@ def main():
         if data["Right"] is None:
             continue
         state = state_extractor.get_state(data['Left'])
+        print(state)
         if state == 1:
             retargetor.pause()
             continue
@@ -97,6 +98,8 @@ def main():
             sensors[sensor_name].end()
               
     for key in sensors.keys():
+        if sensors[key] is None:
+            continue
         sensors[key].quit()
         
     print("Program terminated.")

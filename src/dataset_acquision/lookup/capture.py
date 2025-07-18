@@ -47,11 +47,11 @@ def move_robot(sensors):
     state_time = []
     
     while True:
+        start_time = time.time()
         data = sensors["teleop"].get_data()
         if data["Right"] is None:
             continue
         state = state_extractor.get_state(data['Left'])
-        
         state_hist.append(state)
         state_time.append(time.time())
             
@@ -79,12 +79,13 @@ def move_robot(sensors):
         else:
             exit_counter = 0
             
-        if exit_counter > 10:
+        if exit_counter > 90:
             return "exit", state_hist, state_time
     
-        if stop_counter > 10:
+        if stop_counter > 90:
             return "stop", state_hist, state_time
-     
+        time.sleep(0.01)
+        
 # === SETUP ===
 pc_info = get_pcinfo()
 serial_list = get_serial_list()
@@ -93,7 +94,7 @@ c2r = load_latest_C2R()
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-# run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
+run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--arm", choices=['xarm', 'franka'])
@@ -132,7 +133,7 @@ while True:
     msg, state_hist, state_time = move_robot(sensors)
     if msg == "exit":
         break
-    
+    chime.warning()
     # start
     os.makedirs(f'{shared_path}/{capture_idx}', exist_ok=True)
     copy_calib_files(f'{shared_path}/{capture_idx}')
@@ -153,7 +154,7 @@ while True:
     sensors["camera"].end()
     sensors['timecode_receiver'].end()
     
-    os.makedirs(f"{shared_path}/{capture_idx}/state")
+    os.makedirs(f"{shared_path}/{capture_idx}/raw/state")
     np.save(f"{shared_path}/{capture_idx}/raw/state/state.npy", state_hist)
     np.save(f"{shared_path}/{capture_idx}/raw/state/time.npy", state_time)
     

@@ -1,6 +1,7 @@
 import json
 import os
 import time
+import cv2
 
 from paradex.utils.file_io import config_dir
 from paradex.image.aruco import detect_charuco, merge_charuco_detection

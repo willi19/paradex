@@ -18,7 +18,7 @@ def undistort_img(img, intrinsic):
     return undistorted_img
 
 def undistort_points(pts, intrinsic):
-    normalized_undistorted_pts = cv2.undistortPoints(pts, intrinsic["intrinsics_original"], intrinsic["dist_params"])
+    normalized_undistorted_pts = cv2.undistortPoints(pts, intrinsic["original_intrinsics"], intrinsic["dist_params"])
     new_cammtx = intrinsic["intrinsics_undistort"]
     undistorted_pts = normalized_undistorted_pts.squeeze() * np.array([[new_cammtx[0,0], new_cammtx[1,1]]]) + np.array([[new_cammtx[0,2], new_cammtx[1,2]]])
     return undistorted_pts

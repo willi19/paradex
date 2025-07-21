@@ -3,6 +3,8 @@ import cv2
 import plotly.graph_objects as go
 
 from paradex.geometry.conversion import project
+import trimesh
+import open3d as o3d
 
 def get_cammtx(intrinsic, extrinsic):
     cammat = {}
@@ -18,7 +20,7 @@ def project_point(verts, cammtx, image, color=(255, 0, 0)):
         image = cv2.circle(image, (int(v[0]), int(v[1])), 3, color, -1)
     return image
 
-def project_mesh(image, mesh, intrinsic, extrinsic, obj_T=None):
+def project_mesh(image, mesh, intrinsic, extrinsic, obj_T=None, renderer=None):
     import pyrender
     material = pyrender.MetallicRoughnessMaterial(
         baseColorFactor=[1.0, 0.2, 0.2, 0.4],  
@@ -26,7 +28,14 @@ def project_mesh(image, mesh, intrinsic, extrinsic, obj_T=None):
         roughnessFactor=0.5
     )
     
-    pyr_mesh = pyrender.Mesh.from_trimesh(mesh, smooth=False, material=material)
+    if isinstance(mesh, trimesh.Trimesh):
+        # 이미 trimesh일 경우 바로 사용
+        pyr_mesh = pyrender.Mesh.from_trimesh(mesh, material=material)
+    elif isinstance(mesh, o3d.geometry.TriangleMesh):
+        vertices = np.asarray(mesh.vertices)
+        faces = np.asarray(mesh.triangles)
+        tri_mesh = trimesh.Trimesh(vertices=vertices, faces=faces, process=False)
+        pyr_mesh = pyrender.Mesh.from_trimesh(tri_mesh, material=material)
 
     # ✅ Scene 준비
     scene = pyrender.Scene(bg_color=[0, 0, 0, 0], ambient_light=[0.6, 0.6, 0.6])
@@ -37,6 +46,7 @@ def project_mesh(image, mesh, intrinsic, extrinsic, obj_T=None):
         obj_T[2, 3] = 0.5  # 카메라 기준 +Z 방향 0.5m 전방
 
     # ✅ Mesh 위치 설정
+    # print(obj_T)
     scene.add(pyr_mesh, pose=obj_T)
     # v = pyrender.Viewer(scene, shadows=True)
     
@@ -58,8 +68,12 @@ def project_mesh(image, mesh, intrinsic, extrinsic, obj_T=None):
     scene.add(light, pose=cam_pose)
 
     # ✅ Render
-    r = pyrender.OffscreenRenderer(viewport_width=image.shape[1], viewport_height=image.shape[0])
-    color_rgba, _ = r.render(scene, flags=pyrender.RenderFlags.RGBA)
+    if renderer is None:
+        renderer = pyrender.OffscreenRenderer(
+            viewport_width=image.shape[1],
+            viewport_height=image.shape[0]
+        )
+    color_rgba, _ = renderer.render(scene, flags=pyrender.RenderFlags.RGBA)
     
     color_rgb = color_rgba[..., :3].astype(np.float32)
     alpha = color_rgba[..., 3:] / 255.0  # 0~1로 정규화
@@ -70,3 +84,9 @@ def project_mesh(image, mesh, intrinsic, extrinsic, obj_T=None):
     # 알파 블렌딩: 렌더된 부분과 원본 이미지 합성
     blended = (color_rgb * alpha + image_f * (1 - alpha)).astype(np.uint8)
     return blended
+
+def project_mesh_nvdiff(object, renderer):
+    # from paradex.visualization_.renderer import BatchRenderer
+    
+    img, mask = renderer.render(object)
+    return img, mask

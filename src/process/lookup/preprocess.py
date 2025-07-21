@@ -34,12 +34,12 @@ if __name__ == '__main__':
         if args.grasp_type is None:
             for grasp_name in grasp_list:
                 process_list.append((name, grasp_name))
-    print(process_list)
+    
     for name, grasp_type in process_list:
         root_dir = os.path.join(shared_dir, "capture_", "lookup", name, grasp_type)
         index_list = os.listdir(root_dir)
         
-        for index in index_list:
+        for index in ["0"]:#index_list:
             index_dir = os.path.join(os.path.join(root_dir, str(index)))
             raw_dir = os.path.join(os.path.join(index_dir, "raw"))
             
@@ -85,7 +85,7 @@ if __name__ == '__main__':
             
             arm_action_sync = get_synced_data(pc_time, arm_action_orig, arm_pc_time)
             arm_qpos_sync = get_synced_data(pc_time, arm_qpos_orig, arm_pc_time)
-            
+            import pdb; pdb.set_trace()
             os.makedirs(os.path.join(index_dir, arm_name), exist_ok=True)
             np.save(os.path.join(index_dir, arm_name, "action.npy"), arm_action_sync)
             np.save(os.path.join(index_dir, arm_name, "qpos.npy"), arm_qpos_sync)

@@ -45,7 +45,7 @@ if __name__ == '__main__':
         marker_offset = np.load(os.path.join(shared_dir, "marker_offset", name, "0", "marker_offset.npy"), allow_pickle=True).item()
         marker_id = list(marker_offset.keys())
 
-        for index in index_list:
+        for index in ["0"]:
             index_dir = os.path.join(os.path.join(root_dir, str(index)))
             marker_list = os.listdir(os.path.join(index_dir, "marker2D"))
             
@@ -70,7 +70,8 @@ if __name__ == '__main__':
                         
                         id_cor[t][id]["2d"].append(cor)
                         id_cor[t][id]["cammtx"].append(cammat[serial_num])
-            
+                    print(t)
+            import pdb;pdb.set_trace()
             obj_T = []
             cor_3d_hist = {}
             for t, marker_dict in id_cor.items():
@@ -83,6 +84,10 @@ if __name__ == '__main__':
                         continue
                     A.append(marker_offset[id])
                     B.append(cor_3d[id])
+                if len(A) == 0:
+                    obj_T.append(np.zeros((4,4)))
+                    continue
+                
                 A = np.concatenate(A)
                 B = np.concatenate(B)
                 obj_T.append(rigid_transform_3D(A, B))

@@ -7,7 +7,7 @@ from paradex.image.aruco import detect_aruco, triangulate_marker, draw_aruco
 from paradex.image.undistort import undistort_img
 from paradex.geometry.Tsai_Lenz import solve
 from paradex.geometry.conversion import project, to_homo
-from paradex.utils.file_io import handeye_calib_path, find_latest_directory, load_current_camparam, handeye_calib_path
+from paradex.utils.file_io import handeye_calib_path, find_latest_directory, load_camparam
 from paradex.image.projection import get_cammtx
 from paradex.geometry.math import rigid_transform_3D
 
@@ -23,7 +23,7 @@ if args.name is None:
 name = args.name
 he_calib_path = os.path.join(handeye_calib_path, name)
 
-intrinsic, extrinsic = load_current_camparam(os.path.join(he_calib_path, "0", "cam_param"))
+intrinsic, extrinsic = load_camparam(os.path.join(he_calib_path, "0"))
 cammtx = get_cammtx(intrinsic, extrinsic)
 
 index_list = os.listdir(he_calib_path)
@@ -34,10 +34,10 @@ cam_cor = []
 for idx in index_list:
     robot_cor.append(np.load(os.path.join(he_calib_path, idx, "robot.npy")))
     
-    if os.path.exists(os.path.join(he_calib_path, idx, "marker_3d.npy")):
-        marker_3d = np.load(os.path.join(he_calib_path, idx, "marker_3d.npy"), allow_pickle=True).item()
-        cam_cor.append(marker_3d)
-        continue
+    # if os.path.exists(os.path.join(he_calib_path, idx, "marker_3d.npy")):
+    #     marker_3d = np.load(os.path.join(he_calib_path, idx, "marker_3d.npy"), allow_pickle=True).item()
+    #     cam_cor.append(marker_3d)
+    #     continue
         
     img_dir = os.path.join(he_calib_path, idx, "image")
     
@@ -46,7 +46,6 @@ for idx in index_list:
         img_dict[img_name.split(".")[0]] = cv2.imread(os.path.join(img_dir, img_name))
         
     cor_3d = triangulate_marker(img_dict, intrinsic, extrinsic)
-
     for serial_num, img in img_dict.items():
         if serial_num not in cammtx:
             continue
@@ -63,7 +62,7 @@ for idx in index_list:
                 continue
             pt_2d = project(cammtx[serial_num], cor_3d[mid])
             draw_aruco(undist_img, [pt_2d], None, (255, 0, 0))
-            
+        
         os.makedirs(os.path.join(he_calib_path, idx, "debug"), exist_ok=True)
         cv2.imwrite(os.path.join(he_calib_path, idx, "debug", f"{serial_num}.png"), undist_img)
 
@@ -97,9 +96,9 @@ X = np.eye(4)
 theta, b_x = solve(A_list, B_list)
 X[0:3, 0:3] = theta
 X[0:3, -1] = b_x.flatten()
-for i in range(len(index_list)-1):
-    print(A_list[i] @ X - X @ B_list[i], "error")
-    
+# for i in range(len(index_list)-1):
+#     print(A_list[i] @ X - X @ B_list[i], "error")
+print(X)
 np.save(os.path.join(he_calib_path, "0", "C2R.npy"), X)
 marker_pos = {}
 

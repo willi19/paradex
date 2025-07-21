@@ -2,3 +2,8 @@ MapperOptions:
     ba_refine_focal_length : true
     ba_refine_principal_point : true
     ba_refine_extra_params: true
+
+    max_extra_param : 2.0
+
+IncrementalMapperOptions:
+    filter_max_reproj_error : 10.0

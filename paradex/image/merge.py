@@ -17,7 +17,7 @@ def merge_image(image_dict):
 
     for idx, img_name in enumerate(name_list):
         img = image_dict[img_name]
-        
+        cv2.putText(img, img_name, (80, 120), 1, 10, (255, 255, 0), 3)
         resized_img = cv2.resize(img, (new_W, new_H))
         
         r_idx = idx // grid_cols

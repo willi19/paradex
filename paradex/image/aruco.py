@@ -162,9 +162,19 @@ def draw_aruco(img, kypt, ids=None, color=(255, 0, 0)):
         corner = corner.squeeze().astype(int)
         if ids is not None:
             cv2.putText(img, str(ids[idx]), tuple(corner[0]), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-
         for i in range(4):
             cv2.circle(img, tuple(corner[i]), 3, color, -1) # red circle for corners
+    return img
+
+def draw_keypoint(img, kypt, color=(255,0,0)):
+    kypt = kypt.astype(int)
+    
+    if len(kypt.shape) == 1:
+        return cv2.circle(img, tuple(kypt), 1, color, -1)
+    else:
+        for corner in kypt:
+            cv2.circle(img, tuple(corner), 1, color, -1)
+    return img
 
 def triangulate_marker(img_dict, intrinsic, extrinsic): 
     cammat = get_cammtx(intrinsic, extrinsic)

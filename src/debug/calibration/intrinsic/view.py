@@ -69,7 +69,7 @@ color_list = [[1, 0, 0],
               [1, 1, ]]
 
 if __name__ == "__main__":
-    name_list = os.listdir
+    name_list = os.listdir(os.path.join(shared_dir, "extrinsic"))
     point_list = {}
     camera_point = np.array([[0,0,0,1], [0.05,0,0.05,1], [0,0.05,0.05,1], [-0.05,0,0.05,1], [0,-0.05,0.05,1]])
     
@@ -88,72 +88,16 @@ if __name__ == "__main__":
         for serial_num, extmat in extrinsics.items():                
             extrinsic_serial = {}
             extrinsic_dict[name][serial_num] = np.array(extmat)
-            extmat_tmp = np.eye(4)
-            extmat_tmp[:3,:] = extmat
-            extmat_tmp = np.linalg.inv(extmat_tmp)
             point_list[name][serial_num] = (np.array(extmat) @ camera_point.T).T
             
     for serial_num, data in intrinsic_dict.items():
         mean = np.mean(data["dist"], axis=0)
         std = np.std(data["dist"], axis=0)
-        # print(serial_num, std / mean, len(data["dist"]))
-    
-    root_name = name_list[0]
-    
-    for name in name_list[1:]:
-        A = []
-        B = []
-        for serial_name in point_list[root_name].keys():
-            if serial_name not in point_list[name]:
-                continue
-            A.append(point_list[name][serial_name].copy())
-            B.append(point_list[root_name][serial_name].copy())
         
-        A = np.concatenate(A,  axis=0)
-        B = np.concatenate(B, axis=0)
+        mean_orig = np.mean(data["orig"],axis=0)
+        mean_std = np.std(data["orig"], axis=0)
         
-        T = rigid_transform_3D(A, B)
-        # print(A)
-        # print(((T[:3,:3] @ A.T + T[:3,3:]).T - B))
+        # print(serial_num, std / mean, len(data["dist"]), "dist")
         
-        
-        for serial_name, ext in extrinsic_dict[name].items():
-            extmat = np.eye(4)
-            extmat[:3,:] = ext
-            extrinsic_dict[name][serial_name] = T @ extmat
-            
-            root_extmat = np.eye(4)
-            root_extmat[:3,:] = extrinsic_dict[root_name][serial_name]
-            
-    extrinsic_serial = {}
-    for name, data in extrinsic_dict.items():
-        for serial_num, extmat in data.items():
-            if serial_num not in extrinsic_serial.keys():
-                extrinsic_serial[serial_num] = []
-                
-            extrinsic_serial[serial_num].append(extmat[:3,:])
+        print(serial_num, mean_std[0][0], mean_std[0][2], mean_std[1][1], mean_std[1][2], len(data["orig"]), "orig")
 
-    o3d_visuals = []
-    coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0, 0, 0])
-    o3d_visuals.append(coordinate_frame)  # Adding a reference frame
-
-    for serial_num, data in extrinsic_serial.items():
-        data = np.array(data)
-        rots = R.from_matrix(data[:,:3,:3])  # (N, 4)
-        log_rots = rots.as_rotvec()     # (N, 3) ← log-map: axis × angle
-        
-        mean_rotvec = np.mean(log_rots, axis=0)
-        std_rotvec = np.std(log_rots, axis=0)
-        
-        mean_trans = np.mean(data[:,:3,3], axis=0)
-        std_trans = np.mean(data[:,:3,3], axis=0)
-        
-        print(serial_num, std_rotvec, std_trans) 
-        for i, ext in enumerate(data):
-            extrinsic_matrix = np.array(ext)
-            camera_pyramid, sphere = draw_camera_pyramid(extrinsic_matrix, scale=0.1, color=color_list[i])
-            o3d_visuals.append(camera_pyramid)
-            o3d_visuals.append(sphere)
-        
-    
-    o3d.visualization.draw_geometries(o3d_visuals)

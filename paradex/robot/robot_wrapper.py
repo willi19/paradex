@@ -3,7 +3,6 @@ from typing import List
 import numpy as np
 import numpy.typing as npt
 import pinocchio as pin
-
 # Used :
 # https://github.com/dexsuite/dex-retargeting/blob/main/dex_retargeting/robot_wrapper.py
 

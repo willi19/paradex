@@ -19,6 +19,7 @@ class UTGE900:
         return UTGE900._rm.list_resources()
              
     def __init__(self):
+        print(self.list_resources())
         addr = get_network_info()["signal_generator"]
         self.sgen = UTGE900._rm.open_resource(addr)
         

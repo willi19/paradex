@@ -135,17 +135,11 @@ class XArmController:
         
     def reset(self):
         self.arm = XArmAPI(self.xarm_ip_address, report_type="devlop")
-        self.arm.motion_enable(enable=False)
-        self.arm.motion_enable(enable=True)
-        self.arm.set_mode(0)
-        self.arm.set_state(state=0)
-        
         if self.arm.has_err_warn:
             self.arm.clean_error()
-
-        self.arm.motion_enable(enable=False)
+            
         self.arm.motion_enable(enable=True)
-        self.arm.set_mode(0)  # 0: position control, 1: servo control
+        self.arm.set_mode(0)
         self.arm.set_state(state=0)
         time.sleep(0.1)
         

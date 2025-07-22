@@ -174,69 +174,69 @@ class TimecodeReceiver():
         return
     
     def configureTrigger(self, nodeMap):
+        print("trigger mode on")
         ptrTriggerMode = ps.CEnumerationPtr(nodeMap.GetNode("TriggerMode"))
         if not ps.IsReadable(ptrTriggerMode):
-            print("Unable to disable trigger mode (node retrieval). Aborting...")
-            return
+            # print("Unable to disable trigger mode (node retrieval). Aborting...")
+            return False
         ptrTriggerModeOff = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("Off"))
         if not ps.IsReadable(ptrTriggerModeOff):
-            print("Unable to disable trigger mode (enum entry retrieval). Aborting...")
-            return
+            # print("Unable to disable trigger mode (enum entry retrieval). Aborting...")
+            return False
         ptrTriggerMode.SetIntValue(ptrTriggerModeOff.GetValue())
         ptrTriggerSelector = ps.CEnumerationPtr(nodeMap.GetNode("TriggerSelector"))
         if not ps.IsReadable(ptrTriggerSelector) or not ps.IsWritable(ptrTriggerSelector):
-            print("Unable to get or set trigger selector (node retrieval). Aborting...")
-            return
+            # print("Unable to get or set trigger selector (node retrieval). Aborting...")
+            return False
         ptrTriggerSelectorFrameStart = ps.CEnumEntryPtr(ptrTriggerSelector.GetEntryByName("FrameStart"))
         if not ps.IsReadable(ptrTriggerSelectorFrameStart):
-            print("Unable to get trigger selector FrameStart (enum entry retrieval). Aborting...")
-            return
+            # print("Unable to get trigger selector FrameStart (enum entry retrieval). Aborting...")
+            return False
         
         # Set Frame start
         ptrTriggerSelector.SetIntValue(ptrTriggerSelectorFrameStart.GetValue())
         ptrTriggerSource = ps.CEnumerationPtr(nodeMap.GetNode("TriggerSource"))
         if not ps.IsReadable(ptrTriggerSource) or not ps.IsWritable(ptrTriggerSource):
             print("Unable to get or set trigger mode (node retrieval). Aborting...")
-            return
+            return False
         # Set Rising-edge trigger
         ptrTriggerActivation = ps.CEnumerationPtr(nodeMap.GetNode("TriggerActivation"))
         if not ps.IsReadable(ptrTriggerActivation) or not ps.IsWritable(ptrTriggerActivation):
             print("Unable to get or set trigger activation (node retrieval). Aborting...")
-            return
+            return False
         
         ptrRisingEdge = ps.CEnumEntryPtr(ptrTriggerActivation.GetEntryByName("RisingEdge"))
         if not ps.IsReadable(ptrRisingEdge):
             print("Unable to enable trigger mode RisingEdge (enum entry retrieval). Aborting...")
-            return
+            return False
         ptrTriggerActivation.SetIntValue(ptrRisingEdge.GetValue())
 
         # Set trigger mode to hardware ('Line0')
         ptrTriggerSourceHardware = ps.CEnumEntryPtr(ptrTriggerSource.GetEntryByName("Line0"))
         if not ps.IsReadable(ptrTriggerSourceHardware):
             print("Unable to set trigger mode Line0. Aborting...")
-            return
+            return False
         ptrTriggerSource.SetIntValue(ptrTriggerSourceHardware.GetValue())
 
         # Turn trigger mode on
         ptrTriggerModeOn = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("On"))
         if not ps.IsReadable(ptrTriggerModeOn):
             print("Unable to enable trigger On (enum entry retrieval). Aborting...")
-            return
+            return False
         ptrTriggerMode.SetIntValue(ptrTriggerModeOn.GetValue())
 
         # Set Trigger Overlap mode
         ptrTriggerOverlap = ps.CEnumerationPtr(nodeMap.GetNode("TriggerOverlap"))
         if not ps.IsReadable(ptrTriggerOverlap) or not ps.IsWritable(ptrTriggerOverlap):
             print("Unable to get or set trigger overlap (node retrieval). Aborting...")
-            return        
+            return False        
         ptrReadOut = ps.CEnumEntryPtr(ptrTriggerOverlap.GetEntryByName("ReadOut"))
         if not ps.IsReadable(ptrReadOut):
             print("Unable to enable trigger Overlap readout(enum entry retrieval). Aborting...")
-            return
+            return False
         ptrTriggerOverlap.SetIntValue(ptrReadOut.GetValue())
         # NOTE: Blackfly and Flea3 GEV cameras need 1 second delay after trigger mode is turned on
-        print("Trigger mode turned on...")
-        return
+        return True
     
     def configurePacketSize(self, nodeMap):
         ptrPayloadSize = ps.CIntegerPtr(nodeMap.GetNode("GevSCPSPacketSize"))

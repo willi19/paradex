@@ -65,9 +65,9 @@ def move_robot(sensors):
                 
         if state == 1:
             retargetor.pause()
-            continue
         
         if state == 2:
+            retargetor.pause()
             stop_counter += 1
         
         else:
@@ -129,11 +129,12 @@ capture_idx = last_capture_idx + 1
 while True:
     # prepare for capture, move robot and object
     chime.info()
-    
+    time.sleep(2)
     msg, state_hist, state_time = move_robot(sensors)
     if msg == "exit":
         break
     chime.warning()
+    time.sleep(2)
     # start
     os.makedirs(f'{shared_path}/{capture_idx}', exist_ok=True)
     copy_calib_files(f'{shared_path}/{capture_idx}')
@@ -147,8 +148,13 @@ while True:
     
     print("start")
     chime.info()
+    time.sleep(2)
+    
     msg, state_hist, state_time = move_robot(sensors)
         
+    chime.success()
+    time.sleep(2)
+    
     sensors["arm"].end()
     sensors["hand"].end()
     sensors["camera"].end()
@@ -160,11 +166,23 @@ while True:
     
     sensors['signal_generator'].off(1)
     
-    chime.success()
     if msg == "exit":
         break
     
     capture_idx += 1
+
+
+wrist_rot = np.array([[0, 0, 1, 0.3],
+                      [1, 0, 0, -0.15],
+                      [0, 1, 0, 0.10], 
+                      [0, 0, 0, 1]])
+
+sensors["arm"].home_robot(wrist_rot)
+home_start_time = time.time()
+while not sensors["arm"].is_ready():
+    time.sleep(0.01)
+
+chime.info()
 
 for sensor_name, sensor in sensors.items():
     print(sensor_name)

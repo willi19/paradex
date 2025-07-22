@@ -9,4 +9,4 @@ if __name__ == "__main__":
     
     while True:
         viewer.update()
-        time.sleep(0.5)
+        time.sleep(0.03)

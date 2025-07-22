@@ -15,15 +15,16 @@ def fill_framedrop(cam_timestamp):
     pc_time = np.array(cam_timestamp["pc_time"])
     timestamp = np.array(cam_timestamp["timestamps"])
 
-    time_delta = (1/30)# (pc_time[-1]-pc_time[0])/(frameID[-1]-frameID[0])
+    time_delta = (1/15)
     offset = np.mean(pc_time - (np.array(frameID)-1)*time_delta)
 
     pc_time_nodrop = []
     frameID_nodrop = []
 
-    for i in range(1, frameID[-1]+5):
+    time_delta_new = (1/30)
+    for i in range(1, frameID[-1]*2):
         frameID_nodrop.append(i)
-        pc_time_nodrop.append((i-1)*time_delta+offset)
+        pc_time_nodrop.append((i-1)*time_delta_new+offset)
 
     return pc_time_nodrop, frameID_nodrop
 

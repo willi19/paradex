@@ -44,8 +44,14 @@ class RawVideoProcessor():
                 self.log.append(f"{video_path} stream terminated unexpectedly")
                 os.remove(video_path)
                 continue
+            try:
+                timestamp = json.load(open(timestamp_path))
+            except:
+                self.log.append(f"{video_path} : sync or lan cable connection unstable")
+                os.remove(video_path)
+                os.remove(timestamp_path)            
+                continue
             
-            timestamp = json.load(open(timestamp_path))
             if not check_valid(timestamp):
                 self.log.append(f"{video_path} : sync or lan cable connection unstable")
                 os.remove(video_path)

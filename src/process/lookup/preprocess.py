@@ -85,7 +85,6 @@ if __name__ == '__main__':
             
             arm_action_sync = get_synced_data(pc_time, arm_action_orig, arm_pc_time)
             arm_qpos_sync = get_synced_data(pc_time, arm_qpos_orig, arm_pc_time)
-            import pdb; pdb.set_trace()
             os.makedirs(os.path.join(index_dir, arm_name), exist_ok=True)
             np.save(os.path.join(index_dir, arm_name, "action.npy"), arm_action_sync)
             np.save(os.path.join(index_dir, arm_name, "qpos.npy"), arm_qpos_sync)
@@ -120,4 +119,4 @@ if __name__ == '__main__':
             
             np.save(os.path.join(index_dir, "state.npy"), state_sync)
 
-            print(state_sync.shape, hand_action_sync.shape, hand_qpos_sync.shape, hand_pose.shape, arm_action_sync.shape, arm_qpos_sync.shape)
+            # print(state_sync.shape, hand_action_sync.shape, hand_qpos_sync.shape, hand_pose.shape, arm_action_sync.shape, arm_qpos_sync.shape)

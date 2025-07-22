@@ -61,7 +61,7 @@ class ViserViewer:
                 self.state = np.concatenate([self.arm_state, self.hand_state], axis=1)
                 
             self.robot_module = Robot_Module(os.path.join(rsc_path, "robot", f"{arm_nm}_{hand_nm}.urdf"), mesh_tg='all', state = self.state)
-            self.num_frames = self.robot_module.state.shape[0]
+            self.num_frames = min(self.robot_module.state.shape[0], self.obj_T.shape[0])
             # import pdb; pdb.set_trace()
             # self.num_frames = len(self.obj_T)
             self.add_frames()
@@ -85,8 +85,6 @@ class ViserViewer:
             """For each client that connects, create GUI elements for adjusting the
             near/far clipping planes."""
             
-            client.camera.far = 20.0
-
             near_slider = client.gui.add_slider(
                 "Near", min=0.01, max=10.0, step=0.001, initial_value=client.camera.near
             )
@@ -140,9 +138,32 @@ class ViserViewer:
             def _(_) -> None:
                 current_timestep = self.gui_timestep.value
                 with self.server.atomic():
+                    # combined_tri_mesh, org_vertices_arr = self.robot_module.get_combined_trimesh(current_timestep, self.c2r)
+                    self.server.scene.remove_by_name(f"robot_mesh")
+
+                    self.server.scene.add_mesh_trimesh(
+                        name=f"robot_mesh",
+                        mesh=self.mesh_list[current_timestep],
+                    )  
+                    
+                    transformed_obj_mesh = copy.deepcopy(self.mesh).apply_transform(self.obj_T[current_timestep])
+                    self.server.scene.remove_by_name(f"{self.object_nm}")
+                    self.server.scene.add_mesh_trimesh(
+                        name=f"{self.object_nm}",
+                        mesh=self.obj_mesh_list[current_timestep],
+                        # wxyz=tf.SO3.from_x_radians(np.pi / 2).wxyz,
+                        position=(0.0, 0.0, 0.0),
+                    )
+                     
                     # Toggle visibility.
-                    self.frame_nodes[current_timestep].visible = True
-                    self.frame_nodes[self.prev_timestep].visible = False
+                    # self.frame_nodes[current_timestep].visible = True
+                    # self.frame_nodes[self.prev_timestep].visible = False
+                    
+                    # self.mesh_nodes[current_timestep].visible = True
+                    # self.mesh_nodes[self.prev_timestep].visible = False
+                    
+                    # self.obj_mesh_nodes[current_timestep].visible = True
+                    # self.obj_mesh_nodes[self.prev_timestep].visible = False
                     
                 self.prev_timestep = current_timestep
                 self.server.flush()  # Optional!
@@ -200,7 +221,7 @@ class ViserViewer:
         
     def add_mesh(self,):
         self.mesh_nodes: list[viser.MeshHandle] = []
-        obj_mesh_nodes: list[viser.MeshHandle] = []
+        self.obj_mesh_nodes: list[viser.MeshHandle] = []
 
         obj_frame_handle = None
         self.obj_mesh_handle = None
@@ -208,6 +229,9 @@ class ViserViewer:
         contact_arrow_nodes = dict()
         original_vertices = dict()
         self.mesh_dictionary = {}
+        
+        self.mesh_list = []
+        self.obj_mesh_list = []
         
         if 'mesh' in self.draw_tg:
             obj_frame_handle = self.server.scene.add_frame(f"/frames/initial_object", show_axes=False, visible = False)                      
@@ -219,34 +243,48 @@ class ViserViewer:
                     # wxyz=tf.SO3.from_x_radians(np.pi / 2).wxyz,
                     position=(0.0, 0.0, 0.0),
                 )
-            self.mesh_dictionary[self.object_nm] = transformed_obj_mesh 
+            # self.mesh_dictionary[self.object_nm] = transformed_obj_mesh 
                 
             for i in tqdm(range(self.num_frames)):
                 combined_tri_mesh, org_vertices_arr = self.robot_module.get_combined_trimesh(i, self.c2r)
+                self.mesh_list.append(combined_tri_mesh)
                 # Add base frame.
                 self.frame_nodes.append(self.server.scene.add_frame(f"/frames/t{i}", show_axes=False, visible = False))
-                self.mesh_nodes.append(
-                    self.server.scene.add_mesh_trimesh(
-                    name=f"/frames/t{i}/robot_mesh",
-                    mesh=combined_tri_mesh,
-                    # wxyz=tf.SO3.from_x_radians(np.pi / 2).wxyz,
-                    # position=(0.0, 0.0, 0.0),
-                ))
+                # self.server.scene.add_mesh_trimesh(
+                #     name=f"/frames/t{i}/robot_mesh",
+                #     mesh=combined_tri_mesh,
+                #     # wxyz=tf.SO3.from_x_radians(np.pi / 2).wxyz,
+                #     # position=(0.0, 0.0, 0.0),
+                # )
+                # self.mesh_nodes.append(
+                #     self.server.scene.add_mesh_trimesh(
+                #     name=f"/frames/t{i}/robot_mesh",
+                #     mesh=combined_tri_mesh,
+                #     # wxyz=tf.SO3.from_x_radians(np.pi / 2).wxyz,
+                #     # position=(0.0, 0.0, 0.0),
+                # ))
                 # Contact Arrow Visualization
-                self.mesh_dictionary[self.frame_nodes[-1].name] = combined_tri_mesh
-                original_vertices[self.frame_nodes[-1].name] = org_vertices_arr
+                # self.mesh_dictionary[self.frame_nodes[-1].name] = combined_tri_mesh
+                # original_vertices[self.frame_nodes[-1].name] = org_vertices_arr
 
                 transformed_obj_mesh = copy.deepcopy(self.mesh).apply_transform(self.obj_T[i])
-                obj_mesh_nodes.append(
-                    self.server.scene.add_mesh_trimesh(
-                        name=f"/frames/t{i}/{self.object_nm}",
-                        mesh=transformed_obj_mesh,
-                        # wxyz=tf.SO3.from_x_radians(np.pi / 2).wxyz,
-                        position=(0.0, 0.0, 0.0),
-                    )
-                )
+                self.obj_mesh_list.append(transformed_obj_mesh)
+                # self.server.scene.add_mesh_trimesh(
+                #         name=f"/frames/t{i}/{self.object_nm}",
+                #         mesh=transformed_obj_mesh,
+                #         # wxyz=tf.SO3.from_x_radians(np.pi / 2).wxyz,
+                #         position=(0.0, 0.0, 0.0),
+                #     )
+                # self.obj_mesh_nodes.append(
+                #     self.server.scene.add_mesh_trimesh(
+                #         name=f"/frames/t{i}/{self.object_nm}",
+                #         mesh=transformed_obj_mesh,
+                #         # wxyz=tf.SO3.from_x_radians(np.pi / 2).wxyz,
+                #         position=(0.0, 0.0, 0.0),
+                #     )
+                # )
                 
-                self.mesh_dictionary[self.frame_nodes[-1].name+'_obj'] = transformed_obj_mesh
+                # self.mesh_dictionary[self.frame_nodes[-1].name+'_obj'] = transformed_obj_mesh
 
 
             # for i, frame_node in enumerate(frame_nodes):

@@ -100,7 +100,7 @@ else:
     os.makedirs(shared_path, exist_ok=True)
 
 capture_idx = last_capture_idx + 1
-while capture_idx < 5:
+while capture_idx < 1:
     # prepare for capture, move robot and object
     chime.info()
     # move_robot(sensors)

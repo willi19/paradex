@@ -4,7 +4,7 @@ from paradex.visualization_.viewer import ViserViewer
 import time
 
 if __name__ == "__main__":
-    scene_path = os.path.join(shared_dir, "capture_", "lookup", "pringles", "stand", "0")
+    scene_path = os.path.join(shared_dir, "capture_", "lookup", "pringles", "stand_free", "0")
     viewer = ViserViewer(scene_path, "pringles")
     
     while True:

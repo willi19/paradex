@@ -105,12 +105,14 @@ if __name__ == '__main__':
         name_list.sort()
 
     else:
-        name_list = [args.obj_name]
+        name_list = args.obj_name
         
     for name in name_list:
         grasp_list = os.listdir(os.path.join(shared_dir, "capture_", "lookup", name))
-        if args.grasp_type is not None and args.grasp_type in grasp_list:
-            process_list.append((name, args.grasp_type))
+        if args.grasp_type is not None:
+            for grasp_name in args.grasp_type:
+                if grasp_name in grasp_list:
+                    process_list.append((name, grasp_name))
         if args.grasp_type is None:
             for grasp_name in grasp_list:
                 process_list.append((name, grasp_name))
@@ -121,16 +123,17 @@ if __name__ == '__main__':
         root_dir = os.path.join(shared_dir, "capture_", "lookup", name, grasp_type)
         index_list = os.listdir(root_dir)
         
-        for index in ["0"]:
+        for index in index_list:
             index_dir = os.path.join(os.path.join(root_dir, str(index)))
             os.makedirs(os.path.join(name, grasp_type, index, "overlay"), exist_ok=True)
             os.makedirs(os.path.join(name, grasp_type, index, "videos"), exist_ok=True)
             for video_name in os.listdir(os.path.join(index_dir, "videos")):
                 copy_file(os.path.join(index_dir, "videos", video_name), os.path.join(name, grasp_type, index, "videos", video_name))
             
-            # process_video_list(os.path.join(name, grasp_type, index, "videos"), 
-            #         os.path.join(name, grasp_type, index, "overlay"), 
-            #         load_info(os.path.join(name, grasp_type, index, "videos")), 
-            #         process_frame)
+            if os.path.exists(os.path.join(name, grasp_type, index, "merge_overlay.mp4")):
+                continue
+            process_video_list(os.path.join(name, grasp_type, index, "videos"), 
+                    os.path.join(name, grasp_type, index, "overlay"), 
+                    load_info(os.path.join(name, grasp_type, index, "videos")), 
+                    process_frame)
             change_to_h264(os.path.join(name, grasp_type, index, "overlay_tmp.avi"), os.path.join(name, grasp_type, index, "merge_overlay.mp4"))
-    

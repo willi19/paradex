@@ -141,6 +141,8 @@ class TimecodeReceiver():
                     self.timestamps, open(os.path.join(self.save_path,"camera_timestamp.json"), "w"), indent="\t"
                 )
                 
+                self.timestamps = dict([("timestamps", []), ("frameID", []), ("pc_time", [])])
+                
             self.cam.EndAcquisition()
             self.save_end.set()
 

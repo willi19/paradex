@@ -28,12 +28,14 @@ if __name__ == '__main__':
         name_list.sort()
 
     else:
-        name_list = [args.obj_name]
+        name_list = args.obj_name
         
     for name in name_list:
         grasp_list = os.listdir(os.path.join(shared_dir, "capture_", "lookup", name))
-        if args.grasp_type is not None and args.grasp_type in grasp_list:
-            process_list.append((name, args.grasp_type))
+        if args.grasp_type is not None:
+            for grasp_name in args.grasp_type:
+                if grasp_name in grasp_list:
+                    process_list.append((name, grasp_name))
         if args.grasp_type is None:
             for grasp_name in grasp_list:
                 process_list.append((name, grasp_name))
@@ -45,7 +47,7 @@ if __name__ == '__main__':
         marker_offset = np.load(os.path.join(shared_dir, "marker_offset", name, "0", "marker_offset.npy"), allow_pickle=True).item()
         marker_id = list(marker_offset.keys())
 
-        for index in ["0"]:
+        for index in index_list:
             index_dir = os.path.join(os.path.join(root_dir, str(index)))
             marker_list = os.listdir(os.path.join(index_dir, "marker2D"))
             
@@ -70,8 +72,7 @@ if __name__ == '__main__':
                         
                         id_cor[t][id]["2d"].append(cor)
                         id_cor[t][id]["cammtx"].append(cammat[serial_num])
-                    print(t)
-            import pdb;pdb.set_trace()
+                    
             obj_T = []
             cor_3d_hist = {}
             for t, marker_dict in id_cor.items():

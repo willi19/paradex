@@ -123,7 +123,7 @@ class RobotWrapper:
         max_iter: int = 1000,
         tol: float = 1e-8,
         alpha: float = 5e-2,
-        try_num : int = 10
+        try_num : int = 30
     ) -> npt.NDArray:
         
         target_pose = target_pose.copy()

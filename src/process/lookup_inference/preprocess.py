@@ -21,14 +21,14 @@ if __name__ == '__main__':
     process_list = []
     
     if args.obj_name == None:
-        name_list = os.listdir(os.path.join(shared_dir, 'capture_', "lookup"))
+        name_list = os.listdir(os.path.join(shared_dir, 'inference_', "lookup"))
         name_list.sort()
 
     else:
         name_list = args.obj_name
         
     for name in name_list:
-        grasp_list = os.listdir(os.path.join(shared_dir, "capture_", "lookup", name))
+        grasp_list = os.listdir(os.path.join(shared_dir, "inference_", "lookup", name))
         if args.grasp_type is not None:
             for grasp_name in args.grasp_type:
                 if grasp_name in grasp_list:
@@ -38,9 +38,8 @@ if __name__ == '__main__':
                 process_list.append((name, grasp_name))
     
     for name, grasp_type in process_list:
-        root_dir = os.path.join(shared_dir, "capture_", "lookup", name, grasp_type)
+        root_dir = os.path.join(shared_dir, "inference_", "lookup", name, grasp_type)
         index_list = os.listdir(root_dir)
-        print(name, grasp_type)
         for index in index_list:
             index_dir = os.path.join(os.path.join(root_dir, str(index)))
             raw_dir = os.path.join(os.path.join(index_dir, "raw"))
@@ -84,6 +83,7 @@ if __name__ == '__main__':
             arm_action_orig = np.load(os.path.join(raw_dir, arm_name, "action.npy")) # T X 4 X 4
             arm_qpos_orig = np.load(os.path.join(raw_dir, arm_name, "position.npy")) # T X dof
             arm_pc_time = np.load(os.path.join(raw_dir, arm_name, "time.npy"))
+            
             arm_action_sync = get_synced_data(pc_time, arm_action_orig, arm_pc_time)
             arm_qpos_sync = get_synced_data(pc_time, arm_qpos_orig, arm_pc_time)
             os.makedirs(os.path.join(index_dir, arm_name), exist_ok=True)

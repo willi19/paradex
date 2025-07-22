@@ -82,9 +82,9 @@ def get_pickplace_timing(height_traj):
     pick = -1
     place = -1
     for i, h in enumerate(height_traj):
-        if h > 0.01 and pick == -1:
+        if h > 0.015 and pick == -1:
             pick = i
-        if h < 0.01 and pick != -1:
+        if h < 0.015 and pick != -1:
             place = i
             break
     return pick, place

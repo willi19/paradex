@@ -84,6 +84,9 @@ class XArmController:
         
     def home_robot(self, homepose):
         assert homepose.shape == (4,4) or homepose.shape == (6,)
+        if self.arm.has_err_warn:
+            self.arm.clean_error()
+            
         if homepose.shape == (6,):
             self.robot_model.compute_forward_kinematics(homepose.copy())
             homepose = self.robot_model.get_link_pose(self.last_link_id)
@@ -155,6 +158,9 @@ class XArmController:
         # Control loop start
         while not self.exit.is_set():
             start_time = time.time()
+            if self.arm.has_err_warn:
+                self.arm.clean_error()
+            
             with self.lock:
                 if not self.init:
                     time.sleep(0.01)

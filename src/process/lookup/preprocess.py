@@ -39,7 +39,7 @@ if __name__ == '__main__':
         root_dir = os.path.join(shared_dir, "capture_", "lookup", name, grasp_type)
         index_list = os.listdir(root_dir)
         
-        for index in ["0"]:#index_list:
+        for index in index_list:
             index_dir = os.path.join(os.path.join(root_dir, str(index)))
             raw_dir = os.path.join(os.path.join(index_dir, "raw"))
             

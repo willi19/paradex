@@ -21,4 +21,6 @@ for _ in range(5):
     signal_generator.off(1)
     
     camera.quit()
+    
+    print("Run")
     pick_6D = get_current_object_6d("pringles")

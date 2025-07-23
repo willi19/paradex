@@ -81,6 +81,7 @@ class CameraCommandReceiver():
         msg = msg.decode()
         if msg == "register":
             self.ident = ident
+        print(msg)
         self.send_message("registered")   
          
     def initialize_camera(self):

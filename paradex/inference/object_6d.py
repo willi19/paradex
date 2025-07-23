@@ -8,13 +8,17 @@ from paradex.geometry.math import rigid_transform_3D
 from paradex.io.capture_pc.connect import run_script
 from paradex.utils.env import get_pcinfo
 from paradex.utils.file_io import load_current_camparam, home_path, shared_dir, load_latest_C2R
+import time
 
 def get_current_object_6d(obj_name):
     image_path = f'shared_data/inference/obj_6D/image'
     pc_info = get_pcinfo()
     pc_list = list(pc_info.keys())
-    run_script(f"python src/capture/camera/image_client.py", pc_list)
-
+    
+    # run_script(f"python src/capture/camera/image_client.py", pc_list)
+    
+    print("Run command")
+    time.sleep(10)
     camera_loader = RemoteCameraController("image", None)
     camera_loader.start(image_path)
     camera_loader.end()

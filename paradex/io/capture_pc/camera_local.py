@@ -70,8 +70,8 @@ class CameraCommandReceiver():
                     self.camera.end()
                     self.send_message("capture_end")
                 time.sleep(0.01)
-        except:
-            self.send_message("error")
+        except Exception as e:
+            self.send_message(f"error : {e}")
         
     def send_message(self, message):
         self.socket.send_multipart([self.ident, message.encode('utf-8')])

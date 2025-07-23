@@ -69,17 +69,25 @@ def main():
         if sensors[sensor_name] is not None:
             sensors[sensor_name].start(save_path)
                 
+    exit_count = 0
     while True:
         data = sensors["teleop"].get_data()
         if data["Right"] is None:
             continue
         state = state_extractor.get_state(data['Left'])
-        print(state)
+        
         if state == 1:
             retargetor.pause()
+            exit_count = 0
             continue
         
         if state == 2:
+            exit_count += 1
+        
+        else:
+            exit_count = 0
+                    
+        if exit_count > 120:
             break
         
         wrist_pose, hand_action = retargetor.get_action(data)

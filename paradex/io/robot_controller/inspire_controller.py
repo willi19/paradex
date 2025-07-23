@@ -1,38 +1,62 @@
 import time
-from pymodbus.client import ModbusTcpClient  # pip3 install pymodbus==2.5.3
-import time
-
-import numpy as np
+import serial
 from threading import Thread, Event, Lock
-
+import numpy as np
 import os
 import json
+
+
 from paradex.utils.file_io import config_dir
 
 action_dof = 6
-regdict = {
-    'ID': 1000,
-    'baudrate': 1001,
-    'clearErr': 1004,
-    'forceClb': 1009,
-    'angleSet': 1486,
-    'forceSet': 1498,
-    'speedSet': 1522,
-    'angleAct': 1546,
-    'forceAct': 1582,
-    'errCode': 1606,
-    'statusCode': 1612,
-    'temp': 1618,
-    'actionSeq': 2320,
-    'actionRun': 2322
+hand_id = 1
+command = {
+    'setpos':[0xEB, 0x90, hand_id, 0x0F, 0x12, 0xC2, 0x05],
+    'setangle':[0xEB, 0x90, hand_id, 0x0F, 0x12, 0xCE, 0x05],
+    'setpower':[0xEB, 0x90, hand_id, 0x0F, 0x12, 0xDA, 0x05],
+    'setspeed':[0xEB, 0x90, hand_id, 0x0F, 0x12, 0xF2, 0x05],
+    'getsetspeed':[0xEB, 0x90, hand_id, 0x04, 0x11, 0xC2, 0x05, 0x0C],
+    'getsetangle':[0xEB, 0x90, hand_id, 0x04, 0x11, 0xCE, 0x05, 0x0C],
+    'getsetpower':[0xEB, 0x90, hand_id, 0x04, 0x11, 0xDA, 0x05, 0x0C],
+    'getactpos':[0xEB, 0x90, hand_id, 0x04, 0x11, 0xFE, 0x05, 0x0C],
+    'getactangle':[0xEB, 0x90, hand_id, 0x04, 0x11, 0x0A, 0x06, 0x0C],
+    'getactforce':[0xEB, 0x90, hand_id, 0x04, 0x11, 0x2E, 0x06, 0x0C],
 }
 
+def data2bytes(data):
+    data = int(data)
+    rdata = [0xff]*2
+    if data == -1:
+        rdata[0] = 0xff
+        rdata[1] = 0xff
+    else:
+        rdata[0] = data&0xff
+        rdata[1] = (data>>8)&(0xff)
+    return rdata
+
+def num2str(num):
+    str = hex(num)
+    str = str[2:4]
+    if(len(str) == 1):
+        str = '0'+ str
+    str = bytes.fromhex(str)    
+    return str
+
+def checknum(data):
+    result = 0
+    for v in data[2:-1]:
+        result += v
+    result = result&0xff
+    return result
+
+def data2str(data):
+    ret = b''
+    for v in data:
+        ret = ret + num2str(v)
+    return ret
 
 class InspireController:
     def __init__(self, ):
-        network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
-        self.ip = network_config["inspire"]["ip"]
-        self.port = network_config["inspire"]["port"]
         self.capture_path = None
         
         self.home_pose = np.zeros(action_dof)+800
@@ -69,92 +93,76 @@ class InspireController:
             self.home_pose = home_pose.copy()
             self.target_action = home_pose.copy()
         
-    def open_modbus(self):
-        client = ModbusTcpClient(self.ip, self.port)
-        client.connect()
-        self.inspire_node = client
+    def open_serial(self):
+        self.ser=serial.Serial('/dev/ttyUSB0',115200)
         return 
         
-    def write_register(self, address, values):
-        # Write to Modbus registers: provide the address and a list of values
-        self.inspire_node.write_registers(address, values)
-
-    def read_register(self, address, count):
-        # Read from Modbus registers
-        response = self.inspire_node.read_holding_registers(address, count)
-        return response.registers if response.isError() is False else []
-
-    def write6(self, reg_name, val):
-        if reg_name in ['angleSet', 'forceSet', 'speedSet']:
-            val_reg = []
-            for i in range(6):
-                val_reg.append(val[i] & 0xFFFF)  # Take the lower 16 bits
-            self.write_register(regdict[reg_name], val_reg)
-        else:
-            print("Incorrect function call. Usage: reg_name should be 'angleSet', 'forceSet', or 'speedSet', and val should be a list of 6 integers (0~1000). Use -1 as placeholder if needed.")
-
-    def read6(self, reg_name):
-        if reg_name in ['angleSet', 'forceSet', 'speedSet', 'angleAct', 'forceAct']:
-            val = self.read_register(regdict[reg_name], 6)
-            if len(val) < 6:
-                print("No data received.")
-                return
-            return val
+    def write6(self, command_name, value):
+        datanum = command[command_name][3]
+        len_command = len(command[command_name])
         
-        elif reg_name in ['errCode', 'statusCode', 'temp']:
-            val_act = self.read_register(regdict[reg_name], 3)
-            if len(val_act) < 3:
-                print("No data received.")
-                return
-
-            results = []
-            for i in range(len(val_act)):
-                low_byte = val_act[i] & 0xFF
-                high_byte = (val_act[i] >> 8) & 0xFF
-                results.append(low_byte)
-                results.append(high_byte)
-
-            return results
+        b = [0] * (datanum + 5)
         
-        else:
-            print("Incorrect function call. Usage: reg_name should be one of 'angleSet', 'forceSet', 'speedSet', 'angleAct', 'forceAct', 'errCode', 'statusCode', or 'temp'.")
-
+        for i, v in enumerate(command[command_name]):
+            b[i] = v
+        
+        for i in range(6):
+            b[len_command + 2 * i] = data2bytes(value[i])[0]
+            b[len_command + 2 * i + 1] = data2bytes(value[i])[1]
+        
+        b[-1] = checknum(b)
+        putdata = data2str(b)
+        self.ser.write(putdata)
+        getdata = self.ser.read(9)
+        
+    def read6(self, command_name):
+        datanum = command[command_name][3]
+        len_command = len(command[command_name])
+        
+        b = [0] * (datanum+5)
+        for i, v in enumerate(command[command_name]):
+            b[i] = v
+        b[-1] = checknum(b)
+        putdata = data2str(b)
+        self.ser.write(putdata)
+        
+        getdata = self.ser.read(20)
+        ret = np.zeros(6)
+        
+        for i in range(6):
+            if getdata[i*2+7] == 0xff and getdata[i*2+8] == 0xff:
+                ret[i] = -1
+            else:
+                ret[i] = getdata[i*2+7] + (getdata[i*2+8]<<8)
+        return ret
+    
     def get_qpos(self):
         with self.lock:
-            current_hand_angles = np.asarray(self.read6('angleAct'))            
+            current_hand_angles = np.asarray(self.read6('getactangle'))            
             return current_hand_angles            
     
     def get_force(self):
         with self.lock:
-            current_force = np.asarray(self.read6('forceAct'))
+            current_force = np.asarray(self.read6('getactforce'))
             return current_force
         
     def move_hand(self):
         self.fps = 100
-        self.open_modbus()
+        self.open_serial()
         self.hand_lock = Lock()
 
-        self.write6('speedSet', [1000, 1000, 1000, 1000, 1000, 1000])
-        self.write6('forceSet', [500, 500, 500, 500, 500, 500])
-        self.write6('angleSet', [1000, 1000, 1000, 1000, 1000, 1000])
+        self.write6('setspeed', [1000, 1000, 1000, 1000, 1000, 1000])
+        self.write6('setpower', [500, 500, 500, 500, 500, 500])
+        self.write6('setangle', [1000, 1000, 1000, 1000, 1000, 1000])
         
-        # self.write_register(1009, 1)
-        # while True:
-        #     v = self.read_register(1009, 1)
-        #     print(v)
-        #     if v[0] == 255:
-        #         break
-        #     time.sleep(1)
-                
         while not self.exit.is_set():
             start_time = time.time()
             with self.lock:
                 action = self.target_action.copy().astype(np.int32)
-            
-                self.write6('angleSet', action)
+                self.write6('setangle', action)
 
-            current_hand_angles = np.asarray(self.read6('angleAct'))
-            current_force = np.asarray(self.read6('forceAct'))
+            current_hand_angles = np.asarray(self.read6('getactangle'))
+            current_force = np.asarray(self.read6('getactforce'))
             # current_action = np.asarray(self.read6('angleSet'))
             with self.lock:
                 if self.capture_path is not None:

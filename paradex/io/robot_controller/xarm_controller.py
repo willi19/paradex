@@ -86,6 +86,7 @@ class XArmController:
         assert homepose.shape == (4,4) or homepose.shape == (6,)
         if self.arm.has_err_warn:
             self.arm.clean_error()
+            self.arm.clean_warn()
             
         if homepose.shape == (6,):
             self.robot_model.compute_forward_kinematics(homepose.copy())
@@ -140,6 +141,7 @@ class XArmController:
         self.arm = XArmAPI(self.xarm_ip_address, report_type="devlop")
         if self.arm.has_err_warn:
             self.arm.clean_error()
+            self.arm.clean_warn()
             
         self.arm.motion_enable(enable=True)
         self.arm.set_mode(0)
@@ -160,6 +162,7 @@ class XArmController:
             start_time = time.time()
             if self.arm.has_err_warn:
                 self.arm.clean_error()
+                self.arm.clean_warn()
             
             with self.lock:
                 if not self.init:

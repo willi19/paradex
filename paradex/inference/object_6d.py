@@ -19,6 +19,7 @@ def get_current_object_6d(obj_name):
     
     print("Run command")
     time.sleep(10)
+    print("Run command")
     camera_loader = RemoteCameraController("image", None)
     camera_loader.start(image_path)
     camera_loader.end()

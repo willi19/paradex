@@ -1,0 +1,1 @@
+roslaunch allegro_hand allegro_hand.launch VISUALIZE:=true AUTO_CAN:=false CAN_DEVICE:=/dev/pcan32

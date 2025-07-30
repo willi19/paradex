@@ -63,6 +63,7 @@ class CameraManager:
         self.capture_end_flag = [Event() for _ in range(self.num_cameras)]
         
         self.save_finish_flag = [Event() for _ in range(self.num_cameras)]
+        self.quit_flag = [Event() for _ in range(self.num_cameras)]
 
         self.height, self.width = 1536, 2048
 
@@ -166,6 +167,10 @@ class CameraManager:
     def wait_for_saveend(self):
         for i in range(self.num_cameras):
             self.capture_end_flag[i].wait()
+            
+    def wait_for_quit(self):
+        for i in range(self.num_cameras):
+            self.quit_flag[i].wait()
     
     def run_camera(self, index):
         serial_num = self.serial_list[index]
@@ -278,6 +283,7 @@ class CameraManager:
         del camPtr
         cam_list.Clear()
         system.ReleaseInstance()
+        self.quit_flag[index].set()
     
     def wait_for_capture_end(self):
         for i in range(self.num_cameras):
@@ -306,6 +312,7 @@ class CameraManager:
         self.exit.set()
         for p in self.capture_threads:
             p.join()
+        self.wait_for_quit()
 
     def get_frameid(self, index):
         if self.mode != "stream":

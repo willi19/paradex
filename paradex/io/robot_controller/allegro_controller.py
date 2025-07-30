@@ -32,12 +32,14 @@ class AllegroController:
         self.capture_path = None
         
         self.allegro_home_pose = np.zeros(16)
+        self.target_action = np.zeros(16)
+        
+        rospy.init_node('allegro_hand_node')
         
         self.exit = Event()
-        self.lock = Lock()
-        
-        self.hand_process = Thread(target=self.move_hand)
-        self.hand_process.start()
+        self.lock = Lock()       
+        self.thread = Thread(target=self.move_hand)
+        self.thread.start()
 
     def start(self, save_path):
         if save_path is not None:
@@ -45,7 +47,7 @@ class AllegroController:
             self.data = {
                 "action":[],
                 "time":[],
-                "state":[]
+                "position":[]
             }
             
     def end(self):
@@ -64,9 +66,9 @@ class AllegroController:
         return np.clip(action, -value, value)
     
     def move(self, desired_action = np.zeros(action_dof), absolute = True):
-        # if self.current_joint_pose == DEFAULT_VAL:
-        #     print('No joint data received!')
-        #     return
+        if self.current_joint_pose == DEFAULT_VAL:
+            print('No joint data received!')
+            return
 
         action = self._clip(desired_action, MAX_ANGLE)
         current_angles = self.current_joint_pose.position
@@ -81,12 +83,13 @@ class AllegroController:
         desired_js.effort = list([])
 
         self.joint_comm_publisher.publish(desired_js)
+        
 
     def set_homepose(self, allegro_home_pose):
         self.allegro_home_pose = allegro_home_pose.copy()
     
     def home_robot(self):
-        self.hand_target_action_array[:] = self.allegro_home_pose.copy()
+        self.target_action[:] = self.allegro_home_pose.copy()
     
     def get_data(self):
         with self.lock:
@@ -96,11 +99,7 @@ class AllegroController:
         fps = 100
         self.hand_cnt = 0
         self.hand_lock = Lock()
-        try:
-            rospy.init_node('allegro_hand_node')
-        except:
-            pass
-
+        
         rospy.Subscriber(JOINT_STATE_TOPIC, JointState, self._sub_callback_joint_state)
         rospy.Subscriber(GRAV_COMP_TOPIC, JointState, self._sub_callback_grav_comp)
         rospy.Subscriber(COMM_JOINT_STATE_TOPIC, JointState, self._sub_callback_cmd__joint_state)
@@ -111,23 +110,23 @@ class AllegroController:
         
             start_time = time.time()
             with self.lock:
-                action = self.hand_target_action_array.copy()
+                action = self.target_action.copy()
                 if self.current_joint_pose == DEFAULT_VAL:
                     current_hand_angles = np.zeros(action_dof)
                 else:
                     current_hand_angles = np.asarray(self.current_joint_pose.position)
                 self.move(action)
                 
-                self.data["state"].append(current_hand_angles.copy())
-                self.data["time"].append(start_time)
-
-                self.data["action"].append(self.hand_target_action_array.copy())
+                if self.capture_path is not None:
+                    self.data["position"].append(current_hand_angles.copy())
+                    self.data["time"].append(start_time)
+                    self.data["action"].append(action.copy())
 
                 end_time = time.time()
                 time.sleep(max(0, 1 / fps - (end_time - start_time)))
         
     def set_target_action(self, action):
-        self.hand_target_action_array[:] = action.copy()
+        self.target_action[:] = action.copy()
     
     def save(self):
         with self.lock:
@@ -140,10 +139,7 @@ class AllegroController:
             
     def quit(self):
         self.exit.set()
-        self.hand_process.join()
-
-        for key in self.shm.keys():
-            self.shm[key].close()
-            self.shm[key].unlink()
-
-        print("Exiting...")
+        self.save()
+        self.thread.join()
+    
+        print("Allegro Exiting...")

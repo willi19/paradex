@@ -80,6 +80,7 @@ class CameraCommandReceiver():
     
     def register(self):
         ident, msg = self.socket.recv_multipart()
+        print(msg)
         msg = msg.decode()
         if msg == "register":
             self.ident = ident

@@ -33,8 +33,7 @@ def initialize_device():
 pc_info = get_pcinfo()
 pc_list = list(pc_info.keys())
 
-n = input()
-# run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
+run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
 
 sensors = initialize_device()
 

@@ -41,6 +41,8 @@ class CameraCommandReceiver():
                     self.camera.quit()
                     print("quit")
                     self.send_message("terminated")
+                    self.socket.close()
+                    del self.socket
                 
                 if message[:6] == "start:":
                     self.file_name = message.split(":")[1]
@@ -86,7 +88,7 @@ class CameraCommandReceiver():
     def initialize_camera(self):
         ident, message = self.socket.recv_multipart()
         cam_info = json.loads(message.decode())
-        print(cam_info)
+        print(cam_info, "\n")
         self.mode = cam_info["mode"]
         self.serial_list = cam_info["serial_list"]
         self.camera = CameraManager(mode = cam_info["mode"], serial_list=cam_info["serial_list"], syncMode=cam_info["sync"])

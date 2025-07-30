@@ -33,7 +33,8 @@ def initialize_device():
 pc_info = get_pcinfo()
 pc_list = list(pc_info.keys())
 
-run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
+n = input()
+# run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
 
 sensors = initialize_device()
 
@@ -45,7 +46,7 @@ while capture_idx < 2:
     
     print("start")
     chime.info()
-    time.sleep(0.3)
+    time.sleep(5)
     
     sensors["camera"].end()
     sensors['timecode_receiver'].end()

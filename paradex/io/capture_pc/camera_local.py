@@ -35,7 +35,6 @@ class CameraCommandReceiver():
                 message = message.decode()
                 print(message)
                 if message == "quit":
-                    self.exit = True
                     self.camera.end()
                     print("end")
                     self.camera.quit()
@@ -43,6 +42,7 @@ class CameraCommandReceiver():
                     self.send_message("terminated")
                     self.socket.close()
                     del self.socket
+                    self.exit = True
                 
                 if message[:6] == "start:":
                     self.file_name = message.split(":")[1]

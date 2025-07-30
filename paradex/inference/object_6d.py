@@ -15,11 +15,8 @@ def get_current_object_6d(obj_name):
     pc_info = get_pcinfo()
     pc_list = list(pc_info.keys())
     
-    # run_script(f"python src/capture/camera/image_client.py", pc_list)
-    
-    print("Run command")
-    time.sleep(10)
-    print("Run command")
+    run_script(f"python src/capture/camera/image_client.py", pc_list)
+
     camera_loader = RemoteCameraController("image", None)
     camera_loader.start(image_path)
     camera_loader.end()

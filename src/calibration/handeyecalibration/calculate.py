@@ -96,8 +96,8 @@ X = np.eye(4)
 theta, b_x = solve(A_list, B_list)
 X[0:3, 0:3] = theta
 X[0:3, -1] = b_x.flatten()
-# for i in range(len(index_list)-1):
-#     print(A_list[i] @ X - X @ B_list[i], "error")
+for i in range(len(index_list)-1):
+    print(A_list[i] @ X - X @ B_list[i], "error")
 print(X)
 np.save(os.path.join(he_calib_path, "0", "C2R.npy"), X)
 marker_pos = {}

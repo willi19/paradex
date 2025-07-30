@@ -66,7 +66,7 @@ try:
             time.sleep(0.01)
             continue
         
-        camera_loader.end()()
+        camera_loader.end()
         print("end_capture")
         start_capture.clear()
         signal_generator.off(1)

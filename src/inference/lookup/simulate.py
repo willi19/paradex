@@ -49,28 +49,29 @@ sim.add_env(env_info = {"robot":{},
                         "object":{"bottle":"bottle"},
                         "object_vis":{"bottle_start":"bottle", "bottle_end":"bottle"}})
 
-init_action, success = robot.solve_ik(traj[0], "link6")
-last_q = init_action.copy()
+while True:
+    init_action, success = robot.solve_ik(traj[0], "link6")
+    last_q = init_action.copy()
 
-sim.reset(0, {"robot":{},
-        "robot_vis":{"right":init_action.copy()},
-        "object":{"bottle":pick_6D.copy()},
-        "object_vis":{"bottle":pick_6D.copy()}
-        })
+    sim.reset(0, {"robot":{},
+            "robot_vis":{"right":init_action.copy()},
+            "object":{"bottle":pick_6D.copy()},
+            "object_vis":{"bottle":pick_6D.copy()}
+            })
 
-for i in range(len(traj)):
-    sim.tick()
-    action, success = robot.solve_ik(traj[i], "link6", last_q)
-    
-    last_q = action.copy()
-    
-    action[6:] = hand_traj[i]
-    
-    sim.step(0, {"robot":{},
-        "robot_vis":{"right":action.copy()},
-        "object_vis":{
-            "bottle_start":pick_6D.copy(),
-            "bottle_end":place_6D.copy()}
-        })
+    for i in range(len(traj)):
+        sim.tick()
+        action, success = robot.solve_ik(traj[i], "link6", last_q)
+        
+        last_q = action.copy()
+        
+        action[6:] = hand_traj[i]
+        
+        sim.step(0, {"robot":{},
+            "robot_vis":{"right":action.copy()},
+            "object_vis":{
+                "bottle_start":pick_6D.copy(),
+                "bottle_end":place_6D.copy()}
+            })
 
 sim.terminate()

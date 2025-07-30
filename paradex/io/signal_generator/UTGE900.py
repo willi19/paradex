@@ -22,7 +22,7 @@ class UTGE900:
         print(self.list_resources())
         addr = get_network_info()["signal_generator"]
         self.sgen = UTGE900._rm.open_resource(addr)
-        
+        # "USB0::0x6656::0x0834::770595938::INSTR"
         self.ch = [ False, False ]
         self.llOpen()
         self.generate()

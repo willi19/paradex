@@ -44,6 +44,9 @@ if __name__ == '__main__':
             index_dir = os.path.join(os.path.join(root_dir, str(index)))
             raw_dir = os.path.join(os.path.join(index_dir, "raw"))
             
+            if not os.path.exists(raw_dir):
+                continue
+            
             valid = True
             
             arm_name = None
@@ -63,7 +66,7 @@ if __name__ == '__main__':
                 valid = False
             
             print(arm_name, hand_name, name, grasp_type, index)
-            for data_name in ["state", "timestamp"]:#, "C2R.npy"]:
+            for data_name in ["timestamp"]:#, "C2R.npy"]:
                 if data_name not in os.listdir(raw_dir):
                     valid = False
             
@@ -113,11 +116,3 @@ if __name__ == '__main__':
             np.save(os.path.join(index_dir, hand_name, "action.npy"), hand_action_sync)
             np.save(os.path.join(index_dir, hand_name, "qpos.npy"), hand_qpos_sync)
             np.save(os.path.join(index_dir, hand_name, "position.npy"), hand_pose)
-            
-            state_orig = np.load(os.path.join(raw_dir, "state", "state.npy"))
-            state_pc_time = np.load(os.path.join(raw_dir, "state", "time.npy"))
-            state_sync = get_synced_data(pc_time, state_orig, state_pc_time)
-            
-            np.save(os.path.join(index_dir, "state.npy"), state_sync)
-
-            # print(state_sync.shape, hand_action_sync.shape, hand_qpos_sync.shape, hand_pose.shape, arm_action_sync.shape, arm_qpos_sync.shape)

@@ -77,12 +77,10 @@ class CameraCommandReceiver():
         self.socket.send_multipart([self.ident, message.encode('utf-8')])
     
     def register(self):
-        print("register")
         ident, msg = self.socket.recv_multipart()
         msg = msg.decode()
         if msg == "register":
             self.ident = ident
-        print(msg)
         self.send_message("registered")   
          
     def initialize_camera(self):

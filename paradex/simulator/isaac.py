@@ -24,8 +24,8 @@ class Simulator:
         self.asset_root = rsc_path
         self.assets = {"robot":{}, "robot_vis":{}, "object":{}, "object_vis":{}}
         
-        self.env_list = []
-        self.actor_handle_list = []
+        self.env_dict = {}
+        self.actor_handle_dict = {}
         
         spacing = 1.5
         self.env_lower = gymapi.Vec3(-spacing, 0.0, -spacing)
@@ -35,6 +35,9 @@ class Simulator:
         
         self.save_state = False
         self.save_video = False
+        
+        self.camera_handle = {}
+        self.out = {}
         
     def generate_sim(self):
         # 시뮬레이션 설정
@@ -181,22 +184,23 @@ class Simulator:
 
         return
     
-    def load_camera(self, camera_param_dict=None):
-        self.camera_handle = {}
+    def load_camera(self, name, camera_param_dict=None):
+        self.camera_handle[name] = {}
         if camera_param_dict is None: # Single default camera
             camera_props = gymapi.CameraProperties()
             camera_props.horizontal_fov = 75.0
             camera_props.width = 2048
             camera_props.height = 1536
-            camera_handle = self.gym.create_camera_sensor(self.env, camera_props)
 
+            env = self.env_dict[name]
+            camera_handle = self.gym.create_camera_sensor(env, camera_props)
             self.gym.set_camera_location(
                 camera_handle,
-                self.env,
-                gymapi.Vec3(2, 0, 1),
-                gymapi.Vec3(0, 0, 0),
+                env,
+                gymapi.Vec3(0.5, 0, 0.096),
+                gymapi.Vec3(0, 0, 0.096),
             )
-            self.camera_handle["default"] = camera_handle
+            self.camera_handle[name][f"default"] = camera_handle
             return
                                                                   
         for serial_num, camera_param in camera_param_dict.items():
@@ -225,38 +229,40 @@ class Simulator:
             self.camera_handle[serial_num] = camera_handle            
         return 
     
-    def set_videopath(self, video_path):
+    def set_videopath(self, env_name, video_path):
         self.save_video = True
-        self.out = {}
+        self.out[env_name] = {}
         
-        os.makedirs(video_path, exist_ok=True)
-        for name, camera_handle in self.camera_handle.items():
-            output_filename = os.path.join(video_path, f"{name}.mp4")
-
+        camera_handle_dict = self.camera_handle[env_name]
+        os.makedirs(os.path.join(video_path, str(env_name)), exist_ok=True)
+        
+        for name, camera_handle in camera_handle_dict.items():    
+            output_filename = os.path.join(video_path, str(env_name), f"{name}.mp4")
+            
             self.frame_width = 2048
             self.frame_height = 1536
             self.fps = 30
             self.fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-            self.out[name] = cv2.VideoWriter(
+            self.out[env_name][name] = cv2.VideoWriter(
                 output_filename,
                 self.fourcc,
                 self.fps,
                 (self.frame_width, self.frame_height),
             )
-    
-    def set_savepath(self, state_path):
-        self.save_state = True
-        self.state_path = state_path
-        os.makedirs(os.path.dirname(self.state_path), exist_ok=True)
 
-        self.history = {"robot": [], "object": []}
+    # def set_savepath(self, state_path):
+    #     self.save_state = True
+    #     self.state_path = state_path
+    #     os.makedirs(os.path.dirname(self.state_path), exist_ok=True)
+
+    #     self.history = {"robot": [], "object": []}
 
     def save_stateinfo(self, env_idx):
         if env_idx not in self.history:
             self.history[env_idx] = {"robot":{}, "object":{}}
         
-        env = self.env_list[env_idx]
-        actor_handle = self.actor_handle_list[env_idx]
+        env = self.env_dict[env_idx]
+        actor_handle = self.actor_handle_dict[env_idx]
         
         for robot_name, actor in actor_handle["robot"].items():
             if robot_name not in self.history[env_idx]["robot"]:
@@ -428,7 +434,7 @@ class Simulator:
         
         return actor
     
-    def add_env(self, env_info):
+    def add_env(self, name, env_info):
         self.num_envs += 1
         
         actor_handle = {"robot":{}, "robot_vis":{}, "object":{}, "object_vis":{}}
@@ -440,15 +446,15 @@ class Simulator:
         actor_handle["object_vis"] = {actor_name : self.load_vis_object_actor(env, actor_name, obj_name) for actor_name, obj_name in env_info["object_vis"].items()}
         
         
-        self.env_list.append(env)
-        self.actor_handle_list.append(actor_handle)
+        self.env_dict[name] = env
+        self.actor_handle_dict[name] = actor_handle
 
-    def step(self, idx, action_dict):
-        env = self.env_list[idx]
-        actor_handle = self.actor_handle_list[idx]
+    def step(self, name, action_dict):
+        env = self.env_dict[name]
+        actor_handle = self.actor_handle_dict[name]
         
         if self.save_state:
-            self.save_stateinfo(idx)
+            self.save_stateinfo(name)
         
         for robot_name, action in action_dict["robot"].items():
             actor = actor_handle["robot"][robot_name]
@@ -505,19 +511,19 @@ class Simulator:
 
         if self.save_video:
             self.gym.render_all_camera_sensors(self.sim)
+            for env_name, camera_handle_dict in self.camera_handle.items():
+                for name, camera_handle in camera_handle_dict.items():
+                    frame = self.gym.get_camera_image(
+                        self.sim, self.env_dict[env_name], camera_handle, gymapi.IMAGE_COLOR
+                    ).astype(np.uint8)
 
-            for name, camera_handle in self.camera_handle.items():
-                frame = self.gym.get_camera_image(
-                    self.sim, self.env, camera_handle, gymapi.IMAGE_COLOR
-                ).astype(np.uint8)
-
-                frame = frame.reshape((self.frame_height, self.frame_width, 4))[:, :, :3]
-                frame = frame[:, :, ::-1]
-                self.out[name].write(frame)
+                    frame = frame.reshape((self.frame_height, self.frame_width, 4))[:, :, :3]
+                    frame = frame[:, :, ::-1]
+                    self.out[env_name][name].write(frame)
         
-    def reset(self, idx, action_dict):
-        env = self.env_list[idx]
-        actor_handle = self.actor_handle_list[idx]
+    def reset(self, name, action_dict):
+        env = self.env_dict[name]
+        actor_handle = self.actor_handle_dict[name]
         
         for robot_name, action in action_dict["robot"].items():
             actor = actor_handle["robot"][robot_name]
@@ -569,8 +575,9 @@ class Simulator:
             
     def save(self):
         if self.save_video:
-            for name, out in self.out.items():
-                out.release()
+            for env_id, out_dict in self.out.items():
+                for name, out in out_dict.items():
+                    out.release()
             self.save_video = False
             self.out = {}
         
@@ -584,7 +591,7 @@ class Simulator:
     def terminate(self):
         self.save()
         
-        for env in self.env_list:
+        for env in self.env_dict.values():
             self.gym.destroy_env(env)
             
         if not self.headless:
@@ -592,3 +599,13 @@ class Simulator:
         
         self.gym.destroy_sim(self.sim)
         print("Simulation terminated")
+
+    def destroy_env(self, name):
+        for out in self.out[name].values():
+            out.release()
+        del self.out[name]
+        
+        self.gym.destroy_env(self.env_dict[name])
+        del self.env_dict[name]
+        del self.camera_handle[name]
+        

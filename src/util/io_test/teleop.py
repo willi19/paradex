@@ -7,7 +7,7 @@ import argparse
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--device', choices=['xsens', 'occulus'])
+    parser.add_argument('--device', required=True, choices=['xsens', 'occulus'])
     
     args = parser.parse_args()
 

@@ -38,14 +38,15 @@ run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
 sensors = initialize_device()
 
 capture_idx = 0
-while capture_idx < 1:
+while capture_idx < 2:
     sensors['camera'].start(f"erasethis/videos")
     sensors['timecode_receiver'].start(f"erasethis/{capture_idx}/raw/timestamp")
     sensors["signal_generator"].on(1)
     
     print("start")
     chime.info()
-        
+    time.sleep(0.3)
+    
     sensors["camera"].end()
     sensors['timecode_receiver'].end()
     
@@ -55,14 +56,14 @@ while capture_idx < 1:
     capture_idx += 1
     sensors["camera"].quit()
     
-    # n = input()
+    n = input()
     
-    # # run_script(f"python src/capture/camera/image_client.py", pc_list)
+    # run_script(f"python src/capture/camera/image_client.py", pc_list)
 
-    # camera_loader = RemoteCameraController("image", None)
-    # camera_loader.start("shared_dir/erasethis")
-    # camera_loader.end()
-    # camera_loader.quit()
+    camera_loader = RemoteCameraController("image", None)
+    camera_loader.start("shared_dir/erasethis")
+    camera_loader.end()
+    camera_loader.quit()
 
     capture_idx += 1
     

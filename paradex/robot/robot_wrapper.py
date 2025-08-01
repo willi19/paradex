@@ -146,7 +146,14 @@ class RobotWrapper:
                 # 6D error: log(target⁻¹ * current)
                 error = pin.log(target_se3.inverse() * current_se3).vector
                 if np.linalg.norm(error) < tol:
-                    return q, True
+                    self.compute_forward_kinematics(q)
+                    real_pos = self.get_link_pose(link_id)
+                    diff_rot = real_pos[:3,:3] @ np.linalg.inv(target_pose[:3,:3]) - np.eye(3)
+                    diff_pos = real_pos[:3,3] - target_pose[:3, 3]
+                    if np.linalg.norm(diff_rot) < 0.01 and np.linalg.norm(diff_pos) < 0.01:
+                        return q, True
+                    else:
+                        break
 
                 J = pin.computeFrameJacobian(self.model, self.data, q, link_id)
                 lambda_ = 1e-6

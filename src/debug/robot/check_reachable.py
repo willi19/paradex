@@ -47,6 +47,17 @@ for d in tqdm.tqdm(range(len(wrist_pos_list))):
                 wrist_position[:3, :3] = wrist_pos_list[d].copy()
                 # wrist_position[:3, :3] = wrist_position[:3, :3] @ np.array([[np.cos(theta), np.sin(theta) , 0],[-np.sin(theta), np.cos(theta), 0],[0, 0, 1]])
                 action, succ = robot.solve_ik(wrist_position, "link6")
+
+                robot.compute_forward_kinematics(action)
+                link6_pos = robot.get_link_pose(robot.get_link_index("link6"))
+
+                if np.linalg.norm((link6_pos - wrist_position)[:,3]) > 0.01:
+                    succ = False
+                
+                diff = link6_pos[:3,:3] @ np.linalg.inv(wrist_position[:3,:3]) - np.eye(3)
+                if np.linalg.norm(diff) > 0.015:
+                    print("succ but wasn't true")
+                    succ = False
                 result[d][(tx,ty,tz)] = [action, succ]
 
 np.save("data/ik.npy", result)

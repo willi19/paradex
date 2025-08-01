@@ -36,12 +36,12 @@ def get_current_object_6d(obj_name):
     A = []
     B = []
     for mid in marker_id:
-        if mid not in cor_3d:
+        if mid not in cor_3d or cor_3d[mid] is None:
             continue
         
         A.append(marker_offset[mid])
         B.append(cor_3d[mid])
-        
+    
     A = np.concatenate(A)
     B = np.concatenate(B)
 

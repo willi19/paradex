@@ -56,9 +56,7 @@ while capture_idx < 2:
     capture_idx += 1
     sensors["camera"].quit()
     
-    n = input()
-    
-    # run_script(f"python src/capture/camera/image_client.py", pc_list)
+    run_script(f"python src/capture/camera/image_client.py", pc_list)
 
     camera_loader = RemoteCameraController("image", None)
     camera_loader.start("shared_dir/erasethis")

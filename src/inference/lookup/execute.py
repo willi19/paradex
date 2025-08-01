@@ -26,7 +26,7 @@ if __name__ == "__main__":
     path_planning = [(1, 2), (2, 4), (4, 2), (2, 3), (3, 1), (1, 3), (3, 4), (4, 1), (1, 4), (4, 3), (3, 2), (2, 1)]
     
     arm_name = "xarm"
-    hand_name = "inspire"
+    hand_name = "allegro"
     
     sensors = {}
     sensors["arm"] = get_arm(arm_name)
@@ -71,6 +71,7 @@ if __name__ == "__main__":
     pick_6D[:3,:3] = np.eye(3)
     
     place_6D = np.array(place_position_list[place_id])
+    
     traj, hand_traj = get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand_traj, place_hand_traj)
     
     # start the camera
@@ -90,6 +91,8 @@ if __name__ == "__main__":
     os.makedirs(os.path.join(shared_path, str(capture_idx)))
     copy_calib_files(f'{shared_path}/{capture_idx}')
     np.save(f'{shared_path}/{capture_idx}/C2R.npy', c2r)
+    np.save(f'{shared_path}/{capture_idx}/pick_6D.npy', pick_6D)
+    np.save(f'{shared_path}/{capture_idx}/place_6D.npy', place_6D)
     
     
     # Prepare execution

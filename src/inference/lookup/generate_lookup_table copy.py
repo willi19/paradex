@@ -15,36 +15,58 @@ def load_demo(demo_path, obj_mesh):
     obj_T = np.load(os.path.join(demo_path, "obj_T.npy"))
     C2R = np.load(os.path.join(demo_path, "C2R.npy"))
     
-    place_6D = None
-    
     for i in range(obj_T.shape[0]):
         obj_T[i] = np.linalg.inv(C2R) @ obj_T[i]
-        if np.linalg.norm(obj_T[i]) > 0.1:
-            place_6D = obj_T[i].copy()
-    pick_6D = obj_T[0].copy()
-    
+        
+    T = min(obj_T.shape[0], hand_qpos.shape[0])
+
     height_list = []
-    for step in range(len(obj_T)):
+    for step in range(T):
         h = compute_mesh_to_ground_distance(obj_T[step], obj_mesh)    
         height_list.append(h)
     
     t_pick_end, t_place_start = get_pickplace_timing(height_list)
+    t_pick_start, t_place_end = -1, -1
     
-    
-    z = np.array([pick_6D[0,2], pick_6D[1, 2], 0])
-    z /= np.linalg.norm(z)
-                
-    pick_6D[:3, 2] = z
-    pick_6D[:3, 0] = np.array([0,0,1])
-    pick_6D[:3, 1] = np.array([z[1],-z[0],0])
-    
-    T = min(obj_T.shape[0], hand_qpos.shape[0])
-    place_6D = np.linalg.inv(pick_6D) @ place_6D
-    
+    dist = 0.27
     for step in range(T):
-        last_link_pose[step] = np.linalg.inv(pick_6D) @ last_link_pose[step]
+        if np.linalg.norm(obj_T[step]) < 0.1:
+            continue
         
-    return last_link_pose, hand_qpos, place_6D, t_pick_end
+        obj_wrist_pose = np.linalg.inv(obj_T[step]) @ last_link_pose[step] # @ np.linalg.inv(DEVICE2WRIST['xarm']) @ DEVICE2WRIST['inspire']
+        obj_pos = obj_wrist_pose[:2, 3]
+
+        d = np.linalg.norm(obj_pos[:2])
+        print(d, step, obj_wrist_pose[:3,3], height_list[step], obj_T[step][:3,3])
+        if d < dist and t_pick_start == -1:
+            t_pick_start = step
+        if step > t_place_start and d > dist and t_place_end == -1:
+            t_place_end = step
+    
+    # print(T, t_pick_start, t_pick_end, t_place_start, t_place_end, demo_path)
+
+    pick_6D = obj_T[0].copy()
+    place_6D = obj_T[t_place_end].copy()
+    
+    print(t_pick_start, t_pick_end)
+    print(t_place_start, t_place_end)
+    
+    pick_6D[:3,:3] = np.eye(3)
+    place_6D[:3,:3] = np.eye(3)
+    # print(place_6D, pick_6D, obj_T.shape)
+    pick = np.zeros((t_pick_end-t_pick_start+1, 4, 4))
+    place = np.zeros((t_place_end-t_place_start+1, 4, 4))  
+    
+    pick_hand_action = hand_qpos[t_pick_start:t_pick_end+1]
+    place_hand_action = hand_qpos[t_place_start:t_place_end+1]
+     
+    for step in range(t_pick_start, t_pick_end+1):
+        pick[step-t_pick_start] = np.linalg.inv(pick_6D) @ last_link_pose[step]
+        
+    for step in range(t_place_start, t_place_end+1):
+        place[step-t_place_start] = np.linalg.inv(place_6D) @ last_link_pose[step]
+        
+    return pick, place, pick_hand_action, place_hand_action
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--obj_name', nargs="+", type=str, default=None)
@@ -79,11 +101,9 @@ for name, grasp_type in process_list:
         for index in index_list:                
             demo_path = os.path.join(root_dir, index)
             
-            traj, hand_traj, place_6D, t_pick_end = load_demo(demo_path, obj_mesh)
+            pick, place, pick_hand, place_hand = load_demo(demo_path, obj_mesh)
             os.makedirs(f"data/lookup/{name}/{grasp_type}/{index}",exist_ok=True)
-            
-            np.save(f"data/lookup/{name}/{grasp_type}/{index}/traj.npy", traj)
-            np.save(f"data/lookup/{name}/{grasp_type}/{index}/hand.npy", hand_traj)
-            np.save(f"data/lookup/{name}/{grasp_type}/{index}/place.npy", place_6D)
-            np.save(f"data/lookup/{name}/{grasp_type}/{index}/pick_t.npy", t_pick_end)
-        
+            np.save(f"data/lookup/{name}/{grasp_type}/{index}/pick.npy", pick)
+            np.save(f"data/lookup/{name}/{grasp_type}/{index}/place.npy", place)
+            np.save(f"data/lookup/{name}/{grasp_type}/{index}/pick_hand.npy", pick_hand)
+            np.save(f"data/lookup/{name}/{grasp_type}/{index}/place_hand.npy", place_hand)

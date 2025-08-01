@@ -82,3 +82,6 @@ class RemoteCameraController():
         self.send_message("quit") 
         self.wait_for_message("terminated")
 
+        for socket in self.socket_dict.values():
+            socket.close()
+            del socket

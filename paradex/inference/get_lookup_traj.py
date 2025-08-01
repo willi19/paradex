@@ -10,7 +10,9 @@ def get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
     place_T = place_traj.shape[0]
     total_T = pick_T + lift_T + move_T + lower_T + place_T
     traj = np.zeros((total_T, 4, 4))
-    hand_traj = np.zeros((total_T, 6))
+    
+    hand_dof = pick_hand.shape[-1]
+    hand_traj = np.zeros((total_T, hand_dof))
     
     for i in range(pick_T):
         traj[i] = pick_6D @ pick_traj[i]

@@ -4,6 +4,7 @@ import numpy as np
 import argparse
 import matplotlib.pyplot as plt
 import shutil
+import tqdm
 
 from paradex.io.contact.process import process_contact
 from paradex.robot import RobotWrapper
@@ -56,7 +57,7 @@ if __name__ == '__main__':
             
             id_cor = {}
             
-            for file_name in marker_list:
+            for file_name in tqdm.tqdm(marker_list):
                 marker_hist = np.load(os.path.join(index_dir, "marker2D", file_name),allow_pickle=True).item()
                 serial_num = file_name.split(".")[0]
                 for t, marker in marker_hist.items():

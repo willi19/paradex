@@ -24,7 +24,8 @@ arm_name = "xarm"
 hand_name = "inspire"
 robot = RobotWrapper(os.path.join(rsc_path, "robot", f"{arm_name}_{hand_name}.urdf"))
 
-pick_6D = get_current_object_6d(args.obj_name)
+# pick_6D = get_current_object_6d(args.obj_name)
+pick_6D = np.array(json.load(open(f"data/lookup/{args.obj_name}/obj_pose.json"))["3"])
 pick_6D[:3, :3] = np.eye(3)
 
 place_position = json.load(open(f"data/lookup/{args.obj_name}/obj_pose.json"))
@@ -44,7 +45,7 @@ hand_traj = parse_inspire(hand_traj)
 sim = IsaacSimulator(headless=False)
 sim.load_robot_asset("xarm", hand_name)
 sim.load_object_asset("bottle")
-sim.add_env(env_info = {"robot":{},
+sim.add_env("asdf", env_info = {"robot":{},
                         "robot_vis":{"right":(arm_name, hand_name)},
                         "object":{"bottle":"bottle"},
                         "object_vis":{"bottle_start":"bottle", "bottle_end":"bottle"}})
@@ -53,7 +54,7 @@ while True:
     init_action, success = robot.solve_ik(traj[0], "link6")
     last_q = init_action.copy()
 
-    sim.reset(0, {"robot":{},
+    sim.reset("asdf", {"robot":{},
             "robot_vis":{"right":init_action.copy()},
             "object":{"bottle":pick_6D.copy()},
             "object_vis":{"bottle":pick_6D.copy()}
@@ -67,7 +68,7 @@ while True:
         
         action[6:] = hand_traj[i]
         
-        sim.step(0, {"robot":{},
+        sim.step("asdf", {"robot":{},
             "robot_vis":{"right":action.copy()},
             "object_vis":{
                 "bottle_start":pick_6D.copy(),

@@ -38,7 +38,7 @@ run_script(f"python src/debug/dataset_acquision/video_client.py", pc_list)
 
 sensors = initialize_device()
 
-save_path = os.path.join("debug_", "capture_wo_robot")
+save_path = os.path.join("debug_", "aruco")
 shared_path = os.path.join(shared_dir, save_path)
 last_capture_idx = -1
 
@@ -60,7 +60,7 @@ for i in range(5):
     sensors["signal_generator"].on(1)
     
     print(f"start_{i}")
-    time.sleep(10)
+    time.sleep(120)
     
     sensors["camera"].end()
     sensors['timecode_receiver'].end()

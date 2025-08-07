@@ -217,6 +217,7 @@ class Camera():
             return False
         ptrTriggerOverlap.SetIntValue(ptrReadOut.GetValue())
         # NOTE: Blackfly and Flea3 GEV cameras need 1 second delay after trigger mode is turned on
+        print("trigger mode success")
         return True
     
     def configurePacketDelay(self, nodeMap):

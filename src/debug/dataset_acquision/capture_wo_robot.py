@@ -23,7 +23,7 @@ def initialize_device():
     controller = {}
     
     controller["camera"] = RemoteCameraController("video", serial_list=None, sync=True)
-    controller["signal_generator"] = UTGE900()
+    # controller["signal_generator"] = UTGE900()
     controller["timecode_receiver"] = TimecodeReceiver()
     
     return controller
@@ -56,14 +56,16 @@ for i in range(5):
         
     sensors['camera'].start(f"{save_path}/{capture_idx}/videos")
     sensors['timecode_receiver'].start(f"{shared_path}/{capture_idx}/raw/timestamp")
-    sensors["signal_generator"].on(1)
+    n = input("Press Enter to start signal generator...")  # Wait for user input to start signal generator
+    # sensors["signal_generator"].on(1)
     
     print(f"start_{i}")
     time.sleep(10)
     
     sensors["camera"].end()
     sensors['timecode_receiver'].end()
-    sensors['signal_generator'].off(1)
+    # sensors['signal_generator'].off(1)
+    n = input("Press Enter to continue...")  # Wait for user input to end capture
     
     
     capture_idx += 1

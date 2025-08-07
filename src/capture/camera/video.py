@@ -19,7 +19,7 @@ last_idx = find_latest_index(save_dir) if os.path.exists(save_dir) else -1
 camera = CameraManager("video", syncMode=True)
 num_cam = camera.num_cameras
 
-save_path = f"{args.save_path}/{last_idx+1}/video"
+save_path = f"{args.save_path}/{int(last_idx)+1}/video"
 camera.start(save_path)
 
 while not stop_event.is_set():

@@ -11,7 +11,7 @@ from paradex.image.undistort import undistort_img
 from paradex.image.aruco import detect_aruco
 
 def process_frame(frame, info, fid):
-    undist_kypt, ids = detect_aruco(frame)
+    undist_kypt, ids = detect_aruco(frame, "6X6_250")
     data = {}
     
     if ids is None:

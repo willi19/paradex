@@ -37,7 +37,7 @@ def load_info(video_path):
     return None
 
 start_time = time.time()
-rvp = RawVideoProcessor("debug_/aruco", process_frame=process_frame, load_info=load_info, process_result=process_result, preserve=True, overwrite=True)
+rvp = RawVideoProcessor("debug_/aruco", process_frame=process_frame, load_info=load_info, process_result=process_result, preserve=True, overwrite=False)
 while not rvp.finished():
     time.sleep(0.01)
     

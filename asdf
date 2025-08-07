@@ -1,0 +1,13 @@
+Warning: No markers detected in /home/temp_id/shared_data/debug_/aruco/13/marker2D/23022627.npy
+Warning: No markers detected in /home/temp_id/shared_data/debug_/aruco/14/marker2D/23022627.npy
+Timestamp 525 has multiple markers: {31: ['22641023'], 32: ['22641005']}
+Timestamp 781 has multiple markers: {31: ['23280286'], 32: ['22684253']}
+Timestamp 1458 has multiple markers: {100: ['23173281', '23280286', '22684253', '23029839'], 101: ['22641005']}
+Timestamp 1934 has multiple markers: {31: ['23280285', '23022633'], 32: ['22684210', '22684737']}
+Timestamp 2703 has multiple markers: {31: ['23280285'], 32: ['22684210', '23173282']}
+Timestamp 3343 has multiple markers: {32: ['23173281', '23028333'], 31: ['23280286', '22645029', '23280594', '23029839']}
+Warning: No markers detected in /home/temp_id/shared_data/debug_/aruco/15/marker2D/23022627.npy
+Timestamp 2468 has multiple markers: {31: ['23280285'], 32: ['22684210', '22684737']}
+Warning: No markers detected in /home/temp_id/shared_data/debug_/aruco/16/marker2D/23022627.npy
+Warning: No markers detected in /home/temp_id/shared_data/debug_/aruco/17/marker2D/23022627.npy
+Timestamp 2223 has multiple markers: {228: ['22641023', '22640993', '22641005', '23280594', '23029839', '23180202'], 75: ['23263775']}

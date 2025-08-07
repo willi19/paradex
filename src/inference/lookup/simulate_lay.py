@@ -24,12 +24,13 @@ arm_name = "xarm"
 hand_name = "allegro"
 robot = RobotWrapper(os.path.join(rsc_path, "robot", f"{arm_name}_{hand_name}.urdf"))
 
-pick_6D = np.array(
-    [[ 0.01337997,  0.63202218 , 0.77483478, 0.49811519],
-    [-0.04475633, -0.77374896,  0.63190934,  0.16402683],
-    [ 0.99890833 ,-0.04313369 , 0.01793426, -0.00970044],
-    [ 0. ,         0.   ,       0.      ,    1.        ]]
-)
+# pick_6D = np.array(
+#     [[ 0.01337997,  0.63202218 , 0.77483478, 0.49811519],
+#     [-0.04475633, -0.77374896,  0.63190934,  0.16402683],
+#     [ 0.99890833 ,-0.04313369 , 0.01793426, -0.00970044],
+#     [ 0. ,         0.   ,       0.      ,    1.        ]]
+# )
+pick_6D = get_current_object_6d(args.obj_name)
 z = pick_6D[:3, 2]
 pick_6D[:3,2] = np.array([z[0], z[1], 0])
 pick_6D[:3,2] /= np.linalg.norm(pick_6D[:3,2])
@@ -38,32 +39,20 @@ pick_6D[:3,0] = np.array([0,0,1])
 pick_6D[:3,1] = np.array([z[1], -z[0], 0])
 pick_6D[:3,1] /= np.linalg.norm(pick_6D[:3,2])
 
-print(pick_6D)
 place_position = json.load(open(f"data/lookup/{args.obj_name}/obj_pose.json"))
 place_6D = np.array(place_position[args.place])
 
 demo_idx = args.index
 demo_path = os.path.join("data", "lookup", args.obj_name, args.grasp_type, str(demo_idx))
 
-traj = np.load(f"{demo_path}/traj.npy")
-hand_traj = np.load(f"{demo_path}/hand.npy")
-place = np.load(f"{demo_path}/place.npy")
-pick_t = np.load(f"{demo_path}/pick_t.npy")
+pick_traj = np.load(f"{demo_path}/pick.npy")
+pick_hand_traj = np.load(f"{demo_path}/pick_hand.npy")
 
-place = pick_6D @ place
+place_traj = np.load(f"{demo_path}/place.npy")
+place_hand_traj = np.load(f"{demo_path}/place_hand.npy")
 
-# place_6D = place.copy()
-# place_6D[0, 3] += 0.1
+traj, hand_traj = get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand_traj, place_hand_traj)
 
-diff = place_6D[:3, 3] - place[:3, 3]
-T = len(traj)
-
-for i in range(T):
-    traj[i] = pick_6D @ traj[i]
-    if i > pick_t:
-        traj[i][:3, 3] += (diff / (T-pick_t) * (i-pick_t+1))
-        print((diff / (T-pick_t) * (i-pick_t+1)))
-        
 if hand_name == "inspire":
     hand_traj = parse_inspire(hand_traj)
 
@@ -86,6 +75,7 @@ while True:
             })
 
     for i in range(len(traj)):
+        print(i)
         sim.tick()
         action, success = robot.solve_ik(traj[i], "link6", last_q)
         

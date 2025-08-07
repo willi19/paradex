@@ -69,6 +69,7 @@ class CameraCommandReceiver():
                         self.send_message("capture_end")
                                     
                 if message == "stop":
+                    self.send_message("receive_stop")
                     self.camera.end()
                     self.send_message("capture_end")
                 time.sleep(0.01)

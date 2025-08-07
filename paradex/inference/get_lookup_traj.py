@@ -2,7 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from scipy.spatial.transform import Rotation as R, Slerp
 
-def get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
+def get_traj_prev(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
     lift_T = 100
     lower_T = 100
     move_T = 150
@@ -56,5 +56,51 @@ def get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
         T[:3, 3] = pos
         traj[pick_T + lift_T + i] = T
         hand_traj[pick_T + lift_T + i] = (pick_hand[-1] * (1-alpha) + place_hand[0] * alpha)
+    
+    return traj, hand_traj
+
+def get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
+    T_pick = pick_traj.shape[0]
+    T_place = place_traj.shape[0]
+    T_mid = 100
+    print(T_pick, T_place, T_mid)
+    for i in range(T_pick):
+        pick_traj[i] = pick_6D @ pick_traj[i]
+        
+    for i in range(T_place):
+        place_traj[i] = place_6D @ place_traj[i]
+        
+    start_pose = pick_traj[-1]
+    end_pose = place_traj[0]
+
+    start_pos = start_pose[:3, 3]
+    end_pos = end_pose[:3, 3]
+    
+    start_rot = R.from_matrix(start_pose[:3, :3])
+    end_rot = R.from_matrix(end_pose[:3, :3])
+    key_times = [0, 1]
+    key_rots = R.concatenate([start_rot, end_rot])  # Rotation 배열 생성
+
+    slerp = Slerp(key_times, key_rots)
+
+    move_traj = np.zeros((T_mid, 4, 4))
+    move_hand = np.zeros((T_mid, pick_hand.shape[1]))
+    
+    for i in range(T_mid):
+        alpha = (i + 1) / T_mid
+        pos = (1 - alpha) * start_pos + alpha * end_pos
+        rot = slerp(alpha).as_matrix()
+        
+        T = np.eye(4)
+        T[:3, :3] = rot
+        T[:3, 3] = pos
+        
+        move_traj[i] = T
+        move_hand[i] = (pick_hand[-1] * (1-alpha) + place_hand[0] * alpha)
+    
+
+    
+    traj = np.concatenate([pick_traj, move_traj, place_traj])
+    hand_traj = np.concatenate([pick_hand, move_hand, place_hand])
     
     return traj, hand_traj

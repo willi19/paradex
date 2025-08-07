@@ -60,7 +60,6 @@ def find_latest_directory(directory):
         return "0"
         
     latest_dir = max(dirs, key=str)
-    
     return latest_dir
 
 def find_latest_index(directory):

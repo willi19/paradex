@@ -22,7 +22,7 @@ import numpy as np
 def initialize_device():
     controller = {}
     
-    controller["camera"] = RemoteCameraController("video", serial_list=None, sync=True)
+    controller["camera"] = RemoteCameraController("video", serial_list=None, sync=False)
     controller["signal_generator"] = UTGE900()
     controller["timecode_receiver"] = TimecodeReceiver()
     
@@ -34,7 +34,7 @@ serial_list = get_serial_list()
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script(f"python src/debug/dataset_acquision/video_client.py", pc_list)
+# run_script(f"python src/debug/dataset_acquision/video_client.py", pc_list)
 
 sensors = initialize_device()
 

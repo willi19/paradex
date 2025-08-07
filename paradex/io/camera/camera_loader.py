@@ -268,7 +268,7 @@ class CameraManager:
                         np.copyto(self.image_array[index], spin2cv(raw_frame, self.height, self.width))
                         self.frame_num[index] = framenum
                 raw_frame.Release()
-            
+            print(f"Camera {serial_num} finished capturing.")
             if self.mode == "video":
                 json.dump(
                     timestamps, open(timestamp_path, "w"), indent="\t"

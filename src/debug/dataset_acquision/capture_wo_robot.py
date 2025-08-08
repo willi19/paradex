@@ -48,7 +48,7 @@ else:
     os.makedirs(shared_path, exist_ok=True)
 
 capture_idx = last_capture_idx + 1
-for i in range(1):
+for i in range(3):
     time.sleep(2)
     # start
     os.makedirs(f'{shared_path}/{capture_idx}', exist_ok=True)

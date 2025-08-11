@@ -94,7 +94,7 @@ c2r = load_latest_C2R()
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script(f"python src/dataset_acquision/hri_teleop/video_client.py", pc_list)
+run_script(f"python src/dataset_acquision/hri/video_client.py", pc_list)
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--arm", choices=['xarm', 'franka'])

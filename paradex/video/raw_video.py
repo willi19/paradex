@@ -27,10 +27,9 @@ def fill_framedrop(cam_timestamp):
     frameID_nodrop = []
 
     time_delta_new = 1 / 30
-    for i in range(1, frameID[-1] * int(time_delta / time_delta_new) +1):
+    for i in range(1, frameID[-1] * int(time_delta / time_delta_new + 0.5) +1):
         frameID_nodrop.append(i)
         pc_time_nodrop.append((i-1)*time_delta_new+offset)
-
     return pc_time_nodrop, frameID_nodrop
 
 def get_synced_data(pc_times, data, data_times):

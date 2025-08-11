@@ -13,17 +13,18 @@ def load_demo(demo_path, obj_mesh):
     last_link_pose = np.load(os.path.join(demo_path, "xarm", "action.npy"))
     hand_qpos = np.load(os.path.join(demo_path, hand_name, "action.npy"))
     obj_T = np.load(os.path.join(demo_path, "obj_T.npy"))
+    print(obj_T.shape,  hand_qpos.shape)
     C2R = np.load(os.path.join(demo_path, "C2R.npy"))
     
     for i in range(obj_T.shape[0]):
         obj_T[i] = np.linalg.inv(C2R) @ obj_T[i]
         
     T = min(obj_T.shape[0], hand_qpos.shape[0])
-    
     split_t = -1
     max_h = -1
     
     for step in range(T):
+        
         if np.linalg.norm(obj_T[step]) < 0.1:
             continue
         place_6D = obj_T[step].copy()

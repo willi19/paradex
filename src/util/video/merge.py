@@ -1,7 +1,4 @@
-import os
-import numpy as np
 import argparse
-import trimesh
 from multiprocessing import Pool
 
 from paradex.utils.file_io import rsc_path, shared_dir, load_camparam, get_robot_urdf_path
@@ -11,12 +8,6 @@ from paradex.image.overlay import overlay_mask
 from paradex.video.process_video import process_video_list
 
 from paradex.video.convert_codec import change_to_h264
-from paradex.utils.upload_file import copy_file
-
-from paradex.visualization_.renderer import BatchRenderer
-from paradex.visualization_.robot_module import Robot_Module
-from paradex.robot.mimic_joint import parse_inspire
-import copy
 
 def load_info(video_dir):
     return None

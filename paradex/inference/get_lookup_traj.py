@@ -63,15 +63,19 @@ def get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
     T_pick = pick_traj.shape[0]
     T_place = place_traj.shape[0]
     T_mid = 100
-    print(T_pick, T_place, T_mid)
+    
+    cur_pick_traj = []
     for i in range(T_pick):
-        pick_traj[i] = pick_6D @ pick_traj[i]
-        
+        cur_pick_traj.append(pick_6D @ pick_traj[i])
+    cur_pick_traj = np.array(cur_pick_traj)
+    
+    cur_place_traj = []
     for i in range(T_place):
-        place_traj[i] = place_6D @ place_traj[i]
-        
-    start_pose = pick_traj[-1]
-    end_pose = place_traj[0]
+        cur_place_traj.append(place_6D @ place_traj[i])
+    cur_place_traj = np.array(cur_place_traj)
+    
+    start_pose = cur_pick_traj[-1]
+    end_pose = cur_place_traj[0]
 
     start_pos = start_pose[:3, 3]
     end_pos = end_pose[:3, 3]
@@ -100,7 +104,7 @@ def get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
     
 
     
-    traj = np.concatenate([pick_traj, move_traj, place_traj])
+    traj = np.concatenate([cur_pick_traj, move_traj, cur_place_traj])
     hand_traj = np.concatenate([pick_hand, move_hand, place_hand])
     
     return traj, hand_traj

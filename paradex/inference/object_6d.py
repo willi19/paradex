@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+import shutil
 
 from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.image.aruco import triangulate_marker
@@ -46,5 +47,5 @@ def get_current_object_6d(obj_name):
     B = np.concatenate(B)
 
     pick_6D = np.linalg.inv(c2r) @ rigid_transform_3D(A, B)
-    
+    shutil.rmtree(os.path.join(home_path, image_path))
     return pick_6D

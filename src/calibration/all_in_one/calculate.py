@@ -31,7 +31,7 @@ cam_keypoint = {}
 
 for idx in tqdm.tqdm(index_list[:50]):
     last_link_pose = np.load(os.path.join(root_path, idx, "robot.npy"))
-    intrinsic, extrinsic = load_camparam(os.path.join(root_path, idx))
+    # intrinsic, extrinsic = load_camparam(os.path.join(root_path, idx))
     
     marker_robot_pose = {id :last_link_pose @ makrker_offset[id].T for id in marker_id}
       
@@ -58,8 +58,6 @@ for serial_num, cam_kypt in cam_keypoint.items():
     retvals, rvecs, tvecs, _ = cv2.solvePnPGeneric(robot_cor, cam_cor, intrinsics[serial_num]['intrinsics_undistort'], np.zeros(4))
     
     robot_cor_h = np.concatenate([robot_cor, np.ones((robot_cor.shape[0], 1))], axis=1)
-    # 1. rvec을 3x3 회전 행렬로 변환
-    import pdb; pdb.set_trace()
     rvec, tvec = rvecs[0], tvecs[0]
     R, _ = cv2.Rodrigues(rvec)  # shape: (3, 3)
 
@@ -94,7 +92,7 @@ for serial_num, intrinsic in intrinsics.items():
     new_intrinsics[serial_num]['dist_params'] = np.array(intrinsic['dist_params']).tolist()
     new_intrinsics[serial_num]['width'] = intrinsic['width']
     new_intrinsics[serial_num]['height'] = intrinsic['height']
-        
+print(name)
 os.makedirs(os.path.join(cam_param_dir, name), exist_ok=True)
 with open(os.path.join(cam_param_dir, name, "intrinsics.json"), "w") as f:
     json.dump(new_intrinsics, f, indent=4)

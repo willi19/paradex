@@ -1,0 +1,1 @@
+ffmpeg -i /home/temp_id/captures1/debug_offset/1/video/22645026-0000.avi -vcodec libx264 -crf 23 -preset fast -acodec aac -b:a 192k cam_offset_1.mp4

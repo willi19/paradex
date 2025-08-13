@@ -2,7 +2,7 @@ import numpy as np
 from scipy.spatial.transform import Rotation as R
 from scipy.spatial.transform import Rotation as R, Slerp
 
-def get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
+def get_traj_prev(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
     lift_T = 100
     lower_T = 100
     move_T = 150
@@ -10,7 +10,9 @@ def get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
     place_T = place_traj.shape[0]
     total_T = pick_T + lift_T + move_T + lower_T + place_T
     traj = np.zeros((total_T, 4, 4))
-    hand_traj = np.zeros((total_T, 6))
+    
+    hand_dof = pick_hand.shape[-1]
+    hand_traj = np.zeros((total_T, hand_dof))
     
     for i in range(pick_T):
         traj[i] = pick_6D @ pick_traj[i]
@@ -54,5 +56,55 @@ def get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
         T[:3, 3] = pos
         traj[pick_T + lift_T + i] = T
         hand_traj[pick_T + lift_T + i] = (pick_hand[-1] * (1-alpha) + place_hand[0] * alpha)
+    
+    return traj, hand_traj
+
+def get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand, place_hand):
+    T_pick = pick_traj.shape[0]
+    T_place = place_traj.shape[0]
+    T_mid = 100
+    
+    cur_pick_traj = []
+    for i in range(T_pick):
+        cur_pick_traj.append(pick_6D @ pick_traj[i])
+    cur_pick_traj = np.array(cur_pick_traj)
+    
+    cur_place_traj = []
+    for i in range(T_place):
+        cur_place_traj.append(place_6D @ place_traj[i])
+    cur_place_traj = np.array(cur_place_traj)
+    
+    start_pose = cur_pick_traj[-1]
+    end_pose = cur_place_traj[0]
+
+    start_pos = start_pose[:3, 3]
+    end_pos = end_pose[:3, 3]
+    
+    start_rot = R.from_matrix(start_pose[:3, :3])
+    end_rot = R.from_matrix(end_pose[:3, :3])
+    key_times = [0, 1]
+    key_rots = R.concatenate([start_rot, end_rot])  # Rotation 배열 생성
+
+    slerp = Slerp(key_times, key_rots)
+
+    move_traj = np.zeros((T_mid, 4, 4))
+    move_hand = np.zeros((T_mid, pick_hand.shape[1]))
+    
+    for i in range(T_mid):
+        alpha = (i + 1) / T_mid
+        pos = (1 - alpha) * start_pos + alpha * end_pos
+        rot = slerp(alpha).as_matrix()
+        
+        T = np.eye(4)
+        T[:3, :3] = rot
+        T[:3, 3] = pos
+        
+        move_traj[i] = T
+        move_hand[i] = (pick_hand[-1] * (1-alpha) + place_hand[0] * alpha)
+    
+
+    
+    traj = np.concatenate([cur_pick_traj, move_traj, cur_place_traj])
+    hand_traj = np.concatenate([pick_hand, move_hand, place_hand])
     
     return traj, hand_traj

@@ -1,6 +1,7 @@
 import os
 import cv2
 import numpy as np
+import shutil
 
 from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.image.aruco import triangulate_marker
@@ -36,15 +37,15 @@ def get_current_object_6d(obj_name):
     A = []
     B = []
     for mid in marker_id:
-        if mid not in cor_3d:
+        if mid not in cor_3d or cor_3d[mid] is None:
             continue
         
         A.append(marker_offset[mid])
         B.append(cor_3d[mid])
-        
+    
     A = np.concatenate(A)
     B = np.concatenate(B)
 
     pick_6D = np.linalg.inv(c2r) @ rigid_transform_3D(A, B)
-    
+    shutil.rmtree(os.path.join(home_path, image_path))
     return pick_6D

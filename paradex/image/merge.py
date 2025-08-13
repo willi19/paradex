@@ -16,7 +16,7 @@ def merge_image(image_dict):
     grid_image = np.ones((1536+border_px*(grid_rows-1), (2048//grid_rows)*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
 
     for idx, img_name in enumerate(name_list):
-        img = image_dict[img_name]
+        img = image_dict[img_name].copy()
         cv2.putText(img, img_name, (80, 120), 1, 10, (255, 255, 0), 3)
         resized_img = cv2.resize(img, (new_W, new_H))
         

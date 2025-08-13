@@ -25,7 +25,7 @@ if __name__ == "__main__":
     )
 
     sim.load_robot_asset(args.arm, args.hand)
-    sim.add_env({"robot":{}, "robot_vis":{"robot":(args.arm, args.hand)}, "object":{}, "object_vis":{}})
+    sim.add_env("view", {"robot":{}, "robot_vis":{"robot":(args.arm, args.hand)}, "object":{}, "object_vis":{}})
 
     hand_dof = 12 if args.hand == "inspire" else 16
     
@@ -42,7 +42,7 @@ if __name__ == "__main__":
     action = np.zeros(6+hand_dof)
     action[:6] = current_arm_angles
     
-    sim.reset(0, {"robot":{}, "robot_vis":{"robot":action.copy()}, "object":{}})
+    sim.reset("view", {"robot":{}, "robot_vis":{"robot":action.copy()}, "object":{}})
     sim.tick()
         
     while not stop_event.is_set():
@@ -51,7 +51,7 @@ if __name__ == "__main__":
         action = np.zeros(6+hand_dof)
         action[:6] = current_arm_angles
         
-        sim.step(0, {"robot":{}, "robot_vis":{"robot":action.copy()}, "object_vis":{}})
+        sim.step("view", {"robot":{}, "robot_vis":{"robot":action.copy()}, "object_vis":{}})
         sim.tick()
 
     # arm.stop_record_trajectory()

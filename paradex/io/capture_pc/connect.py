@@ -33,6 +33,7 @@ def git_pull(branch, pc_list=None):
         )
         ssh_cmd = f"ssh -p {ssh_port} {pc_name}@{ip} \"{remote_cmd}\""
         try:
+            print(pc_name)
             subprocess.run(ssh_cmd, shell=True, check=True)
         except subprocess.CalledProcessError as e:
             print(f"[{pc_name}] Failed: {e}")

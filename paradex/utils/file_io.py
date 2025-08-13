@@ -20,6 +20,7 @@ cam_param_dir = os.path.join(shared_dir, "cam_param")
 cam_param_dir_fix = os.path.join(shared_dir, "cam_param_fix")
 handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")
 config_dir = os.path.join(os.path.dirname(__file__), "..", "..", "config")
+model_dir = os.path.join(os.path.dirname(__file__), "..", "..", "model")
 
 def get_video_list(video_dir):
     """
@@ -60,7 +61,6 @@ def find_latest_directory(directory):
         return "0"
         
     latest_dir = max(dirs, key=str)
-    
     return latest_dir
 
 def find_latest_index(directory):

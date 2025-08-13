@@ -17,7 +17,7 @@ def get_cammtx(intrinsic, extrinsic):
 def project_point(verts, cammtx, image, color=(255, 0, 0)):
     vert_2d = project(cammtx, verts)
     for v in vert_2d:
-        image = cv2.circle(image, (int(v[0]), int(v[1])), 3, color, -1)
+        image = cv2.circle(image, (int(v[0]), int(v[1])), 5, color, -1)
     return image
 
 def project_mesh(image, mesh, intrinsic, extrinsic, obj_T=None, renderer=None):

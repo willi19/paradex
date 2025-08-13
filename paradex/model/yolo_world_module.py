@@ -8,6 +8,8 @@ import torch
 # from tqdm import tqdm
 
 from pathlib import Path
+
+
 os.environ["MODEL_CACHE_DIR"] = str(Path(__file__).absolute().parent.parent/'cache')
 print("Model Cache Directory:", os.environ["MODEL_CACHE_DIR"])
 
@@ -16,7 +18,7 @@ from inference.models.yolo_world import YOLOWorld
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).absolute().parent))
-# from efficient_sam_module import load, inference_with_boxes
+from paradex.model.sam import load, inference_with_boxes
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # from video_module import (
@@ -28,7 +30,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 class YOLO_MODULE:
     def __init__(self, model_id='yolo_world/v2-l', categories:str=None, device=DEVICE):
-        # self.EFFICIENT_SAM_MODEL = load(device=DEVICE)
+        self.EFFICIENT_SAM_MODEL = load(device=DEVICE)
         self.YOLO_WORLD_MODEL = YOLOWorld(model_id=model_id)
         # print("YOLO World Model Loaded")
 

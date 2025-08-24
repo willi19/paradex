@@ -30,8 +30,6 @@ from paradex.video.process_video import process_video_list
 from paradex.video.convert_codec import change_to_h264
 from paradex.utils.upload_file import copy_file
 
-from paradex.visualization_.renderer import BatchRenderer
-from paradex.visualization_.robot_module import Robot_Module
 from paradex.robot.mimic_joint import parse_inspire
 from paradex.geometry.triangulate import ransac_triangulation
 

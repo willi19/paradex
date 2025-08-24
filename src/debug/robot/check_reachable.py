@@ -1,14 +1,9 @@
 import numpy as np
 import os
-from threading import Event
-import time
 import tqdm
 
 from paradex.robot.robot_wrapper import RobotWrapper
 from paradex.utils.file_io import rsc_path
-from paradex.simulator import IsaacSimulator
-from paradex.utils.keyboard_listener import listen_keyboard
-from paradex.geometry.coordinate import DEVICE2WRIST
 
 arm_name = "xarm"
 hand_name = "inspire"
@@ -32,14 +27,15 @@ wrist_pos_list = [
         [ 0.0, 0.0,  -1.0]])
 ]
 
-result = {}
 
-for d in tqdm.tqdm(range(len(wrist_pos_list))):
-    result[d] = {"pos":wrist_pos_list[d].copy()}
-    for tx in tqdm.tqdm(np.arange(0.2, 0.7, 0.05)):
-        for ty in tqdm.tqdm(np.arange(-0.7, 0.7, 0.05)):
+for d in tqdm.tqdm(range(1, len(wrist_pos_list))):
+    result = {"pos":wrist_pos_list[d].copy()}
+    for tx in tqdm.tqdm(np.arange(0.1, 0.7, 0.02)):
+        for ty in tqdm.tqdm(np.arange(-0.7, 0.7, 0.02)):
             # for theta in np.arange(0, np.pi * 2, 0.01):
-            for tz in tqdm.tqdm(np.arange(0.1, 0.7, 0.05)):
+            for tz in np.arange(0.1, 0.7, 0.02):
+                if tx ** 2 + ty ** 2 + tz ** 2 > 0.8 ** 2:
+                    continue
                 wrist_position = np.eye(4)
                 wrist_position[0, 3] = tx
                 wrist_position[1, 3] = ty
@@ -47,18 +43,18 @@ for d in tqdm.tqdm(range(len(wrist_pos_list))):
                 wrist_position[:3, :3] = wrist_pos_list[d].copy()
                 # wrist_position[:3, :3] = wrist_position[:3, :3] @ np.array([[np.cos(theta), np.sin(theta) , 0],[-np.sin(theta), np.cos(theta), 0],[0, 0, 1]])
                 action, succ = robot.solve_ik(wrist_position, "link6")
+                recom_succ = True
 
                 robot.compute_forward_kinematics(action)
                 link6_pos = robot.get_link_pose(robot.get_link_index("link6"))
 
                 if np.linalg.norm((link6_pos - wrist_position)[:,3]) > 0.01:
-                    succ = False
+                    recom_succ = False
                 
                 diff = link6_pos[:3,:3] @ np.linalg.inv(wrist_position[:3,:3]) - np.eye(3)
                 if np.linalg.norm(diff) > 0.015:
-                    print("succ but wasn't true")
-                    succ = False
-                result[d][(tx,ty,tz)] = [action, succ]
+                    recom_succ = False
+                result[(tx,ty,tz)] = [action, succ, recom_succ]
 
-np.save("data/ik.npy", result)
+    np.save(f"data/ik_{d}.npy", result)
                 

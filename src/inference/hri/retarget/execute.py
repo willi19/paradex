@@ -3,7 +3,7 @@ import numpy as np
 import chime
 import argparse
 import json
-import os
+import os, sys
 
 from paradex.inference.get_lookup_traj import get_traj
 from paradex.io.robot_controller import get_arm, get_hand
@@ -14,12 +14,16 @@ from paradex.inference.object_6d import get_current_object_6d
 from paradex.utils.file_io import shared_dir, copy_calib_files, load_latest_C2R
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.utils.env import get_pcinfo, get_serial_list
+from paradex.pose_utils.optimize_initial_frame import object6d_silhouette
+from paradex.pose_utils.retarget_utils import get_keypoint_trajectory, visualize_new_trajectory
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--index", default=0, type=int)
     parser.add_argument("--obj_name", required=True)
-    parser.add_argument("--grasp_type", required=True)
+    parser.add_argument("--vis", action ='store_true')
+    parser.add_argument("--no_rot", action="store_true")
+    # parser.add_argument("--grasp_type", required=True)
 
     args = parser.parse_args()
     
@@ -29,8 +33,8 @@ if __name__ == "__main__":
     hand_name = "allegro"
     
     sensors = {}
-    sensors["arm"] = get_arm(arm_name)
-    sensors["hand"] = get_hand(hand_name)
+    # sensors["arm"] = get_arm(arm_name)
+    # sensors["hand"] = get_hand(hand_name)
     sensors["signal_generator"] = UTGE900()
     sensors["timecode_receiver"] = TimecodeReceiver()
     
@@ -38,15 +42,27 @@ if __name__ == "__main__":
     pc_list = list(pc_info.keys())
     git_pull("merging", pc_list)
     
-    demo_idx = args.index
-    demo_path = os.path.join("data", "lookup", args.obj_name, args.grasp_type, str(demo_idx))
+    scene_idx = args.index
+    scene_path = os.path.join(shared_dir, "capture_", "hri", args.obj_name, str(scene_idx))
 
-    pick_traj = np.load(f"{demo_path}/pick.npy")
-    place_traj = np.load(f"{demo_path}/place.npy")
-    pick_hand_traj = np.load(f"{demo_path}/pick_hand.npy")
-    place_hand_traj = np.load(f"{demo_path}/place_hand.npy")
+    start_6d = get_current_object_6d(obj_name=args.obj_name)
     
-    place_position_list = json.load(open(f"data/lookup/{args.obj_name}/obj_pose.json"))
+    print(start_6d) # camera space
+    
+    # robot space
+    hand_trajectory_dict, obj_trajectory_dict = get_keypoint_trajectory(scene_path, start_6d, args.obj_name, no_rot=args.no_rot)
+    if args.vis:
+        visualize_new_trajectory(args.obj_name, hand_trajectory_dict, obj_trajectory_dict)
+    
+    
+    
+    sys.exit(0)
+    # pick_traj = np.load(f"{demo_path}/pick.npy")
+    # place_traj = np.load(f"{demo_path}/place.npy")
+    # pick_hand_traj = np.load(f"{demo_path}/pick_hand.npy")
+    # place_hand_traj = np.load(f"{demo_path}/place_hand.npy")
+    
+    # place_position_list = json.load(open(f"data/lookup/{args.obj_name}/obj_pose.json"))
     start_pos= np.array([[0, 0, 1, 0.3],
                         [1, 0, 0, -0.35],
                         [0, 1, 0, 0.10], 
@@ -64,18 +80,10 @@ if __name__ == "__main__":
 
         chime.info()
         
-        place_id = "1" # input(f"place the object to")
+        place_id = input(f"place the object to")
         if place_id == "-1":
             break
-        # Set directory
-        save_path = os.path.join("inference_", "lookup", args.obj_name, args.grasp_type)
-        shared_path = os.path.join(shared_dir, save_path)
-        os.makedirs(shared_path, exist_ok=True)
-        if len(os.listdir(shared_path)) == 0:
-            capture_idx = 0
-        else:
-            capture_idx = int(max(os.listdir(shared_path), key=lambda x:int(x))) + 1
-            
+        
         # retister object
         pick_6D = get_current_object_6d(args.obj_name)
         if "lay" in args.grasp_type:
@@ -97,7 +105,14 @@ if __name__ == "__main__":
         run_script(f"python src/capture/camera/video_client.py", pc_list)
         sensors["camera"] = RemoteCameraController("video", serial_list=None, sync=True)
 
-
+        # Set directory
+        save_path = os.path.join("inference_", "lookup", args.obj_name, args.grasp_type)
+        shared_path = os.path.join(shared_dir, save_path)
+        os.makedirs(shared_path, exist_ok=True)
+        if len(os.listdir(shared_path)) == 0:
+            capture_idx = 0
+        else:
+            capture_idx = int(max(os.listdir(shared_path), key=lambda x:int(x))) + 1
 
         c2r = load_latest_C2R()
         os.makedirs(os.path.join(shared_path, str(capture_idx)))
@@ -147,7 +162,6 @@ if __name__ == "__main__":
         np.save(f"{shared_path}/{capture_idx}/raw/state/time.npy", state_time)
         sensors["camera"].quit()
         time.sleep(3) # Need distributor to stop
-        break
     
     sensors["arm"].home_robot(end_pos)
     home_start_time = time.time()

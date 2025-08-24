@@ -71,7 +71,6 @@ def split_video(video_path_tuple, image_dir, frame_interval=1):
 
     cap.release()
 
-
 def convert_avi_to_mp4(input_path, output_path):
     # Build the ffmpeg command
     command = [

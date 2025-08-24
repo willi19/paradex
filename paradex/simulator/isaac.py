@@ -197,8 +197,8 @@ class Simulator:
             self.gym.set_camera_location(
                 camera_handle,
                 env,
-                gymapi.Vec3(0.5, 0, 0.096),
-                gymapi.Vec3(0, 0, 0.096),
+                gymapi.Vec3(1.5, 0, 1.5),
+                gymapi.Vec3(0, 0, 0.3),
             )
             self.camera_handle[name][f"default"] = camera_handle
             return

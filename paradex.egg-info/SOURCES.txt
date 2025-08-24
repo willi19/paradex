@@ -12,13 +12,21 @@ paradex/retargetor/hand_regargetor.py
 paradex/retargetor/state.py
 paradex/retargetor/unimanual.py
 paradex/robot/__init__.py
+paradex/robot/mimic_joint.py
 paradex/robot/robot_wrapper.py
 paradex/robot/urdf.py
 paradex/simulator/__init__.py
 paradex/simulator/isaac.py
 paradex/utils/__init__.py
-paradex/utils/cam_param.py
 paradex/utils/env.py
 paradex/utils/file_io.py
 paradex/utils/keyboard_listener.py
+paradex/utils/upload_file copy.py
 paradex/utils/upload_file.py
+paradex/video/__init__.py
+paradex/video/convert_codec.py
+paradex/video/image2video.py
+paradex/video/process_video.py
+paradex/video/raw_video.py
+paradex/video/raw_video_processor.py
+paradex/video/video.py

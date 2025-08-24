@@ -24,9 +24,17 @@ arm_name = "xarm"
 hand_name = "allegro"
 robot = RobotWrapper(os.path.join(rsc_path, "robot", f"{arm_name}_{hand_name}.urdf"))
 
-# pick_6D = get_current_object_6d(args.obj_name)
-pick_6D = np.array(json.load(open(f"data/lookup/{args.obj_name}/obj_pose.json"))["3"])
-pick_6D[:3, :3] = np.eye(3)
+pick_6D = get_current_object_6d(args.obj_name)
+if "lay" in args.grasp_type:
+    z = pick_6D[:3, 2]
+    pick_6D[:3,2] = np.array([z[0], z[1], 0])
+    pick_6D[:3,2] /= np.linalg.norm(pick_6D[:3,2])
+
+    pick_6D[:3,0] = np.array([0,0,1])
+    pick_6D[:3,1] = np.array([z[1], -z[0], 0])
+    pick_6D[:3,1] /= np.linalg.norm(pick_6D[:3,2])
+else:
+    pick_6D[:3,:3] = np.eye(3)
 
 place_position = json.load(open(f"data/lookup/{args.obj_name}/obj_pose.json"))
 place_6D = np.array(place_position[args.place])

@@ -13,3 +13,8 @@ replay/*
 *.pyc
 .vscode
 paradex/cache
+model/*
+model/*paradex/model/*.jit
+paradex/model/*.pth
+paradex/model/*.jit
+paradex/model/*.pth

@@ -10,12 +10,14 @@ from paradex.utils.file_io import rsc_path
 class Simulator:
     def __init__(
         self,
-        headless
+        headless,
+        plane=True
     ):
         self.gym = gymapi.acquire_gym()
         self.sim = self.generate_sim()
 
-        self.add_plane()
+        if plane:
+          self.add_plane()
         
         self.headless = headless
         if not headless:

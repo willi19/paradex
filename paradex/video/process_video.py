@@ -44,11 +44,11 @@ def process_video_list(video_dir, out_path, data, process_frame):
         name = video_name.split(".")[0]
         cap_dict[name] = cv2.VideoCapture(os.path.join(video_dir, video_name))
         finished[name] = False
-        
         fps = cap_dict[name].get(cv2.CAP_PROP_FPS)
         w = int(cap_dict[name].get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(cap_dict[name].get(cv2.CAP_PROP_FRAME_HEIGHT))
         
+    print(tmp_path, fps)
     out = cv2.VideoWriter(tmp_path, fourcc, fps, (w, h))
     fid = 0
     
@@ -77,6 +77,7 @@ def process_video_list(video_dir, out_path, data, process_frame):
 
         out.write(frame)
         fid += 1
+        print(fid)
         
     for _, cap in cap_dict.items():
         cap.release()

@@ -43,7 +43,7 @@ if __name__ == '__main__':
     
     for name, grasp_type in process_list:
         root_dir = os.path.join(shared_dir, "inference_", "lookup", name, grasp_type)
-        index_list = os.listdir(root_dir)
+        index_list = ["21"]# os.listdir(root_dir)
         
         marker_offset = np.load(os.path.join(shared_dir, "marker_offset", name, "0", "marker_offset.npy"), allow_pickle=True).item()
         marker_id = list(marker_offset.keys())

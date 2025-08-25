@@ -14,6 +14,7 @@ replay/*
 .vscode
 paradex/cache
 model/*
+*.avi
 model/*paradex/model/*.jit
 paradex/model/*.pth
 paradex/model/*.jit

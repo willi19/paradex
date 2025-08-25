@@ -68,7 +68,7 @@ color_list = [[1, 0, 0],
               [1, 1, ]]
 
 if __name__ == "__main__":
-    name_list = ["20250714_031905"]# , "20250714_031906", "20250714_031907", "20250714_031908"]
+    name_list = ["20250812_164341"]# , "20250714_031906", "20250714_031907", "20250714_031908"]
     
     for name in name_list:
         root_dir = os.path.join(handeye_calib_path, name, "0")
@@ -85,18 +85,6 @@ if __name__ == "__main__":
             
             extrinsic_dict[name][serial_num] = ext_robot @ c2r
     
-    for name in ['20250714_053358']:
-        intrinsic, extrinsic = load_current_camparam(name)
-        extrinsic_dict[name] = {}
-        
-        for serial_num, extmat in extrinsics.items():                
-            extrinsic_serial = {}
-            ext_robot = np.eye(4)
-            ext_robot[:3,:] = extmat
-            
-            extrinsic_dict[name][serial_num] = ext_robot 
-        
-            
     extrinsic_serial = {}
     for name, data in extrinsic_dict.items():
         for serial_num, extmat in data.items():
@@ -104,16 +92,6 @@ if __name__ == "__main__":
                 extrinsic_serial[serial_num] = []
                 
             extrinsic_serial[serial_num].append(extmat[:3,:])
-    
-    for serial_num in extrinsic_serial.keys():
-        ext1 = np.eye(4)
-        ext1[:3,:] = extrinsic_serial[serial_num][0]
-        
-        ext2 = np.eye(4)
-        ext2[:3,:] = extrinsic_serial[serial_num][1]
-        
-        print(np.linalg.inv(ext2) @ ext1, serial_num)
-        # import pdb; pdb.set_trace()
 
     o3d_visuals = []
     coordinate_frame = o3d.geometry.TriangleMesh.create_coordinate_frame(size=0.2, origin=[0, 0, 0])

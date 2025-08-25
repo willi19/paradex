@@ -167,7 +167,7 @@ def load_mesh(obj_name):
     import open3d as o3d
 
     mesh = o3d.io.read_triangle_mesh(
-        os.path.join(rsc_path, obj_name, f"{obj_name}.obj")
+        os.path.join(rsc_path, "object", obj_name, f"{obj_name}.obj")
     )
     return mesh
 

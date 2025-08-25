@@ -3,9 +3,6 @@ import numpy as np
 import argparse
 import trimesh
 from multiprocessing import Pool
-import time
-import math
-import cv2
 
 from paradex.utils.file_io import rsc_path, shared_dir, load_camparam, get_robot_urdf_path
 from paradex.image.projection import get_cammtx, project_point, project_mesh, project_mesh_nvdiff
@@ -30,7 +27,7 @@ def load_info(video_dir):
     index = os.path.basename(root_path)
     
     mesh = trimesh.load(os.path.join(rsc_path, "object", name, f"{name}.obj"))
-    nas_path = os.path.join(shared_dir, "capture", "lookup", name, grasp_type, index)
+    nas_path = os.path.join(shared_dir, "inference_", "lookup", name, grasp_type, index)
     intrinsic, extrinsic = load_camparam(nas_path)
     
     obj_T = np.load(os.path.join(nas_path, "obj_T.npy"))
@@ -46,27 +43,15 @@ def load_info(video_dir):
     extrinsic_list = []
     intrinsic_list = []
     cammtx_list = []
-
-    num_images = len(serial_list)
-    grid_cols = math.ceil(math.sqrt(num_images))
-    grid_rows = math.ceil(num_images / grid_cols)
-    
-    new_W = 2048 // grid_rows
-    new_H = 1536 // grid_rows
     
     for serial_name in serial_list:
         extmat = extrinsic[serial_name]
         extrinsic_list.append(extmat @ c2r)
-        intmat = intrinsic[serial_name]['intrinsics_undistort'].copy()
-        intmat[0,0] /= grid_rows
-        intmat[0,2] /= grid_rows
-        intmat[1,1] /= grid_rows
-        intmat[1,2] /= grid_rows
-
-        intrinsic_list.append(intmat)
+        
+        intrinsic_list.append(intrinsic[serial_name]['intrinsics_undistort'])
         cammtx_list.append(intrinsic_list[-1] @ extrinsic_list[-1])
     rm = Robot_Module(get_robot_urdf_path("xarm", "allegro"), state=qpos)
-    renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=new_W, height=new_H, device='cuda')
+    renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=2048, height=1536, device='cuda')
 
     return mesh, renderer, cor_3d, obj_T, rm, serial_list, cammtx_list, c2r
 
@@ -77,52 +62,27 @@ def process_frame(img_dict, video_path, fid, data):
     # tmp = (cammtx_list[0][:3,:3] @ transformed_mesh.vertices.T + cammtx_list[0][:3,3:]).T
     # print(tmp[:,:2] / tmp[:,2:])
     # import pdb; pdb.set_trace()
-    num_images = len(img_dict)
-    grid_cols = math.ceil(math.sqrt(num_images))
-    grid_rows = math.ceil(num_images / grid_cols)
     
-    new_W = 2048 // grid_rows
-    new_H = 1536 // grid_rows
-
-    for serial_num in serial_list:
-        img_dict[serial_num] = cv2.resize(img_dict[serial_num], (new_W, new_H))
-
     if np.linalg.norm(obj_T) > 0.1:
-        start_time = time.time()
         frame, mask = project_mesh_nvdiff(transformed_mesh, renderer)
-        # print(time.time()-start_time, "render obj")
         mask = mask.detach().cpu().numpy()[:,:,:,0]
-        resized_mask = []
-        for i in range(len(mask)):
-            resized_mask.append(cv2.resize(mask[i], (new_W, new_H)))
-
-        start_time = time.time()
         for i, serial_num in enumerate(serial_list):
-            img_dict[serial_num] = overlay_mask(img_dict[serial_num], resized_mask[i], 0.3, (255,0, 0))
-        # print(time.time()-start_time, "overlay")
+            img_dict[serial_num] = overlay_mask(img_dict[serial_num], mask[i], 0.3, (255,0, 0))
     
     robot_mesh = rm.get_mesh(fid)
     for mesh in robot_mesh:
-        start_time = time.time()
         frame, mask = project_mesh_nvdiff(mesh, renderer)
-        # print(time.time()-start_time, "render robot")
         mask = mask.detach().cpu().numpy()[:,:,:,0]
-        resized_mask = []
-        for i in range(len(mask)):
-            resized_mask.append(cv2.resize(mask[i], (new_W, new_H)))
-
-        start_time = time.time()
         for i, serial_num in enumerate(serial_list):
-            img_dict[serial_num] = overlay_mask(img_dict[serial_num], resized_mask[i], 0.3, (0, 255, 0))
-        # print(time.time()-start_time, "overlay")
-
-    # for id, cor in cor_3d[fid+1].items():
-    #     if cor is None:
-    #         continue
-    #     cor_h = np.concatenate([cor, np.ones((cor.shape[0], 1))], axis=1)
-    #     cor = (np.linalg.inv(c2r) @ cor_h.T).T[:,:3]
-    #     for i, serial_num in enumerate(serial_list):
-    #         img_dict[serial_num] = project_point(cor, cammtx_list[i], img_dict[serial_num])
+            img_dict[serial_num] = overlay_mask(img_dict[serial_num], mask[i], 0.3, (0, 255, 0))
+        
+    for id, cor in cor_3d[fid+1].items():
+        if cor is None:
+            continue
+        cor_h = np.concatenate([cor, np.ones((cor.shape[0], 1))], axis=1)
+        cor = (np.linalg.inv(c2r) @ cor_h.T).T[:,:3]
+        for i, serial_num in enumerate(serial_list):
+            img_dict[serial_num] = project_point(cor, cammtx_list[i], img_dict[serial_num])
     
     frame = merge_image(img_dict)
     return frame
@@ -141,14 +101,14 @@ if __name__ == '__main__':
     process_list = []
     
     if args.obj_name == None:
-        name_list = os.listdir(os.path.join(shared_dir, 'capture', "lookup"))
+        name_list = os.listdir(os.path.join(shared_dir, 'inference_', "lookup"))
         name_list.sort()
 
     else:
         name_list = args.obj_name
         
     for name in name_list:
-        grasp_list = os.listdir(os.path.join(shared_dir, "capture", "lookup", name))
+        grasp_list = os.listdir(os.path.join(shared_dir, "inference_", "lookup", name))
         if args.grasp_type is not None:
             for grasp_name in args.grasp_type:
                 if grasp_name in grasp_list:
@@ -160,12 +120,12 @@ if __name__ == '__main__':
     arg_list = []
     
     for name, grasp_type in process_list:
-        root_dir = os.path.join(shared_dir, "capture", "lookup", name, grasp_type)
+        root_dir = os.path.join(shared_dir, "inference_", "lookup", name, grasp_type)
         index_list = os.listdir(root_dir)
         
         for index in index_list:
             index_dir = os.path.join(os.path.join(root_dir, str(index)))
-            out_dir = os.path.join("capture", name, grasp_type, index)
+            out_dir = os.path.join("inference_", name, grasp_type, index)
             os.makedirs(os.path.join(out_dir, "overlay"), exist_ok=True)
             os.makedirs(os.path.join(out_dir, "videos"), exist_ok=True)
             for video_name in os.listdir(os.path.join(index_dir, "videos")):

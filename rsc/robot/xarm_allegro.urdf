@@ -222,7 +222,7 @@
   <joint name="arm_to_hand" type="fixed">
     <parent link="link6"/>
     <child link="wrist"/>
-    <origin rpy="0.00000 0.00000 -1.57080" xyz="0.00000 0.00000 0.04500"/>
+    <origin rpy="0.00000 0.00000 -1.57080" xyz="0.00000 0.00000 0.0500"/>
   </joint>
   <link name="wrist">
   </link>

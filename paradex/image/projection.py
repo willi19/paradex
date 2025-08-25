@@ -16,7 +16,10 @@ def get_cammtx(intrinsic, extrinsic):
 
 def project_point(verts, cammtx, image, color=(255, 0, 0)):
     vert_2d = project(cammtx, verts)
+    h, w, _ = image.shape
     for v in vert_2d:
+        if v[0] > w or v[0] < 0 or v[1] > h or v[1] < 0:
+            continue
         image = cv2.circle(image, (int(v[0]), int(v[1])), 5, color, -1)
     return image
 

@@ -1,10 +1,8 @@
 import argparse
 from multiprocessing import Pool
+import os
 
-from paradex.utils.file_io import rsc_path, shared_dir, load_camparam, get_robot_urdf_path
-from paradex.image.projection import get_cammtx, project_point, project_mesh, project_mesh_nvdiff
 from paradex.image.merge import merge_image
-from paradex.image.overlay import overlay_mask
 from paradex.video.process_video import process_video_list
 
 from paradex.video.convert_codec import change_to_h264
@@ -28,6 +26,9 @@ if __name__ == '__main__':
     
     args = parser.parse_args()
 
+    dir_name = os.path.dirname(args.out_path)
+    os.makedirs(dir_name, exist_ok=True)
+    
     process_video_list(args.path, 
             args.out_path, 
             None, 

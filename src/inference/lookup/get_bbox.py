@@ -325,11 +325,21 @@ def find_connected_components(edge, serial_list, mask_mapping):
 
 
 # 메인 코드
+C2R = load_latest_C2R()
 obj_name = "pringles_case"
 yolo_module = YOLO_MODULE(categories=obj_name)
 
 intrinsic, extrinsic = load_current_camparam("20250812_162600")
 proj_mtx = get_cammtx(intrinsic, extrinsic)
+
+x = np.linspace(0, 1.1, 110)
+y = np.linspace(-1.1, 1.1, 220)
+z = np.linspace(-0.06, 0.4, 40)
+
+X, Y, Z = np.meshgrid(x, y, z)
+# robot_points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
+robot_points_homo = np.vstack([X.ravel(), Y.ravel(), Z.ravel(), np.ones(X.ravel().shape)])
+world_points_homo = (C2R @ robot_points_homo)
 
 for index in os.listdir(f"{shared_dir}/multi_pringles")[:1]:
     root_path = os.path.join(f"{shared_dir}/multi_pringles/{index}")
@@ -337,7 +347,6 @@ for index in os.listdir(f"{shared_dir}/multi_pringles")[:1]:
     undistort_image_dir(root_path, intrinsic)
     img_list = os.listdir(os.path.join(root_path, "undistorted_images"))
     
-    C2R = load_latest_C2R()
     device = torch.device("cuda:0")
     detection_results = detect_object()
     
@@ -346,14 +355,6 @@ for index in os.listdir(f"{shared_dir}/multi_pringles")[:1]:
         if hasattr(detections, 'mask') and detections.mask is not None:
             mask_dict[serial_num] = detections.mask
     
-    x = np.linspace(0, 1.1, 110)
-    y = np.linspace(-1.1, 1.1, 220)
-    z = np.linspace(-0.06, 0.4, 40)
-
-    X, Y, Z = np.meshgrid(x, y, z)
-    # robot_points = np.vstack([X.ravel(), Y.ravel(), Z.ravel()]).T
-    robot_points_homo = np.vstack([X.ravel(), Y.ravel(), Z.ravel(), np.ones(X.ravel().shape)])
-    world_points_homo = (C2R @ robot_points_homo)
     # plot_3d_points(world_points_homo, subsample=1000)
     camera_points = []
     for serial_num, ext in extrinsic.items():

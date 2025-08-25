@@ -14,3 +14,4 @@ replay/*
 .vscode
 paradex/cache
 model/*
+*.avi

@@ -381,7 +381,7 @@ class KeypointObjectCameraVisualizer:
                     points=kp,
                     colors=colors,
                     point_shape="circle",
-                    point_size=0.01,
+                    point_size=0.0045,
                 )
                 # Lines
                 edges = edge_list if edge_list is not None else MEDIA_EDGES

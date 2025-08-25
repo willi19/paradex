@@ -8,7 +8,7 @@ from paradex.simulator import IsaacSimulator
 from paradex.robot import RobotWrapper
 from paradex.utils.file_io import rsc_path, shared_dir
 from paradex.robot.mimic_joint import parse_inspire
-from paradex.inference.get_lookup_traj import get_traj
+from paradex.inference.lookup_table import get_traj
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--obj_name")

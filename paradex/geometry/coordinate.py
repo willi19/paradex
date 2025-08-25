@@ -19,7 +19,7 @@ DEVICE2WRIST = {
                        [0, 0, 0, 1]]),
     
     "allegro":np.array([[0, 1 ,0 ,0],
-                        [0, 0, 1, 0.035], #0.095 0.035
+                        [0, 0, 1, 0.04], #0.095 0.035
                         [1, 0, 0, 0],
                         [0, 0, 0, 1]]), # fix this to connector latter, This is where connector is from global wrist
     

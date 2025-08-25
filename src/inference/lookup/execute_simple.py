@@ -5,12 +5,14 @@ import argparse
 import json
 import os
 
-from paradex.inference.get_lookup_traj import get_traj
+from paradex.inference.lookup_table import get_traj
+from paradex.inference.util import home_robot
+
 from paradex.io.robot_controller import get_arm, get_hand
 from paradex.io.signal_generator.UTGE900 import UTGE900
 from paradex.io.camera.timecode_receiver import TimecodeReceiver
 from paradex.io.capture_pc.camera_main import RemoteCameraController
-from paradex.inference.object_6d import get_current_object_6d
+from paradex.inference.object_6d import get_current_object_6d, normalize_cylinder
 from paradex.utils.file_io import shared_dir, copy_calib_files, load_latest_C2R
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.utils.env import get_pcinfo, get_serial_list
@@ -41,37 +43,23 @@ if __name__ == "__main__":
     place_position_list = json.load(open(f"data/lookup/{args.obj_name}/obj_pose.json"))
     start_pos= np.array([[0, 0, 1, 0.3],
                         [1, 0, 0, -0.35],
-                        [0, 1, 0, 0.10], 
+                        [0, 1, 0, 0.15], 
                         [0, 0, 0, 1]])
     
-    end_pos= np.array([[0, 0, 1, 0.25],
+    end_pos= np.array([[0, 0, 1, 0.3],
                         [1, 0, 0, 0.0],
-                        [0, 1, 0, 0.10], 
+                        [0, 1, 0, 0.15], 
                         [0, 0, 0, 1]])
+    
+    place_id = 3
+    place_6D = place_position_list[place_id]
+    
     while True:
-        sensors["arm"].home_robot(start_pos.copy())  
-        home_start_time = time.time()
-        while not sensors["arm"].is_ready():
-            time.sleep(0.01)
-
-        chime.info()
-        
-        place_id = input(f"place the object to")
-        if place_id == "-1":
-            break
+        home_robot(start_pos.copy())        
         
         # retister object
         pick_6D = get_current_object_6d(args.obj_name)
-        if "lay" in args.grasp_type:
-            z = pick_6D[:3, 2]
-            pick_6D[:3,2] = np.array([z[0], z[1], 0])
-            pick_6D[:3,2] /= np.linalg.norm(pick_6D[:3,2])
-
-            pick_6D[:3,0] = np.array([0,0,1])
-            pick_6D[:3,1] = np.array([z[1], -z[0], 0])
-            pick_6D[:3,1] /= np.linalg.norm(pick_6D[:3,2])
-        else:
-            pick_6D[:3,:3] = np.eye(3)
+        pick_6d = normalize_cylinder(pick_6D)
             
         place_6D = np.array(place_position_list[place_id])
         
@@ -79,14 +67,6 @@ if __name__ == "__main__":
         
         # Prepare execution
         sensors["arm"].home_robot(traj[0])
-        home_start_time = time.time()
-        while not sensors["arm"].is_ready():
-            if time.time() - home_start_time > 0.5:
-                chime.warning()
-                home_start_time = time.time()
-            time.sleep(0.01)
-        
-        chime.success()
         
         for i in range(len(traj)):
             sensors["arm"].set_action(traj[i])

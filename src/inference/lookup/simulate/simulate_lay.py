@@ -4,7 +4,7 @@ import argparse
 import json
 import cv2
 
-from paradex.inference.get_lookup_traj import get_traj
+from paradex.inference.lookup_table import get_traj
 from paradex.simulator import IsaacSimulator
 from paradex.robot import RobotWrapper
 from paradex.utils.file_io import rsc_path

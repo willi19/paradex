@@ -9,7 +9,7 @@ from paradex.io.camera.camera_loader import CameraManager
 from paradex.utils.file_io import home_path
 
 class CameraCommandReceiver():
-    def __init__(self):
+    def __init__(self):  
         self.ident = None
         self.camera = None
         self.exit = False

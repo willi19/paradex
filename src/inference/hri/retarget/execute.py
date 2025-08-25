@@ -5,7 +5,7 @@ import argparse
 import json
 import os, sys
 
-from paradex.inference.get_lookup_traj import get_traj
+from paradex.inference.lookup_table import get_traj
 from paradex.io.robot_controller import get_arm, get_hand
 from paradex.io.signal_generator.UTGE900 import UTGE900
 from paradex.io.camera.timecode_receiver import TimecodeReceiver
@@ -48,7 +48,8 @@ if __name__ == "__main__":
     start_6d = get_current_object_6d(obj_name=args.obj_name)
     
     print(start_6d) # camera space
-    
+    import pdb; pdb.set_trace()
+
     # robot space
     hand_trajectory_dict, obj_trajectory_dict = get_keypoint_trajectory(scene_path, start_6d, args.obj_name, no_rot=args.no_rot)
     if args.vis:

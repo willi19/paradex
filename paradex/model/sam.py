@@ -6,7 +6,7 @@ import os
 
 from paradex.utils.file_io import model_dir
 
-GPU_EFFICIENT_SAM_CHECKPOINT = os.path.join(model_dir, "efficient_sam_s_gpu.jit")
+GPU_EFFICIENT_SAM_CHECKPOINT = os.path.join("/home/temp_id/paradex/paradex/model/", "efficient_sam_s_gpu.jit")
 # CPU_EFFICIENT_SAM_CHECKPOINT = model_dir/"efficient_sam_s_cpu.jit"
 
 

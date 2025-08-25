@@ -5,7 +5,7 @@ import argparse
 import json
 import os
 
-from paradex.inference.get_lookup_traj import get_traj
+from paradex.inference.lookup_table import get_traj
 from paradex.io.robot_controller import get_arm, get_hand
 from paradex.io.signal_generator.UTGE900 import UTGE900
 from paradex.io.camera.timecode_receiver import TimecodeReceiver

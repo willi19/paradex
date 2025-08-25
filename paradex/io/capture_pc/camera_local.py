@@ -86,7 +86,8 @@ class CameraCommandReceiver():
         msg = msg.decode()
         if msg == "register":
             self.ident = ident
-        self.send_message("registered")   
+        self.send_message("registered")  
+        print("send register") 
          
     def initialize_camera(self):
         ident, message = self.socket.recv_multipart()

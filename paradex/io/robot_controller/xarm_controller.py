@@ -85,8 +85,8 @@ class XArmController:
     def home_robot(self, homepose):
         assert homepose.shape == (4,4) or homepose.shape == (6,)
         if self.arm.has_err_warn:
-            self.arm.clean_error()
             self.arm.clean_warn()
+            self.arm.clean_error()
             
         if homepose.shape == (6,):
             self.robot_model.compute_forward_kinematics(homepose.copy())
@@ -140,8 +140,8 @@ class XArmController:
     def reset(self):
         self.arm = XArmAPI(self.xarm_ip_address, report_type="devlop")
         if self.arm.has_err_warn:
-            self.arm.clean_error()
             self.arm.clean_warn()
+            self.arm.clean_error()
             
         self.arm.motion_enable(enable=True)
         self.arm.set_mode(0)
@@ -161,8 +161,12 @@ class XArmController:
         while not self.exit.is_set():
             start_time = time.time()
             if self.arm.has_err_warn:
-                self.arm.clean_error()
+                print("asdfasdf", self.arm.error_code)
                 self.arm.clean_warn()
+                self.arm.clean_error()
+                self.arm.set_state(0)
+                self.arm.motion_enable(True)
+                self.arm.set_mode(1)
             
             with self.lock:
                 if not self.init:
@@ -204,12 +208,14 @@ class XArmController:
                         
                         success, ik = self.arm.get_inverse_kinematics(cart)
                         if success != 0:
+                            print("ik not success")
                             ik = - np.ones(6)
                             
                         self.data["action_qpos"].append(np.array(ik)[:6])
                     
                     # print(self.arm.get_position(is_radian=True)[1], cart, "asdf")
                     #self.arm.set_servo_cartesian(cart.copy(), is_radian=True)
+                    # self.arm.set_servo_angle(angle=ik)
                     self.arm.set_servo_cartesian_aa(aa, is_radian=True)
                     
             end_time = time.time()

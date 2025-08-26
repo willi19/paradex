@@ -1,67 +1,94 @@
 import threading
 import numpy as np
+import cv2
+import json
 import time
-import zmq
 import os
-import shutil
-import argparse
 
-from paradex.utils.file_io import shared_dir, find_latest_directory, rsc_path
-from paradex.utils.env import get_pcinfo
-from paradex.io.capture_pc.connect import git_pull, run_script
+from paradex.utils.file_io import shared_dir
+from paradex.utils.env import get_pcinfo, get_serial_list
+
 from paradex.io.capture_pc.camera_main import RemoteCameraController
-from paradex.io.robot_controller import get_arm
+from paradex.io.capture_pc.util import get_client_socket
+from paradex.io.capture_pc.connect import git_pull, run_script
 
-def copy_calib_files(save_path):
-    camparam_dir = os.path.join(shared_dir, "cam_param")
-    camparam_name = find_latest_directory(camparam_dir)
-    camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
+from paradex.image.aruco import draw_charuco
+from paradex.image.merge import merge_image
 
-    shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"))
-    
-# === SETUP ===
-arm_name = "xarm"
-
+# Get PC Information
 pc_info = get_pcinfo()
-pc_list = list(pc_info.keys())
+# Get Camera Serial List
+serial_list = get_serial_list()
 
-dex_arm = get_arm(arm_name)
-git_pull("merging", pc_list)
-run_script("python src/calibration/all_in_one/client.py", pc_list)
+saved_corner_img = {serial_num:np.zeros((1536, 2048, 3), dtype=np.uint8) for serial_num in serial_list}
+cur_state = {serial_num:(np.array([]), np.array([]), 0) for serial_num in serial_list}
 
-camera_loader = RemoteCameraController("image", None)
+capture_idx = 0
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
-wrist_rot = np.array([[0, 0, 1, 0],
-                      [1, 0, 0, 0],
-                      [0, 1, 0, 0.05], 
-                      [0, 0, 0, 1]])
+def listen_socket(pc_name, socket):
+    while True:
+        msg = socket.recv_string()
+        try:
+            data = json.loads(msg)
+        except json.JSONDecodeError:
+            print(f"[{pc_name}] Non-JSON message: {msg}")
+            continue
+        
+        if data.get("type") == "charuco":
+            serial_num = data["serial_num"]
+            result = data["detect_result"]
+            corners = np.array(result["checkerCorner"], dtype=np.float32)
+            ids = np.array(result["checkerIDs"], dtype=np.int32).reshape(-1, 1)
+            frame = data["frame"]
+            cur_state[serial_num] = (corners, ids, frame)                
+
+        else:
+            print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
+
+pc_list = list(pc_info.keys())
+git_pull("merging", pc_list)
+# run_script(f"python src/calibration/extrinsic/client.py", pc_list)
+
+camera_controller = RemoteCameraController("stream", None, sync=False)
+camera_controller.start()
+
 try:
-    cnt = 0
-    for row_i, x in enumerate(range(30, 65, 1)):
-        for y in range(-30, 31, 1):
-            if np.sqrt(x**2 + y**2) > 65:
-                continue
-            
-            target_action = wrist_rot.copy()
-            target_action[0, 3] = x / 100
-            target_action[1, 3] = y / 100 if row_i % 2 == 0 else -y / 100
-            
-            dex_arm.home_robot(target_action)
+    socket_dict = {name:get_client_socket(pc_info["ip"], 5564) for name, pc_info in pc_info.items()}
+
+    for pc_name, sock in socket_dict.items():
+        threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
         
-            time.sleep(0.1)
-            
-            wrist6d = dex_arm.get_position()
-            os.makedirs(f"{shared_dir}/all_in_one/{filename}/{cnt}/image", exist_ok=True)
-            np.save(f"{shared_dir}/all_in_one/{filename}/{cnt}/robot", wrist6d)
-            
-            camera_loader.start(f'shared_data/all_in_one/{filename}/{cnt}/image')
-            camera_loader.end()
-            cnt += 1
+    while True:
+        img_dict = {}
+        for serial_num in serial_list:
+            img = saved_corner_img[serial_num].copy()
+            corners, ids, frame = cur_state[serial_num]
+            if corners.shape[0] > 0:
+                draw_charuco(img, corners[:,0], BOARD_COLORS[0], 5, -1, ids)
+            img = cv2.putText(img, f"{serial_num} {frame}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 6, (255, 255, 0), 12)
+            img_dict[serial_num] = img   
         
-    copy_calib_files(f"/home/temp_id/shared_data/all_in_one/{filename}/0")
+        grid_image = merge_image(img_dict)
+        grid_image = cv2.resize(grid_image, (int(2048//1.5), int(1536//1.5)))
+        
+        cv2.imshow("Grid", grid_image)
+        key = cv2.waitKey(1)
+        if key == ord('q'):
+            for socket in socket_dict.values():
+                socket.send_string("quit")
+            break
+        
+        elif key == ord('c'):
+            os.makedirs(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx)), exist_ok=True)
+            for serial_num in serial_list:
+                corners, ids, frame = cur_state[serial_num]
+                np.save(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx), serial_num + "_cor.npy"), corners)
+                np.save(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx), serial_num + "_id.npy"), ids)
+                if corners.shape[0] > 0:
+                    draw_charuco(saved_corner_img[serial_num], corners[:,0], BOARD_COLORS[1], 5, -1, ids)
+            capture_idx += 1
 
 finally:
-    camera_loader.quit()
-    dex_arm.quit()   
-    exit(0) 
+    camera_controller.end()
+    camera_controller.quit()        

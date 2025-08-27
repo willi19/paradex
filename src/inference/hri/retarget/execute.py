@@ -16,6 +16,7 @@ from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.utils.env import get_pcinfo, get_serial_list
 from paradex.pose_utils.optimize_initial_frame import object6d_silhouette
 from paradex.pose_utils.retarget_utils import get_keypoint_trajectory, visualize_new_trajectory
+from paradex.pose_utils.retarget import position_retarget, qpose_dict_to_traj
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -52,12 +53,12 @@ if __name__ == "__main__":
 
     # robot space
     hand_trajectory_dict, obj_trajectory_dict = get_keypoint_trajectory(scene_path, start_6d, args.obj_name, no_rot=args.no_rot)
+    q_pose_dict = position_retarget(hand_trajectory_dict)
     if args.vis:
-        visualize_new_trajectory(args.obj_name, hand_trajectory_dict, obj_trajectory_dict)
+        visualize_new_trajectory(args.obj_name, hand_trajectory_dict, obj_trajectory_dict, q_pose_dict)
     
     
     
-    sys.exit(0)
     # pick_traj = np.load(f"{demo_path}/pick.npy")
     # place_traj = np.load(f"{demo_path}/place.npy")
     # pick_hand_traj = np.load(f"{demo_path}/pick_hand.npy")
@@ -73,6 +74,8 @@ if __name__ == "__main__":
                         [1, 0, 0, 0.0],
                         [0, 1, 0, 0.10], 
                         [0, 0, 0, 1]])
+    
+    import pdb; pdb.set_trace()
     while True:
         sensors["arm"].home_robot(start_pos.copy())  
         home_start_time = time.time()
@@ -81,33 +84,14 @@ if __name__ == "__main__":
 
         chime.info()
         
-        place_id = input(f"place the object to")
-        if place_id == "-1":
-            break
-        
-        # retister object
-        pick_6D = get_current_object_6d(args.obj_name)
-        if "lay" in args.grasp_type:
-            z = pick_6D[:3, 2]
-            pick_6D[:3,2] = np.array([z[0], z[1], 0])
-            pick_6D[:3,2] /= np.linalg.norm(pick_6D[:3,2])
-
-            pick_6D[:3,0] = np.array([0,0,1])
-            pick_6D[:3,1] = np.array([z[1], -z[0], 0])
-            pick_6D[:3,1] /= np.linalg.norm(pick_6D[:3,2])
-        else:
-            pick_6D[:3,:3] = np.eye(3)
-            
-        place_6D = np.array(place_position_list[place_id])
-        
-        traj, hand_traj = get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand_traj, place_hand_traj)
-        
+        # traj, hand_traj = get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand_traj, place_hand_traj)
+        traj, hand_traj = qpose_dict_to_traj()
         # start the camera
         run_script(f"python src/capture/camera/video_client.py", pc_list)
         sensors["camera"] = RemoteCameraController("video", serial_list=None, sync=True)
 
         # Set directory
-        save_path = os.path.join("inference_", "lookup", args.obj_name, args.grasp_type)
+        save_path = os.path.join("retarget", "test", args.obj_name, args.grasp_type)
         shared_path = os.path.join(shared_dir, save_path)
         os.makedirs(shared_path, exist_ok=True)
         if len(os.listdir(shared_path)) == 0:

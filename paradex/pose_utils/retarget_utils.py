@@ -84,93 +84,6 @@ def compute_world_up_and_front(cam_params, plane_ids, front_cam_id, convention="
 
     return up_world, front_ref_world
 
-def rot_about_axis_4x4(axis, theta):
-    a = _norm(axis.astype(np.float64))
-    x,y,z = a
-    K = np.array([[0,-z,y],[z,0,-x],[-y,x,0]], dtype=np.float64)
-    R = np.eye(3) + np.sin(theta)*K + (1-np.cos(theta))*(K@K)
-    T = np.eye(4); T[:3,:3] = R
-    return T
-
-def remove_world_yaw(T_r, up_world, f_local, front_ref_world):
-    """
-    T_r 객체의 월드 yaw 회전만 제거하고, 위치(translation)는 그대로 보존합니다.
-    """
-    # 1. 원본 포즈에서 회전(R)과 위치(t)를 분리합니다.
-    R_old, t_old = _get_R_t(T_r)
-
-    # 2. 현재 객체의 Yaw 각도를 계산하는 로직 (기존과 동일)
-    f_world = R_old @ f_local
-    f_proj   = _norm(f_world - np.dot(f_world, up_world)*up_world)
-    f_ref    = _norm(front_ref_world - np.dot(front_ref_world, up_world)*up_world)
-    
-    sinv = np.dot(up_world, np.cross(f_proj, f_ref))
-    cosv = float(np.clip(np.dot(f_proj, f_ref), -1.0, 1.0))
-    yaw  = np.arctan2(sinv, cosv)
-
-    # 3. Yaw 보정을 위한 순수 3x3 회전 행렬을 만듭니다.
-    R_fix_3x3 = rot_about_axis_4x4(up_world, -yaw)[:3, :3]
-
-    # 4. 원본 회전에 보정 회전을 적용하여 새로운 회전을 계산합니다.
-    R_new = R_fix_3x3 @ R_old
-
-    # 5. 새로운 회전(R_new)과 '원본' 위치(t_old)를 합쳐 최종 포즈를 만듭니다.
-    T_new = np.eye(4)
-    T_new[:3, :3] = R_new
-    T_new[:3, 3] = t_old
-    
-    return T_new
-
-def align_rotation_to_vector(T_old, local_front_vector, world_up):
-    """
-    객체의 '앞(front)' 방향은 유지하되, 그 축을 기준으로 한 회전(roll)을 제거하여
-    자세를 일관되게 정렬합니다.
-
-    Args:
-        T_old (np.ndarray): 정렬할 원본 객체 포즈 (4x4).
-        local_front_vector (np.ndarray): 객체의 로컬 좌표계에서 '앞'으로
-                                         간주할 단위 벡터 (기본값: +X축).
-
-    Returns:
-        np.ndarray: 회전이 정렬된 새로운 객체 포즈 (4x4).
-    """
-    # 1. 원본 포즈에서 회전(R)과 이동(t) 정보 분리
-    R_old = T_old[:3, :3]
-    t_old = T_old[:3, 3]
-
-    # 2. 객체의 '앞' 방향이 현재 월드에서 어느 방향을 가리키는지 계산
-    # 이 방향이 새로운 좌표계의 기준 축(예: Z축)이 됩니다.
-    front_world = R_old @ local_front_vector
-    new_z = front_world / np.linalg.norm(front_world)
-
-    # 3. '빙글빙글 도는 회전'을 없애기 위한 고정된 기준 벡터 설정
-    # 월드 좌표계의 '위쪽'([0, 1, 0])을 기준으로 사용합니다.
-    world_up = world_up
-    
-    # 엣지 케이스 처리: 객체가 정확히 위나 아래를 보고 있을 경우,
-    # 기준 벡터를 다른 것(예: 월드 X축)으로 바꿉니다.
-    if np.abs(np.dot(new_z, world_up)) > 0.999:
-        world_up = np.array([1., 0., 0.])
-
-    # 4. 직교 좌표계의 나머지 두 축을 생성
-    # new_x: '앞' 방향과 '위' 방향에 모두 수직인 '오른쪽' 방향
-    new_x = np.cross(world_up, new_z)
-    new_x /= np.linalg.norm(new_x)
-    
-    # new_y: z축과 x축에 모두 수직인 새로운 '위쪽' 방향
-    new_y = np.cross(new_z, new_x)
-    
-    # 5. 계산된 세 축으로 새로운 회전 행렬(R_new)을 조립
-    # 여기서는 Z축을 '앞'으로 하는 일반적인 카메라 좌표계 관례를 따릅니다.
-    # 만약 X축을 '앞'으로 하고 싶다면 `np.stack([new_z, new_x, new_y], axis=1)` 등으로 순서를 바꿀 수 있습니다.
-    R_new = np.stack([new_x, new_y, new_z], axis=1)
-
-    # 6. 새로운 회전 행렬(R_new)과 기존 이동 벡터(t_old)를 합쳐 최종 포즈 생성
-    T_aligned = np.eye(4)
-    T_aligned[:3, :3] = R_new
-    T_aligned[:3, 3] = t_old
-    
-    return T_aligned
 
 def fix_pose_flip(T_old, obj_mesh, local_axis_vector, plane_up_vector):
     """
@@ -234,7 +147,7 @@ def align_object_front(T, up_world, front_ref_world, db_local):
     R_obj = T[:3,:3]
 
     # object front in world
-    f_world = R_obj @ db_local
+    f_world = db_local # db_local
     f_world /= np.linalg.norm(f_world)
 
     # 회전 각도 계산
@@ -252,7 +165,7 @@ def align_object_front(T, up_world, front_ref_world, db_local):
     R_align = np.eye(3) + np.sin(theta)*K + (1-np.cos(theta))*(K@K)
 
     # 새로운 rotation
-    R_new = R_align @ R_obj
+    R_new = R_obj @ R_align
 
     # 새로운 pose
     T_new = T.copy()
@@ -361,9 +274,9 @@ def get_keypoint_trajectory(scene_path, start_6d, obj_name, no_rot=False):
         for frame in range(1, total_frames):
             obj_trajectory[frame]['T'] = obj_trajectory[frame]['T'] @ old_T_inv
             
-        # obj_trajectory[0]['T'], if_flip = fix_pose_flip(obj_trajectory[0]['T'], obj_mesh, up_local, up_world)
+        obj_trajectory[0]['T'], if_flip = fix_pose_flip(obj_trajectory[0]['T'], obj_mesh, up_local, prev_up_world)
         db_local = transform_vector(obj_trajectory[0]['T'], f_local)
-        db_local = up_world - np.dot(prev_up_world, db_local) * db_local
+        db_local = prev_up_world - np.dot(prev_up_world, db_local) * db_local
         db_local /= np.linalg.norm(db_local)
         
         obj_trajectory[0]['T'] = align_object_front(obj_trajectory[0]['T'], prev_up_world, prev_front_ref_world, db_local)
@@ -401,20 +314,21 @@ def get_keypoint_trajectory(scene_path, start_6d, obj_name, no_rot=False):
                             , "22645029")
     if no_rot:
 
-        # start_6d, if_flip = fix_pose_flip(start_6d, obj_mesh, up_local, up_world)
-        db_local = transform_vector(start_6d, db_local)
+        start_6d, if_flip = fix_pose_flip(start_6d, obj_mesh, up_local, up_world)
+        db_local = transform_vector(start_6d, f_local)
         db_local = up_world - np.dot(up_world, db_local) * db_local
         db_local /= np.linalg.norm(db_local)
         
         start_6d = align_object_front(start_6d, up_world, front_ref_world, db_local)
     
     W = make_W_from_up_front(prev_up_world, prev_front_ref_world, up_world, front_ref_world)
+    import pdb; pdb.set_trace()
     new_obj_trajectory = {}
     keypoint_dict = {}
     for frame in range(total_frames):
         T_i = obj_trajectory[frame]['T'] @ T0_inv
         T_i = W @ T_i @ np.linalg.inv(W)
-        T_i = T_i @ start_6d#c2r @ T_i @ start_6d
+        T_i = c2r @ T_i @ start_6d
         new_obj_trajectory[frame] = T_i
         
         keypoint_frame = out[frame]
@@ -422,17 +336,19 @@ def get_keypoint_trajectory(scene_path, start_6d, obj_name, no_rot=False):
         keypoint_frame = np.hstack([keypoint_frame, ones]) 
         keypoint_new_coord = (T_i @ keypoint_frame.T).T[:, :3]
         keypoint_dict[frame] = keypoint_new_coord
+    
+
     import pdb; pdb.set_trace()
     return keypoint_dict, new_obj_trajectory
 
 
-def visualize_new_trajectory(obj_name, hand_keypoint_dict, obj_trajectory_dict):
+def visualize_new_trajectory(obj_name, hand_keypoint_dict, obj_trajectory_dict, q_pose_dict):
     intrinsic, extrinsic = load_current_camparam()
     c2r = load_latest_C2R()
     r2c = np.linalg.inv(c2r)
     cam_params = {}
     for cam_id in extrinsic:
-        extrinsic_np = np.array(extrinsic[cam_id]) #@ r2c
+        extrinsic_np = np.array(extrinsic[cam_id]) @ r2c
         intrinsic_np = np.array(intrinsic[cam_id]['intrinsics_undistort'])
         cam_params[cam_id] = {'extrinsic': extrinsic_np, 'intrinsic':intrinsic_np}
-    visualize_keypoint_object(obj_name, cam_params, hand_keypoint_dict, obj_trajectory_dict)
+    visualize_keypoint_object(obj_name, cam_params, hand_keypoint_dict, obj_trajectory_dict, q_pose_dict)

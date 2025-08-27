@@ -161,7 +161,6 @@ class XArmController:
         while not self.exit.is_set():
             start_time = time.time()
             if self.arm.has_err_warn:
-                print("asdfasdf", self.arm.error_code)
                 self.arm.clean_warn()
                 self.arm.clean_error()
                 self.arm.set_state(0)

@@ -8,6 +8,9 @@ import cv2
 import trimesh
 import viser
 import viser.transforms as tf
+from yourdfpy import URDF
+from viser.extras import ViserUrdf
+
 
 try:
     # Provided by your project
@@ -116,6 +119,7 @@ class KeypointObjectCameraVisualizer:
     def __init__(
         self,
         port: int = 11375,
+        allegro_urdf_path: str = "/home/temp_id/paradex/paradex/pose_utils/dex_retargeting/assets/robots/hands/allegro_hand/allegro_hand_right_free.urdf",
         up_direction: str = "+y",
         render_path: str = "./render_keypoint_obj",
         dark_mode: bool = False,
@@ -146,6 +150,11 @@ class KeypointObjectCameraVisualizer:
 
         # Default lights
         self.server.scene.enable_default_lights(True)
+        
+        # Allegro urdf 
+        self.allegro_urdf_path = allegro_urdf_path
+        self.allegro: ViserUrdf | None = None
+        self._q_seq: Optional[np.ndarray] = None  # (T,16)
 
         @self.server.on_client_connect
         def _on_connect(client: viser.ClientHandle) -> None:
@@ -370,6 +379,30 @@ class KeypointObjectCameraVisualizer:
         return self.camera_plane_handle    
 
     # ------------------------------ Content ------------------------------
+    def _ensure_allegro(self):
+        """
+        URDF를 한 번만 로드하여 씬에 추가합니다.
+        """
+        if self.allegro is not None:
+            return
+        if self.allegro_urdf_path is None:
+            print("⚠️ allegro_urdf_path가 설정되지 않아 Allegro 핸드를 표시하지 않습니다.")
+            return
+        try:
+            urdf = URDF.load(self.allegro_urdf_path)
+            self.allegro = ViserUrdf(self.server, urdf_or_path=urdf, load_meshes=True)
+            # 간단한 GUI
+            with self.server.gui.add_folder("Allegro Hand", expand_by_default=False):
+                self._allegro_show = self.server.gui.add_checkbox("Show", True)
+                self._allegro_reset = self.server.gui.add_button("Reset pose")
+            @self._allegro_reset.on_click
+            def _(_e):
+                if self._q_seq is not None and len(self._q_seq) > 0:
+                    self.allegro.update_cfg(self._q_seq[0])
+        except Exception as e:
+            print(f"❌ Allegro URDF 로드 실패: {e}")
+            self.allegro = None
+    
     def _ensure_playback(self, num_frames: int) -> None:
         self.num_frames = int(num_frames)
         with self.server.gui.add_folder("Playback"):
@@ -413,13 +446,36 @@ class KeypointObjectCameraVisualizer:
         obj_name: Optional[str],
         hand_keypoint_dict: Dict[int, np.ndarray],  # (21, 3) world
         obj_trajectory_dict: Optional[Dict[int, np.ndarray]] = None,  # 4x4 or {"T":4x4}
+        q_pose_dict: Dict[int, np.ndarray]=None,
         edge_list: Optional[List[Tuple[int, int]]] = None,
     ) -> None:
         frames = sorted(set(list(hand_keypoint_dict.keys()) + (list(obj_trajectory_dict.keys()) if obj_trajectory_dict else [])))
         if not frames:
             raise ValueError("No frames found in inputs.")
         self._ensure_playback(num_frames=len(frames))
-
+        
+        self._q_seq = None
+        if q_pose_dict is not None and len(q_pose_dict) > 0:
+            q_list = []
+            last_q16 = None
+            for fidx in frames:
+                if fidx in q_pose_dict:
+                    qv = np.asarray(copy.deepcopy(q_pose_dict[fidx])).reshape(-1)
+                    q_temp = qv[6:].copy()
+                    out = np.zeros_like(q_temp)
+                    out[0:4]   = q_temp[0:4]
+                    out[4:12]  = q_temp[8:16]
+                    out[12:16] = q_temp[4:8]
+                    qv = np.concatenate([qv[:6], out], axis=0)
+                    
+                q_list.append(qv)
+            self._q_seq = np.vstack(q_list).astype(np.float32)  # (T,16)
+            # URDF 로드
+            self._ensure_allegro()
+            if self.allegro is not None:
+                # 초기 포즈 적용
+                self.allegro.update_cfg(self._q_seq[0])
+                
         # Prepare object mesh once
         obj_mesh: Optional[trimesh.Trimesh] = None
         if obj_name is not None:
@@ -463,7 +519,7 @@ class KeypointObjectCameraVisualizer:
                         colors=line_colors,
                         line_width=2.0,
                     )
-
+            
         # Initial visibility
         if 0 in self.frame_nodes:
             self.frame_nodes[0].visible = True
@@ -482,6 +538,18 @@ class KeypointObjectCameraVisualizer:
             if cur in self.frame_nodes:
                 self.frame_nodes[cur].visible = True
             prev_local = cur
+            
+            if self.allegro is not None and self._q_seq is not None and len(self._q_seq) > 0:
+                try:
+                    q = self._q_seq[cur % self._q_seq.shape[0]]
+                    # Show 토글이 있으면 반영
+                    if hasattr(self, "_allegro_show") and not bool(self._allegro_show.value):
+                        # 간단히 '접기'만 지원: 포즈 업데이트는 하되, 사용자가 숨기면 시각적으로만 감춤
+                        # ViserUrdf가 visible 속성을 직접 제공하지 않을 수 있어 스킵
+                        pass
+                    self.allegro.update_cfg(q)
+                except Exception as e:
+                    print(f"Allegro update failed at frame {cur}: {e}")
 
     # ------------------------------ Loop ------------------------------
     def spin(self) -> None:
@@ -501,6 +569,7 @@ def visualize_keypoint_object(
     cam_params: Dict[str, Dict[str, np.ndarray]],
     hand_keypoint_dict: Dict[int, np.ndarray],  # frame -> (21,3) in world
     obj_trajectory_dict: Dict[int, np.ndarray],  # frame -> 4x4 or {"T":4x4}
+    q_pose_dict,
     *,
     cam_imgs: Optional[Dict[str, List[np.ndarray]]] = None,
     cam_size: Tuple[int, int] = (2048, 1536),
@@ -528,7 +597,7 @@ def visualize_keypoint_object(
     viz.draw_cameras(cam_params, width=W, height=H, cam_imgs=cam_imgs, downsample_factor=12)
     if target_ids_for_plane is not None:
         viz.add_camera_plane_from_ids(cam_params, target_ids_for_plane, drop=0.18, size=10.0, step=0.25)
-    viz.add_hand_and_object(obj_name=obj_name, hand_keypoint_dict=hand_keypoint_dict, obj_trajectory_dict=obj_trajectory_dict)
+    viz.add_hand_and_object(obj_name=obj_name, hand_keypoint_dict=hand_keypoint_dict, obj_trajectory_dict=obj_trajectory_dict, q_pose_dict=q_pose_dict)
 
     
     # viz.add_frame_from_up_front(name="object", up_world)

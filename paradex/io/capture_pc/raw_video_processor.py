@@ -50,7 +50,7 @@ class RawVideoProcessorWithProgress():
         
     def _monitor_progress(self):
         """Monitor and send progress updates"""
-        self.processor = RawVideoProcessor(save_path="", process_result=self.process_result, process_frame=self.process_frame, load_info=self.load_info, preserve=True)
+        self.processor = RawVideoProcessor(save_path="", process_result=self.process_result, process_frame=self.process_frame, load_info=self.load_info, preserve=False)
         port = get_network_info()["remote_camera"]
         self.socket = get_server_socket(port)
         
@@ -329,6 +329,7 @@ class ProgressMonitor:
 # HTML 템플릿
 
 # HTML 템플릿
+# HTML 템플릿
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html>
@@ -340,7 +341,7 @@ HTML_TEMPLATE = '''
         .container { max-width: 1400px; margin: 0 auto; }
         h1 { color: white; text-align: center; margin-bottom: 5px; font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
         .subtitle { text-align: center; color: rgba(255,255,255,0.8); margin-bottom: 30px; font-size: 1.1em; }
-        .pc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; }
+        .pc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(700px, 1fr)); gap: 20px; }
         
         .pc-card { 
             background: rgba(255,255,255,0.95); 
@@ -391,19 +392,25 @@ HTML_TEMPLATE = '''
             border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;
         }
         .video-item { 
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 10px 0; border-bottom: 1px solid #f0f0f0;
+            display: flex; align-items: center;
+            padding: 8px 0; border-bottom: 1px solid #f0f0f0;
+            gap: 15px;
         }
         .video-item:last-child { border-bottom: none; }
         .video-name { 
             flex: 1; font-weight: 500; color: #444; 
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            max-width: 200px;
         }
-        .video-progress { flex: 0 0 120px; text-align: right; }
+        .video-progress { 
+            display: flex; align-items: center; gap: 10px;
+            min-width: 150px;
+        }
+        .video-percent { 
+            min-width: 50px; text-align: right; font-size: 0.9em; font-weight: 600; 
+        }
         .video-bar { 
-            width: 80px; height: 8px; background: #e0e0e0; border-radius: 4px; 
-            margin-left: 10px; overflow: hidden; display: inline-block;
+            width: 100px; height: 12px; background: #e0e0e0; border-radius: 6px; 
+            overflow: hidden;
         }
         .video-fill { height: 100%; background: #2196F3; border-radius: 4px; transition: width 0.3s ease; }
         
@@ -473,7 +480,7 @@ HTML_TEMPLATE = '''
                     <div class="video-item">
                         <div class="video-name" title="{{ video_name }}">{{ video_name }}</div>
                         <div class="video-progress">
-                            {{ "%.1f"|format(video_data.progress_percent) }}%
+                            <div class="video-percent">{{ "%.1f"|format(video_data.progress_percent) }}%</div>
                             <div class="video-bar">
                                 <div class="video-fill" style="width: {{ video_data.progress_percent }}%"></div>
                             </div>

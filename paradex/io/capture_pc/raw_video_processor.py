@@ -164,7 +164,6 @@ class ProgressMonitor:
                 if recv_dict[pc_name]:
                     continue
                 recv_msg = socket.recv_string()
-                print(recv_msg, pc_name)
                 if recv_msg == message:
                     recv_dict[pc_name] = True
 
@@ -184,24 +183,27 @@ class ProgressMonitor:
         try:
             while True:
                 all_completed = True
-                
+                print(self.end_dict)
                 for pc_name, socket in self.socket_dict.items():
                     try:
                         # Receive progress update from each PC
                         message = socket.recv_string(zmq.NOBLOCK)
                         data = json.loads(message)
-                        print(f"[{pc_name}] {data.get('status', 'unknown')}: {data.get('overall_progress', {}).get('progress_percent', 0):.1f}%")
-                        
                         if data.get('event') == 'end':
                             print(pc_name, "end")
                             self.end_dict[pc_name] = True
+                            continue
+                        
+                        print(f"[{pc_name}] {data.get('status', 'unknown')}: {data.get('overall_progress', {}).get('progress_percent', 0):.1f}%")
+                        
                         
                         if not self.end_dict[pc_name]:
                             all_completed = False
                             
                     except zmq.Again:
                         # No message from this PC
-                        all_completed = False
+                        if not self.end_dict[pc_name]:
+                            all_completed = False
                         continue
                 
                 if all_completed:

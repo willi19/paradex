@@ -159,6 +159,7 @@ def fill_dropped_frames(video_path, load_info, process_frame, process_result, pr
         
         if frame_counter is not None:      
             frame_counter = last_frame
+            print(frame_counter)
         out.write(frame)
     cap.release()
     out.release()

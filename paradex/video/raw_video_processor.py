@@ -58,7 +58,6 @@ class RawVideoProcessor():
                 os.remove(timestamp_path)            
                 continue
             self.valid_video_path_list.append(video_path)
-        print(self.valid_video_path_list)
     
     
     def async_callback(self, result):

@@ -8,6 +8,9 @@ from datetime import datetime
 import cv2
 import numpy as np
 import os
+from flask import Flask, render_template_string
+import webbrowser
+
 from multiprocessing import Pool, shared_memory, Manager, Value
 from paradex.utils.file_io import home_path
 from paradex.video.raw_video import *
@@ -175,27 +178,68 @@ class ProgressMonitor:
             
         return False
     
+    def setup_web(self):
+        @self.app.route('/')
+        def index():
+            return render_template_string(HTML_TEMPLATE, 
+                                        pc_data=self.progress_data,
+                                        timestamp=datetime.now().strftime('%H:%M:%S'))
+        
+        @self.app.route('/api/data')
+        def api_data():
+            return {
+                'pc_data': self.progress_data,
+                'timestamp': datetime.now().strftime('%H:%M:%S')
+            }
+    
+    def start_web_server(self):
+        """웹 서버를 별도 스레드에서 시작"""
+        def run_server():
+            self.app.run(host='0.0.0.0', port=8080, debug=False, use_reloader=False)
+        
+        web_thread = threading.Thread(target=run_server)
+        web_thread.daemon = True
+        web_thread.start()
+        
+        # 브라우저 자동 열기
+        time.sleep(1)
+        webbrowser.open('http://localhost:8080')
+        print("Web monitor started at http://localhost:8080")
+            
     def monitor(self):
         """Start monitoring progress"""
         self.register()
+        self.start_web_server()
         self.end_dict = {pc_name:False for pc_name in self.socket_dict.keys()}
         
         try:
             while True:
                 all_completed = True
-                print(self.end_dict)
                 for pc_name, socket in self.socket_dict.items():
                     try:
                         # Receive progress update from each PC
                         message = socket.recv_string(zmq.NOBLOCK)
                         data = json.loads(message)
                         if data.get('event') == 'end':
-                            print(pc_name, "end")
+                            self.progress_data[pc_name].update({
+                                'status': 'COMPLETED',
+                                'progress_percent': 100,
+                                'completed': True,
+                                'last_update': datetime.now().strftime('%H:%M:%S')
+                            })
                             self.end_dict[pc_name] = True
                             continue
                         
-                        print(f"[{pc_name}] {data.get('status', 'unknown')}: {data.get('overall_progress', {}).get('progress_percent', 0):.1f}%")
-                        
+                        # print(f"[{pc_name}] {data.get('status', 'unknown')}: {data.get('overall_progress', {}).get('progress_percent', 0):.1f}%")
+                        else:
+                            # 진행률 업데이트
+                            overall = data.get('overall_progress', {})
+                            self.progress_data[pc_name].update({
+                                'status': data.get('status', 'processing'),
+                                'progress_percent': overall.get('progress_percent', 0),
+                                'completed': False,
+                                'last_update': datetime.now().strftime('%H:%M:%S')
+                            })
                         
                         if not self.end_dict[pc_name]:
                             all_completed = False
@@ -263,3 +307,50 @@ class ProgressMonitor:
         for socket in self.socket_dict.values():
             socket.close()
             del socket
+
+# HTML 템플릿
+HTML_TEMPLATE = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Video Processing Monitor</title>
+    <meta http-equiv="refresh" content="2">
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        .timestamp { text-align: center; color: #666; margin-bottom: 20px; }
+        .pc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
+        .pc-card { border: 1px solid #ddd; border-radius: 6px; padding: 15px; background: #fafafa; }
+        .pc-name { font-weight: bold; font-size: 18px; margin-bottom: 10px; color: #333; }
+        .progress-bar { width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #4CAF50, #45a049); transition: width 0.3s ease; }
+        .status { padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block; margin-bottom: 5px; }
+        .status.waiting { background: #ffc107; color: #000; }
+        .status.processing { background: #2196F3; color: white; }
+        .status.completed { background: #4CAF50; color: white; }
+        .info { font-size: 14px; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 Video Processing Monitor</h1>
+        <div class="timestamp">Last Update: {{ timestamp }}</div>
+        
+        <div class="pc-grid">
+            {% for pc_name, data in pc_data.items() %}
+            <div class="pc-card">
+                <div class="pc-name">{{ pc_name }}</div>
+                <div class="status {{ data.status.lower() }}">{{ data.status.upper() }}</div>
+                <div class="progress-bar">
+                    <div class="progress-fill" style="width: {{ data.progress_percent }}%"></div>
+                </div>
+                <div class="info">Progress: {{ "%.1f"|format(data.progress_percent) }}%</div>
+                <div class="info">Last Update: {{ data.last_update }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>
+'''

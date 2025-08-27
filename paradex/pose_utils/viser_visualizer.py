@@ -163,6 +163,75 @@ class KeypointObjectCameraVisualizer:
             @far_slider.on_update
             def _(_):
                 client.camera.far = far_slider.value
+                
+                
+                
+    ### add frame ## debuging purpose
+    def add_frame_from_up_front(
+        self,
+        name: str,
+        origin: np.ndarray,
+        up_world: np.ndarray,
+        front_world: np.ndarray,
+        *,
+        axes_length: float = 0.15,
+        axes_radius: float = 0.006,
+        right_handed: bool = True,
+        show_axes: bool = True,
+    ):
+        """
+        주어진 월드 좌표계 벡터들로 좌표 프레임을 추가합니다.
+        - 가정: +X = front, +Y = up, +Z = right (우손 좌표계)
+        - up_world 과 front_world 는 월드 기준 벡터입니다.
+        - 두 벡터가 거의 평행할 경우 수치적으로 안전하게 보정합니다.
+        """
+        def _nz_norm(v):
+            v = np.asarray(v, dtype=float).reshape(-1)
+            n = np.linalg.norm(v)
+            return v if n < 1e-12 else (v / n)
+
+        f = _nz_norm(front_world)
+        u_raw = _nz_norm(up_world)
+
+        # Gram-Schmidt: up을 front에 직교화
+        u = u_raw - np.dot(u_raw, f) * f
+        nu = np.linalg.norm(u)
+        if nu < 1e-8:
+            # 평행에 가까우면 대체 up 후보 선택
+            alt = np.array([0.0, 1.0, 0.0]) if abs(f[1]) < 0.9 else np.array([1.0, 0.0, 0.0])
+            u = alt - np.dot(alt, f) * f
+            u = u / (np.linalg.norm(u) + 1e-12)
+        else:
+            u = u / nu
+
+        # right = front x up (우손)
+        r = np.cross(f, u)
+        nr = np.linalg.norm(r)
+        if nr < 1e-8:
+            # 아주 드문 퇴행 방지
+            r = np.cross(f, u + 1e-3*np.array([1.0, 0.0, 0.0]))
+            r = r / (np.linalg.norm(r) + 1e-12)
+        else:
+            r = r / nr
+
+        if not right_handed:
+            r = -r  # 좌손 필요 시 반전
+
+        # 회전행렬 구성 (열벡터가 축): [X=front | Y=up | Z=right]
+        R = np.stack([f, u, r], axis=1)  # (3,3)
+
+        T = tf.SE3.from_rotation_translation(tf.SO3.from_matrix(R), np.asarray(origin, dtype=float).reshape(3))
+
+        # 프레임 추가
+        handle = self.server.scene.add_frame(
+            name,
+            wxyz=T.rotation().wxyz,
+            position=T.translation(),
+            axes_length=axes_length,
+            axes_radius=axes_radius,
+            show_axes=show_axes,
+        )
+        return handle
 
     # ------------------------------ Cameras ------------------------------
     def draw_cameras(
@@ -461,5 +530,7 @@ def visualize_keypoint_object(
         viz.add_camera_plane_from_ids(cam_params, target_ids_for_plane, drop=0.18, size=10.0, step=0.25)
     viz.add_hand_and_object(obj_name=obj_name, hand_keypoint_dict=hand_keypoint_dict, obj_trajectory_dict=obj_trajectory_dict)
 
+    
+    # viz.add_frame_from_up_front(name="object", up_world)
     
     viz.spin()

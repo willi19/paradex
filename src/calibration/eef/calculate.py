@@ -1,154 +1,196 @@
 import numpy as np
 import os
-from paradex.utils.file_io import shared_dir, find_latest_directory, rsc_path, load_c2r, get_robot_urdf_path
 import argparse
 import numpy as np
-from scipy.linalg import sqrtm
-from numpy.linalg import inv
-import numpy as np
 from scipy.spatial.transform import Rotation as R
+import cv2
+
+from paradex.image.aruco import detect_aruco, triangulate_marker, draw_aruco
+from paradex.utils.file_io import shared_dir, find_latest_directory, rsc_path, load_c2r, get_robot_urdf_path
 from paradex.geometry.math import rigid_transform_3D
 from paradex.robot import RobotWrapper
+from paradex.utils.file_io import eef_calib_path, load_camparam
+from paradex.image.projection import get_cammtx
+from paradex.image.undistort import undistort_img
+from paradex.geometry.Tsai_Lenz import solve, solve_axb_pytorch
+from paradex.geometry.conversion import project
+from paradex.geometry.coordinate import DEVICE2WRIST
+from paradex.visualization_.renderer import BatchRenderer
+from paradex.visualization_.robot_module import Robot_Module
+from paradex.image.projection import get_cammtx, project_point, project_mesh, project_mesh_nvdiff
+from paradex.image.overlay import overlay_mask
 
-def logR(T):
-    R = T[0:3, 0:3]
-    theta = np.arccos((np.trace(R) - 1)/2)
-    logr = np.array([R[2,1] - R[1,2], R[0,2] - R[2,0], R[1,0] - R[0,1]]) * theta / (2*np.sin(theta))
-    return logr
+parser = argparse.ArgumentParser()
+parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
 
-def Calibrate(A, B):
-    n_data = len(A)
-    M = np.zeros((3,3))
-    C = np.zeros((3*n_data, 3))
-    d = np.zeros((3*n_data, 1))
-    A_ = np.array([])
-    for i in range(n_data-1):
-        alpha = logR(A[i])
-        beta = logR(B[i])
-        alpha2 = logR(A[i+1])
-        beta2 = logR(B[i+1])
-        alpha3 = np.cross(alpha, alpha2)
-        beta3  = np.cross(beta, beta2)
-        M1 = np.dot(beta.reshape(3,1),alpha.reshape(3,1).T)
-        M2 = np.dot(beta2.reshape(3,1),alpha2.reshape(3,1).T)
-        M3 = np.dot(beta3.reshape(3,1),alpha3.reshape(3,1).T)
-        M = M1+M2+M3
-    theta = np.dot(sqrtm(inv(np.dot(M.T, M))), M.T)
-    for i in range(n_data):
-        rot_a = A[i][0:3, 0:3]
-        rot_b = B[i][0:3, 0:3]
-        trans_a = A[i][0:3, 3]
-        trans_b = B[i][0:3, 3]
-        C[3*i:3*i+3, :] = np.eye(3) - rot_a
-        d[3*i:3*i+3, 0] = trans_a - np.dot(theta, trans_b)
-    b_x  = np.dot(inv(np.dot(C.T, C)), np.dot(C.T, d))
-    return theta, b_x
-
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
-    args = parser.parse_args()
+args = parser.parse_args()
+if args.name is None:
+    args.name = find_latest_directory(eef_calib_path)
     
-    if args.name is None:
-        args.name = find_latest_directory(os.path.join(shared_dir, "eef"))
+eef_calib_path = os.path.join(shared_dir, "eef", args.name)
+index_list = os.listdir(os.path.join(eef_calib_path))
+
+robot = RobotWrapper(
+    os.path.join(rsc_path, "robot", "allegro", "allegro.urdf")
+)
+arm = RobotWrapper(
+    os.path.join(rsc_path, "robot", "xarm.urdf")
+)
+finger_index = {f"{finger_name}_proximal":robot.get_link_index(f"{finger_name}_proximal") for finger_name in ["thumb", "index", "middle", "ring"]}
+
+# finger_index["index_proximal"] = 8
+# finger_index["middle_proximal"] = 8
+# finger_index["ring_proximal"] = 28
+
+finger_id_list = [11,13,14]
+finger_marker = {11:"ring_proximal", 14:"middle_proximal", 13:"index_proximal", 10:"thumb_proximal"}
+
+c2r = load_c2r(os.path.join(eef_calib_path, "0"))
     
-    he_calib_path = os.path.join(shared_dir, "eef", args.name)
-    index_list = os.listdir(os.path.join(he_calib_path))
+link_index = arm.get_link_index("link6")
+intrinsic, extrinsic = load_camparam(os.path.join(eef_calib_path, "0"))
+cammtx = get_cammtx(intrinsic, extrinsic)
 
-    A_list = []
-    B_list = []
+robot_cor = []
+cam_cor = []
+hand_action = []
+qpos = []
 
-    robot = RobotWrapper(
-        get_robot_urdf_path("xarm", "allegro")
-    )
+for idx in index_list:
+    # robot_cor.append(np.load(os.path.join(eef_calib_path, idx, "robot.npy")))
+    hand_action.append(np.load(os.path.join(eef_calib_path, idx, "hand.npy")))
+    qpos.append(np.load(os.path.join(eef_calib_path, idx, "qpos.npy")))
     
-    finger_id_list = [11,13,14]
-    finger_marker = {11:"ring_proximal", 13:"middle_proximal", 14:"index_proximal", 10:"thumb_proximal"}
-    finger_index = {f"{finger_name}_proximal":robot.get_link_index(f"{finger_name}_proximal") for finger_name in ["thumb", "index", "middle", "ring"]}
-
-    link_index = robot.get_link_index("link6")
-    wrist_index = robot.get_link_index("palm_link")
-
-    c2r = load_c2r(os.path.join(he_calib_path, "0"))
-
-
-    for i in range(len(index_list)-5):
-        idx1 = index_list[i]
-        idx2 = index_list[i+5]
-
-        robot_action1 = np.load(os.path.join(he_calib_path, idx1, "robot.npy"))
-        robot_action2 = np.load(os.path.join(he_calib_path, idx2, "robot.npy"))
-
-        marker_3d1 = np.load(os.path.join(he_calib_path, idx1, "marker_3d.npy"), allow_pickle=True).item()
-        marker_3d2 = np.load(os.path.join(he_calib_path, idx2, "marker_3d.npy"), allow_pickle=True).item()
-
-        for finger_id in finger_id_list:
-            if finger_id not in marker_3d1 or finger_id not in marker_3d2:
+    arm.compute_forward_kinematics(qpos[-1])
+    robot_cor.append(arm.get_link_pose(link_index))
+    
+    if not os.path.exists(os.path.join(eef_calib_path, idx, "marker_3d.npy")):        
+        img_dir = os.path.join(eef_calib_path, idx, "image")
+        
+        img_dict = {}
+        for img_name in os.listdir(img_dir):
+            img_dict[img_name.split(".")[0]] = cv2.imread(os.path.join(img_dir, img_name))
+        
+        cor_3d = triangulate_marker(img_dict, intrinsic, extrinsic)
+        for serial_num, img in img_dict.items():
+            if serial_num not in cammtx:
                 continue
-            if marker_3d1[finger_id] is None or marker_3d2[finger_id] is None:
-                continue
-            A = rigid_transform_3D(marker_3d2[finger_id], marker_3d1[finger_id])
             
-            robot.compute_forward_kinematics(robot_action1)
-            T_r1 = robot.get_link_pose(link_index)
-            T_h1 = robot.get_link_pose(finger_index[finger_marker[finger_id]])
-            T_w1 = robot.get_link_pose(wrist_index)
+            undist_img = undistort_img(img, intrinsic[serial_num])
+            
+            os.makedirs(os.path.join(eef_calib_path, idx, "undistort"), exist_ok=True)
+            cv2.imwrite(os.path.join(eef_calib_path, idx, "undistort", f"{serial_num}.png"), undist_img)
+            
+            undist_kypt, ids = detect_aruco(undist_img)
+            
+            if ids is None:
+                continue
+            draw_aruco(undist_img, undist_kypt, ids, (0, 0, 255))
+            
+            for mid in finger_id_list:
+                if mid not in ids or cor_3d[mid] is None:
+                    continue
+                pt_2d = project(cammtx[serial_num], cor_3d[mid])
+                draw_aruco(undist_img, [pt_2d], None, (255, 0, 0))
+            
+            os.makedirs(os.path.join(eef_calib_path, idx, "debug"), exist_ok=True)
+            cv2.imwrite(os.path.join(eef_calib_path, idx, "debug", f"{serial_num}.png"), undist_img)
 
-            T_h1 = np.linalg.inv(T_w1) @ T_h1
+        marker_3d = {}
+        for mid in finger_id_list:
+            if mid not in cor_3d or cor_3d[mid] is None:
+                continue
+            marker_3d[mid] = cor_3d[mid]
+        np.save(os.path.join(eef_calib_path, idx, "marker_3d.npy"), marker_3d)
+    
+    else:
+        marker_3d = np.load(os.path.join(eef_calib_path, idx, "marker_3d.npy"),allow_pickle=True).item()
+    cam_cor.append(marker_3d)
 
-            robot.compute_forward_kinematics(robot_action2)
-            T_r2 = robot.get_link_pose(link_index)
-            T_h2 = robot.get_link_pose(finger_index[finger_marker[finger_id]])
-            T_w2 = robot.get_link_pose(wrist_index)
+A_list = []
+B_list = []
+finger_name = []
+index_name = []
 
-            T_h2 = np.linalg.inv(T_w2) @ T_h2
+ans = np.linalg.inv(DEVICE2WRIST["xarm"]) @ DEVICE2WRIST["allegro"]
+for i in range(len(index_list)-1):
+    T_r1 = robot_cor[i]
+    T_r2 = robot_cor[i+1]
+    
+    marker_3d1 = cam_cor[i]
+    marker_3d2 = cam_cor[i+1]
+    
+    hand_action1 = hand_action[i]
+    hand_action2 = hand_action[i+1]
 
-            A = np.linalg.inv(T_r1) @ np.linalg.inv(c2r) @ A @ c2r @ T_r2
-            B = T_h1 @ np.linalg.inv(T_h2)
-
-            A_list.append(A)
-            B_list.append(B)
+    for finger_id in finger_id_list:
+        if finger_id not in marker_3d1 or finger_id not in marker_3d2:
+            continue
         
-            # print(A@c2r - c2r@B)
-
-                # err = A @ B - np.eye(4)
-                # if np.max(np.abs(err)) < 0.05:
-                #     print("Error: ", np.max(np.abs(err)))
-                #     print(A)
-                #     print(B)
-                #     print(np.linalg.inv(A) @ B)
-
-
-    X = np.eye(4)
-    theta, b_x = Calibrate(A_list, B_list)
-    X[0:3, 0:3] = theta
-    X[0:3, -1] = b_x.flatten()
-    print(X)
-
-    # link6 = robot.get_link_pose(link_index)
-    # wrist = robot.get_link_pose(wrist_index)
-    # print(np.linalg.inv(link6) @ wrist)
-
-    print(A_list[0] @ X - X @ B_list[0])
-    marker_pos = {}
-
-
-    # for idx in index_list:
-    #     robot_action1 = np.load(os.path.join(he_calib_path, idx, "robot.npy"))
-
-    #     marker_3d = np.load(os.path.join(he_calib_path, idx, "marker_3d.npy"), allow_pickle=True).item()()
-
-    #     for finger_id in finger_id_list:
-    #         if finger_id not in marker_3d:
-    #             continue
-    #         if marker_3d[finger_id] is None:
-    #             continue
-
-    #         T_h = robot.get_link_pose(finger_index[finger_marker[finger_id]])
-    #         import pdb; pdb.set_trace()
-    #         marker_pos[finger_id].append(np.linalg.inv(T_h) @ np.linalg.inv(c2r) @ marker_3d[finger_id].T)
-
-    # for mid in marker_pos:
-    #     marker_pos[mid] = np.mean(marker_pos[mid], axis=0)
+        if marker_3d1[finger_id] is None or marker_3d2[finger_id] is None:
+            continue
         
-    # np.save(os.path.join(he_calib_path, "0", "finger_pose.npy"), marker_pos)
+        A = rigid_transform_3D(marker_3d2[finger_id], marker_3d1[finger_id])
+        
+        robot.compute_forward_kinematics(hand_action1)
+        T_h1 = robot.get_link_pose(finger_index[finger_marker[finger_id]])
+
+        robot.compute_forward_kinematics(hand_action2)
+        T_h2 = robot.get_link_pose(finger_index[finger_marker[finger_id]])
+        
+        A = np.linalg.inv(T_r1) @ np.linalg.inv(c2r) @ A @ c2r @ T_r2
+        B = T_h1 @ np.linalg.inv(T_h2)
+
+        A_list.append(A)
+        B_list.append(B)
+        finger_name.append(finger_marker[finger_id])
+        index_name.append(i)
+        
+X = np.eye(4)
+theta, b_x = solve(A_list, B_list)
+X[0:3, 0:3] = theta
+X[0:3, -1] = b_x.flatten()
+X, loss = solve_axb_pytorch(A_list, B_list,X.copy(),learning_rate=0.001)
+print(X)
+
+for i in range(len(index_list)-1):
+    # print(A_list[i] @ X - X @ B_list[i], "error")
+    # print(A_list[i] @ ans - ans @ B_list[i], index_name[i], finger_name[i])
+    print(A_list[i] @ X - X @ B_list[i], index_name[i], finger_name[i])
+
+extrinsic_list = []
+intrinsic_list = []
+
+serial_list = os.listdir(os.path.join(eef_calib_path, idx, "image"))
+serial_list.sort()
+
+for serial_name in serial_list:
+    sn = serial_name.split(".")[0]
+    extmat = extrinsic[sn]
+    extrinsic_list.append(extmat @ c2r)        
+    intrinsic_list.append(intrinsic[sn]['intrinsics_undistort'])
+
+hand_action = np.array(hand_action)
+qpos = np.array(qpos)
+
+qpos = np.concatenate([qpos, hand_action], axis=1)
+rm = Robot_Module(get_robot_urdf_path("xarm", "allegro"), state=qpos)
+print(rm.link_list)
+renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=2048, height=1536, device='cuda')
+
+for fid in index_list:
+    img_dir = os.path.join(eef_calib_path, fid, "undistort")
+    robot_mesh = rm.get_mesh(int(fid))
+    img_dict = {img_name:cv2.imread(os.path.join(img_dir, img_name)) for img_name in serial_list}
+    os.makedirs(os.path.join(eef_calib_path, fid, "overlay"), exist_ok=True)
+    
+    for mesh in robot_mesh:
+        frame, mask = project_mesh_nvdiff(mesh, renderer)
+        mask = mask.detach().cpu().numpy()[:,:,:,0]
+        
+        for i, img_name in enumerate(serial_list):
+            img_dict[img_name] = overlay_mask(img_dict[img_name], mask[i], 0.3, (0, 255, 0))
+    
+    for img_name in serial_list:
+        cv2.imwrite(os.path.join(eef_calib_path, fid, "overlay", img_name), img_dict[img_name])    
+        

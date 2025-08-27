@@ -21,7 +21,7 @@ cam_param_dir_fix = os.path.join(shared_dir, "cam_param_fix")
 handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")
 config_dir = os.path.join(os.path.dirname(__file__), "..", "..", "config")
 model_dir = os.path.join(os.path.dirname(__file__), "..", "..", "model")
-
+eef_calib_path = os.path.join(shared_dir, "eef")
 def get_video_list(video_dir):
     """
     Get a list of video files in the specified directory.

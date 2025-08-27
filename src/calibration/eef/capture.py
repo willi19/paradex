@@ -5,7 +5,7 @@ import shutil
 import random
 from scipy.spatial.transform import Rotation as R
 
-from paradex.utils.file_io import shared_dir, find_latest_directory
+from paradex.utils.file_io import shared_dir, find_latest_directory, load_latest_C2R
 from paradex.utils.env import get_pcinfo
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.io.capture_pc.camera_main import RemoteCameraController
@@ -25,7 +25,6 @@ hand_name = "allegro"
 pc_info = get_pcinfo()
 pc_list = list(pc_info.keys())
 
-
 dex_arm = get_arm(arm_name)
 hand = get_hand(hand_name)
 
@@ -40,7 +39,7 @@ start_pos= np.array([[0, 0, 1, 0.3],
                     [0, 1, 0, 0.12], 
                     [0, 0, 0, 1]])
 
-for i in range(13):
+for i in range(30):
     if os.path.exists(f"data/eef/{i}_qpos.npy"):
         target_action = np.load(f"data/eef/{i}_qpos.npy")
     
@@ -75,15 +74,19 @@ for i in range(13):
     
     wrist6d = dex_arm.get_position()
     hand_pose = hand.get_data()
+    qpos = dex_arm.get_qpos()
     
     os.makedirs(f"{shared_dir}/eef/{filename}/{i}/image", exist_ok=True)
-    np.save(f"{shared_dir}/eef/{filename}/{i}/robot", wrist6d)
-    np.save(f"{shared_dir}/eef/{filename}/{i}/hand", hand_pose)
+    np.save(f"{shared_dir}/eef/{filename}/{i}/robot.npy", wrist6d)
+    np.save(f"{shared_dir}/eef/{filename}/{i}/hand.npy", hand_pose)
+    np.save(f"{shared_dir}/eef/{filename}/{i}/qpos.npy", qpos)
     
     camera_loader.start(f'shared_data/eef/{filename}/{i}/image')
     camera_loader.end()
     
-copy_calib_files(f"/home/temp_id/shared_data/eef/{filename}/0")
+copy_calib_files(f"{shared_dir}/eef/{filename}/0")
+c2r = load_latest_C2R()
+np.save(f"{shared_dir}/eef/{filename}/0/C2R.npy", c2r)
 
 # finally:
 #     camera_loader.quit()

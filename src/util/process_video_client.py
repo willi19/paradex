@@ -47,5 +47,5 @@ def load_info(video_path):
     return cam_param
 
 start_time = time.time()
-rvp = RawVideoProcessorWithProgress(process_frame=process_frame, load_info=load_info, process_result=process_result, preserve=False, overwrite=False)
+rvp = RawVideoProcessorWithProgress(process_frame=process_frame, load_info=load_info, process_result=process_result)
 rvp.start()

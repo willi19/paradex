@@ -33,7 +33,6 @@ class RawVideoProcessorWithProgress():
     def register(self):
         print("start register")
         ident, msg = self.socket.recv_multipart()
-        print(msg)
         msg = msg.decode()
         if msg == "register":
             self.ident = ident
@@ -52,6 +51,7 @@ class RawVideoProcessorWithProgress():
         self.socket = get_server_socket(port)
         
         self.register()
+        print(self.processor.log)
         
         while not self.processor.finished():
             progress_data = self._get_progress_data()
@@ -177,6 +177,8 @@ class ProgressMonitor:
     def monitor(self):
         """Start monitoring progress"""
         self.register()
+        self.end_dict = {pc_name:False for pc_name in self.socket_dict.keys()}
+        
         try:
             while True:
                 all_completed = True
@@ -188,7 +190,10 @@ class ProgressMonitor:
                         data = json.loads(message)
                         print(f"[{pc_name}] {data.get('status', 'unknown')}: {data.get('overall_progress', {}).get('progress_percent', 0):.1f}%")
                         
-                        if data.get('event') != 'completed':
+                        if data.get('event') == 'end':
+                            self.end_dict[pc_name] = True
+                        
+                        if not self.end_dict[pc_name]:
                             all_completed = False
                             
                     except zmq.Again:

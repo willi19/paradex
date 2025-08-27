@@ -55,7 +55,7 @@ class RawVideoProcessorWithProgress():
             self.send_message(progress_data)
             time.sleep(self.update_interval)
         
-        self.send_message("end")
+        self.send_message({"event":"end"})
         
     def _get_progress_data(self):
         """Get current progress data"""
@@ -173,21 +173,32 @@ class ProgressMonitor:
     
     def monitor(self):
         """Start monitoring progress"""
+        self.register()
         try:
             while True:
-                # Receive progress update
-                message = self.socket.recv_string(zmq.NOBLOCK)
-                data = json.loads(message)
-                self._display_progress(data)
+                all_completed = True
                 
-                # Break if completed
-                if data.get('event') == 'completed':
-                    print("\n=== PROCESSING COMPLETED ===")
+                for pc_name, socket in self.socket_dict.items():
+                    try:
+                        # Receive progress update from each PC
+                        message = socket.recv_string(zmq.NOBLOCK)
+                        data = json.loads(message)
+                        print(f"[{pc_name}] {data.get('status', 'unknown')}: {data.get('overall_progress', {}).get('progress_percent', 0):.1f}%")
+                        
+                        if data.get('event') != 'completed':
+                            all_completed = False
+                            
+                    except zmq.Again:
+                        # No message from this PC
+                        all_completed = False
+                        continue
+                
+                if all_completed:
+                    print("\n=== ALL PCs COMPLETED ===")
                     break
                     
-        except zmq.Again:
-            # No message available, continue
-            time.sleep(0.1)
+                time.sleep(0.1)
+                
         except KeyboardInterrupt:
             print("\nMonitoring stopped by user")
         except Exception as e:

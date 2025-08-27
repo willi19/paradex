@@ -18,7 +18,7 @@ from paradex.io.capture_pc.util import get_client_socket, get_server_socket
 class RawVideoProcessorWithProgress():
     """Extended RawVideoProcessor with ZMQ progress reporting"""
     
-    def __init__(self, process_frame, load_info, process_result, update_interval=1.0, **kwargs):
+    def __init__(self, process_frame, load_info, process_result, update_interval=1.0):
         self.update_interval = update_interval
         self.start_time = time.time()
         
@@ -141,7 +141,7 @@ class ProgressMonitor:
         port = get_network_info()["remote_camera"]
         self.pc_list = list(self.pc_info.keys())
         self.socket_dict = {pc_name:get_client_socket(self.pc_info[pc_name]["ip"], port) for pc_name in self.pc_list}
-        
+
     def register(self):
         self.send_message("register")   
         return self.wait_for_message("registered")

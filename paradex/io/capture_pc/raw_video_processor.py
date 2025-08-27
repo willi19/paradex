@@ -93,7 +93,7 @@ class RawVideoProcessorWithProgress():
         
         return {
             'timestamp': datetime.now().isoformat(),
-            'status': 'processing' if not self.finished() else 'completed',
+            'status': 'processing' if not self.processor.finished() else 'completed',
             'overall_progress': {
                 'processed_frames': processed_frames,
                 'total_frames': total_frames,

@@ -69,7 +69,7 @@ class RawVideoProcessorWithProgress():
         
         # Calculate total progress
         total_frames = sum(self.processor.total_frame.values())
-        processed_frames = sum(counter.value for counter in self.frame_counter.values())
+        processed_frames = sum(counter.value for counter in self.processor.frame_counter.values())
         
         progress_percent = (processed_frames / total_frames * 100) if total_frames > 0 else 0
         

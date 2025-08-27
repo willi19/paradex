@@ -40,6 +40,9 @@ class RawVideoProcessorWithProgress():
         self.send_message("registered")  
         
     def send_message(self, message):
+        if isinstance(message, dict):
+            message = json.dumps(message)
+    
         self.socket.send_multipart([self.ident, message.encode('utf-8')])
         
     def _monitor_progress(self):

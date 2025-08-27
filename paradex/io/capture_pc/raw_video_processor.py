@@ -52,6 +52,8 @@ class RawVideoProcessorWithProgress():
         
         self.register()
         print(self.processor.log)
+        progress_data = self._get_progress_data()
+        self.send_message(progress_data)
         
         while not self.processor.finished():
             progress_data = self._get_progress_data()
@@ -191,6 +193,7 @@ class ProgressMonitor:
                         print(f"[{pc_name}] {data.get('status', 'unknown')}: {data.get('overall_progress', {}).get('progress_percent', 0):.1f}%")
                         
                         if data.get('event') == 'end':
+                            print(pc_name, "end")
                             self.end_dict[pc_name] = True
                         
                         if not self.end_dict[pc_name]:

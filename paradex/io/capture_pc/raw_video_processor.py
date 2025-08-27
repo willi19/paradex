@@ -29,6 +29,7 @@ class RawVideoProcessorWithProgress():
         self.process_frame = process_frame
         self.load_info = load_info
         self.process_result = process_result
+
     
     def start(self):
         self._monitor_progress()
@@ -54,7 +55,6 @@ class RawVideoProcessorWithProgress():
         self.socket = get_server_socket(port)
         
         self.register()
-        print(self.processor.log)
         progress_data = self._get_progress_data()
         self.send_message(progress_data)
         
@@ -83,7 +83,7 @@ class RawVideoProcessorWithProgress():
             vid_processed = self.processor.frame_counter[vid_path].value
             vid_percent = (vid_processed / vid_total * 100) if vid_total > 0 else 0
             
-            video_progress[os.path.basename(vid_path)] = {
+            video_progress[vid_path] = {
                 'processed_frames': vid_processed,
                 'total_frames': vid_total,
                 'progress_percent': round(vid_percent, 2)
@@ -149,7 +149,17 @@ class ProgressMonitor:
         port = get_network_info()["remote_camera"]
         self.pc_list = list(self.pc_info.keys())
         self.socket_dict = {pc_name:get_client_socket(self.pc_info[pc_name]["ip"], port) for pc_name in self.pc_list}
-
+        
+        self.progress_data = {pc_name: {
+            'status': 'waiting',
+            'progress_percent': 0,
+            'completed': False,
+            'last_update': 'Never'
+        } for pc_name in self.pc_list}
+                
+        self.app = Flask(__name__)
+        self.setup_web()
+        
     def register(self):
         self.send_message("register")   
         return self.wait_for_message("registered")
@@ -220,26 +230,34 @@ class ProgressMonitor:
                         # Receive progress update from each PC
                         message = socket.recv_string(zmq.NOBLOCK)
                         data = json.loads(message)
+                        
                         if data.get('event') == 'end':
-                            self.progress_data[pc_name].update({
+                            self.progress_data[pc_name] = {
                                 'status': 'COMPLETED',
                                 'progress_percent': 100,
                                 'completed': True,
-                                'last_update': datetime.now().strftime('%H:%M:%S')
-                            })
+                                'last_update': datetime.now().strftime('%H:%M:%S'),
+                                'overall_progress': data.get('overall_progress', {}),
+                                'video_progress': data.get('video_progress', {}),
+                                'log_messages': data.get('log_messages', []),
+                                'active_videos': data.get('active_videos', 0),
+                                'save_path': data.get('save_path', '')
+                            }
                             self.end_dict[pc_name] = True
-                            continue
-                        
-                        # print(f"[{pc_name}] {data.get('status', 'unknown')}: {data.get('overall_progress', {}).get('progress_percent', 0):.1f}%")
                         else:
-                            # 진행률 업데이트
+                            # 모든 진행률 데이터 업데이트
                             overall = data.get('overall_progress', {})
-                            self.progress_data[pc_name].update({
+                            self.progress_data[pc_name] = {
                                 'status': data.get('status', 'processing'),
                                 'progress_percent': overall.get('progress_percent', 0),
                                 'completed': False,
-                                'last_update': datetime.now().strftime('%H:%M:%S')
-                            })
+                                'last_update': datetime.now().strftime('%H:%M:%S'),
+                                'overall_progress': overall,
+                                'video_progress': data.get('video_progress', {}),
+                                'log_messages': data.get('log_messages', []),
+                                'active_videos': data.get('active_videos', 0),
+                                'save_path': data.get('save_path', '')
+                            }
                         
                         if not self.end_dict[pc_name]:
                             all_completed = False
@@ -309,44 +327,174 @@ class ProgressMonitor:
             del socket
 
 # HTML 템플릿
+
+# HTML 템플릿
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html>
 <head>
     <title>Video Processing Monitor</title>
-    <meta http-equiv="refresh" content="2">
+    <meta http-equiv="refresh" content="3">
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
-        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { color: #333; text-align: center; }
-        .timestamp { text-align: center; color: #666; margin-bottom: 20px; }
-        .pc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px; }
-        .pc-card { border: 1px solid #ddd; border-radius: 6px; padding: 15px; background: #fafafa; }
-        .pc-name { font-weight: bold; font-size: 18px; margin-bottom: 10px; color: #333; }
-        .progress-bar { width: 100%; height: 20px; background: #e0e0e0; border-radius: 10px; overflow: hidden; margin: 10px 0; }
-        .progress-fill { height: 100%; background: linear-gradient(90deg, #4CAF50, #45a049); transition: width 0.3s ease; }
-        .status { padding: 5px 10px; border-radius: 4px; font-size: 12px; font-weight: bold; display: inline-block; margin-bottom: 5px; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { color: white; text-align: center; margin-bottom: 5px; font-size: 2.5em; text-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+        .subtitle { text-align: center; color: rgba(255,255,255,0.8); margin-bottom: 30px; font-size: 1.1em; }
+        .pc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 20px; }
+        
+        .pc-card { 
+            background: rgba(255,255,255,0.95); 
+            border-radius: 15px; 
+            padding: 25px; 
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .pc-name { font-weight: bold; font-size: 1.4em; color: #333; }
+        .status { 
+            padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: bold;
+            text-transform: uppercase; letter-spacing: 1px;
+        }
         .status.waiting { background: #ffc107; color: #000; }
         .status.processing { background: #2196F3; color: white; }
         .status.completed { background: #4CAF50; color: white; }
-        .info { font-size: 14px; color: #666; }
+        
+        .overall-progress { margin: 20px 0; }
+        .progress-label { display: flex; justify-content: space-between; margin-bottom: 5px; font-weight: 600; color: #555; }
+        .progress-bar { 
+            width: 100%; height: 25px; background: #e0e0e0; border-radius: 15px; 
+            overflow: hidden; position: relative; margin-bottom: 15px;
+        }
+        .progress-fill { 
+            height: 100%; background: linear-gradient(90deg, #4CAF50, #45a049); 
+            transition: width 0.5s ease; border-radius: 15px;
+            position: relative;
+        }
+        .progress-text { 
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            color: white; font-weight: bold; text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+        }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin: 20px 0; }
+        .stat-item { 
+            background: #f8f9fa; padding: 12px; border-radius: 8px; text-align: center;
+            border-left: 4px solid #4CAF50;
+        }
+        .stat-value { font-size: 1.3em; font-weight: bold; color: #333; }
+        .stat-label { font-size: 0.9em; color: #666; margin-top: 4px; }
+        
+        .videos-section { margin-top: 25px; }
+        .videos-title { 
+            font-size: 1.1em; font-weight: bold; color: #333; margin-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0; padding-bottom: 8px;
+        }
+        .video-item { 
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 10px 0; border-bottom: 1px solid #f0f0f0;
+        }
+        .video-item:last-child { border-bottom: none; }
+        .video-name { 
+            flex: 1; font-weight: 500; color: #444; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            max-width: 200px;
+        }
+        .video-progress { flex: 0 0 120px; text-align: right; }
+        .video-bar { 
+            width: 80px; height: 8px; background: #e0e0e0; border-radius: 4px; 
+            margin-left: 10px; overflow: hidden; display: inline-block;
+        }
+        .video-fill { height: 100%; background: #2196F3; border-radius: 4px; transition: width 0.3s ease; }
+        
+        .logs-section { 
+            margin-top: 20px; background: #f8f9fa; border-radius: 8px; padding: 15px;
+            max-height: 150px; overflow-y: auto;
+        }
+        .logs-title { font-weight: bold; margin-bottom: 10px; color: #555; }
+        .log-item { 
+            font-size: 0.85em; color: #666; margin: 4px 0; 
+            font-family: 'Courier New', monospace;
+        }
+        
+        .no-data { text-align: center; color: #888; font-style: italic; padding: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🎥 Video Processing Monitor</h1>
-        <div class="timestamp">Last Update: {{ timestamp }}</div>
+        <div class="subtitle">Real-time Multi-PC Processing Dashboard • Last Update: {{ timestamp }}</div>
         
         <div class="pc-grid">
             {% for pc_name, data in pc_data.items() %}
             <div class="pc-card">
-                <div class="pc-name">{{ pc_name }}</div>
-                <div class="status {{ data.status.lower() }}">{{ data.status.upper() }}</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: {{ data.progress_percent }}%"></div>
+                <div class="pc-header">
+                    <div class="pc-name">📱 {{ pc_name }}</div>
+                    <div class="status {{ data.status.lower() }}">{{ data.status }}</div>
                 </div>
-                <div class="info">Progress: {{ "%.1f"|format(data.progress_percent) }}%</div>
-                <div class="info">Last Update: {{ data.last_update }}</div>
+                
+                <div class="overall-progress">
+                    <div class="progress-label">
+                        <span>Overall Progress</span>
+                        <span>{{ "%.1f"|format(data.get('progress_percent', 0)) }}%</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: {{ data.get('progress_percent', 0) }}%">
+                            <div class="progress-text">{{ "%.1f"|format(data.get('progress_percent', 0)) }}%</div>
+                        </div>
+                    </div>
+                </div>
+                
+                {% if data.get('overall_progress') %}
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value">{{ data.overall_progress.processed_frames }}</div>
+                        <div class="stat-label">Processed</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ data.overall_progress.total_frames }}</div>
+                        <div class="stat-label">Total Frames</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ "%.1f"|format(data.overall_progress.fps) }}</div>
+                        <div class="stat-label">FPS</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">{{ "%.0f"|format(data.overall_progress.eta_seconds) }}s</div>
+                        <div class="stat-label">ETA</div>
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if data.get('video_progress') %}
+                <div class="videos-section">
+                    <div class="videos-title">📹 Individual Videos ({{ data.video_progress|length }})</div>
+                    {% for video_name, video_data in data.video_progress.items() %}
+                    <div class="video-item">
+                        <div class="video-name" title="{{ video_name }}">{{ video_name }}</div>
+                        <div class="video-progress">
+                            {{ "%.1f"|format(video_data.progress_percent) }}%
+                            <div class="video-bar">
+                                <div class="video-fill" style="width: {{ video_data.progress_percent }}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {% if data.get('log_messages') %}
+                <div class="logs-section">
+                    <div class="logs-title">📝 Recent Logs</div>
+                    {% for log in data.log_messages[-5:] %}
+                    <div class="log-item">{{ log }}</div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+                
+                {% if not data.get('overall_progress') %}
+                <div class="no-data">No processing data available</div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>

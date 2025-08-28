@@ -71,7 +71,7 @@ class RemoteCameraController():
         return self.wait_for_message("camera_ready")
     
     def start(self, filename=''):
-        copy_calib_files(f"{shared_dir}/{filename}")
+        # copy_calib_files(f"{shared_dir}/{filename}")
         message = "start:"+filename
         self.send_message(message)
         self.wait_for_message("capture_start")

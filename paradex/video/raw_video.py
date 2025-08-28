@@ -9,12 +9,13 @@ from paradex.utils.file_io import shared_dir, home_path
 import bisect
 
 magic_number = 5
+td = 2 / 30
 
 def fill_framedrop(cam_timestamp):
     frameID = cam_timestamp["frameID"]
     real_start = -1
     for i, fi in enumerate(frameID):
-        if fi == 1:
+        if fi == 5:
             real_start = i
     
     frameID = frameID[real_start:]
@@ -27,9 +28,14 @@ def fill_framedrop(cam_timestamp):
     frameID_nodrop = []
 
     time_delta_new = 1 / 30
-    for i in range(1, frameID[-1] * int(time_delta / time_delta_new + 0.5) +1):
+    
+    if time_delta / time_delta_new > 1.01:
+        return None, None
+    
+    for i in range(1, frameID[-1] + 10):
         frameID_nodrop.append(i)
-        pc_time_nodrop.append((i-1)*time_delta_new+offset)
+        pc_time_nodrop.append((i-1)*time_delta_new+offset - td)
+    
     return pc_time_nodrop, frameID_nodrop
 
 def get_synced_data(pc_times, data, data_times):

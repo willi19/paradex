@@ -12,5 +12,6 @@
     },
     "remote_camera":5563,
     "remote_data":5564,
+    "remote_command":5567,
     "signal_generator":"USB0::0x6656::0x0834::770595938::INSTR"
 }

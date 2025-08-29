@@ -66,7 +66,7 @@ class ProcessorLocal():
             if "start" in msg:
                 file_name = msg.split(":")[1]
                 root_path = os.path.join(shared_dir, file_name)
-                print(root_path)
+                print(root_path, file_name, shared_dir)
                 process = Process(target=self._run_process_with_logging, args=(root_path, ))
                 process.start()
         

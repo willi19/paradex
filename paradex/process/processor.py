@@ -184,7 +184,7 @@ class ProcessorMain():
             try:
                 ident, log_data = self.log_socket.recv_multipart(zmq.NOBLOCK)
                 logs = json.loads(log_data)
-                
+                print(logs)
                 # 로그 처리
                 for log in logs:
                     root_dir = log.get("root_dir")

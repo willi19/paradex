@@ -75,6 +75,7 @@ class ProcessorLocal():
                         
     def _run_process_with_logging(self, root_path):
         try:
+            print(root_path)
             self.process(root_path, self.log_list)
             self.log_list.append({"root_dir":root_path, "time":time.time(), "state":"success", "msg":"", "type":"state"})
         except Exception as e:

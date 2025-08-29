@@ -8,6 +8,7 @@
 
 import numpy as np
 import torch
+torch.multiprocessing.set_start_method('spawn')
 
 #----------------------------------------------------------------------------
 # Projection and transformation matrix helpers.

@@ -7,7 +7,6 @@ from paradex.process.util import merge, overlay, match_sync, get_object6D
 from paradex.process.processor import ProcessorLocal
 
 def process(root_dir, logger=[]):
-    import torch
     match_sync(root_dir, logger)
     
     get_object6D(root_dir, logger)

@@ -69,7 +69,7 @@ class ProcessorLocal():
                 file_name = msg.split(":")[1]
                 root_path = os.path.join(shared_dir, file_name)
                 
-                process = Process(target=self._run_process_with_logging, args=(root_path))
+                process = Process(target=self._run_process_with_logging, args=(root_path, ))
                 process.start()
         
         self.send_message("terminated")

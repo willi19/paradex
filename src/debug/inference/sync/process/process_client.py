@@ -17,7 +17,7 @@ def process(root_dir, logger=None):
     
     for i in range(1000):
         time.sleep(0.01)
-        # print(root_dir, time.time(), i)
+        print(root_dir, time.time(), i)
         logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":str(i), "type":"process_msg"})
         
 p = ProcessorLocal(process)

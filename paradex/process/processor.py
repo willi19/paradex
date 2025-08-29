@@ -14,7 +14,7 @@ from paradex.utils.file_io import shared_dir
 class ProcessorLocal():
     def __init__(self, process):
         self.process = process
-        port = get_network_info()["remote_camera"]
+        port = get_network_info()["remote_command"]
         self.socket = get_server_socket(port)
         manager = Manager()
         self.log_list = manager.list()

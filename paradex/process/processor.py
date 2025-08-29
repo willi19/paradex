@@ -25,7 +25,7 @@ class ProcessorLocal():
         log_thread = threading.Thread(target=self.send_log, daemon=True)
         log_thread.start()
         
-        listen_thread = threading.Thread(target=self.send_log, daemon=True)
+        listen_thread = threading.Thread(target=self.listen, daemon=True)
         listen_thread.start()
         
     def send_message(self, message):

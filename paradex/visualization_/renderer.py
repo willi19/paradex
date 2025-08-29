@@ -8,7 +8,6 @@
 
 import numpy as np
 import torch
-torch.multiprocessing.set_start_method('forkserver',force=True)
 
 #----------------------------------------------------------------------------
 # Projection and transformation matrix helpers.

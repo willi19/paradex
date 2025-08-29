@@ -135,7 +135,7 @@ class ProcessorMain():
             try:
                 ident, log_data = self.log_socket.recv_multipart(zmq.NOBLOCK)
                 logs = json.loads(log_data)
-                
+                print(logs)
                 # 로그 처리 (완료 상태 확인)
                 for log in logs:
                     if log.get("state") == "success" or log.get("state") == "error":

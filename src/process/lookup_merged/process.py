@@ -30,6 +30,6 @@ def process(root_dir, logger=[]):
 args = get_argument()
 process_list = get_process_list(args)
 
-for process_path in process_list[:1]:
+for process_path in process_list:
     root_dir = os.path.join(shared_dir, process_path)
     process(root_dir, [])

@@ -76,7 +76,7 @@ class ProcessorLocal():
             if "start" in msg:
                 file_name = msg.split(":")[1]
                 root_path = os.path.join(shared_dir, file_name)
-                self._run_process_with_logging, args=(root_path, )
+                self._run_process_with_logging(root_path)
                 
         
         self.send_message("terminated")

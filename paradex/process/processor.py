@@ -9,7 +9,7 @@ from multiprocessing import Process, Queue, Manager
 from paradex.io.capture_pc.util import get_client_socket, get_server_socket
 from paradex.utils.env import get_pcinfo, get_network_info
 from paradex.io.capture_pc.util import get_client_socket, get_server_socket
-from paradex.utils.file_io import shared_dir
+from paradex.utils.file_io import shared_dir, pc_name
 
 class ProcessorLocal():
     def __init__(self, process):
@@ -51,7 +51,11 @@ class ProcessorLocal():
             time.sleep(1)
             if self.log_list:
                 logs = list(self.log_list)
-                self.log_list[:] = []  
+                self.log_list[:] = []
+                
+                for i in range(len(logs)):
+                    logs[i]["pc"] = pc_name
+                      
                 self.log_socket.send_string(json.dumps(logs))
                 print(json.dumps(logs))
                 
@@ -129,12 +133,11 @@ class ProcessorMain():
     def receive_logs(self):
         while True:
             try:
-                log_data = self.log_socket.recv_string(zmq.NOBLOCK)
+                ident, log_data = self.log_socket.recv_multipart(zmq.NOBLOCK)
                 logs = json.loads(log_data)
                 
                 # 로그 처리 (완료 상태 확인)
                 for log in logs:
-                    print(log)
                     if log.get("state") == "success" or log.get("state") == "error":
                         pc_name = log.get("pc")
                         if pc_name in self.pc_state:
@@ -142,8 +145,6 @@ class ProcessorMain():
                             
             except zmq.Again:
                 time.sleep(0.1)
-            except Exception as e:
-                print(f"Log receive error: {e}")
            
     def monitor(self):
         self.register()
@@ -163,7 +164,6 @@ class ProcessorMain():
                     # 작업 전송
                     message = f"start:{next_dir}"
                     self.socket_dict[pc_name].send_string(message)
-                    print(pc_name, message)
             
             # 모든 작업 완료 시 종료
             if not self.process_dir_list and all(state == "idle" for state in self.pc_state.values()):

@@ -191,8 +191,21 @@ renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=2048, height=1536
 
 for fid in index_list:
     img_dir = os.path.join(he_calib_path, fid, "debug")
-    robot_mesh = rm.get_mesh(int(fid))
     img_dict = {img_name:cv2.imread(os.path.join(img_dir, img_name)) for img_name in serial_list}
+    
+    robot_mesh_list = rm.get_mesh(int(fid))
+    robot_mesh = robot_mesh_list[0]
+    for i in range(1, len(robot_mesh_list)):
+        robot_mesh += robot_mesh_list[i]
+    robot_mesh.transform(X)
+    frame, mask = project_mesh_nvdiff(robot_mesh, renderer)
+    mask = mask.detach().cpu().numpy()[:,:,:,0]
+    mask = mask.astype(np.bool_)
+    for i, img_name in enumerate(serial_list):
+        if np.sum(mask[i]) > 0:
+            overlay_mask(img_dict[img_name], mask[i], 0.3, np.array((255, 0, 0)))
+        
+        
     # os.makedirs(os.path.join(he_calib_path, fid, "overlay"), exist_ok=True)
     cam_robot_pos = X @ robot_cor[int(fid)]
     robot.compute_forward_kinematics(qpos[int(fid)])
@@ -206,16 +219,7 @@ for fid in index_list:
     cam_robot_pos = X @ rp
     for img_name in serial_list:
         draw_pose_axes(img_dict[img_name], cam_robot_pos, cammtx[img_name.split(".")[0]], text="qpos", color=(0,255,0))
-        
-    for mesh in robot_mesh:
-        mesh_ = deepcopy(mesh).transform(X)
-        frame, mask = project_mesh_nvdiff(mesh_, renderer)
-        mask = mask.detach().cpu().numpy()[:,:,:,0]
-        
-        for i, img_name in enumerate(serial_list):
-            if np.sum(mask[i]) > 0:
-                img_dict[img_name] = overlay_mask(img_dict[img_name], mask[i], 0.3, (255, 0, 0))
-                cv2.imwrite(os.path.join("debug", "6d", fid+"_"+img_name), img_dict[img_name])    
-            
-        
     
+    os.makedirs(os.path.join(he_calib_path, fid, "overlay"), exist_ok=True)
+    for img_name in serial_list:
+        cv2.imwrite(os.path.join(he_calib_path, fid, "overlay", f"{img_name}"), img_dict[img_name])    

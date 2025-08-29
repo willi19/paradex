@@ -3,6 +3,8 @@ import time
 import numpy as np
 from scipy.spatial.transform import Rotation as R, Slerp
 
+chime.theme('pokemon')
+
 def home_robot(arm, pose):
     arm.home_robot(pose.copy())  
     

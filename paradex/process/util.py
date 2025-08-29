@@ -18,6 +18,10 @@ from paradex.video.convert_codec import change_to_h264
 from paradex.image.overlay import overlay_mask
 from paradex.image.projection import get_cammtx, project_point, project_mesh, project_mesh_nvdiff
 from paradex.image.merge import merge_image
+from paradex.image.aruco import detect_aruco
+
+from paradex.geometry.triangulate import ransac_triangulation
+from paradex.geometry.math import rigid_transform_3D
 
 def load_robot_type(root_dir):
     raw_dir = os.path.join(os.path.join(root_dir, "raw"))
@@ -38,29 +42,25 @@ def load_robot_type(root_dir):
     
     return arm_name, hand_name
 
-def match_sync(root_dir, logger=None):
-    if logger:
-        logger.update_status("match_sync : Checking directory structure...")
+def match_sync(root_dir, logger=[]):
+    logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":"match_sync : Checking directory structure...", "type":"process_msg"})
     
     raw_dir = os.path.join(os.path.join(root_dir, "raw"))
     if not os.path.exists(raw_dir):
-        if logger:
-            logger.error("No raw directory")
+        logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":"No raw directory", "type":"process_error"})
         return False
     
     arm_name, hand_name = load_robot_type(root_dir)
     
     if not os.path.exists(os.path.join(raw_dir, "timestamp", "camera_timestamp.json")):
-        if logger:
-            logger.error("match_sync : No timestamp file")
+        logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":"match_sync : No timestamp file", "type":"process_error"})
         return False
         
     timestamp = json.load(open(os.path.join(raw_dir, "timestamp", "camera_timestamp.json")))
     pc_time, fid = fill_framedrop(timestamp)
     
     if not pc_time:
-        if logger:
-            logger.error("match_sync : Timestamp file not valid")
+        logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":"match_sync : Timestamp file not valid", "type":"process_error"})
         return False
     
     os.makedirs(os.path.join(root_dir), exist_ok=True)
@@ -100,7 +100,8 @@ def match_sync(root_dir, logger=None):
 
     return True
 
-def process_video_list(video_dir, data, process_frame, logger=None):
+def process_video_list(video_dir, data, process_frame, logger=[]):
+    root_dir = os.path.dirname(video_dir)
     video_name_list = os.listdir(video_dir)    
     cap_dict = {}
     finished = {}
@@ -120,16 +121,15 @@ def process_video_list(video_dir, data, process_frame, logger=None):
     while True:
         img_dict = {}
         cnt = 0
-        asdf_start_time = time.time()
         for name, cap in cap_dict.items():
             if finished[name]:
-                img_dict[name] = np.zeros((h, w, 3))
+                img_dict[name] = np.zeros((h, w, 3), dtype=np.uint8)
                 continue
             
             ret, frame = cap.read()
             if not ret:
                 finished[name] = True
-                img_dict[name] = np.zeros((h, w, 3))
+                img_dict[name] = np.zeros((h, w, 3), dtype=np.uint8)
                 continue
             
             img_dict[name] = frame.copy()
@@ -150,15 +150,15 @@ def process_video_list(video_dir, data, process_frame, logger=None):
             eta_str = f"{int(eta_seconds//60):02d}:{int(eta_seconds%60):02d}"
         else:
             eta_str = "calculating..."
-        
-        if logger:
-            logger.update_status(f"Processing frame {fid}/{max_frames} - ETA: {eta_str}")
-        print(f"Processing frame {fid}/{max_frames} - ETA: {eta_str}")
+        if fid % 10 == 1:
+            print(f"Processing frame {fid}/{max_frames} - ETA: {eta_str}")
+            
+        logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":f"Processing frame {fid}/{max_frames} - ETA: {eta_str}", "type":"process_cnt"})
         
     for _, cap in cap_dict.items():
         cap.release()
 
-def download_files(src_dir, dst_dir, logger=None):
+def download_files(src_dir, dst_dir):
     """
     Copy all files from src_dir to dst_dir/overlay.
     - Skip if the file already exists in dst_dir.
@@ -175,26 +175,96 @@ def download_files(src_dir, dst_dir, logger=None):
         # 이미 완료된 파일이 있으면 skip
         if os.path.exists(dst_file):
             continue
-
-        if logger:
-            logger.update_status(f"Downloading {src_file} → {dst_file}")
-
+        
         copy_file(src_file, tmp_file)
         os.replace(tmp_file, dst_file)
 
-def overlay(root_dir, logger=None, overwrite=False):
-    os.makedirs(os.path.join(root_dir, "overlay"), exist_ok=True)
+def get_object6D(root_dir, logger=[], overwrite=False):
+    """Calculate 6D object pose from marker detection"""
+
+    # Skip if already exists and not overwriting
+    if not overwrite and os.path.exists(os.path.join(root_dir, "obj_T.npy")):
+        return
+
     # Download video
     download_root_dir = root_dir.replace(shared_dir, download_dir)
     download_video_dir = os.path.join(download_root_dir, "videos")
+    video_dir = os.path.join(root_dir, "videos")
+    
     os.makedirs(download_video_dir, exist_ok=True)
     
-    serial_list = []
-    for video_name in os.listdir(os.path.join(root_dir, "videos")):
-        if logger:
-            logger.update_status(f"Overlay : Downloading video {os.path.join(root_dir, 'video', video_name)}")
-        # copy_file(os.path.join(root_dir, "videos", video_name), os.path.join(download_video_dir, video_name))
-        serial_list.append(video_name.split(".")[0])
+    logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":f"Overlay : Downloading video", "type":"process_msg"})
+    download_files(video_dir, download_video_dir)
+    
+    serial_list = [serial_num.split(".")[0] for serial_num in os.listdir(video_dir)]
+    serial_list.sort()
+    
+    # Extract object name from path
+    name = os.path.basename(os.path.dirname(root_dir))
+
+    # Load marker offset
+    marker_offset = np.load(os.path.join(shared_dir, "object", "marker_offset", name, "0", "marker_offset.npy"), allow_pickle=True).item()
+
+    # Load camera parameters
+    intrinsic, extrinsic = load_camparam(root_dir)
+    cammat = get_cammtx(intrinsic, extrinsic)
+    c2r = load_c2r(root_dir)
+    
+    def process_frame(img_dict, video_path, fid, data):
+        (cammat, c2r, obj_T, marker_offset) = data
+        marker_id = list(marker_offset.keys())
+        cor_2d = {}
+        
+        for img_name, frame in img_dict.items():
+            try:
+                undist_kypt, ids = detect_aruco(frame)
+            except:
+                import pdb; pdb.set_trace()
+            if ids is None:
+                continue
+            
+            for id, corner in zip(ids, undist_kypt):
+                if int(id) not in marker_id:
+                    continue
+                
+                if int(id) not in cor_2d:
+                    cor_2d[int(id)] = {"2d":[], "cammtx":[]}
+                cor_2d[int(id)]["2d"].append(corner.squeeze())
+                cor_2d[int(id)]["cammtx"].append(cammat[img_name])
+        
+        cor_3d = {id:ransac_triangulation(np.array(dict_2d["2d"]), np.array(dict_2d["cammtx"])) 
+                    for id, dict_2d in cor_2d.items()}
+            
+        A = []
+        B = []
+        for id in cor_3d.keys():
+            if cor_3d[id] is None:
+                continue
+            A.append(marker_offset[id])
+            B.append(cor_3d[id])
+        
+        if len(A) == 0:
+            obj_T.append(np.zeros((4,4)))
+            return
+        
+        A = np.concatenate(A)
+        B = np.concatenate(B)
+        
+        obj_T.append(np.linalg.inv(c2r) @ rigid_transform_3D(A, B))
+    
+    obj_T = []
+    data = (cammat, c2r, obj_T, marker_offset)
+    process_video_list(download_video_dir, data, process_frame)
+    
+    # Save results
+    obj_T = {name:np.array(obj_T)}
+    np.save(os.path.join(root_dir, "obj_T.npy"), obj_T)
+                   
+def overlay(root_dir, logger=[], overwrite=False):
+    os.makedirs(os.path.join(root_dir, "overlay"), exist_ok=True)
+    video_dir = os.path.join(root_dir, "videos")
+    
+    serial_list = [serial_num.split(".")[0] for serial_num in os.listdir(video_dir)]
     serial_list.sort()
     
     if not overwrite:
@@ -204,9 +274,15 @@ def overlay(root_dir, logger=None, overwrite=False):
                 done = False
                 break
         if done:
-            if logger:
-                logger.update_status(f"Overlay : Done")
             return
+          
+    # Download video
+    download_root_dir = root_dir.replace(shared_dir, download_dir)
+    download_video_dir = os.path.join(download_root_dir, "videos")
+    os.makedirs(download_video_dir, exist_ok=True)
+    
+    logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":f"Overlay : Downloading video", "type":"process_msg"})
+    download_files(video_dir, download_video_dir)
     
     # load object
     obj_dict = {}
@@ -286,20 +362,22 @@ def overlay(root_dir, logger=None, overwrite=False):
     process_video_list(download_video_dir, data, process_frame)
     
     for serial_name in serial_list:
+        logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":f"overlay: converting video {serial_name}", "type":"process_msg"})
         out_video[serial_name].release()
         change_to_h264(os.path.join(download_root_dir, "overlay", f"{serial_name}_tmp.avi"), os.path.join(download_root_dir, "overlay", f"{serial_name}.mp4"))
         copy_file(os.path.join(download_root_dir, "overlay", f"{serial_name}.mp4"), os.path.join(root_dir, "overlay", f"{serial_name}.mp4"))
     
-def merge(root_dir, logger=None, overwrite=True):
+def merge(root_dir, logger=[], overwrite=False):
     if not overwrite and os.path.exists(os.path.join(root_dir, "merged.mp4")):
-        if logger:
-            logger.update_status(f"Merge : Done")
+        logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":f"Merge : Done", "type":"process_msg"})
         return
     
     # Download video
     video_dir = os.path.join(root_dir, "overlay")
     download_root_dir = root_dir.replace(shared_dir, download_dir)
     download_video_dir = os.path.join(download_root_dir, "overlay")
+    logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":f"Merge : Downloading video", "type":"process_msg"})
+        
     download_files(video_dir, download_video_dir)
     
     serial_list = [serial_num.split(".")[0] for serial_num in os.listdir(video_dir)]
@@ -318,8 +396,9 @@ def merge(root_dir, logger=None, overwrite=True):
         frame = cv2.resize(frame, (2048,1536))
         out_video.write(frame)
                        
-    process_video_list(download_video_dir, out_video, process_frame)
+    process_video_list(download_video_dir, out_video, process_frame, logger)
     
+    logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":f"Merge: converting video", "type":"process_msg"})
     out_video.release()
     change_to_h264(os.path.join(download_root_dir, "merged_tmp.avi"), os.path.join(download_root_dir, "merged.mp4"))
     copy_file(os.path.join(download_root_dir, "merged.mp4"), os.path.join(root_dir, "merged.mp4"))

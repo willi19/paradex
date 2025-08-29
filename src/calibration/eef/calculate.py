@@ -151,7 +151,7 @@ theta, b_x = solve(A_list, B_list)
 X[0:3, 0:3] = theta
 X[0:3, -1] = b_x.flatten()
 X, loss = solve_axb_pytorch(A_list, B_list,X.copy(),learning_rate=0.001)
-print(X)
+np.save(os.path.join(eef_calib_path, "0", "eef.npy"), X)
 
 for i in range(len(index_list)-1):
     # print(A_list[i] @ X - X @ B_list[i], "error")
@@ -180,16 +180,19 @@ renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=2048, height=1536
 
 for fid in index_list:
     img_dir = os.path.join(eef_calib_path, fid, "undistort")
-    robot_mesh = rm.get_mesh(int(fid))
+    robot_mesh_list = rm.get_mesh(int(fid))
+    robot_mesh = robot_mesh_list[0]
+    for i in range(1, len(robot_mesh_list)):
+        robot_mesh += robot_mesh_list[i]
+        
     img_dict = {img_name:cv2.imread(os.path.join(img_dir, img_name)) for img_name in serial_list}
     os.makedirs(os.path.join(eef_calib_path, fid, "overlay"), exist_ok=True)
     
-    for mesh in robot_mesh:
-        frame, mask = project_mesh_nvdiff(mesh, renderer)
-        mask = mask.detach().cpu().numpy()[:,:,:,0]
+    frame, mask = project_mesh_nvdiff(robot_mesh, renderer)
+    mask = mask.detach().cpu().numpy()[:,:,:,0].astype(np.bool_)
         
-        for i, img_name in enumerate(serial_list):
-            img_dict[img_name] = overlay_mask(img_dict[img_name], mask[i], 0.3, (0, 255, 0))
+    for i, img_name in enumerate(serial_list):
+        overlay_mask(img_dict[img_name], mask[i], 0.7, np.array((0, 255, 0)))
     
     for img_name in serial_list:
         cv2.imwrite(os.path.join(eef_calib_path, fid, "overlay", img_name), img_dict[img_name])    

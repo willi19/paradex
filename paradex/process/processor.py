@@ -38,7 +38,6 @@ class ProcessorLocal():
         print("start register")
         ident, msg = self.socket.recv_multipart()
         main_pc_ip = ident.decode().split(":")[0]
-        print(main_pc_ip)
         msg = msg.decode()
         if msg == "register":
             self.ident = ident

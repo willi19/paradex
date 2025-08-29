@@ -57,6 +57,9 @@ class ProcessorLocal():
                 
                 for i in range(len(logs)):
                     logs[i]["pc"] = pc_name
+                    logs[i]['root_dir'] = logs[i]['root_dir'].replace(shared_dir, "")
+                    if logs[i]['root_dir'][0] == "/":
+                        logs[i]['root_dir'] = logs[i]['root_dir'][1:]
                       
                 self.log_socket.send_string(json.dumps(logs))
                 

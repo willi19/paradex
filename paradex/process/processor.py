@@ -53,6 +53,7 @@ class ProcessorLocal():
                 logs = list(self.log_list)
                 self.log_list[:] = []  
                 self.log_socket.send_string(json.dumps(logs))
+                print(json.dumps(logs))
                 
     def listen(self):
         while True:

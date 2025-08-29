@@ -5,6 +5,9 @@ import os
 import threading
 import time
 from multiprocessing import Process, Queue, Manager
+import multiprocessing as mp
+mp.set_start_method('spawn', force=True)
+
 from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 

@@ -11,10 +11,11 @@ from util import get_process_list, get_argument, get_path
 pc_info = get_pcinfo()
 pc_list = list(pc_info.keys())
     
-run_script(f"python src/debug/inference/sync/process/process_client.py", pc_list)
 
 args = get_argument()
 process_list = get_process_list(args)
+
+# run_script(f"python src/process/lookup_merged/process_client.py", pc_list)
 
 p = ProcessorMain(process_list)
 while not p.finish:

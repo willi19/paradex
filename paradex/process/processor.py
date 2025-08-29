@@ -38,7 +38,7 @@ class ProcessorLocal():
         print("start register")
         ident, msg = self.socket.recv_multipart()
         main_pc_ip = ident.decode().split(":")[0]
-        
+        print(main_pc_ip)
         msg = msg.decode()
         if msg == "register":
             self.ident = ident
@@ -52,7 +52,6 @@ class ProcessorLocal():
             time.sleep(1)
             if self.log_list:
                 logs = list(self.log_list)
-                print(logs, "log")
                 self.log_list[:] = []  
                 self.log_socket.send_string(json.dumps(logs))
                 
@@ -67,7 +66,6 @@ class ProcessorLocal():
             if "start" in msg:
                 file_name = msg.split(":")[1]
                 root_path = os.path.join(shared_dir, file_name)
-                print(root_path, file_name, shared_dir)
                 process = Process(target=self._run_process_with_logging, args=(root_path, ))
                 process.start()
         
@@ -76,7 +74,6 @@ class ProcessorLocal():
                         
     def _run_process_with_logging(self, root_path):
         try:
-            print(root_path)
             self.process(root_path, self.log_list)
             self.log_list.append({"root_dir":root_path, "time":time.time(), "state":"success", "msg":"", "type":"state"})
         except Exception as e:

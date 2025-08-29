@@ -59,7 +59,6 @@ class ProcessorLocal():
         while True:
             ident, msg = self.socket.recv_multipart()
             msg = msg.decode()
-            print(msg)
             
             if msg == "quit":
                 break

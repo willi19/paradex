@@ -9,7 +9,7 @@ from paradex.process.processor import ProcessorMain
 pc_info = get_pcinfo()
 pc_list = list(pc_info.keys())
     
-run_script(f"python src/debug/inference/sync/process/process_client.py", pc_list)
+# run_script(f"python src/debug/inference/sync/process/process_client.py", pc_list)
 
 root_dir = os.path.join(shared_dir, "debug_", "inference")
 process_list = []

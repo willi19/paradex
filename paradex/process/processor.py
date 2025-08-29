@@ -40,6 +40,7 @@ class ProcessorLocal():
         main_pc_ip = ident.decode().split(":")[0]
         
         msg = msg.decode()
+        print(msg)
         if msg == "register":
             self.ident = ident
             log_port = get_network_info()["remote_data"]
@@ -97,6 +98,7 @@ class ProcessorMain():
         self.finish = False
         
         monitor_thread = threading.Thread(target=self.monitor, daemon=True)
+        monitor_thread.start()
         
     def register(self):
         self.send_message("register")   
@@ -115,6 +117,7 @@ class ProcessorMain():
                 if recv_dict[pc_name]:
                     continue
                 recv_msg = socket.recv_string()
+                print(recv_msg)
                 if recv_msg == message:
                     recv_dict[pc_name] = True
 

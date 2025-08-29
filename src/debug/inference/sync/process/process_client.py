@@ -14,7 +14,6 @@ def process(root_dir, logger=None):
     # download_root_dir = root_dir.replace(shared_dir, download_dir)
     # if os.path.exists(download_root_dir):
     #     shutil.rmtree(download_root_dir)
-    print(root_dir)
     
     for i in range(1000):
         time.sleep(0.01)

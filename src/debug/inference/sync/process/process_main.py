@@ -16,6 +16,9 @@ process_list = []
 for index in os.listdir(root_dir):
     index_dir = os.path.join(root_dir, index)
     index_dir = index_dir.replace(shared_dir, "")
+    if index_dir[0] == "/":
+        index_dir = index_dir[1:]
+        
     process_list.append(index_dir)
 
 p = ProcessorMain(process_list)

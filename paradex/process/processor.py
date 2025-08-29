@@ -52,6 +52,7 @@ class ProcessorLocal():
             time.sleep(1)
             if self.log_list:
                 logs = list(self.log_list)
+                print(logs, "log")
                 self.log_list[:] = []  
                 self.log_socket.send_string(json.dumps(logs))
                 

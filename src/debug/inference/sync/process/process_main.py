@@ -14,7 +14,9 @@ pc_list = list(pc_info.keys())
 root_dir = os.path.join(shared_dir, "debug_", "inference")
 process_list = []
 for index in os.listdir(root_dir):
-    process_list.append(os.path.join(root_dir, index))
+    index_dir = os.path.join(root_dir, index)
+    index_dir = index_dir.replace(shared_dir, "")
+    process_list.append(index_dir)
 
 p = ProcessorMain(process_list)
 while not p.finish:

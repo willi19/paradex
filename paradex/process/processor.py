@@ -40,7 +40,6 @@ class ProcessorLocal():
         main_pc_ip = ident.decode().split(":")[0]
         
         msg = msg.decode()
-        print(msg)
         if msg == "register":
             self.ident = ident
             log_port = get_network_info()["remote_data"]
@@ -61,6 +60,8 @@ class ProcessorLocal():
         while True:
             ident, msg = self.socket.recv_multipart()
             msg = msg.decode()
+            print(msg)
+            
             if msg == "quit":
                 break
             
@@ -117,7 +118,6 @@ class ProcessorMain():
                 if recv_dict[pc_name]:
                     continue
                 recv_msg = socket.recv_string()
-                print(recv_msg)
                 if recv_msg == message:
                     recv_dict[pc_name] = True
 
@@ -166,6 +166,7 @@ class ProcessorMain():
                     # 작업 전송
                     message = f"start:{next_dir}"
                     self.socket_dict[pc_name].send_string(message)
+                    print(pc_name, message)
             
             # 모든 작업 완료 시 종료
             if not self.process_dir_list and all(state == "idle" for state in self.pc_state.values()):

@@ -7,13 +7,13 @@ from paradex.process.util import merge, overlay, match_sync, get_object6D
 from paradex.process.processor import ProcessorLocal
 
 def process(root_dir, logger=[]):
-    match_sync(root_dir, logger)
+    match_sync(root_dir, logger, overwrite=True)
     
-    get_object6D(root_dir, logger)
+    get_object6D(root_dir, logger, overwrite=True)
     
-    overlay(root_dir, logger)
+    overlay(root_dir, logger, overwrite=True)
     
-    merge(root_dir, logger)
+    merge(root_dir, logger, overwrite=True)
     
     download_root_dir = root_dir.replace(shared_dir, download_dir)
     if os.path.exists(download_root_dir):

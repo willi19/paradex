@@ -27,20 +27,21 @@ def load_demo(demo_path):
     
     obj_T_dict = np.load(os.path.join(demo_path, "obj_T.npy"), allow_pickle=True).item()
     obj_T = list(obj_T_dict.values())[0]
-    
+    import pdb; pdb.set_trace()
     T = min(obj_T.shape[0], hand_qpos.shape[0])
     split_t = -1
     max_h = -1
-    
+    pick_6D = np.zeros((4,4))
     for step in range(T):
         if np.linalg.norm(obj_T[step]) < 0.1:
             continue
+        if np.linalg.norm(pick_6D) < 0.1:
+            pick_6D = obj_T[step].copy()
         place_6D_orig = obj_T[step].copy()
         if obj_T[step, 2, 3] > max_h:
             max_h = obj_T[step, 2, 3]
             split_t = step
-    
-    pick_6D = normalize(obj_T[0].copy())
+    # pick_6D = normalize(obj_T[0].copy())
     place_6D = normalize(place_6D_orig.copy())
         
     if np.linalg.norm(obj_T[0]) < 0.1:
@@ -89,14 +90,16 @@ if args.obj == None:
     name_list.sort()
 
 else:
-    name_list = args.obj_name
+    name_list = args.obj
     
 for name in name_list:
     vis_list = []
     index_list = os.listdir(os.path.join(shared_dir, 'capture', "lookup", name))
     for index in index_list:
         demo_path = os.path.join(shared_dir, 'capture', "lookup", name, index)
-        
+        if os.path.exists(os.path.join(demo_path, "pick.npy")) and os.path.exists(os.path.join(demo_path, "place.npy")):
+            continue
+    
         pick, place, pick_hand, place_hand, pick_obj_T, place_obj_T = load_demo(demo_path)
         
         np.save(f"{demo_path}/pick.npy", pick)

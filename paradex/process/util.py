@@ -242,7 +242,7 @@ def get_object6D(root_dir, logger=[], overwrite=False):
                 continue
             A.append(marker_offset[id])
             B.append(cor_3d[id])
-        
+            
         if len(A) == 0:
             obj_T.append(np.zeros((4,4)))
             return

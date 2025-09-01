@@ -15,13 +15,13 @@ def fill_framedrop(cam_timestamp):
     frameID = cam_timestamp["frameID"]
     real_start = -1
     for i, fi in enumerate(frameID):
-        if fi == 5:
+        if fi > 5:
             real_start = i
+            break
     
     frameID = frameID[real_start:]
     pc_time = np.array(cam_timestamp["pc_time"])[real_start:]
     timestamp = np.array(cam_timestamp["timestamps"])
-
     time_delta = (pc_time[-1] - pc_time[0]) / (frameID[-1] - frameID[0])
     offset = np.mean(pc_time - (np.array(frameID)-1)*time_delta)
     pc_time_nodrop = []

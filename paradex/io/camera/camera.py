@@ -25,14 +25,39 @@ class Camera():
         self.stream_nodemap = camPtr.GetTLStreamNodeMap() 
         self.nodeMap = camPtr.GetNodeMap() 
         
+        self.configure()
+        # return ret
+    
+    def configure(self):
         ret = True
         ret &= self.configureNodeSettings(self.nodeMap)
         ret &= self.configureBuffer(self.stream_nodemap)
-
         if not ret:
             raise RuntimeError("Failed to configure camera settings")
-        # return ret
     
+    def change_mode(self, mode, syncMode):
+        self.mode = mode
+        
+        buffer_count = ps.CIntegerPtr(self.nodeMap.GetNode('StreamBufferCountManual'))
+        if not ps.IsAvailable(buffer_count) or not ps.IsWritable(buffer_count):
+            return False
+        
+        if self.mode == "video":
+            buffer_count.SetValue(10)
+
+        else:
+            buffer_count.SetValue(1)
+        self.configureAcquisition(self.nodeMap)
+        
+        if not syncMode and self.syncMode:
+            ret &= self.configureFrameRate(self.nodeMap)  # we use trigger anyway
+        elif not self.syncMode and syncMode:
+            ret &= self.configureTrigger(self.nodeMap)
+            
+        self.syncMode = syncMode
+        
+        
+        
     def get_serialnum(self):
         device_nodemap = self.cam.GetTLDeviceNodeMap()
         serialnum_entry = device_nodemap.GetNode(

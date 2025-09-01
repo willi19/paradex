@@ -33,4 +33,4 @@ def qpose_dict_to_traj(q_pose_dict):
         q_list.append(q_pose_dict[key])
     q_array = np.array(q_list)
     
-    return q_array[:,:6], q_array[:,6:]
+    return q_array[:,:], q_array[:,6:]

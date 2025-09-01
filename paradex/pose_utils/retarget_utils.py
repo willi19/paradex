@@ -154,7 +154,7 @@ def align_object_front(T, up_world, front_ref_world, db_local):
     cos_theta = np.dot(f_world, front_ref_world)
     sin_theta = np.dot(np.cross(f_world, front_ref_world), up_world)
     theta = np.arctan2(sin_theta, cos_theta)
-
+    print(theta)
     # Rodrigues 공식
     axis = up_world
     K = np.array([
@@ -165,7 +165,7 @@ def align_object_front(T, up_world, front_ref_world, db_local):
     R_align = np.eye(3) + np.sin(theta)*K + (1-np.cos(theta))*(K@K)
 
     # 새로운 rotation
-    R_new = R_obj @ R_align
+    R_new = R_align @ R_obj
 
     # 새로운 pose
     T_new = T.copy()
@@ -217,7 +217,6 @@ def make_W_from_up_front(up_prev, front_prev, up_today, front_today,
     R_today = np.stack([r_t, u_t, f_t], axis=1)
     R_W = R_today @ R_prev.T
 
-    # (선택) 수치 안전장치: det<0이면 right 뒤집어 우손계 보장
     if np.linalg.det(R_W) < 0:
         r_t = -r_t
         f_t = _norm(np.cross(r_t, u_t))
@@ -322,7 +321,7 @@ def get_keypoint_trajectory(scene_path, start_6d, obj_name, no_rot=False):
         start_6d = align_object_front(start_6d, up_world, front_ref_world, db_local)
     
     W = make_W_from_up_front(prev_up_world, prev_front_ref_world, up_world, front_ref_world)
-    import pdb; pdb.set_trace()
+
     new_obj_trajectory = {}
     keypoint_dict = {}
     for frame in range(total_frames):
@@ -338,7 +337,6 @@ def get_keypoint_trajectory(scene_path, start_6d, obj_name, no_rot=False):
         keypoint_dict[frame] = keypoint_new_coord
     
 
-    import pdb; pdb.set_trace()
     return keypoint_dict, new_obj_trajectory
 
 

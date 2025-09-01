@@ -4,6 +4,7 @@ import numpy as np
 import shutil
 import torch
 import copy
+import time
 
 from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.image.aruco import triangulate_marker
@@ -16,18 +17,42 @@ from paradex.pose_utils.io import get_obj_info
 from paradex.pose_utils.vis_utils_nvdiff import BatchRenderer
 from paradex.pose_utils.renderer_utils import show_res_cv2, grid_image
 
+
+def get_goal_position(img_dict, marker_id):
+    intrinsic, extrinsic = load_current_camparam()
+    c2r = load_latest_C2R()
+    c2r = np.linalg.inv(c2r)
+
+    cor_3d = triangulate_marker(img_dict, intrinsic, extrinsic,'4X4_50')
+    robot_3d = {}
+    
+    for id, cor in cor_3d.items():
+        if cor is None:
+            continue
+        robot_3d[id] = (c2r[:3,:3] @ cor.T + c2r[:3,3:]).T
+    
+    ret = {}
+    for id in marker_id:
+        xyz = np.mean(robot_3d[int(id)], axis=0)
+        xyz[2] += 0.092 # fix this after changing the object
+        ret[str(id)] = np.eye(4)
+        ret[str(id)][:3,3] = xyz
+        
+    return ret
+    
 def get_image():
     image_path = f'shared_data/inference/obj_6D/image'
     scene_path = f'{shared_dir}/inference/obj_6D/'
     if os.path.exists(os.path.join(shared_dir, "inference", "obj_6D")):
         shutil.rmtree(os.path.join(shared_dir, "inference", "obj_6D"))
         os.makedirs(os.path.join(shared_dir, "inference", "obj_6D", "image"))
-    
+        time.sleep(0.5)
     pc_info = get_pcinfo()
     pc_list = list(pc_info.keys())
 
     run_script(f"python src/capture/camera/image_client.py", pc_list)
-
+    # print("do")
+    
     camera_loader = RemoteCameraController("image", None)
     camera_loader.start(image_path)
     camera_loader.end()
@@ -40,8 +65,10 @@ def get_image():
 
     return img_dict
 
-def get_current_object_6d_marker(obj_name):
-    img_dict = get_image()    
+def get_current_object_6d_marker(obj_name, img_dict=None):
+    if img_dict is None:
+        img_dict = get_image()    
+    
     intrinsic, extrinsic = load_current_camparam()
     c2r = load_latest_C2R()
     
@@ -49,9 +76,8 @@ def get_current_object_6d_marker(obj_name):
     #### Object pose estimation ####
     cor_3d = triangulate_marker(img_dict, intrinsic, extrinsic)
 
-    marker_offset = np.load(os.path.join(shared_dir, "marker_offset", obj_name, "0", "marker_offset.npy"), allow_pickle=True).item()
+    marker_offset = np.load(os.path.join(shared_dir, "object", "marker_offset", obj_name, "0", "marker_offset.npy"), allow_pickle=True).item()
     marker_id = list(marker_offset.keys())
-
     A = []
     B = []
     for mid in marker_id:
@@ -69,15 +95,17 @@ def get_current_object_6d_marker(obj_name):
     
     return obj_T
 
-def get_current_object_6d(obj_name, marker=False):
+def get_object_6d(obj_name, img_dict, cam_param, marker=False):
+    pass
+
+def get_current_object_6d(obj_name, marker=False, img_dict = None):
     if marker:
-        return get_current_object_6d_marker(obj_name)
+        return get_current_object_6d_marker(obj_name, img_dict)
     
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     
     image_path = f'shared_data/inference/obj_6D/image'
     scene_path = f'{shared_dir}/inference/obj_6D/'
-    img_dict = get_image()
     
     intrinsic, extrinsic = load_current_camparam()
     c2r = load_latest_C2R()

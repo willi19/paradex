@@ -3,6 +3,9 @@ import time
 import numpy as np
 from scipy.spatial.transform import Rotation as R, Slerp
 
+from paradex.image.aruco import triangulate_marker
+from paradex.utils.file_io import load_current_camparam, home_path, shared_dir, load_latest_C2R
+
 chime.theme('pokemon')
 
 def home_robot(arm, pose):

@@ -16,6 +16,24 @@ def get_argument():
 def get_path(args):
     return os.path.join(args.type, "lookup")
 
+def get_robot_name(root_path):
+    arm_name = None
+    hand_name = None
+    
+    raw_path = os.path.join(root_path, "raw")
+    
+    for an in ["xarm", "franka"]:
+        if an in os.listdir(raw_path):
+            arm_name = an
+            break
+    
+    for hn in ["allegro", "inspire"]:
+        if hn in os.listdir(raw_path):
+            hand_name = hn
+            break
+    
+    return arm_name, hand_name
+    
 def get_process_list(args):
     ret = []
     path = get_path(args)

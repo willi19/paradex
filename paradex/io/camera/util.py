@@ -1,11 +1,18 @@
 import os
+import cv2
 
-def get_image():
-    image_path = f'shared_data/inference/obj_6D/image'
-    scene_path = f'{shared_dir}/inference/obj_6D/'
-    if os.path.exists(os.path.join(shared_dir, "inference", "obj_6D")):
-        shutil.rmtree(os.path.join(shared_dir, "inference", "obj_6D"))
-        os.makedirs(os.path.join(shared_dir, "inference", "obj_6D", "image"))
+from paradex.io.capture_pc.connect import run_script
+from paradex.utils.file_io import shared_dir, home_path
+from paradex.utils.env import get_pcinfo
+from paradex.io.capture_pc.camera_main import RemoteCameraController
+
+def get_image(path):
+    image_path = f'shared_data/{path}'
+    os.makedirs(os.path.join(shared_dir, path))
+    
+    # if os.path.exists(os.path.join(shared_dir, "inference", "obj_6D")):
+    #     shutil.rmtree(os.path.join(shared_dir, "inference", "obj_6D"))
+    #     os.makedirs(os.path.join(shared_dir, "inference", "obj_6D", "image"))
     
     pc_info = get_pcinfo()
     pc_list = list(pc_info.keys())
@@ -16,7 +23,8 @@ def get_image():
     camera_loader.start(image_path)
     camera_loader.end()
     camera_loader.quit()
-    image_list = os.listdir(os.path.join(home_path, image_path))
+    
+    image_list = os.listdir(os.path.join(shared_dir, path))
 
     img_dict = {}
     for img_name in image_list:

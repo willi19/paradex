@@ -87,6 +87,7 @@ def find_latest_index(directory):
 def load_current_camparam(name=None):
     if name == None:
         name = find_latest_directory(cam_param_dir)
+    print(name)
     intrinsic_data = json.load(open(os.path.join(cam_param_dir, name, "intrinsics.json")))
     intrinsic = {}
     for serial, values in intrinsic_data.items():
@@ -219,6 +220,14 @@ def load_c2r(demo_path):
     C2R = np.load(os.path.join(demo_path, "C2R.npy"))
     return C2R
 
+def load_eef(demo_path):
+    eef= np.load(os.path.join(demo_path, "eef.npy"))
+    return eef
+
+def load_eef(demo_path):
+    eef = np.load(os.path.join(demo_path, "eef.npy"))
+    return eef
+
 
 def get_robot_urdf_path(arm_name=None, hand_name=None):
     if arm_name == None:
@@ -240,3 +249,7 @@ def copy_calib_files(save_path):
 def load_latest_C2R():
     name = find_latest_directory(handeye_calib_path)
     return load_c2r(os.path.join(handeye_calib_path, name, "0"))
+
+def load_latest_eef():
+    name = find_latest_directory(eef_calib_path)
+    return load_eef(os.path.join(eef_calib_path, name, "0"))

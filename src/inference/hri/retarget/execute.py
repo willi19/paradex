@@ -10,13 +10,14 @@ from paradex.io.robot_controller import get_arm, get_hand
 from paradex.io.signal_generator.UTGE900 import UTGE900
 from paradex.io.camera.timecode_receiver import TimecodeReceiver
 from paradex.io.capture_pc.camera_main import RemoteCameraController
-from paradex.inference.object_6d import get_current_object_6d
+from paradex.inference.object_6d import get_current_object_6d, get_image
 from paradex.utils.file_io import shared_dir, copy_calib_files, load_latest_C2R
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.utils.env import get_pcinfo, get_serial_list
 from paradex.pose_utils.optimize_initial_frame import object6d_silhouette
 from paradex.pose_utils.retarget_utils import get_keypoint_trajectory, visualize_new_trajectory
 from paradex.pose_utils.retarget import position_retarget, qpose_dict_to_traj
+from paradex.utils.file_io import eef_calib_path, load_latest_eef
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -34,8 +35,8 @@ if __name__ == "__main__":
     hand_name = "allegro"
     
     sensors = {}
-    # sensors["arm"] = get_arm(arm_name)
-    # sensors["hand"] = get_hand(hand_name)
+    sensors["arm"] = get_arm(arm_name)
+    sensors["hand"] = get_hand(hand_name)
     sensors["signal_generator"] = UTGE900()
     sensors["timecode_receiver"] = TimecodeReceiver()
     
@@ -46,13 +47,16 @@ if __name__ == "__main__":
     scene_idx = args.index
     scene_path = os.path.join(shared_dir, "capture_", "hri", args.obj_name, str(scene_idx))
 
-    start_6d = get_current_object_6d(obj_name=args.obj_name)
-    
+    # get_image()
+    start_6d = get_current_object_6d(obj_name=args.obj_name, marker=True)
+    c2r = load_latest_C2R()
+
+    start_6d = c2r @ start_6d
     print(start_6d) # camera space
-    import pdb; pdb.set_trace()
 
     # robot space
     hand_trajectory_dict, obj_trajectory_dict = get_keypoint_trajectory(scene_path, start_6d, args.obj_name, no_rot=args.no_rot)
+    import pdb; pdb.set_trace()
     q_pose_dict = position_retarget(hand_trajectory_dict)
     if args.vis:
         visualize_new_trajectory(args.obj_name, hand_trajectory_dict, obj_trajectory_dict, q_pose_dict)
@@ -75,6 +79,8 @@ if __name__ == "__main__":
                         [0, 1, 0, 0.10], 
                         [0, 0, 0, 1]])
     
+    eef = load_latest_eef()
+    
     import pdb; pdb.set_trace()
     while True:
         sensors["arm"].home_robot(start_pos.copy())  
@@ -85,7 +91,21 @@ if __name__ == "__main__":
         chime.info()
         
         # traj, hand_traj = get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand_traj, place_hand_traj)
-        traj, hand_traj = qpose_dict_to_traj()
+        traj, hand_traj = qpose_dict_to_traj(q_pose_dict)
+        
+        def convert_numpy(obj):
+            if isinstance(obj, np.float32) or isinstance(obj, np.float64):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()  
+            raise TypeError(f"Type {type(obj)} is not serializable")
+        with open(os.path.join("qpose.json"), "w", encoding="utf-8") as file:
+            json.dump(q_pose_dict, file, ensure_ascii=False, indent = 4, default=convert_numpy)
+
+
+        for i in range(len(traj)):
+            traj[i] = traj[i] @ np.linalg.inv(eef)
+            
         # start the camera
         run_script(f"python src/capture/camera/video_client.py", pc_list)
         sensors["camera"] = RemoteCameraController("video", serial_list=None, sync=True)
@@ -102,11 +122,11 @@ if __name__ == "__main__":
         c2r = load_latest_C2R()
         os.makedirs(os.path.join(shared_path, str(capture_idx)))
         copy_calib_files(f'{shared_path}/{capture_idx}')
-        np.save(f'{shared_path}/{capture_idx}/C2R.npy', c2r)
-        np.save(f'{shared_path}/{capture_idx}/pick_6D.npy', pick_6D)
-        np.save(f'{shared_path}/{capture_idx}/place_6D.npy', place_6D)
-        np.save(f'{shared_path}/{capture_idx}/traj.npy', traj)
-        np.save(f'{shared_path}/{capture_idx}/hand_traj.npy', hand_traj)
+        # np.save(f'{shared_path}/{capture_idx}/C2R.npy', c2r)
+        # np.save(f'{shared_path}/{capture_idx}/pick_6D.npy', pick_6D)
+        # np.save(f'{shared_path}/{capture_idx}/place_6D.npy', place_6D)
+        # np.save(f'{shared_path}/{capture_idx}/traj.npy', traj)
+        # np.save(f'{shared_path}/{capture_idx}/hand_traj.npy', hand_traj)
         
         # Prepare execution
         sensors["arm"].home_robot(traj[0])

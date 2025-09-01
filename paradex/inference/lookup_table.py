@@ -9,36 +9,46 @@ from paradex.utils.file_io import shared_dir
 lookup_table_path = os.path.join(shared_dir, "capture", "lookup")
 
 def get_pringles_index(hand, pick6D, place6D):
-    lay = False
-    if pick6D[2, 2] < 0.7:# or place6D[2, 2] < 0.7:
-        lay = True
+    # pick_lay = False
+    # if pick6D[2, 2] < 0.7:# or place6D[2, 2] < 0.7:
+    #     pick_lay = True
     
-    table_path = os.path.join(lookup_table_path, "pringles", hand)
-    index_list = os.listdir(table_path)
+    # place_lay = False
+    # if place6D[2, 2] < 0.7:# or place6D[2, 2] < 0.7:
+    #     place_lay = True
     
-    candidate = []
-    for index in index_list:
-        pick_T = np.load(os.path.join(table_path, index, "obj_T.npy"))[0]
-        score = 1
-        if pick_T[2, 2] > 0.7 and lay:
-            score = 0
-        candidate.append((index, score))
+    # table_path = os.path.join(lookup_table_path, "pringles")
+    # index_list = os.listdir(table_path)
     
-    indices, weights = zip(*candidate)
-    selected_index = random.choices(indices, weights=weights, k=1)[0]
-    return selected_index
+    # candidate = []
+    # for index in index_list:
+    #     pick_T = np.load(os.path.join(table_path, index, "pick_obj_T.npy"))[0]
+    #     place_T = np.load(os.path.join(table_path, index, "place_obj_T.npy"))[-1]
+        
+    #     table_pick_lay = (pick_T[2, 2]< 0.7)
+    #     table_place_lay = (place_T[2, 2] < 0.7)
+        
+    #     score = 1
+    #     if pick_lay != table_pick_lay or place_lay != table_place_lay:
+    #         score = 0
+    #     candidate.append((index, score))
+    
+    # indices, weights = zip(*candidate)
+    # selected_index = random.choices(indices, weights=weights, k=1)[0]
+    # return selected_index
+    return "1"
 
 def get_traj(obj, hand, start6D, pick6D, place6D):
     if obj == "pringles":
         index = get_pringles_index(hand, pick6D, place6D)
-        index_path = os.path.join(lookup_table_path, "pringles", hand, index)
+        index_path = os.path.join(lookup_table_path, obj, index)
         
         pick_traj = np.load(f"{index_path}/pick.npy")
         place_traj = np.load(f"{index_path}/place.npy")
         
         pick_hand_traj = np.load(f"{index_path}/pick_hand.npy")
         place_hand_traj = np.load(f"{index_path}/place_hand.npy")
-        start_hand = np.zeros((pick_hand_traj.shape[0]))
+        start_hand = np.zeros((pick_hand_traj.shape[1]))
         
         pick_traj = pick6D @ pick_traj
         place_traj = place6D @ place_traj 

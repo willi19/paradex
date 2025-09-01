@@ -27,6 +27,7 @@ MEDIA_EDGES = [
     (13, 17), (17, 18), (18, 19), (19, 20),    # little
     (0, 17),                                   # wrist to little base
 ]
+IDLE_TIMEOUT = 10
 
 
 def _homogenize(T: np.ndarray) -> np.ndarray:
@@ -553,12 +554,19 @@ class KeypointObjectCameraVisualizer:
 
     # ------------------------------ Loop ------------------------------
     def spin(self) -> None:
+        last_client_seen = time.time()
+    
         """Simple playback loop. Call after setup."""
         if self.gui_timestep is None:
             raise RuntimeError("Call add_hand_and_object(...) before spin().")
         while True:
             if self.gui_playing and self.gui_playing.value and self.num_frames > 0:
                 self.gui_timestep.value = (int(self.gui_timestep.value) + self.framerate) % self.num_frames
+            if len(self.server.get_clients()) > 0:
+                last_client_seen = time.time()
+            if time.time() - last_client_seen > IDLE_TIMEOUT:
+                print("No clients for a while; exiting.")
+                break
             time.sleep(0.4)
 
 

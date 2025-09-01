@@ -58,15 +58,11 @@ def load_info(video_dir):
         extmat = extrinsic[serial_name]
         extrinsic_list.append(extmat @ c2r)
         intmat = intrinsic[serial_name]['intrinsics_undistort'].copy()
-        intmat[0,0] /= grid_rows
-        intmat[0,2] /= grid_rows
-        intmat[1,1] /= grid_rows
-        intmat[1,2] /= grid_rows
 
         intrinsic_list.append(intmat)
         cammtx_list.append(intrinsic_list[-1] @ extrinsic_list[-1])
     rm = Robot_Module(get_robot_urdf_path("xarm", "allegro"), state=qpos)
-    renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=new_W, height=new_H, device='cuda')
+    renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=2048, height=1536, device='cuda')
 
     return mesh, renderer, cor_3d, obj_T, rm, serial_list, cammtx_list, c2r
 
@@ -84,37 +80,35 @@ def process_frame(img_dict, video_path, fid, data):
     new_W = 2048 // grid_rows
     new_H = 1536 // grid_rows
 
-    for serial_num in serial_list:
-        img_dict[serial_num] = cv2.resize(img_dict[serial_num], (new_W, new_H))
+    # for serial_num in serial_list:
+    #     img_dict[serial_num] = cv2.resize(img_dict[serial_num], (new_W, new_H))
 
     if np.linalg.norm(obj_T) > 0.1:
         start_time = time.time()
         frame, mask = project_mesh_nvdiff(transformed_mesh, renderer)
         # print(time.time()-start_time, "render obj")
         mask = mask.detach().cpu().numpy()[:,:,:,0]
-        resized_mask = []
-        for i in range(len(mask)):
-            resized_mask.append(cv2.resize(mask[i], (new_W, new_H)))
 
         start_time = time.time()
         for i, serial_num in enumerate(serial_list):
-            img_dict[serial_num] = overlay_mask(img_dict[serial_num], resized_mask[i], 0.3, (255,0, 0))
-        # print(time.time()-start_time, "overlay")
+            img_dict[serial_num] = overlay_mask(img_dict[serial_num], mask[i], 0.3, (255,0, 0))
+        # print(time.time()-start_time, "obj overlay")
     
     robot_mesh = rm.get_mesh(fid)
+    print("asdf")
     for mesh in robot_mesh:
         start_time = time.time()
         frame, mask = project_mesh_nvdiff(mesh, renderer)
         # print(time.time()-start_time, "render robot")
         mask = mask.detach().cpu().numpy()[:,:,:,0]
-        resized_mask = []
-        for i in range(len(mask)):
-            resized_mask.append(cv2.resize(mask[i], (new_W, new_H)))
+        # resized_mask = []
+        # for i in range(len(mask)):
+        #     resized_mask.append(cv2.resize(mask[i], (new_W, new_H)))
 
         start_time = time.time()
         for i, serial_num in enumerate(serial_list):
-            img_dict[serial_num] = overlay_mask(img_dict[serial_num], resized_mask[i], 0.3, (0, 255, 0))
-        # print(time.time()-start_time, "overlay")
+            overlay_mask(img_dict[serial_num], mask[i], 0.3, (0, 255, 0))
+        print(time.time()-start_time, "robot overlay-----")
 
     # for id, cor in cor_3d[fid+1].items():
     #     if cor is None:
@@ -163,7 +157,7 @@ if __name__ == '__main__':
         root_dir = os.path.join(shared_dir, "capture", "lookup", name, grasp_type)
         index_list = os.listdir(root_dir)
         
-        for index in index_list:
+        for index in index_list[:2]:
             index_dir = os.path.join(os.path.join(root_dir, str(index)))
             out_dir = os.path.join("capture", name, grasp_type, index)
             os.makedirs(os.path.join(out_dir, "overlay"), exist_ok=True)
@@ -171,8 +165,8 @@ if __name__ == '__main__':
             for video_name in os.listdir(os.path.join(index_dir, "videos")):
                 copy_file(os.path.join(index_dir, "videos", video_name), os.path.join(out_dir, "videos", video_name))
             
-            if os.path.exists(os.path.join(out_dir, "merge_overlay.mp4")):
-                continue
+            # if os.path.exists(os.path.join(out_dir, "merge_overlay.mp4")):
+            #     continue
 
             process_video_list(os.path.join(out_dir, "videos"), 
                     os.path.join(out_dir, "overlay"), 

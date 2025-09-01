@@ -3,8 +3,7 @@ import time
 import argparse
 import os
 import chime
-
-chime.theme('pokemon')
+import numpy as np
 
 from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.capture_pc.connect import git_pull, run_script
@@ -19,7 +18,7 @@ from paradex.io.camera.timecode_receiver import TimecodeReceiver
 from paradex.retargetor import Unimanual_Retargetor, HandStateExtractor
 from paradex.geometry.coordinate import DEVICE2WRIST
 
-import numpy as np
+from paradex.inference.util import home_robot
 
 def initialize_device(args):
     controller = {}
@@ -93,7 +92,6 @@ serial_list = get_serial_list()
 c2r = load_latest_C2R()
 
 pc_list = list(pc_info.keys())
-git_pull("merging", pc_list)
 run_script(f"python src/dataset_acquision/lookup/video_client.py", pc_list)
 
 parser = argparse.ArgumentParser()
@@ -101,22 +99,17 @@ parser.add_argument("--arm", choices=['xarm', 'franka'])
 parser.add_argument("--hand", choices=['inspire', 'allegro'])
 parser.add_argument("--device", choices=['xsens', 'occulus'])
 parser.add_argument('--obj_name', required=True)
-parser.add_argument('--grasp_type', required=True)
-
 args = parser.parse_args()
 sensors = initialize_device(args)
 
 state_extractor = HandStateExtractor()
 home_pose = sensors["arm"].get_position().copy()
 
-sensors["arm"].home_robot(home_pose)
-home_start_time = time.time()
-while not sensors["arm"].is_ready():
-    time.sleep(0.01)
+home_robot(sensors["arm"], home_pose)
         
 retargetor = Unimanual_Retargetor(args.arm, args.hand, home_pose)
 
-save_path = os.path.join("capture_", "lookup", args.obj_name, args.grasp_type)
+save_path = os.path.join("capture", "lookup", args.obj_name)
 shared_path = os.path.join(shared_dir, save_path)
 last_capture_idx = -1
 
@@ -126,16 +119,20 @@ else:
     os.makedirs(shared_path, exist_ok=True)
 
 capture_idx = last_capture_idx + 1
+
 while True:
     # prepare for capture, move robot and object
     chime.info()
     time.sleep(2)
+    
     msg, state_hist, state_time = move_robot(sensors)
     if msg == "exit":
         break
+    
     chime.warning()
     time.sleep(2)
     # start
+    
     os.makedirs(f'{shared_path}/{capture_idx}', exist_ok=True)
     copy_calib_files(f'{shared_path}/{capture_idx}')
     np.save(f'{shared_path}/{capture_idx}/C2R.npy', c2r)
@@ -171,19 +168,5 @@ while True:
     
     capture_idx += 1
 
-
-wrist_rot = np.array([[0, 0, 1, 0.3],
-                      [1, 0, 0, -0.15],
-                      [0, 1, 0, 0.10], 
-                      [0, 0, 0, 1]])
-
-sensors["arm"].home_robot(wrist_rot)
-home_start_time = time.time()
-while not sensors["arm"].is_ready():
-    time.sleep(0.01)
-
-chime.info()
-
 for sensor_name, sensor in sensors.items():
-    print(sensor_name)
     sensor.quit()

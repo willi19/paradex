@@ -496,7 +496,9 @@ def get_bbox_center(scene, tg_cams=None, mask_dict = None):
             mask = mask_dict[cam_id]
         # else:
         #     mask = scene.get_mask(cam_id)
-        center = center_bbox_from_mask(mask)
+            center = center_bbox_from_mask(mask)
+        else:
+            center = None
         if center is not None:
             cx, cy = center
             P = scene.proj_matrix[cam_id]

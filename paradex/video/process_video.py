@@ -73,8 +73,7 @@ def process_video_list(video_dir, out_path, data, process_frame):
             break
         
         frame = process_frame(img_dict, video_dir, fid, data)
-        frame = cv2.resize(frame, (w,h))
-
+    
         out.write(frame)
         fid += 1
         print(fid)

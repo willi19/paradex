@@ -84,6 +84,7 @@ class XArmController:
         
     def home_robot(self, homepose):
         assert homepose.shape == (4,4) or homepose.shape == (6,)
+        print(homepose)
         if self.arm.has_err_warn:
             self.arm.clean_warn()
             self.arm.clean_error()
@@ -91,6 +92,8 @@ class XArmController:
         if homepose.shape == (6,):
             self.robot_model.compute_forward_kinematics(homepose.copy())
             homepose = self.robot_model.get_link_pose(self.last_link_id)
+        
+        print(homepose)
         with self.lock:
             self.init = True
             self.homing = True
@@ -161,7 +164,6 @@ class XArmController:
         while not self.exit.is_set():
             start_time = time.time()
             if self.arm.has_err_warn:
-                print("asdfasdf", self.arm.error_code)
                 self.arm.clean_warn()
                 self.arm.clean_error()
                 self.arm.set_state(0)

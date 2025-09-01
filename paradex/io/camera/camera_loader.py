@@ -31,6 +31,7 @@ class CameraManager:
     def __init__(self, mode, serial_list = None, syncMode=True):
         self.exit = Event()
         self.start_capture = Event()
+        self.mode_change = Event()  # 모드 변경 신호
 
         self.save_dir = None
         self.mode = mode
@@ -64,8 +65,20 @@ class CameraManager:
         
         self.save_finish_flag = [Event() for _ in range(self.num_cameras)]
         self.quit_flag = [Event() for _ in range(self.num_cameras)]
+        
+        # 모드 변경 관련 플래그
+        self.mode_change_flag = [Event() for _ in range(self.num_cameras)]
+        self.mode_change_complete = [Event() for _ in range(self.num_cameras)]
 
         self.height, self.width = 1536, 2048
+        
+        # 카메라 객체를 저장할 리스트
+        self.cameras = [None for _ in range(self.num_cameras)]
+        self.syncMode = syncMode
+        
+        # 새로운 모드와 syncMode를 저장할 변수
+        self.new_mode = None
+        self.new_syncMode = None
 
         if self.mode == "stream":
             self.image_array = np.zeros((self.num_cameras, self.height, self.width, 3), dtype=np.uint8)
@@ -73,7 +86,6 @@ class CameraManager:
             self.locks = [Lock() for _ in range(self.num_cameras)]
 
         self.camera_threads = []
-        self.syncMode = syncMode
 
         self.lens_info = json.load(open(os.path.join(config_dir, "camera/lens_info.json"), "r"))
         self.cam_info = json.load(open(os.path.join(config_dir,"camera/camera.json"), "r"))
@@ -92,6 +104,68 @@ class CameraManager:
             for i in range(self.num_cameras):
                 self.capture_threads[i].join()
             raise RuntimeError("Failed to connect to all cameras.")
+
+    def change_mode(self, mode, syncMode=None):
+        """
+        모든 카메라의 모드를 변경합니다.
+        
+        Args:
+            mode (str): 새로운 모드 ("image", "video", "stream")
+            syncMode (bool, optional): 새로운 동기화 모드. None이면 기존 값 유지
+        
+        Returns:
+            bool: 모드 변경 성공 여부
+        """
+        if mode not in ["image", "video", "stream"]:
+            raise ValueError("mode must be 'image', 'video', or 'stream'")
+            
+        # 현재 캡처 중이면 중지
+        if self.start_capture.is_set():
+            self.end()
+        
+        # 새로운 모드 설정
+        self.new_mode = mode
+        if syncMode is not None:
+            self.new_syncMode = syncMode
+        else:
+            self.new_syncMode = self.syncMode
+            
+        # image 모드면 syncMode를 False로 강제 설정
+        if mode == "image":
+            self.new_syncMode = False
+        
+        # 모든 카메라의 모드 변경 플래그 초기화
+        for i in range(self.num_cameras):
+            self.mode_change_complete[i].clear()
+        
+        # 모드 변경 신호 보내기
+        self.mode_change.set()
+        
+        # 모든 카메라의 모드 변경 완료 대기
+        success = True
+        for i in range(self.num_cameras):
+            self.mode_change_complete[i].wait(timeout=10)  # 10초 타임아웃
+            if not self.mode_change_complete[i].is_set():
+                print(f"Camera {self.serial_list[i]} mode change timeout")
+                success = False
+        
+        if success:
+            # 모드 변경 성공시 현재 모드 업데이트
+            old_mode = self.mode
+            self.mode = self.new_mode
+            self.syncMode = self.new_syncMode
+            
+            # stream 모드로 변경시 이미지 배열 초기화
+            if self.mode == "stream" and old_mode != "stream":
+                self.image_array = np.zeros((self.num_cameras, self.height, self.width, 3), dtype=np.uint8)
+                self.frame_num = np.zeros((self.num_cameras,), dtype=np.uint64)
+                if not hasattr(self, 'locks'):
+                    self.locks = [Lock() for _ in range(self.num_cameras)]
+            
+            print(f"Mode changed to {self.mode} (syncMode: {self.syncMode})")
+        
+        self.mode_change.clear()
+        return success
 
     def get_serial_list(self):
         system = ps.System.GetInstance()
@@ -188,6 +262,7 @@ class CameraManager:
         
         try:
             cam = Camera(camPtr, gain, exposure, frame_rate, self.mode, self.syncMode)
+            self.cameras[index] = cam  # 카메라 객체 저장
 
             self.connect_flag[index].set()
             self.connect_success[index].set()
@@ -204,12 +279,35 @@ class CameraManager:
             return 
 
         while not self.exit.is_set():
+            # 모드 변경 체크
+            if self.mode_change.is_set():
+                try:
+                    # 현재 캡처 중이면 중지
+                    if self.start_capture.is_set():
+                        cam.stop()
+                    
+                    # 카메라 모드 변경
+                    cam.change_mode(self.new_mode, self.new_syncMode)
+                    self.mode_change_complete[index].set()
+                    print(f"Camera {serial_num} mode changed to {self.new_mode}")
+                    
+                except Exception as e:
+                    print(f"Failed to change mode for camera {serial_num}: {e}")
+                    self.mode_change_complete[index].set()
+                
+                # 모드 변경 완료까지 대기
+                while self.mode_change.is_set() and not self.exit.is_set():
+                    time.sleep(0.01)
+                continue
+            
             while not self.start_capture.is_set():
                 time.sleep(0.01)
-                if self.exit.is_set():
+                if self.exit.is_set() or self.mode_change.is_set():
                     break
             if self.exit.is_set():
                 break
+            if self.mode_change.is_set():
+                continue
             
             if self.mode == "video":
                 save_dir = f"{home_path}/captures{index // 2 + 1}/{self.save_dir}"
@@ -237,7 +335,7 @@ class CameraManager:
             # cam start takes 0.02 second so should not be a problem(maybe)
             
             while self.start_capture.is_set():
-                if self.exit.is_set():
+                if self.exit.is_set() or self.mode_change.is_set():
                     break
                 raw_frame = cam.get_image()
                 framenum = raw_frame.GetFrameID()
@@ -268,6 +366,7 @@ class CameraManager:
                         np.copyto(self.image_array[index], spin2cv(raw_frame, self.height, self.width))
                         self.frame_num[index] = framenum
                 raw_frame.Release()
+                
             print(f"Camera {serial_num} finished capturing.")
             if self.mode == "video":
                 json.dump(
@@ -303,7 +402,7 @@ class CameraManager:
             
     def end(self):
         for i in range(self.num_cameras):
-            self.save_finish_flag.clear()
+            self.save_finish_flag[i].clear()
         self.start_capture.clear()
         if self.save_dir is not None:
             self.wait_for_saveend()
@@ -327,7 +426,3 @@ class CameraManager:
         
         with self.locks[index]:
             return {"image":self.image_array[index].copy(), "frameid":self.frame_num[index]}
-        
-if __name__ == "__main__":
-    manager = CameraManager(num_cameras=4, duration=180, save_dir="/home/capture16/captures1", is_streaming=False)
-    manager.start()

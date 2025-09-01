@@ -1,52 +1,54 @@
 import time
 import numpy as np
-import chime
+from threading import Event
 import argparse
 import json
 import os
+from datetime import datetime
 
-from paradex.inference.get_lookup_traj import get_traj
+from paradex.inference.simulate import simulate
+from paradex.inference.lookup_table import get_traj
+from paradex.inference.util import home_robot
+from paradex.inference.object_6d import get_current_object_6d, normalize_cylinder, get_goal_position
+
+from paradex.io.camera.util import get_image
 from paradex.io.robot_controller import get_arm, get_hand
 from paradex.io.signal_generator.UTGE900 import UTGE900
 from paradex.io.camera.timecode_receiver import TimecodeReceiver
 from paradex.io.capture_pc.camera_main import RemoteCameraController
-from paradex.inference.object_6d import get_current_object_6d
+from paradex.io.capture_pc.connect import run_script
+
 from paradex.utils.file_io import shared_dir, copy_calib_files, load_latest_C2R
-from paradex.io.capture_pc.connect import git_pull, run_script
-from paradex.utils.env import get_pcinfo, get_serial_list
+from paradex.utils.env import get_pcinfo
+from paradex.utils.keyboard_listener import listen_keyboard
+
+use_sim = False
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--index", default=0, type=int)
-    parser.add_argument("--obj_name", required=True)
-    parser.add_argument("--grasp_type", required=True)
+    parser.add_argument("--object", required=True)
+    parser.add_argument("--hand", required=True)
+    parser.add_argument("--marker", default=False, action="store_true")
+    parser.add_argument("--simple", default=False, action="store_true")
 
     args = parser.parse_args()
     
-    path_planning = [(1, 2), (2, 4), (4, 2), (2, 3), (3, 1), (1, 3), (3, 4), (4, 1), (1, 4), (4, 3), (3, 2), (2, 1)]
-    
+    pc_info = get_pcinfo()
+    pc_list = list(pc_info.keys())
+
     arm_name = "xarm"
-    hand_name = "allegro"
+    hand_name = args.hand
     
     sensors = {}
     sensors["arm"] = get_arm(arm_name)
     sensors["hand"] = get_hand(hand_name)
-    sensors["signal_generator"] = UTGE900()
-    sensors["timecode_receiver"] = TimecodeReceiver()
     
-    pc_info = get_pcinfo()
-    pc_list = list(pc_info.keys())
-    git_pull("merging", pc_list)
+    if not args.simple:
+        sensors["signal_generator"] = UTGE900()
+        sensors["timecode_receiver"] = TimecodeReceiver()
     
-    demo_idx = args.index
-    demo_path = os.path.join("data", "lookup", args.obj_name, args.grasp_type, str(demo_idx))
-
-    pick_traj = np.load(f"{demo_path}/pick.npy")
-    place_traj = np.load(f"{demo_path}/place.npy")
-    pick_hand_traj = np.load(f"{demo_path}/pick_hand.npy")
-    place_hand_traj = np.load(f"{demo_path}/place_hand.npy")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     
-    place_position_list = json.load(open(f"data/lookup/{args.obj_name}/obj_pose.json"))
     start_pos= np.array([[0, 0, 1, 0.3],
                         [1, 0, 0, -0.35],
                         [0, 1, 0, 0.10], 
@@ -56,75 +58,82 @@ if __name__ == "__main__":
                         [1, 0, 0, 0.0],
                         [0, 1, 0, 0.10], 
                         [0, 0, 0, 1]])
-    while True:
-        sensors["arm"].home_robot(start_pos.copy())  
-        home_start_time = time.time()
-        while not sensors["arm"].is_ready():
-            time.sleep(0.01)
-
-        chime.info()
+    
+    
+    c2r = load_latest_C2R()
+    
+    save_path = os.path.join("inference", "lookup", args.object, args.hand)
+    
+    register_dict = get_image(f"inference/register/{timestamp}")
+    place_id_list = ["1", "4"]
+    place_position_dict = get_goal_position(register_dict, place_id_list)
+    
+    shared_path = os.path.join(shared_dir, save_path)
+    os.makedirs(shared_path, exist_ok=True)
+    if len(os.listdir(shared_path)) == 0:
+        capture_idx = 0
+    else:
+        capture_idx = int(max(os.listdir(shared_path), key=lambda x:int(x))) + 1
+    
+    stop_event = Event()
+    start_event = Event()
+ 
+    event_dict = {"q":stop_event, "y":start_event}
+    listen_keyboard(event_dict)
+    
+    while not stop_event.is_set():
+        place_id = place_id_list[int(capture_idx) % len(place_id_list)]
+        place_6D = place_position_dict[place_id]
         
-        place_id = "1" # input(f"place the object to")
-        if place_id == "-1":
+        home_robot(sensors["arm"], start_pos)
+
+        print("press y after fixing object position")        
+        while not start_event.is_set() and not stop_event.is_set():
+            time.sleep(0.1)
+        
+        if stop_event.is_set():
             break
-        # Set directory
-        save_path = os.path.join("inference_", "lookup", args.obj_name, args.grasp_type)
-        shared_path = os.path.join(shared_dir, save_path)
-        os.makedirs(shared_path, exist_ok=True)
-        if len(os.listdir(shared_path)) == 0:
-            capture_idx = 0
-        else:
-            capture_idx = int(max(os.listdir(shared_path), key=lambda x:int(x))) + 1
-            
-        # retister object
-        pick_6D = get_current_object_6d(args.obj_name)
-        if "lay" in args.grasp_type:
-            z = pick_6D[:3, 2]
-            pick_6D[:3,2] = np.array([z[0], z[1], 0])
-            pick_6D[:3,2] /= np.linalg.norm(pick_6D[:3,2])
-
-            pick_6D[:3,0] = np.array([0,0,1])
-            pick_6D[:3,1] = np.array([z[1], -z[0], 0])
-            pick_6D[:3,1] /= np.linalg.norm(pick_6D[:3,2])
-        else:
-            pick_6D[:3,:3] = np.eye(3)
-            
-        place_6D = np.array(place_position_list[place_id])
         
-        traj, hand_traj = get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand_traj, place_hand_traj)
+        start_event.clear()
+        
+        pick_6D = get_current_object_6d(args.object, args.marker)
+        pick_6d = normalize_cylinder(pick_6D)
+
+        choosen_index, traj, hand_traj = get_traj(args.object, hand_name, start_pos.copy(), pick_6D.copy(), place_6D.copy())
+        
+        # Show simulation
+        if use_sim:
+            print("press y if trajectory ok")
+            simulate(traj, hand_traj, pick_6D, place_6D, hand_name, args.object, start_event, stop_event)
+            
+            if stop_event.is_set():
+                break
+            
+            start_event.clear()
         
         # start the camera
-        run_script(f"python src/capture/camera/video_client.py", pc_list)
-        sensors["camera"] = RemoteCameraController("video", serial_list=None, sync=True)
+        if not args.simple:
+            run_script(f"python src/capture/camera/video_client.py", pc_list)
+            sensors["camera"] = RemoteCameraController("video", serial_list=None, sync=True)
 
+            os.makedirs(os.path.join(shared_path, str(capture_idx)))
+            copy_calib_files(f'{shared_path}/{capture_idx}')
+            np.save(f'{shared_path}/{capture_idx}/C2R.npy', c2r)
+            np.save(f'{shared_path}/{capture_idx}/pick_6D.npy', pick_6D)
+            np.save(f'{shared_path}/{capture_idx}/target_6D.npy', place_6D)
+            np.save(f'{shared_path}/{capture_idx}/traj.npy', traj)
+            np.save(f'{shared_path}/{capture_idx}/hand_traj.npy', hand_traj)
+            np.save(f'{shared_path}/{capture_idx}/choosen_index.npy', np.array(choosen_index))
+        
 
-
-        c2r = load_latest_C2R()
-        os.makedirs(os.path.join(shared_path, str(capture_idx)))
-        copy_calib_files(f'{shared_path}/{capture_idx}')
-        np.save(f'{shared_path}/{capture_idx}/C2R.npy', c2r)
-        np.save(f'{shared_path}/{capture_idx}/pick_6D.npy', pick_6D)
-        np.save(f'{shared_path}/{capture_idx}/place_6D.npy', place_6D)
-        np.save(f'{shared_path}/{capture_idx}/traj.npy', traj)
-        np.save(f'{shared_path}/{capture_idx}/hand_traj.npy', hand_traj)
-        
-        # Prepare execution
-        sensors["arm"].home_robot(traj[0])
-        home_start_time = time.time()
-        while not sensors["arm"].is_ready():
-            if time.time() - home_start_time > 0.5:
-                chime.warning()
-                home_start_time = time.time()
-            time.sleep(0.01)
-        
-        chime.success()
-        
         # Start capture
         sensors['arm'].start(f"{shared_path}/{capture_idx}/raw/{arm_name}")
         sensors['hand'].start(f"{shared_path}/{capture_idx}/raw/{hand_name}")
-        sensors['camera'].start(f"{save_path}/{capture_idx}/videos")
-        sensors['timecode_receiver'].start(f"{shared_path}/{capture_idx}/raw/timestamp")
-        sensors["signal_generator"].on(1)
+        
+        if not args.simple:
+            sensors['camera'].start(f"{save_path}/{capture_idx}/videos")
+            sensors['timecode_receiver'].start(f"{shared_path}/{capture_idx}/raw/timestamp")
+            sensors["signal_generator"].on(1)
         
         state_hist = []
         state_time = []
@@ -134,28 +143,30 @@ if __name__ == "__main__":
             state_hist.append(i)
             state_time.append(time.time())
             time.sleep(0.03)  # Simulate time taken for each action
-        
+            
+            if stop_event.is_set():
+                break
         
         sensors["arm"].end()
         sensors["hand"].end()
-        sensors["camera"].end()
-        sensors['timecode_receiver'].end()
-        sensors['signal_generator'].off(1)
+        place_6D = get_current_object_6d(args.object, args.marker)
         
-        os.makedirs(f"{shared_path}/{capture_idx}/raw/state", exist_ok=True)
-        np.save(f"{shared_path}/{capture_idx}/raw/state/state.npy", state_hist)
-        np.save(f"{shared_path}/{capture_idx}/raw/state/time.npy", state_time)
-        sensors["camera"].quit()
-        time.sleep(3) # Need distributor to stop
-        break
+        if not args.simple:
+            sensors["camera"].end()
+            sensors['timecode_receiver'].end()
+            sensors['signal_generator'].off(1)
+            
+            os.makedirs(f"{shared_path}/{capture_idx}/raw/state", exist_ok=True)
+            np.save(f"{shared_path}/{capture_idx}/raw/state/state.npy", state_hist)
+            np.save(f"{shared_path}/{capture_idx}/raw/state/time.npy", state_time)
+            np.save(f'{shared_path}/{capture_idx}/place_6D.npy', place_6D)
+            sensors["camera"].quit()
+            time.sleep(1) # Need distributor to stop
+        
+        capture_idx += 1
+        
     
-    sensors["arm"].home_robot(end_pos)
-    home_start_time = time.time()
-    while not sensors["arm"].is_ready():
-        time.sleep(0.01)
-
-    chime.info()
-    
+    home_robot(sensors["arm"], end_pos.copy())
     for sensor_name, sensor in sensors.items():
         if sensor_name == "camera":
             continue

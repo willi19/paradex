@@ -47,7 +47,7 @@ class RawVideoProcessor():
             try:
                 timestamp = json.load(open(timestamp_path))
             except:
-                self.log.append(f"{video_path} : sync or lan cable connection unstable")
+                self.log.append(f"{video_path} : timestamp file not avaiable")
                 os.remove(video_path)
                 os.remove(timestamp_path)            
                 continue

@@ -4,7 +4,7 @@ import numpy as np
 import cv2
 
 from paradex.image.undistort import undistort_img
-from paradex.geometry.triangulate import ransac_triangulation
+from paradex.geometry.triangulate import ransac_triangulation, triangulate
 from paradex.image.projection import get_cammtx
 
 aruco_type = ["4X4_50", "4X4_100", "4X4_250", "4X4_1000",
@@ -176,7 +176,7 @@ def draw_keypoint(img, kypt, color=(255,0,0)):
             cv2.circle(img, tuple(corner), 1, color, -1)
     return img
 
-def triangulate_marker(img_dict, intrinsic, extrinsic): 
+def triangulate_marker(img_dict, intrinsic, extrinsic, dict_type='6X6_1000'): 
     cammat = get_cammtx(intrinsic, extrinsic)
     
     id_cor = {}
@@ -185,7 +185,7 @@ def triangulate_marker(img_dict, intrinsic, extrinsic):
             continue
         
         undist_img = undistort_img(img.copy(), intrinsic[serial_num])
-        undist_kypt, ids = detect_aruco(undist_img) # Tuple(np.ndarray(1, 4, 2)), np.ndarray(N, 1)
+        undist_kypt, ids = detect_aruco(undist_img, dict_type) # Tuple(np.ndarray(1, 4, 2)), np.ndarray(N, 1)
         
         if ids is None:
             continue

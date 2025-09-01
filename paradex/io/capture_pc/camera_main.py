@@ -1,7 +1,9 @@
 import json
 import time
+
 from paradex.utils.env import get_pcinfo, get_network_info
 from paradex.io.capture_pc.util import get_client_socket
+from paradex.utils.file_io import copy_calib_files, shared_dir
 
 class RemoteCameraController():
     def __init__(self, mode, serial_list,sync=False):  
@@ -69,6 +71,7 @@ class RemoteCameraController():
         return self.wait_for_message("camera_ready")
     
     def start(self, filename=''):
+        # copy_calib_files(f"{shared_dir}/{filename}")
         message = "start:"+filename
         self.send_message(message)
         self.wait_for_message("capture_start")

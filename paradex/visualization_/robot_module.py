@@ -254,6 +254,7 @@ class Robot_Module:
 
         vis_list = []
         for link_nm in self.link_list:
+            
             link_pose = base_T@self.robot_wrapper.get_link_pose(self.robot_wrapper.get_link_index(link_nm))
             # print(f'{link_nm}: {link_pose}')
             for mesh in self.robot_obj.mesh_dict[link_nm]:

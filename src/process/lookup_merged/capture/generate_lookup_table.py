@@ -27,27 +27,27 @@ def load_demo(demo_path):
     
     obj_T_dict = np.load(os.path.join(demo_path, "obj_T.npy"), allow_pickle=True).item()
     obj_T = list(obj_T_dict.values())[0]
-    import pdb; pdb.set_trace()
+    
     T = min(obj_T.shape[0], hand_qpos.shape[0])
     split_t = -1
     max_h = -1
-    pick_6D = np.zeros((4,4))
+    orig_pick_6D = np.zeros((4,4))
     for step in range(T):
         if np.linalg.norm(obj_T[step]) < 0.1:
             continue
-        if np.linalg.norm(pick_6D) < 0.1:
-            pick_6D = obj_T[step].copy()
+        if np.linalg.norm(orig_pick_6D) < 0.1:
+            orig_pick_6D = obj_T[step].copy()
         place_6D_orig = obj_T[step].copy()
         if obj_T[step, 2, 3] > max_h:
             max_h = obj_T[step, 2, 3]
             split_t = step
-    # pick_6D = normalize(obj_T[0].copy())
+    pick_6D = normalize(orig_pick_6D.copy())
     place_6D = normalize(place_6D_orig.copy())
         
     if np.linalg.norm(obj_T[0]) < 0.1:
         print(demo_path)
         
-    pick_6D_diff = np.linalg.inv(obj_T[0]) @ pick_6D
+    pick_6D_diff = np.linalg.inv(orig_pick_6D) @ pick_6D
     place_6D_diff = np.linalg.inv(place_6D_orig) @ place_6D
     
     place_T = min(last_link_pose.shape[0], obj_T.shape[0])

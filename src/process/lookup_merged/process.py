@@ -10,15 +10,15 @@ def process(root_dir, logger=[]):
     print(logger)
     logger = []
     
-    get_object6D(root_dir, logger)
+    get_object6D(root_dir, logger, overwrite=True)
     print(logger)
     logger = []
     
-    overlay(root_dir, logger)
+    overlay(root_dir, logger, overwrite=True)
     print(logger)
     logger = []
     
-    merge(root_dir, logger)
+    merge(root_dir, logger, overwrite=True)
     print(logger)
     logger = []
     

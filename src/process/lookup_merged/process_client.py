@@ -9,11 +9,11 @@ from paradex.process.processor import ProcessorLocal
 def process(root_dir, logger=[]):
     match_sync(root_dir, logger)
     
-    get_object6D(root_dir, logger, overwrite=True)
+    get_object6D(root_dir, logger, overwrite=False)
     
-    overlay(root_dir, logger, overwrite=True)
+    overlay(root_dir, logger, overwrite=False)
     
-    merge(root_dir, logger, overwrite=True)
+    merge(root_dir, logger, overwrite=False)
     
     download_root_dir = root_dir.replace(shared_dir, download_dir)
     if os.path.exists(download_root_dir):

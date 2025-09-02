@@ -48,13 +48,13 @@ class ViserViewer:
             self.hand_nm = hand_nm
             
             self.c2r = np.load(os.path.join(scene_path, 'C2R.npy'))
-            self.obj_T = np.load(os.path.join(scene_path, 'obj_T.npy'))
+            self.obj_T = np.load(os.path.join(scene_path, 'obj_T.npy'), allow_pickle=True).item()[object_nm]
             self.mesh = trimesh.load(open(f"{rsc_path}/object/{object_nm}/{object_nm}.obj"), file_type="obj")# o3d.io.read_triangle_mesh(f"{rsc_path}/{object_nm}/{object_nm}.obj")
             self.load_server()
             
             
-            self.hand_state = np.load(os.path.join(scene_path, hand_nm, "qpos.npy"))
-            self.arm_state = np.load(os.path.join(scene_path, arm_nm, "qpos.npy"))
+            self.hand_state = np.load(os.path.join(scene_path, "hand", "qpos.npy"))
+            self.arm_state = np.load(os.path.join(scene_path, "arm", "qpos.npy"))
             if self.hand_nm == "inspire":
                 self.state = np.concatenate([self.arm_state, parse_inspire(self.hand_state)], axis=1)
             else:

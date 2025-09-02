@@ -3,11 +3,10 @@ import os
 import time
 from scipy.spatial.transform import Rotation
 
-from paradex.utils.file_io import shared_dir, download_dir, eef_calib_path, load_latest_eef, get_robot_urdf_path
+from paradex.utils.file_io import shared_dir, download_dir, eef_calib_path, load_latest_eef
 from paradex.simulator import IsaacSimulator
 from paradex.robot.mimic_joint import parse_inspire
 from paradex.geometry.coordinate import DEVICE2WRIST
-from paradex.robot.robot_wrapper import RobotWrapper
 
 hand_name = "allegro"
 arm_name = "xarm"
@@ -30,34 +29,26 @@ env_list = []
 action_dict = {}
 object_dict = {}
 
-robot = RobotWrapper(get_robot_urdf_path(arm_name, None))
+# hand_qpos = np.load(os.path.join(demo_path, "raw", hand_name, f"qpos.npy"))
+wrist_pos = np.load(os.path.join(demo_path, "raw", arm_name, "action.npy"))
+arm_qpos = np.load(os.path.join(demo_path, "raw", arm_name, "position.npy"))
 
-hand_qpos = np.load(os.path.join(demo_path, "hand", f"qpos.npy"))
-wrist_pos = np.load(os.path.join(demo_path, "arm", "action.npy"))
-arm_qpos = np.load(os.path.join(demo_path, "arm", "qpos.npy"))
-
-print(wrist_pos.shape[0], arm_qpos.shape[0])
+hand_qpos = np.load(os.path.join(demo_path, "hand", "qpos.npy"))
+wrist_pos = np.load(os.path.join(demo_path, "raw", arm_name, "action.npy"))
+arm_qpos = np.load(os.path.join(demo_path, "raw", arm_name, "position.npy"))
 
 T = wrist_pos.shape[0]
 wrist_qpos = np.zeros((T, 6))
+hand_qpos = np.zeros((T, 16))
 
 for i in range(T):
-    robot.compute_forward_kinematics(arm_qpos[i])
-    w_state = robot.get_link_pose(robot.get_link_index("link6"))
-    w_state = w_state @ LINK2WRIST
-    
-    
     wrist_pos[i] = wrist_pos[i] @ LINK2WRIST
-    print(wrist_pos[i][:3,3] - w_state[:3,3])
-    euler = Rotation.from_matrix(w_state[:3,:3]).as_euler('zyx')
+    euler = Rotation.from_matrix(wrist_pos[i,:3,:3]).as_euler('zyx')
     
     wrist_qpos[i, 5] = euler[0]
     wrist_qpos[i, 4] = euler[1]
     wrist_qpos[i, 3] = euler[2]
-    
-    
-
-    wrist_qpos[i,:3] = w_state[:3, 3]
+wrist_qpos[:,:3] = wrist_pos[:, :3, 3]
 
 action = np.concatenate([wrist_qpos, hand_qpos], axis=1)
 state = np.concatenate([arm_qpos, hand_qpos], axis=1)
@@ -69,21 +60,22 @@ env_name = "fuck"
 sim.add_env(env_name,env_info = {"robot":{},
                                 "robot_vis":{"hand":(None, hand_name), "arm":(arm_name, hand_name)},
                                 "object":{},
-                                "object_vis":{"bottle":"bottle"}})
+                                "object_vis":{}#"bottle":"bottle"}
+                                })
         
 sim.reset(env_name, {"robot":{},
         "robot_vis":{"hand":action[0], "arm":state[0]},
         "object":{},
-        "object_vis":{"bottle":object_T[0].copy()}
+        "object_vis":{}#"bottle":object_T[0].copy()}
         })
 
-for idx in range(object_T.shape[0]):
+for idx in range(0, T, 10):
     sim.step(env_name, {"robot":{},
             "robot_vis":{"hand":action[idx].copy(), "arm":state[idx].copy()},
-            "object_vis":{"bottle":object_T[idx].copy()}
+            "object_vis":{}#"bottle":object_T[idx].copy()}
             })
 
     sim.tick()
-    # time.sleep(1/60)
-    idx += 1        
+    time.sleep(1/120)
+    
 sim.terminate()

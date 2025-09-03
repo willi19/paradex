@@ -279,7 +279,7 @@ class Open3DVideoRenderer:
             # 비디오 저장 - OpenCV를 먼저 시도 (더 안정적)
             logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Saving video to {output_path}...", "type": "process_msg"})
             
-            self.save_video_opencv(frames, output_path, logger, output_path)
+            self.save_video_opencv(frames, output_path, logger)
                 
             # 최종 상태 출력
             if Path(output_path).exists() and Path(output_path).stat().st_size > 0:

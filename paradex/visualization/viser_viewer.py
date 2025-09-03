@@ -23,42 +23,6 @@ from tqdm.auto import tqdm
 import imageio.v3 as iio
 import viser
 import viser.transforms as tf
-
-import open3d as o3d
-import torch
-DEFAULT_DEVICE = (
-    "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
-)
-
-from paradex.utils.file_io import rsc_path
-from paradex.visualization_.robot_module import Robot_Module
-from paradex.robot.mimic_joint import parse_inspire
-
-"""
-env: hoifield_310
-play /stop / next frame/ previous frame
-slider 
-floor vis (on/off)
-debugline / debugpoint / debug sphere (on/off)
-rendering the current 3D scene into images
-Visualizing the 3D scene changes during optimization
-"""
-
-import sys, os
-import time
-from pathlib import Path
-from typing import List
-import numpy as np
-import copy
-from scipy.spatial import cKDTree
-import cv2
-import pickle
-import trimesh
-import argparse
-from tqdm.auto import tqdm
-import imageio.v3 as iio
-import viser
-import viser.transforms as tf
 from viser.extras import ViserUrdf
 import yourdfpy
 
@@ -81,7 +45,6 @@ class ViserViewer:
         self.mesh = copy.deepcopy(obj_mesh)
         self.object_nm = object_nm
         
-        # Set default c2r if not provided
         if c2r is None:
             self.c2r = np.eye(4)
         else:
@@ -89,22 +52,10 @@ class ViserViewer:
             
         self.load_server()
         
-        # Load URDF
         urdf = yourdfpy.URDF.load(urdf_path)
         self.urdf = urdf
         self.urdf_vis = ViserUrdf(self.server, urdf)
         self.qpos = qpos
-        
-        # Print joint information for debugging
-        print("=== URDF Joint Information ===")
-        print(f"Total joints: {len(urdf.joint_map)}")
-        print(f"Actuated joints: {len(urdf.actuated_joint_names)}")
-        print("Joint order:")
-        for i, joint_name in enumerate(urdf.actuated_joint_names):
-            print(f"  {i}: {joint_name}")
-        print(f"Expected qpos shape: ({self.num_frames}, {len(urdf.actuated_joint_names)})")
-        print(f"Actual qpos shape: {qpos.shape}")
-        print("=" * 30)
         
         self.num_frames = min(self.qpos.shape[0], self.obj_T.shape[0])
 
@@ -120,12 +71,8 @@ class ViserViewer:
         self.server.scene.set_up_direction(self.c2r[:3,2])
         self.server.scene.world_axes
 
-        # z_near, z_far setting
         @self.server.on_client_connect
         def _(client: viser.ClientHandle) -> None:
-            """For each client that connects, create GUI elements for adjusting the
-            near/far clipping planes."""
-            
             near_slider = client.gui.add_slider(
                 "Near", min=0.01, max=10.0, step=0.001, initial_value=client.camera.near
             )
@@ -142,7 +89,6 @@ class ViserViewer:
                 client.camera.far = far_slider.value
                 
     def add_player(self):
-        # add player 
         with self.server.gui.add_folder("Playback"):
             self.gui_timestep = self.server.gui.add_slider(
                 "Timestep",
@@ -159,14 +105,6 @@ class ViserViewer:
             self.gui_framerate = self.server.gui.add_slider(
                 "FPS", min=1, max=60, step=0.1, initial_value=10
             )
-            
-        # Floor visibility controls
-        with self.server.gui.add_folder("Scene"):
-            self.floor_visible = self.server.gui.add_checkbox("Show Floor", True)
-            self.floor_size = self.server.gui.add_slider(
-                "Floor Size", min=1.0, max=10.0, step=0.5, initial_value=5.0
-            )
-            self.grid_visible = self.server.gui.add_checkbox("Show Grid", True)
             gui_framerate_options = self.server.gui.add_button_group(
                 "FPS options", ("10", "20", "30", "60")
             )
@@ -177,21 +115,34 @@ class ViserViewer:
                 step=0.01,
             )
             
-            @gui_up.on_update
-            def _(_) -> None:
-                self.server.scene.set_up_direction(gui_up.value)
-                
-            @self.floor_visible.on_update
-            def _(_) -> None:
-                self.update_floor()
-                
-            @self.floor_size.on_update
-            def _(_) -> None:
-                self.update_floor()
-                
-            @self.grid_visible.on_update
-            def _(_) -> None:
-                self.update_floor()
+        with self.server.gui.add_folder("Scene"):
+            self.floor_visible = self.server.gui.add_checkbox("Show Floor", True)
+            self.floor_size = self.server.gui.add_slider(
+                "Floor Size", min=0.2, max=1.0, step=0.5, initial_value=0.5
+            )
+            self.grid_visible = self.server.gui.add_checkbox("Show Grid", True)
+            
+        with self.server.gui.add_folder("Video Rendering"):
+            self.video_width = self.server.gui.add_number("Video Width", initial_value=1280, min=640, max=3840)
+            self.video_height = self.server.gui.add_number("Video Height", initial_value=720, min=480, max=2160)
+            self.video_fps = self.server.gui.add_slider("Video FPS", min=10, max=60, step=1, initial_value=30)
+            self.render_video_btn = self.server.gui.add_button("Render Full Video")
+            
+        @gui_up.on_update
+        def _(_) -> None:
+            self.server.scene.set_up_direction(gui_up.value)
+            
+        @self.floor_visible.on_update
+        def _(_) -> None:
+            self.update_floor()
+            
+        @self.floor_size.on_update
+        def _(_) -> None:
+            self.update_floor()
+            
+        @self.grid_visible.on_update
+        def _(_) -> None:
+            self.update_floor()
 
         @self.gui_timestep.on_update
         def _(_) -> None:
@@ -201,7 +152,6 @@ class ViserViewer:
         def _(_) -> None:
             self.gui_framerate.value = int(gui_framerate_options.value)
 
-        # Frame step buttons.
         @self.gui_next_frame.on_click
         def _(_) -> None:
             self.gui_timestep.value = (self.gui_timestep.value + 1) % self.num_frames
@@ -210,15 +160,17 @@ class ViserViewer:
         def _(_) -> None:
             self.gui_timestep.value = (self.gui_timestep.value - 1) % self.num_frames
 
-        # Disable frame controls when we're playing.
         @self.gui_playing.on_update
         def _(_) -> None:
             self.gui_timestep.disabled = self.gui_playing.value
             self.gui_next_frame.disabled = self.gui_playing.value
             self.gui_prev_frame.disabled = self.gui_playing.value
+            
+        @self.render_video_btn.on_click
+        def _(_) -> None:
+            self.render_full_video()
 
     def add_frames(self):
-        # NOTE: scene setting start
         self.server.scene.add_frame(
             "/frames",
             position=(0, 0, 0),
@@ -230,39 +182,42 @@ class ViserViewer:
             wxyz=tf.SO3.from_matrix(self.c2r[:3,:3]).wxyz,
             position=self.c2r[:3,3],
             show_axes=True,
-            axes_radius=0.01
+            axes_radius=0.001,  # 기존 0.002에서 0.001로 축 두께 감소
+            axes_length=0.05    # 축 길이를 0.05로 명시적 설정 (기본값보다 짧게)
         )
 
         self.frame_nodes: list[viser.FrameHandle] = []
         
-    def create_floor_mesh(self, size=5.0):
-        """Create a simple floor mesh"""
-        # Create floor plane - make sure vertices are in correct order for proper normals
-        floor_vertices = np.array([
-            [-size, -size, 0],
-            [size, -size, 0], 
-            [size, size, 0],
-            [-size, size, 0]
-        ], dtype=np.float32)
+    def update_floor(self):
+        try:
+            self.server.scene.remove_by_name("floor")
+        except:
+            pass
         
-        # Make sure faces have correct winding order (counter-clockwise when viewed from above)
-        floor_faces = np.array([
-            [0, 1, 2],  # First triangle
-            [0, 2, 3]   # Second triangle
-        ])
+        for i in range(100):
+            try:
+                self.server.scene.remove_by_name(f"grid_x_{i}")
+                self.server.scene.remove_by_name(f"grid_y_{i}")
+            except:
+                pass
         
-        # Create mesh and ensure normals point upward
-        floor_mesh = trimesh.Trimesh(vertices=floor_vertices, faces=floor_faces)
-        floor_mesh.fix_normals()  # Fix normal directions
-        
-        return floor_mesh
-    
-    def add_grid_lines(self, size=5.0):
-        """Add grid lines separately using line segments"""
-        grid_spacing = 0.5  # 0.5m grid spacing
-        
+        if self.floor_visible.value:
+            size = self.floor_size.value
+            
+            self.server.scene.add_box(
+                name="floor",
+                dimensions=(size * 2, size * 2, 0.02),
+                position=(0.0, 0.0, -0.041),
+                color=(0.7, 0.7, 0.7)
+            )
+            
+            if self.grid_visible.value:
+                self.add_grid_lines(size=size)
+
+    def add_grid_lines(self, size=1.0):
+        grid_spacing = 0.01
         lines_added = 0
-        # X direction lines (parallel to X axis)
+        
         for y in np.arange(-size, size + grid_spacing, grid_spacing):
             self.server.scene.add_spline_catmull_rom(
                 f"grid_x_{lines_added}",
@@ -272,7 +227,6 @@ class ViserViewer:
             )
             lines_added += 1
             
-        # Y direction lines (parallel to Y axis) 
         for x in np.arange(-size, size + grid_spacing, grid_spacing):
             self.server.scene.add_spline_catmull_rom(
                 f"grid_y_{lines_added}",
@@ -281,58 +235,10 @@ class ViserViewer:
                 line_width=1.0
             )
             lines_added += 1
-    
-    def update_floor(self):
-        """Update floor visibility and appearance"""
-        try:
-            # Remove existing floor and grid elements
-            try:
-                self.server.scene.remove_by_name("floor")
-            except:
-                pass
-            
-            # Remove existing grid lines  
-            for i in range(100):
-                try:
-                    self.server.scene.remove_by_name(f"grid_x_{i}")
-                    self.server.scene.remove_by_name(f"grid_y_{i}")
-                except:
-                    pass
-            
-            if self.floor_visible.value:
-                size = self.floor_size.value
-                
-                # Create a simple box as floor (very thin)
-                self.server.scene.add_box(
-                    name="floor",
-                    dimensions=(size * 2, size * 2, 0.02),  # width, height, thickness
-                    position=(0.0, 0.0, -0.01),  # Position slightly below z=0
-                    color=(0.7, 0.7, 0.7)
-                )
-                
-                print(f"✅ Floor box added: size={size*2}x{size*2}x0.02 at (0,0,-0.01)")
-                
-                # Add grid lines if enabled
-                if self.grid_visible.value:
-                    try:
-                        self.add_grid_lines(size=size)
-                        print(f"✅ Grid lines added")
-                    except Exception as e:
-                        print(f"❌ Grid lines failed: {e}")
-            else:
-                print("🚫 Floor hidden")
-                
-        except Exception as e:
-            print(f"❌ Floor update failed: {e}")
-            import traceback
-            traceback.print_exc()
         
     def add_initial_meshes(self):
-        """Add initial meshes for timestep 0"""
-        # Add initial robot configuration
         self.urdf_vis.update_cfg(self.qpos[0])
         
-        # Add initial object
         initial_obj_mesh = copy.deepcopy(self.mesh).apply_transform(self.obj_T[0])
         self.server.scene.add_mesh_trimesh(
             name=self.object_nm,
@@ -340,18 +246,17 @@ class ViserViewer:
             position=(0.0, 0.0, 0.0),
         )
         
-        # Add floor
         self.update_floor()
     
     def update_scene(self, timestep):
-        """Update scene for given timestep"""
         with self.server.atomic():
-            # Update robot configuration
             self.urdf_vis.update_cfg(self.qpos[timestep])
             
-            # Update object mesh
             transformed_obj_mesh = copy.deepcopy(self.mesh).apply_transform(self.obj_T[timestep])
-            self.server.scene.remove_by_name(self.object_nm)
+            try:
+                self.server.scene.remove_by_name(self.object_nm)
+            except:
+                pass
             self.server.scene.add_mesh_trimesh(
                 name=self.object_nm,
                 mesh=transformed_obj_mesh,
@@ -361,25 +266,101 @@ class ViserViewer:
         self.prev_timestep = timestep
         self.server.flush()
         
-        # Render to PNG if enabled
         if self.render_png.value:
             self.render_current_frame(timestep)
     
     def render_current_frame(self, timestep):
-        """Render current frame to PNG"""
         render_dir = Path("rendered")
         render_dir.mkdir(exist_ok=True)
         
         for _, client in self.server.get_clients().items():
-            try:
-                rendered_img = client.get_render(height=720*2, width=1280*2)
-                output_path = render_dir / f'{timestep:05d}.jpeg'
+            rendered_img = client.get_render(height=720*2, width=1280*2)
+            output_path = render_dir / f'{timestep:05d}.jpeg'
+            cv2.imwrite(str(output_path), rendered_img)
+    
+    def render_full_video(self):
+        """모든 프레임을 렌더링하고 동영상으로 저장"""
+        print("Starting full video rendering...")
+        
+        # 렌더링 디렉토리 생성
+        render_dir = Path("video_render")
+        render_dir.mkdir(exist_ok=True)
+        
+        # 기존 이미지 파일들 삭제
+        for img_file in render_dir.glob("*.png"):
+            img_file.unlink()
+        
+        # 현재 재생 상태 저장
+        was_playing = self.gui_playing.value
+        current_timestep = self.gui_timestep.value
+        
+        # 재생 중지
+        self.gui_playing.value = False
+        
+        # 클라이언트 가져오기
+        clients = list(self.server.get_clients().values())
+        if not clients:
+            print("No clients connected for rendering!")
+            return
+            
+        client = clients[0]  # 첫 번째 클라이언트 사용
+        
+        frames = []
+        try:
+            # 모든 프레임 렌더링
+            for timestep in tqdm(range(self.num_frames), desc="Rendering frames"):
+                # 콘솔에 진행률 표시
+                if timestep % 10 == 0:  # 10프레임마다 출력
+                    progress_percent = (timestep / self.num_frames) * 100
+                    print(f"Rendering progress: {progress_percent:.1f}% ({timestep}/{self.num_frames})")
+                
+                # 씬 업데이트
+                self.update_scene(timestep)
+                time.sleep(0.1)  # 씬 업데이트 대기
+                
+                # 프레임 렌더링
+                rendered_img = client.get_render(
+                    height=int(self.video_height.value), 
+                    width=int(self.video_width.value)
+                )
+                
+                # BGR을 RGB로 변환 (OpenCV는 BGR, imageio는 RGB 사용)
+                rendered_img_rgb = cv2.cvtColor(rendered_img, cv2.COLOR_BGR2RGB)
+                frames.append(rendered_img_rgb)
+                
+                # 개별 프레임도 저장 (디버깅용)
+                output_path = render_dir / f'frame_{timestep:05d}.png'
                 cv2.imwrite(str(output_path), rendered_img)
-            except Exception as e:
-                print(f"Failed to render frame {timestep}: {e}")
+            
+            # 동영상 생성
+            video_path = Path("rendered_video.mp4")
+            print(f"Creating video: {video_path}")
+            
+            iio.imwrite(
+                video_path,
+                frames,
+                fps=self.video_fps.value,
+                codec='libx264',
+                quality=8,  # 높은 품질
+                pixelformat='yuv420p'  # 호환성을 위해
+            )
+            
+            print(f"Video saved successfully: {video_path}")
+            print(f"Total frames: {len(frames)}")
+            print(f"Video duration: {len(frames) / self.video_fps.value:.2f} seconds")
+            
+        except Exception as e:
+            print(f"Error during video rendering: {e}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            # 원래 상태 복원
+            self.gui_playing.value = was_playing
+            self.gui_timestep.value = current_timestep
+            self.update_scene(current_timestep)
+            print("Video rendering completed!")
         
     def update(self):
-        """Main update loop - call this in a loop"""
         if self.gui_playing.value:
             next_timestep = (self.gui_timestep.value + 1) % self.num_frames
             self.gui_timestep.value = next_timestep
@@ -387,25 +368,8 @@ class ViserViewer:
         time.sleep(1.0 / self.gui_framerate.value)
     
     def start_viewer(self):
-        """Start the viewer in a loop"""
-        print(f"Starting viewer with {self.num_frames} frames")
-        print("Visit the URL printed above to view the visualization")
-        
         try:
             while True:
                 self.update()
         except KeyboardInterrupt:
-            print("Viewer stopped")
-
-
-# Example usage:
-if __name__ == "__main__":
-    # Example parameters (replace with your actual data)
-    # obj_mesh = trimesh.load("path/to/your/object.obj")
-    # obj_T = np.random.rand(100, 4, 4)  # 100 frames of 4x4 transforms
-    # urdf_path = "path/to/your/robot.urdf"
-    # qpos = np.random.rand(100, 7)  # 100 frames of 7 joint positions
-    
-    # viewer = ViserViewer(obj_mesh, obj_T, urdf_path, qpos)
-    # viewer.start_viewer()
-    pass
+            pass

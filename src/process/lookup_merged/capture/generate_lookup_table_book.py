@@ -6,37 +6,40 @@ import argparse
 from paradex.utils.file_io import rsc_path, shared_dir, load_c2r, get_robot_urdf_path
 from paradex.robot.robot_wrapper import RobotWrapper
 
-def normalize(obj_6D, type="cylinder"):
+def normalize(obj_6D):
+    
     ret = obj_6D.copy()
     
-    if type == "cylinder":
-        if obj_6D[2, 2] < 0.7:
-            z = np.array([obj_6D[0,2], obj_6D[1, 2], 0])
-            if z[0] == -1:
-                z *= -1
-            z /= np.linalg.norm(z)
-            ret[:3, 2] = z
-            ret[:3, 0] = np.array([0,0,1])
-            ret[:3, 1] = np.array([z[1],-z[0],0])
-        else:
-            ret[:3, :3] = np.eye(3)
+    if obj_6D[2, 2] < 0.7:
+        z = np.array([obj_6D[0,2], obj_6D[1, 2], 0])
+        if z[0] == -1:
+            z *= -1
+        z /= np.linalg.norm(z)
+        ret[:3, 2] = z
+        ret[:3, 0] = np.array([0,0,1])
+        ret[:3, 1] = np.array([z[1],-z[0],0])
+    else:
+        ret[:3, :3] = np.eye(3)
+        
+    return ret
+
+
+def normalize_book(obj_6D):
+    ret = obj_6D.copy()
+    # if obj_6D[2, 1] > 0.8:
+    #     if obj_6D[1, 0] < 0:
+    #         ret[:,0] *= -1
+    #         ret[:,2] *= -1
     
-    if type == "box":
-        if obj_6D[2, 1] > 0.8:
-            if obj_6D[1, 0] < 0:
-                ret[:,0] *= -1
-                ret[:,2] *= -1
-        
-        else:
-            if obj_6D[2, 0] < 0:
-                ret[:,0] *= -1
-                ret[:,2] *= -1
-        
+    # else:
+    #     if obj_6D[2, 0] < 0:
+    #         ret[:,0] *= -1
+    #         ret[:,2] *= -1
+            
     return ret
 
 def load_demo(demo_path):
     result = {}
-    obj_name = os.path.basename(os.path.dirname(demo_path))
     
     last_link_pose = np.load(os.path.join(demo_path, "arm", "action.npy"))
     arm_qpos = np.load(os.path.join(demo_path, "arm", "qpos.npy"))
@@ -68,11 +71,14 @@ def load_demo(demo_path):
         if obj_T[step, 2, 3] > max_h:
             max_h = obj_T[step, 2, 3]
             split_t = step
-            
-    type = "cylinder" if "pringles" in obj_name else "box"
     
-    pick_6D = normalize(orig_pick_6D.copy(), type)
-    place_6D = normalize(place_6D_orig.copy(), type)
+    if "book" in demo_path:
+        pick_6D = normalize_book(orig_pick_6D.copy())
+        place_6D = normalize_book(place_6D_orig.copy())
+    
+    else:
+        pick_6D = normalize(orig_pick_6D.copy())
+        place_6D = normalize(place_6D_orig.copy())
         
     if np.linalg.norm(obj_T[0]) < 0.1:        
         obj_T[0] = orig_pick_6D.copy()

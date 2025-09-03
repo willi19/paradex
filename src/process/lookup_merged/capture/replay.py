@@ -11,11 +11,11 @@ from paradex.robot.robot_wrapper import RobotWrapper
 
 hand_name = "allegro"
 arm_name = "xarm"
-obj_name = "pringles_light"
+obj_name = "book"
 
 # LINK2WRIST = np.linalg.inv(DEVICE2WRIST["xarm"]) @ DEVICE2WRIST[hand_name]
 LINK2WRIST = load_latest_eef()
-demo_name = "13"
+demo_name = "6"
 
 demo_path = os.path.join(shared_dir, "capture", "lookup", obj_name, demo_name)
 
@@ -24,7 +24,7 @@ sim = IsaacSimulator(headless=False, plane=True)
 sim.load_robot_asset(None, hand_name)
 sim.load_robot_asset(arm_name, hand_name)
 
-sim.load_object_asset("bottle")
+sim.load_object_asset("book")
 
 env_list = []
 action_dict = {}
@@ -69,18 +69,18 @@ env_name = "fuck"
 sim.add_env(env_name,env_info = {"robot":{},
                                 "robot_vis":{"hand":(None, hand_name), "arm":(arm_name, hand_name)},
                                 "object":{},
-                                "object_vis":{"bottle":"bottle"}})
+                                "object_vis":{"book":"book"}})
         
 sim.reset(env_name, {"robot":{},
         "robot_vis":{"hand":action[0], "arm":state[0]},
         "object":{},
-        "object_vis":{"bottle":object_T[0].copy()}
+        "object_vis":{"book":object_T[0].copy()}
         })
 
 for idx in range(object_T.shape[0]):
     sim.step(env_name, {"robot":{},
             "robot_vis":{"hand":action[idx].copy(), "arm":state[idx].copy()},
-            "object_vis":{"bottle":object_T[idx].copy()}
+            "object_vis":{"book":object_T[idx].copy()}
             })
 
     sim.tick()

@@ -254,7 +254,7 @@ def get_object6D(root_dir, logger=[], overwrite=False):
     
     obj_T = []
     data = (cammat, c2r, obj_T, marker_offset)
-    process_video_list(download_video_dir, data, process_frame)
+    process_video_list(download_video_dir, data, process_frame, logger=logger)
     
     # Save results
     obj_T = {name:np.array(obj_T)}
@@ -359,7 +359,7 @@ def overlay(root_dir, logger=[], overwrite=False):
             out_video[serial_name].write(img)
             
     data = (obj_dict, renderer, rm, serial_list, out_video)
-    process_video_list(download_video_dir, data, process_frame)
+    process_video_list(download_video_dir, data, process_frame, logger=logger)
     
     for serial_name in serial_list:
         logger.append({"root_dir":root_dir, "time":time.time(), "state":"processing", "msg":f"overlay: converting video {serial_name}", "type":"process_msg"})

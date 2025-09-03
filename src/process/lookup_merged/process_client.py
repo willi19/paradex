@@ -8,13 +8,13 @@ from paradex.process.processor import ProcessorLocal
 from paradex.process.lookup import generate_lookup_table, visualize_lookup_table
 
 def process(root_dir, logger=[]):
-    match_sync(root_dir, logger)
+    # match_sync(root_dir, logger)
     
-    get_object6D(root_dir, logger, overwrite=False)
+    # get_object6D(root_dir, logger, overwrite=False)
     
-    overlay(root_dir, logger, overwrite=False)
+    # overlay(root_dir, logger, overwrite=False)
     
-    merge(root_dir, logger, overwrite=False)
+    # merge(root_dir, logger, overwrite=False)
     
     generate_lookup_table(root_dir)
     visualize_lookup_table(root_dir, logger, overwrite=True)

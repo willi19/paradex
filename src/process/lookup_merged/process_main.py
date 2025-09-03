@@ -15,7 +15,7 @@ pc_list = list(pc_info.keys())
 args = get_argument()
 process_list = get_process_list(args)
 
-run_script(f"python src/process/lookup_merged/process_client.py", pc_list)
+# run_script(f"python src/process/lookup_merged/process_client.py", pc_list)
 
 p = ProcessorMain(process_list)
 while not p.finish:

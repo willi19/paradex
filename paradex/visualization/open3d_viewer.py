@@ -297,10 +297,10 @@ class Open3DVideoRenderer:
             traceback.print_exc()
         
             
-    def save_video_opencv(self, frames, output_path, logger=[], root_dir=""):
+    def save_video_opencv(self, frames, output_path, logger=[]):
         """OpenCV를 사용한 비디오 저장 (대안)"""
         if not frames:
-            logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": "No frames to save", "type": "process_error"})
+            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": "No frames to save", "type": "process_error"})
             return
             
         height, width = frames[0].shape[:2]
@@ -321,8 +321,8 @@ class Open3DVideoRenderer:
         
         if Path(output_path).exists():
             file_size = Path(output_path).stat().st_size
-            logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Video saved with OpenCV: {output_path}", "type": "process_msg"})
-            logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"File size: {file_size / (1024*1024):.2f} MB", "type": "process_msg"})
+            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Video saved with OpenCV: {output_path}", "type": "process_msg"})
+            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"File size: {file_size / (1024*1024):.2f} MB", "type": "process_msg"})
         else:
-            logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": "OpenCV video save also failed", "type": "process_error"})
+            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": "OpenCV video save also failed", "type": "process_error"})
             

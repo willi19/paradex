@@ -234,10 +234,10 @@ class Open3DVideoRenderer:
         """카메라 뷰 설정"""
         self.renderer.setup_camera(90, center, eye, up)
         
-    def render_video(self, output_path="rendered_video_o3d.mp4", camera_eye=[1.5, 1.5, 1.5], logger=[], root_dir=""):
+    def render_video(self, output_path="rendered_video_o3d.mp4", camera_eye=[1.5, 1.5, 1.5], logger=[]):
         """전체 비디오 렌더링"""
-        logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Starting Open3D video rendering...", "type": "process_msg"})
-        logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Frames: {self.num_frames}, Resolution: {self.width}x{self.height}, FPS: {self.fps}", "type": "process_msg"})
+        logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Starting Open3D video rendering...", "type": "process_msg"})
+        logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Frames: {self.num_frames}, Resolution: {self.width}x{self.height}, FPS: {self.fps}", "type": "process_msg"})
         # 카메라 설정
         self.set_camera_view(eye=np.array(camera_eye))
 
@@ -255,11 +255,11 @@ class Open3DVideoRenderer:
                 
                 # 디버깅: 이미지 크기와 내용 확인
                 if timestep == 0:
-                    logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"First frame shape: {img.shape}, dtype: {img.dtype}, min/max: {img.min()}/{img.max()}", "type": "process_msg"})
+                    logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"First frame shape: {img.shape}, dtype: {img.dtype}, min/max: {img.min()}/{img.max()}", "type": "process_msg"})
                 
                 # 이미지가 유효한지 확인
                 if img is None or img.size == 0:
-                    logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Warning: Frame {timestep} is empty!", "type": "process_error"})
+                    logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Warning: Frame {timestep} is empty!", "type": "process_error"})
                     # 빈 프레임 대신 검은 이미지 생성
                     img = np.zeros((self.height, self.width, 3), dtype=np.uint8)
                 
@@ -268,31 +268,31 @@ class Open3DVideoRenderer:
                 
                 if timestep % 50 == 0:
                     progress_percent = (timestep / self.num_frames) * 100
-                    logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Progress: {progress_percent:.1f}% ({timestep}/{self.num_frames})", "type": "process_cnt"})
+                    logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Progress: {progress_percent:.1f}% ({timestep}/{self.num_frames})", "type": "process_cnt"})
             
             if not frames:
-                logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": "No frames were generated!", "type": "process_error"})
+                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": "No frames were generated!", "type": "process_error"})
                 return
                 
-            logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Generated {len(frames)} frames", "type": "process_msg"})
+            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Generated {len(frames)} frames", "type": "process_msg"})
             
             # 비디오 저장 - OpenCV를 먼저 시도 (더 안정적)
-            logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Saving video to {output_path}...", "type": "process_msg"})
+            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Saving video to {output_path}...", "type": "process_msg"})
             
-            self.save_video_opencv(frames, output_path, logger, root_dir)
+            self.save_video_opencv(frames, output_path, logger, output_path)
                 
             # 최종 상태 출력
             if Path(output_path).exists() and Path(output_path).stat().st_size > 0:
                 file_size = Path(output_path).stat().st_size
-                logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Final video: {output_path}", "type": "process_msg"})
-                logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"File size: {file_size / (1024*1024):.2f} MB", "type": "process_msg"})
-                logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Total frames: {len(frames)}", "type": "process_msg"})
-                logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Video duration: {len(frames) / self.fps:.2f} seconds", "type": "process_msg"})
+                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Final video: {output_path}", "type": "process_msg"})
+                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"File size: {file_size / (1024*1024):.2f} MB", "type": "process_msg"})
+                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Total frames: {len(frames)}", "type": "process_msg"})
+                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Video duration: {len(frames) / self.fps:.2f} seconds", "type": "process_msg"})
             else:
-                logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": "Final video file is empty or doesn't exist", "type": "process_error"})
+                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": "Final video file is empty or doesn't exist", "type": "process_error"})
                 
         except Exception as e:
-            logger.append({"root_dir": root_dir, "time": time.time(), "state": "processing", "msg": f"Error during rendering: {e}", "type": "process_error"})
+            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Error during rendering: {e}", "type": "process_error"})
             import traceback
             traceback.print_exc()
         

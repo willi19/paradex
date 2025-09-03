@@ -62,7 +62,7 @@ def normalize(obj_6D, obj_name):
         raise NotImplementedError
     
     type = obj_type[obj_name]
-    if type == "cylincer":
+    if type == "cylinder":
         return normalize_cylinder(obj_6D)
     elif type == "box":
         return normalize_box(obj_6D)
@@ -93,7 +93,6 @@ def visualize_lookup_table(demo_path, logger=[], overwrite=False):
     obj_name = get_obj_name(demo_path)
     demo_name = os.path.basename(demo_path)
     mesh = trimesh.load(os.path.join(rsc_path, "object", obj_name, obj_name+".obj"))
-    logger.append({"root_dir":demo_path, "time":time.time(), "state":"processing", "msg":"generating lookup table", "type":"process_msg"})
     
     try:
         LINK2WRIST = load_eef(demo_path)
@@ -102,6 +101,7 @@ def visualize_lookup_table(demo_path, logger=[], overwrite=False):
         np.save(os.path.join(demo_path, "eef.npy"), LINK2WRIST)
     
     for demo_type in ["pick", "place"]:
+        logger.append({"root_dir":demo_path, "time":time.time(), "state":"processing", "msg":f"visualize lookup table {demo_type}", "type":"process_msg"})
         if not overwrite and os.path.exists(os.path.join(shared_dir, f"{demo_type}.mp4")):
             continue
         
@@ -208,7 +208,7 @@ def generate_lookup_table(demo_path):
     
     if np.linalg.norm(obj_T[-1]) < 0.1:
         obj_T[-1] = place_6D_orig.copy()
-        
+    
     pick_6D_diff = np.linalg.inv(orig_pick_6D) @ pick_6D
     place_6D_diff = np.linalg.inv(place_6D_orig) @ place_6D
     

@@ -17,7 +17,63 @@ from paradex.pose_utils.io import get_obj_info
 from paradex.pose_utils.vis_utils_nvdiff import BatchRenderer
 from paradex.pose_utils.renderer_utils import show_res_cv2, grid_image
 
+def get_book_goal_position(img_dict, goal_marker):
+    marker_info = {
+        "xz":{"x":[(0, 3), (1, 2)], "z":[(0, 1), (3, 2)]},
+    }
+    
+    width = 26.2 / 100   # x 축
+    height = 17.0 / 100 # y 축  
+    depth = 4.3 / 100    # z 축
+    
+    intrinsic, extrinsic = load_current_camparam()
+    c2r = load_latest_C2R()
+    c2r = np.linalg.inv(c2r)
 
+    cor_3d = triangulate_marker(img_dict, intrinsic, extrinsic,'4X4_50')
+    robot_3d = {}
+    
+    for id, cor in cor_3d.items():
+        if cor is None:
+            continue
+        robot_3d[id] = (c2r[:3,:3] @ cor.T + c2r[:3,3:]).T
+    
+    
+    ret = {}
+    for id, marker_type in goal_marker:
+        xyz = np.mean(robot_3d[int(id)], axis=0)
+        
+        if marker_type == "xz":
+            x_dir = np.zeros(3)
+            for i in range(2):
+                mid1 = marker_info[marker_type]["x"][i][1]
+                mid2 = marker_info[marker_type]["x"][i][0]
+                x_dir += robot_3d[int(id)][mid1] - robot_3d[int(id)][mid2]
+                
+            x_dir /= np.linalg.norm(x_dir)
+            
+            z_dir = np.zeros(3)
+            for i in range(2):
+                mid1 = marker_info[marker_type]["z"][i][1]
+                mid2 = marker_info[marker_type]["z"][i][0]
+                z_dir += robot_3d[int(id)][mid1] - robot_3d[int(id)][mid2]
+                
+            z_dir /= np.linalg.norm(z_dir)
+            
+            y_dir = -np.cross(x_dir, z_dir)
+            y_dir /= np.linalg.norm(y_dir)
+            
+        obj_cor = np.eye(4)
+
+        obj_cor[:3, 0] = x_dir
+        obj_cor[:3, 1] = y_dir
+        obj_cor[:3, 2] = z_dir
+        obj_cor[:3, 3] = xyz + (height) / 2 * y_dir - 0.002 * x_dir
+        
+        ret[(str(id), marker_type)] = obj_cor.copy()
+        
+    return ret
+    
 def get_goal_position(img_dict, marker_id):
     intrinsic, extrinsic = load_current_camparam()
     c2r = load_latest_C2R()
@@ -75,7 +131,7 @@ def get_current_object_6d_marker(obj_name, img_dict=None):
     
     #### Object pose estimation ####
     cor_3d = triangulate_marker(img_dict, intrinsic, extrinsic)
-
+    print(cor_3d)
     marker_offset = np.load(os.path.join(shared_dir, "object", "marker_offset", obj_name, "0", "marker_offset.npy"), allow_pickle=True).item()
     marker_id = list(marker_offset.keys())
     A = []
@@ -189,21 +245,3 @@ def get_current_object_6d(obj_name, marker=False, img_dict = None):
         print(f"initial object projection saved")
         
     return obj_T # camera space
-
-def normalize_cylinder(obj_pose):
-    if obj_pose[2, 2] < 0.7:
-        z = obj_pose[:3, 2]
-        if z[1] < 0:
-            z *= -1
-        
-        obj_pose[:3,2] = np.array([z[0], z[1], 0])
-        obj_pose[:3,2] /= np.linalg.norm(obj_pose[:3,2])
-
-        obj_pose[:3,0] = np.array([0,0,1])
-        
-        obj_pose[:3,1] = np.array([z[1], -z[0], 0])
-        obj_pose[:3,1] /= np.linalg.norm(obj_pose[:3,1])
-    else:
-        obj_pose[:3,:3] = np.eye(3)
-        
-    return obj_pose

@@ -50,7 +50,7 @@ def simulate(traj, hand_traj, pick_6D, place_6D, hand_name, obj_name, start_even
                 "object_vis":{f"{obj_name}":pick_6D.copy()}
                 })
         
-        for i in range(0, len(traj), 3):
+        for i in range(0, len(traj), 1):
             sim.tick()
             time.sleep(1/30)
             action, success = robot.solve_ik(traj[i], "link6", last_q)

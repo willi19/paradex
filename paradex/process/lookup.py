@@ -44,9 +44,11 @@ def normalize_cylinder(obj_6D):
 
 def normalize_box(obj_6D):
     ret = obj_6D.copy()
-    
-    if obj_6D[2, 1] > 0.8:
-        if obj_6D[1, 0] < 0:
+    if obj_6D[2, 1] < -0.8:
+        ret[:, 0] *= -1
+        ret[:, 1] *= -1
+    if ret[2, 1] > 0.8:
+        if ret[:3, 2] @ ret[:3, 3] < 0:
             ret[:,0] *= -1
             ret[:,2] *= -1
     
@@ -54,7 +56,6 @@ def normalize_box(obj_6D):
         if obj_6D[2, 0] < 0:
             ret[:,0] *= -1
             ret[:,2] *= -1
-    
     return ret
 
 def normalize(obj_6D, obj_name):
@@ -198,8 +199,6 @@ def generate_lookup_table(demo_path):
             max_h = obj_T[step, 2, 3]
             split_t = step
             
-    type = "cylinder" if "pringles" in obj_name else "box"
-    
     pick_6D = normalize(orig_pick_6D.copy(), obj_name)
     place_6D = normalize(place_6D_orig.copy(), obj_name)
         
@@ -247,5 +246,7 @@ def generate_lookup_table(demo_path):
     
     result["pick"] = {"state":pick_state, "action":pick, "objT":pick_objT, "hand":pick_hand_action}
     result["place"] = {"state":place_state, "action":place, "objT":place_objT, "hand":place_hand_action}
-    
+    for type in ["pick", "place"]:
+        for data_name, data in result[type].items():
+            np.save(f"{demo_path}/{type}_{data_name}.npy", data)
     return result

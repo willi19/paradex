@@ -51,12 +51,7 @@ if __name__ == "__main__":
     
     start_pos= np.array([[0, 0, 1, 0.3],
                         [1, 0, 0, -0.35],
-                        [0, 1, 0, 0.10], 
-                        [0, 0, 0, 1]])
-    
-    end_pos= np.array([[0, 0, 1, 0.25],
-                        [1, 0, 0, 0.0],
-                        [0, 1, 0, 0.10], 
+                        [0, 1, 0, 0.35], 
                         [0, 0, 0, 1]])
     
     
@@ -165,8 +160,6 @@ if __name__ == "__main__":
         
         capture_idx += 1
         
-    
-    home_robot(sensors["arm"], end_pos.copy())
     for sensor_name, sensor in sensors.items():
         if sensor_name == "camera":
             continue

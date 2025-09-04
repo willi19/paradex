@@ -161,9 +161,10 @@ def draw_aruco(img, kypt, ids=None, color=(255, 0, 0)):
     for idx, corner in enumerate(kypt):
         corner = corner.squeeze().astype(int)
         if ids is not None:
-            cv2.putText(img, str(ids[idx]), tuple(corner[0]), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            cv2.putText(img, str(ids[idx]), tuple(np.mean(corner, axis=0).astype(int)), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
         for i in range(4):
             cv2.circle(img, tuple(corner[i]), 5, color, -1) # red circle for corners
+            cv2.putText(img, str(i), (corner[i][0] + 10, corner[i][1] - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
     return img
 
 def draw_keypoint(img, kypt, color=(255,0,0)):

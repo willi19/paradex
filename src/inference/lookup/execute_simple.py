@@ -30,7 +30,7 @@ from paradex.image.projection import get_cammtx, project_point, project_mesh, pr
 from paradex.image.overlay import overlay_mask
 from paradex.image.merge import merge_image
 
-use_sim = False
+use_sim = True
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -190,50 +190,50 @@ if __name__ == "__main__":
         
         time.sleep(1) # Need distributor to stop
         
-        # transformed_mesh = copy.deepcopy(mesh)
-        # transformed_mesh.apply_transform(place_6D)
+        transformed_mesh = copy.deepcopy(mesh)
+        transformed_mesh.apply_transform(place_6D)
         
-        # frame, mask = project_mesh_nvdiff(transformed_mesh, renderer)
-        # mask = mask.detach().cpu().numpy()[:,:,:,0].astype(np.bool_)
+        frame, mask = project_mesh_nvdiff(transformed_mesh, renderer)
+        mask = mask.detach().cpu().numpy()[:,:,:,0].astype(np.bool_)
         
-        # os.makedirs(f"{shared_path}/{capture_idx}/overlay", exist_ok=True)
-        # for i, serial_num in enumerate(serial_list):
-        #     overlay_mask(img_dict[serial_num], mask[i], 0.7, np.array((255,0, 0)))
-        #     cv2.imwrite(f"{shared_path}/{capture_idx}/overlay/{serial_num}.png",img_dict[serial_num])
+        os.makedirs(f"{shared_path}/{capture_idx}/overlay", exist_ok=True)
+        for i, serial_num in enumerate(serial_list):
+            overlay_mask(img_dict[serial_num], mask[i], 0.7, np.array((255,0, 0)))
+            cv2.imwrite(f"{shared_path}/{capture_idx}/overlay/{serial_num}.png",img_dict[serial_num])
         
-        # cv2.imwrite(f"{shared_path}/{capture_idx}/merge.png",merge_image(img_dict))
+        cv2.imwrite(f"{shared_path}/{capture_idx}/merge.png",merge_image(img_dict))
         
-        # top_view = np.ones((800, 1600, 3), dtype=np.uint8) * 255
+        top_view = np.ones((800, 1600, 3), dtype=np.uint8) * 255
         
-        # cur_pos = (800 - int(cur_6D[0,3]*1000), 1600 - int(cur_6D[1,3]*1000))  # 스케일 조정
-        # place_pos = (800 - int(place_6D[0,3]*1000), 1600 - int(place_6D[1,3]*1000))
+        cur_pos = (800 - int(cur_6D[0,3]*1000), 1600 - int(cur_6D[1,3]*1000))  # 스케일 조정
+        place_pos = (800 - int(place_6D[0,3]*1000), 1600 - int(place_6D[1,3]*1000))
         
-        # success = "success" if cur_6D[2,2] > 0.7 else "fail"
-        # cv2.circle(top_view, cur_pos, 35, (0,0,255), 5)
-        # cv2.circle(top_view, place_pos, 35, (0,255,0), 5)
+        success = "success" if cur_6D[2,2] > 0.7 else "fail"
+        cv2.circle(top_view, cur_pos, 35, (0,0,255), 5)
+        cv2.circle(top_view, place_pos, 35, (0,255,0), 5)
         
-        # # 거리 계산 (mm 단위)
-        # distance_mm = np.linalg.norm(np.array(cur_6D[:2,3]) - np.array(place_6D[:2,3])) * 1000
+        # 거리 계산 (mm 단위)
+        distance_mm = np.linalg.norm(np.array(cur_6D[:2,3]) - np.array(place_6D[:2,3])) * 1000
 
-        # # 두 점 사이에 선 그리기
-        # cv2.line(top_view, cur_pos, place_pos, (255, 255, 255), 2)
+        # 두 점 사이에 선 그리기
+        cv2.line(top_view, cur_pos, place_pos, (255, 255, 255), 2)
 
-        # # 텍스트 추가
-        # font = cv2.FONT_HERSHEY_SIMPLEX
-        # font_scale = 0.8
-        # thickness = 2
+        # 텍스트 추가
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 0.8
+        thickness = 2
         
-        # # 색상 설명
-        # cv2.putText(top_view, "Red: Current Position", (50, 50), font, font_scale, (0, 0, 255), thickness)
-        # cv2.putText(top_view, "Green: Target Position", (50, 90), font, font_scale, (0, 255, 0), thickness)
+        # 색상 설명
+        cv2.putText(top_view, "Red: Current Position", (50, 50), font, font_scale, (0, 0, 255), thickness)
+        cv2.putText(top_view, "Green: Target Position", (50, 90), font, font_scale, (0, 255, 0), thickness)
 
-        # # 거리 정보
-        # cv2.putText(top_view, f"Distance: {distance_mm:.1f} mm", (50, 130), font, font_scale, (255, 255, 255), thickness)
-        # cv2.putText(top_view, "Scale: 0.8m x 1.6m", (50, 750), font, 0.8, (128, 128, 128), 1)
-        # cv2.putText(top_view, f"{success}", (50, 700), font, 0.8, (128, 128, 128), 1)
-        # cv2.arrowedLine(top_view, (800, 750), (800, 600), (0,0,0), 5, tipLength=0.25)
+        # 거리 정보
+        cv2.putText(top_view, f"Distance: {distance_mm:.1f} mm", (50, 130), font, font_scale, (255, 255, 255), thickness)
+        cv2.putText(top_view, "Scale: 0.8m x 1.6m", (50, 750), font, 0.8, (128, 128, 128), 1)
+        cv2.putText(top_view, f"{success}", (50, 700), font, 0.8, (128, 128, 128), 1)
+        cv2.arrowedLine(top_view, (800, 750), (800, 600), (0,0,0), 5, tipLength=0.25)
         
-        # cv2.imwrite(f"{shared_path}/{capture_idx}/top_view.png",top_view)
+        cv2.imwrite(f"{shared_path}/{capture_idx}/top_view.png",top_view)
         
         capture_idx += 1
         

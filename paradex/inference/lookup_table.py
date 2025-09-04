@@ -38,32 +38,30 @@ def get_pringles_index(hand, pick6D, place6D):
     # return selected_index
     return "1"
 
-def get_traj(obj, hand, start6D, pick6D, place6D):
-    if obj == "pringles":
+def get_traj(obj, hand, start6D, pick6D, place6D, index=-1):
+    if index == -1:
         index = get_pringles_index(hand, pick6D, place6D)
-        index_path = os.path.join(lookup_table_path, obj, index)
-        
-        pick_traj = np.load(f"{index_path}/pick.npy")
-        place_traj = np.load(f"{index_path}/place.npy")
-        
-        pick_hand_traj = np.load(f"{index_path}/pick_hand.npy")
-        place_hand_traj = np.load(f"{index_path}/place_hand.npy")
-        start_hand = np.zeros((pick_hand_traj.shape[1]))
-        
-        pick_traj = pick6D @ pick_traj
-        place_traj = place6D @ place_traj 
-        
-        
-        approach_traj, approach_hand_traj = get_linear_path(start6D, pick_traj[0], start_hand, pick_hand_traj[0],100)
-        return_traj, return_hand_traj = get_linear_path(place_traj[-1], start6D, pick_hand_traj[-1], start_hand, 100)
-        move_traj, move_hand = get_linear_path(pick_traj[-1], place_traj[0], pick_hand_traj[-1], place_hand_traj[0], 100)
-        
-        
-        traj = np.concatenate([approach_traj, pick_traj, move_traj, place_traj, return_traj])
-        hand_traj = np.concatenate([approach_hand_traj, pick_hand_traj, move_hand, place_hand_traj, return_hand_traj])
-        
-    else:
-        raise NotImplementedError
+    index_path = os.path.join(lookup_table_path, obj, index)
+    
+    pick_traj = np.load(f"{index_path}/pick_action.npy")
+    place_traj = np.load(f"{index_path}/place_action.npy")
+    
+    pick_hand_traj = np.load(f"{index_path}/pick_hand.npy")
+    place_hand_traj = np.load(f"{index_path}/place_hand.npy")
+    start_hand = np.zeros((pick_hand_traj.shape[1]))
+    print(pick_traj[0], pick6D, "first")
+    pick_traj = pick6D @ pick_traj
+    place_traj = place6D @ place_traj 
+    for t in pick_traj:
+        print(t[:,3])
+    
+    approach_traj, approach_hand_traj = get_linear_path(start6D, pick_traj[0], start_hand, pick_hand_traj[0],70)
+    return_traj, return_hand_traj = get_linear_path(place_traj[-1], start6D, pick_hand_traj[-1], start_hand, 70)
+    move_traj, move_hand = get_linear_path(pick_traj[-1], place_traj[0], pick_hand_traj[-1], place_hand_traj[0], 70)
+    
+    
+    traj = np.concatenate([approach_traj, pick_traj, move_traj, place_traj, return_traj])
+    hand_traj = np.concatenate([approach_hand_traj, pick_hand_traj, move_hand, place_hand_traj, return_hand_traj])
     
     return index, traj, hand_traj
 

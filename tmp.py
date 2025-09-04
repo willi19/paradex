@@ -2,7 +2,7 @@ import os
 import shutil
 from pathlib import Path
 
-def download_pick_videos(base_path, output_dir, start_idx=0, end_idx=54):
+def download_pick_videos(base_path, output_dir):
     """
     0부터 35까지 디렉토리에서 pick.mp4 파일들을 모두 복사/다운로드
     
@@ -19,18 +19,17 @@ def download_pick_videos(base_path, output_dir, start_idx=0, end_idx=54):
     downloaded_count = 0
     failed_files = []
     
-    for i in range(start_idx, end_idx + 1):
+    for i in os.listdir(base_path):
         # 각 디렉토리의 pick.mp4 경로
         source_file = os.path.join(base_path, str(i), "pick.mp4")
         
         # 목적지 파일명 (인덱스 포함)
-        dest_file = os.path.join(output_dir, f"pick_{i:03d}.mp4")
+        dest_file = os.path.join(output_dir, f"pick_{int(i):03d}.mp4")
         
         try:
             if os.path.exists(source_file):
                 # 파일 복사
                 shutil.copy2(source_file, dest_file)
-                print(f"✓ 다운로드 완료: {i}/pick.mp4 -> pick_{i:03d}.mp4")
                 downloaded_count += 1
             else:
                 print(f"✗ 파일 없음: {source_file}")
@@ -48,11 +47,8 @@ def download_pick_videos(base_path, output_dir, start_idx=0, end_idx=54):
         print(f"실패한 인덱스: {failed_files}")
 
 # 사용 예시
-base_path = "/home/temp_id/shared_data/capture/lookup/pringles"
-output_directory = "/home/temp_id/downloads/pringles_videos"  # 다운로드할 폴더
+for obj_name in ["book"]:
+    base_path = f"/home/temp_id/shared_data/capture/lookup/{obj_name}"
+    output_directory = f"/home/temp_id/downloads/{obj_name}"  # 다운로드할 폴더
 
-# 0부터 35까지 모든 pick.mp4 파일 다운로드
-download_pick_videos(base_path, output_directory, 0, 54)
-
-# 특정 범위만 다운로드하고 싶다면:
-# download_pick_videos(base_path, output_directory, 10, 20)  # 10~20번만
+    download_pick_videos(base_path, output_directory)

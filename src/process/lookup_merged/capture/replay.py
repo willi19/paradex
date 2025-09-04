@@ -8,14 +8,14 @@ from paradex.simulator import IsaacSimulator
 from paradex.robot.mimic_joint import parse_inspire
 from paradex.geometry.coordinate import DEVICE2WRIST
 from paradex.robot.robot_wrapper import RobotWrapper
-
+from paradex.process.lookup import normalize
 hand_name = "allegro"
 arm_name = "xarm"
 obj_name = "book"
 
 # LINK2WRIST = np.linalg.inv(DEVICE2WRIST["xarm"]) @ DEVICE2WRIST[hand_name]
 LINK2WRIST = load_latest_eef()
-demo_name = "6"
+demo_name = "1"
 
 demo_path = os.path.join(shared_dir, "capture", "lookup", obj_name, demo_name)
 
@@ -79,8 +79,8 @@ sim.reset(env_name, {"robot":{},
 
 for idx in range(object_T.shape[0]):
     sim.step(env_name, {"robot":{},
-            "robot_vis":{"hand":action[idx].copy(), "arm":state[idx].copy()},
-            "object_vis":{"book":object_T[idx].copy()}
+            "robot_vis":{"hand":action[idx].copy()},#, "arm":state[idx].copy()},
+            "object_vis":{"book":normalize(object_T[idx].copy(), "book")}
             })
 
     sim.tick()

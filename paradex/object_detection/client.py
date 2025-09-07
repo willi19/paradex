@@ -3,6 +3,9 @@ import os
 import time
 import torch
 import numpy as np
+from pathlib import Path
+import cv2
+HOME_PATH = Path.home()
 
 from paradex.utils.file_io import config_dir
 from paradex.image.aruco import detect_charuco, merge_charuco_detection
@@ -13,6 +16,7 @@ from paradex.io.capture_pc.camera_local import CameraCommandReceiver
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--obj_name', type=str, required=True)
+parser.add_argument('--debug', action='store_true')
 args = parser.parse_args()
 obj_name = args.obj_name
 
@@ -29,27 +33,39 @@ paircount_threshold=40
 from paradex.model.yolo_world_module import YOLO_MODULE
 mask_detector = YOLO_MODULE(categories=obj_name, device=DEVICE)
 
-camera_loader = CameraCommandReceiver()
-
-ident = camera_loader.ident
-socket = get_server_socket(5564)
+if not args.debug:
+    camera_loader = CameraCommandReceiver()
+    ident = camera_loader.ident
+    serial_list = camera_loader.camera.serial_list
+else:
+    from paradex.io.camera.camera_loader import CameraManager
+    camera = CameraManager("image")
+    num_cam = camera.num_cameras
+    serial_list = camera.serial_list
+# socket = get_server_socket(5564)
 
 board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
-serial_list = camera_loader.camera.serial_list
 num_cam = len(serial_list)
 last_frame_ind = [-1 for _ in range(num_cam)]
 
-while not camera_loader.exit:
+while (not args.debug and not camera_loader.exit) or (args.debug):
+    if args.debug:
+        save_path = './tmp'
+        os.makedirs(save_path, exist_ok=True)
+        camera.start(save_path)
+        camera.wait_for_capture_end()
+    
     for i, serial_num in enumerate(serial_list):
-        frame_id = camera_loader.camera.get_frameid(i)
-        
-        if frame_id == last_frame_ind[i]:
-            continue
-        
-        data = camera_loader.camera.get_data(i)
-        last_frame_ind[i] = data["frameid"]
-        last_image = data["image"]
-        
+        if not args.debug:
+            frame_id = camera_loader.camera.get_frameid(i)
+            data = camera_loader.camera.get_data(i)
+            last_frame_ind[i] = data["frameid"]
+            last_image = data["image"]
+            if frame_id == last_frame_ind[i]:
+                continue
+        else:
+            last_image = cv2.imread(os.path.join(save_path, f'{serial_num}.png'))
+
         result_dict = {}
         
         detections = mask_detector.process_img(last_image, top_1=False)
@@ -97,6 +113,6 @@ while not camera_loader.exit:
         }
         
         msg_json = json.dumps(msg_dict)
-        socket.send_multipart([ident, msg_json.encode()])
+        # socket.send_multipart([ident, msg_json.encode()])
         
     time.sleep(0.01)

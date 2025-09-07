@@ -8,9 +8,9 @@ import cv2
 from copy import deepcopy
 
 import torch
-from utils.scene import Scene
-from utils.io import get_optimal_T
-from utils.vis_utils import parse_objectmesh_objdict, make_grid_image_np, overlay_mask
+from paradex.object_detection.obj_utils.scene import Scene
+from paradex.object_detection.obj_utils.io import get_optimal_T
+from paradex.object_detection.obj_utils.vis_utils import parse_objectmesh_objdict, make_grid_image_np, overlay_mask
 # from utils.geometry import project_3d_to_2d_tensor, project_3d_to_2d
 # Initialize the matcher with default settings
 

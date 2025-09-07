@@ -78,6 +78,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         detections = mask_detector.process_img(last_image, top_1=False)
         result_dict = {}  
 
+        ttl_pair_count = 0
         for midx, tg_mask in enumerate(detections.mask):
             tg_mask = np.repeat(tg_mask[..., None], 3, axis=2).astype(np.int64)*255.0
     
@@ -99,6 +100,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                     src_cam_ids.append([src_cam_id]*len(src_3d_dict[src_cam_id]))
                         
             if pair_count > 0:
+                ttl_pair_count+=pair_count
                 src_3d_points = np.vstack(src_3d_points).astype(np.float64)
                 tg_2d_points = np.vstack(tg_2d_points).astype(np.float64)
                 
@@ -119,6 +121,8 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             "detect_result": result_dict,
             "type": "2D_matching",
             "serial_num": serial_num}
+        
+        print(f"[{serial_num}] Frame {last_frame_ind[i]}: {ttl_pair_count} detected.")
     
         msg_json = json.dumps(msg_dict)
         if not args.debug:

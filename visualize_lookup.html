@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pringles Video Viewer</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .controls {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 30px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+        }
+
+        label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+
+        select, input {
+            padding: 12px 16px;
+            border: 2px solid #e0e0e0;
+            border-radius: 10px;
+            background: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            min-width: 120px;
+        }
+
+        select:focus, input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .video-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+        }
+
+        .video-section {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .video-section:hover {
+            transform: translateY(-5px);
+        }
+
+        .video-title {
+            text-align: center;
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .pick-title {
+            color: #e74c3c;
+        }
+
+        .place-title {
+            color: #27ae60;
+        }
+
+        .merge-title {
+            color: #27ae60;
+        }
+
+        video {
+            width: 100%;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            background: #f8f9fa;
+        }
+
+        .error-message {
+            text-align: center;
+            color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border: 2px solid rgba(231, 76, 60, 0.2);
+        }
+
+        .info-panel {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 5px solid #667eea;
+        }
+
+        .current-path {
+            font-family: 'Courier New', monospace;
+            background: rgba(102, 126, 234, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            word-break: break-all;
+        }
+
+        @media (max-width: 768px) {
+            .video-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .controls {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+        }
+
+        .loading {
+            text-align: center;
+            color: #667eea;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🥔 Pringles Video Viewer</h1>
+        
+        <div class="info-panel">
+            <div>현재 경로: <span class="current-path" id="currentPath">/home/temp_id/shared_data/capture/lookup/pringles/1/</span></div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="objectSelect">Object Name:</label>
+                <select id="objectSelect">
+                    <option value="pringles">pringles</option>
+                    <option value="book">book</option>
+                    <option value="cylinder">cylinder</option>
+                </select>
+            </div>
+            
+            <div class="control-group">
+                <label for="indexSelect">Index:</label>
+                <select id="indexSelect">
+                    <option value="1">1</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="video-container">
+            <div class="video-section">
+                <div class="video-title pick-title">Pick Video</div>
+                <video id="pickVideo" controls preload="metadata">
+                    <source id="pickSource" src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            
+            <div class="video-section">
+                <div class="video-title place-title">Place Video</div>
+                <video id="placeVideo" controls preload="metadata">
+                    <source id="placeSource" src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+
+            <div class="video-section">
+                <div class="video-title merge-title">Merge Video</div>
+                <video id="mergeVideo" controls preload="metadata">
+                    <source id="mergeSource" src="" type="video/mp4">
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+        </div>
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+    </div>
+
+    <script>
+        const objectSelect = document.getElementById('objectSelect');
+        const indexSelect = document.getElementById('indexSelect');
+        const pickVideo = document.getElementById('pickVideo');
+        const placeVideo = document.getElementById('placeVideo');
+        const mergeVideo = document.getElementById('mergeVideo');
+
+        const pickSource = document.getElementById('pickSource');
+        const placeSource = document.getElementById('placeSource');
+        const mergeSource = document.getElementById('mergeSource');
+
+        const currentPath = document.getElementById('currentPath');
+        const errorMessage = document.getElementById('errorMessage');
+
+        function updateVideos() {
+            const objectName = objectSelect.value;
+            const index = indexSelect.value;
+            
+            // 경로 업데이트
+            const basePath = `/home/temp_id/shared_data/capture/lookup/${objectName}/${index}/`;
+            currentPath.textContent = basePath;
+            
+            // 상대 경로로 비디오 소스 설정
+            const pickPath = `lookup/${objectName}/${index}/pick.mp4`;
+            const placePath = `lookup/${objectName}/${index}/place.mp4`;
+            const mergePath = `lookup/${objectName}/${index}/merged.mp4`;
+            
+            // 비디오 소스 업데이트
+            pickSource.src = pickPath;
+            placeSource.src = placePath;
+            mergeSource.src = mergePath;
+            
+            // 비디오 리로드
+            pickVideo.load();
+            placeVideo.load();
+            mergeVideo.load();
+            // 에러 메시지 숨기기
+            errorMessage.style.display = 'none';
+        }
+
+        // 비디오 로드 에러 처리
+        function handleVideoError(videoElement, videoName) {
+            videoElement.addEventListener('error', function() {
+                errorMessage.textContent = `${videoName} 비디오를 로드할 수 없습니다. 파일 경로를 확인해주세요.`;
+                errorMessage.style.display = 'block';
+            });
+        }
+
+        // 이벤트 리스너 추가
+        objectSelect.addEventListener('change', function() {
+            loadAvailableIndices(objectSelect.value).then(() => {
+                updateVideos();
+            });
+        });
+        indexSelect.addEventListener('change', updateVideos);
+        
+        // 비디오 에러 핸들링
+        handleVideoError(pickVideo, 'Pick');
+        handleVideoError(placeVideo, 'Place');
+        handleVideoError(mergeVideo, 'Merge');
+        
+        async function loadAvailableIndices(objectName) {
+            try {
+                const response = await fetch(`lookup/${objectName}/`);
+                const text = await response.text();
+                
+                // Python의 http.server가 반환하는 디렉토리 목록 HTML 파싱
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(text, 'text/html');
+                const links = Array.from(doc.querySelectorAll('a'));
+                
+                const indices = links
+                    .map(link => link.textContent.replace('/', ''))
+                    .filter(name => /^\d+$/.test(name))  // 숫자만
+                    .map(Number)
+                    .sort((a, b) => a - b);
+                
+                // 드롭다운 업데이트
+                indexSelect.innerHTML = '';
+                indices.forEach(index => {
+                    const option = document.createElement('option');
+                    option.value = index;
+                    option.textContent = index;
+                    indexSelect.appendChild(option);
+                });
+                
+                if (indices.length > 0) {
+                    indexSelect.value = indices[0];
+                }
+                
+            } catch (error) {
+                console.log('디렉토리 읽기 실패:', error);
+                // 기본값
+                indexSelect.innerHTML = '<option value="1">1</option>';
+            }
+        }
+
+        // 초기 로드
+        loadAvailableIndices(objectSelect.value).then(() => {
+            updateVideos();
+        });
+
+        // 키보드 단축키
+        document.addEventListener('keydown', function(e) {
+            const currentIndex = parseInt(indexSelect.value);
+            const options = Array.from(indexSelect.options);
+            const currentOptionIndex = options.findIndex(option => parseInt(option.value) === currentIndex);
+            
+            if (e.key === 'ArrowLeft' && currentOptionIndex > 0) {
+                indexSelect.value = options[currentOptionIndex - 1].value;
+                updateVideos();
+            } else if (e.key === 'ArrowRight' && currentOptionIndex < options.length - 1) {
+                indexSelect.value = options[currentOptionIndex + 1].value;
+                updateVideos();
+            } else if (e.key === ' ') {
+                e.preventDefault();
+                // 현재 재생 중인 비디오 일시정지/재생
+                if (!pickVideo.paused) {
+                    pickVideo.pause();
+                } else {
+                    pickVideo.play();
+                }
+                if (!placeVideo.paused) {
+                    placeVideo.pause();
+                } else {
+                    placeVideo.play();
+                }
+                if (!mergeVideo.paused) {
+                    mergeVideo.pause();
+                } else {
+                    mergeVideo.play();
+                }
+            }
+        });
+
+        // 비디오 동기화 (선택사항)
+        let syncVideos = true;
+        
+        pickVideo.addEventListener('play', function() {
+            if (syncVideos) placeVideo.play();
+        });
+        
+        pickVideo.addEventListener('pause', function() {
+            if (syncVideos) placeVideo.pause();
+        });
+        
+        placeVideo.addEventListener('play', function() {
+            if (syncVideos) pickVideo.play();
+        });
+        
+        placeVideo.addEventListener('pause', function() {
+            if (syncVideos) pickVideo.pause();
+        });
+
+        mergeVideo.addEventListener('play', function() {
+            if (syncVideos) mergeVideo.play();
+        });
+        
+        mergeVideo.addEventListener('pause', function() {
+            if (syncVideos) mergeVideo.pause();
+        });
+    </script>
+</body>
+</html>

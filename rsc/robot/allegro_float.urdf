@@ -272,7 +272,7 @@
   <link name="thumb_tip">
     <visual>
       <geometry>
-        <mesh filename="allegro/meshes/thumb_tip.STL"/>
+        <mesh filename="allegro/meshes/tip.STL"/>
       </geometry>
       <material name="white">
         <color rgba=".9 .9 .9 1"/>
@@ -292,7 +292,7 @@
   <joint name="thumb_tip" type="fixed">
     <parent link="thumb_distal"/>
     <child link="thumb_tip"/>
-    <origin rpy="0 0 0" xyz="0 0 0.0423"/>
+    <origin rpy="0 -1.570796 0" xyz="0 0 0.0313"/>
   </joint>
   <link name="index_base">
     <visual>
@@ -405,7 +405,7 @@
   <link name="index_tip">
     <visual>
       <geometry>
-        <mesh filename="allegro/meshes/primary_tip.STL"/>
+        <mesh filename="allegro/meshes/tip.STL"/>
       </geometry>
       <material name="white">
         <color rgba=".9 .9 .9 1"/>
@@ -425,7 +425,7 @@
   <joint name="index_tip" type="fixed">
     <parent link="index_distal"/>
     <child link="index_tip"/>
-    <origin rpy="0 0 0" xyz="0 0 0.0267"/>
+    <origin rpy="0 -1.570796 0" xyz="0 0 0.0157"/>
   </joint>
   <!-- [LINK 0, 4, 8] -->
   <link name="middle_base">
@@ -537,7 +537,7 @@
   <link name="middle_tip">
     <visual>
       <geometry>
-        <mesh filename="allegro/meshes/primary_tip.STL"/>
+        <mesh filename="allegro/meshes/tip.STL"/>
       </geometry>
       <material name="white">
         <color rgba=".9 .9 .9 1"/>
@@ -557,7 +557,7 @@
   <joint name="middle_tip" type="fixed">
     <parent link="middle_distal"/>
     <child link="middle_tip"/>
-    <origin rpy="0 0 0" xyz="0 0 0.0267"/>
+    <origin rpy="0 -1.570796 0" xyz="0 0 0.0157"/>
   </joint>
   <!-- [LINK 0, 4, 8] -->
   <link name="ring_base">
@@ -671,7 +671,7 @@
   <link name="ring_tip">
     <visual>
       <geometry>
-        <mesh filename="allegro/meshes/primary_tip.STL"/>
+        <mesh filename="allegro/meshes/tip.STL"/>
       </geometry>
       <material name="white">
         <color rgba=".9 .9 .9 1"/>
@@ -691,7 +691,7 @@
   <joint name="ring_tip" type="fixed">
     <parent link="ring_distal"/>
     <child link="ring_tip"/>
-    <origin rpy="0 0 0" xyz="0 0 0.0267"/>
+    <origin rpy="0 -1.570796 0" xyz="0 0 0.0157"/>
   </joint>
   <!-- THUMB -->
   <!-- [LINK 12] -->

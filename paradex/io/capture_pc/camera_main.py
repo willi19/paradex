@@ -6,11 +6,12 @@ from paradex.io.capture_pc.util import get_client_socket
 from paradex.utils.file_io import copy_calib_files, shared_dir
 
 class RemoteCameraController():
-    def __init__(self, mode, serial_list,sync=False):  
+    def __init__(self, mode, serial_list,sync=False, debug=False):  
         self.pc_info = get_pcinfo()
         self.mode = mode
         self.serial_list = serial_list
         self.sync = sync
+        self.debug = debug
         port = get_network_info()["remote_camera"]
         
         self.pc_list = []
@@ -26,9 +27,7 @@ class RemoteCameraController():
             
         self.socket_dict = {pc_name:get_client_socket(self.pc_info[pc_name]["ip"], port) for pc_name in self.pc_list}
         self.register()
-        print("register")
         self.initiate_camera()
-        print("init camera")
         
     def send_message(self, message):
         for pc_name, socket in self.socket_dict.items():
@@ -42,8 +41,12 @@ class RemoteCameraController():
             for pc_name, socket in self.socket_dict.items():
                 if recv_dict[pc_name]:
                     continue
+                
+                if self.debug:
+                    print(pc_name)
                 recv_msg = socket.recv_string()
-                print(recv_msg, pc_name)
+                if self.debug:
+                    print(recv_msg, pc_name)
                 if recv_msg == message:
                     recv_dict[pc_name] = True
 
@@ -57,6 +60,7 @@ class RemoteCameraController():
     
     def register(self):
         self.send_message("register")   
+        print("waiting for camera registration")
         return self.wait_for_message("registered")
          
     def initiate_camera(self):

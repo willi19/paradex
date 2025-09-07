@@ -58,17 +58,20 @@ obj_cor_3d = triangulate_marker(img_dict, intrinsic, extrinsic)
 marker_index = [650, 651, 652, 653]
 marker_offset = np.load(f"{shared_dir}/object/marker_offset/book/{0}/marker_offset.npy",allow_pickle=True).item()
 
-A = []
-for marker_id in marker_index:
-    A.append(marker_offset[marker_id])
-A = np.concatenate(A)
+# A = []
+# for marker_id in marker_index:
+#     A.append(marker_offset[marker_id])
+# A = np.concatenate(A)
 
-B = []
-for marker_id in marker_index:
-    B.append(obj_cor_3d[marker_id])
-B = np.concatenate(B)
+# B = []
+# for marker_id in marker_index:
+#     B.append(obj_cor_3d[marker_id])
+# B = np.concatenate(B)
 
-obj_T = rigid_transform_3D(A, B)
+# obj_T = rigid_transform_3D(A, B)
+obj_T = get_current_object_6d("book", True, img_dict)
+print(obj_T)
+obj_T = c2r @ obj_T
 mesh.apply_transform(obj_T)
 
 intrinsic_list = []

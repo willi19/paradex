@@ -19,7 +19,7 @@ from paradex.pose_utils.renderer_utils import show_res_cv2, grid_image
 
 def get_book_goal_position(img_dict, goal_marker):
     marker_info = {
-        "xz":{"x":[(0, 3), (1, 2)], "z":[(0, 1), (3, 2)]},
+        "xz":{"x":[(0, 3), (1, 2)], "z":[(1, 0), (2, 3)]},
     }
     
     width = 26.2 / 100   # x 축
@@ -131,7 +131,6 @@ def get_current_object_6d_marker(obj_name, img_dict=None):
     
     #### Object pose estimation ####
     cor_3d = triangulate_marker(img_dict, intrinsic, extrinsic)
-    print(cor_3d)
     marker_offset = np.load(os.path.join(shared_dir, "object", "marker_offset", obj_name, "0", "marker_offset.npy"), allow_pickle=True).item()
     marker_id = list(marker_offset.keys())
     A = []
@@ -148,7 +147,6 @@ def get_current_object_6d_marker(obj_name, img_dict=None):
     
     obj_T = rigid_transform_3D(A, B)
     obj_T = np.linalg.inv(c2r) @ obj_T
-    
     return obj_T
 
 def get_object_6d(obj_name, img_dict, cam_param, marker=False):

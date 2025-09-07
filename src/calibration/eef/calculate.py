@@ -36,14 +36,15 @@ robot = RobotWrapper(
 arm = RobotWrapper(
     os.path.join(rsc_path, "robot", "xarm.urdf")
 )
-finger_index = {f"{finger_name}_proximal":robot.get_link_index(f"{finger_name}_proximal") for finger_name in ["thumb", "index", "middle", "ring"]}
 
 # finger_index["index_proximal"] = 8
 # finger_index["middle_proximal"] = 8
 # finger_index["ring_proximal"] = 28
+# 11:"ring_proximal", 14:"middle_proximal", 13:"index_proximal"}#,
 
-finger_id_list = [11,13,14]
-finger_marker = {11:"ring_proximal", 14:"middle_proximal", 13:"index_proximal", 10:"thumb_proximal"}
+finger_marker = { 464:"thumb_distal", 183:"ring_distal", 179:"index_distal"}
+finger_id_list = list(finger_marker.keys())
+finger_index = {link_name:robot.get_link_index(link_name) for link_name in set(finger_marker.values())}
 
 c2r = load_c2r(os.path.join(eef_calib_path, "0"))
     
@@ -112,7 +113,7 @@ B_list = []
 finger_name = []
 index_name = []
 
-ans = np.linalg.inv(DEVICE2WRIST["xarm"]) @ DEVICE2WRIST["allegro"]
+# ans = np.linalg.inv(DEVICE2WRIST["xarm"]) @ DEVICE2WRIST["allegro"]
 for i in range(len(index_list)-1):
     T_r1 = robot_cor[i]
     T_r2 = robot_cor[i+1]
@@ -151,12 +152,14 @@ theta, b_x = solve(A_list, B_list)
 X[0:3, 0:3] = theta
 X[0:3, -1] = b_x.flatten()
 X, loss = solve_axb_pytorch(A_list, B_list,X.copy(),learning_rate=0.001)
+print(X, R.from_matrix(X[0:3,0:3]).as_euler('xyz'))
+
 np.save(os.path.join(eef_calib_path, "0", "eef.npy"), X)
 
 for i in range(len(index_list)-1):
-    # print(A_list[i] @ X - X @ B_list[i], "error")
-    # print(A_list[i] @ ans - ans @ B_list[i], index_name[i], finger_name[i])
-    print(A_list[i] @ X - X @ B_list[i], index_name[i], finger_name[i])
+    print(A_list[i] @ X - X @ B_list[i], "error")
+#     # print(A_list[i] @ ans - ans @ B_list[i], index_name[i], finger_name[i])
+#     print(A_list[i] @ X - X @ B_list[i], index_name[i], finger_name[i])
 
 extrinsic_list = []
 intrinsic_list = []
@@ -171,20 +174,34 @@ for serial_name in serial_list:
     intrinsic_list.append(intrinsic[sn]['intrinsics_undistort'])
 
 hand_action = np.array(hand_action)
-qpos = np.array(qpos)
+qpos = []
+for i in range(len(index_list)):
+    wrist_6d = robot_cor[i] @ X
+    euler = R.from_matrix(wrist_6d[:3,:3]).as_euler('zyx')
+    
+    q = np.zeros(22)
+    q[0:3] = wrist_6d[0:3,3]
+    q[5] = euler[0]
+    q[4] = euler[1]
+    q[3] = euler[2]
+    q[6:] = hand_action[i]
+    qpos.append(q)
+    # qpos.append(np.concatenate([wrist_6d[0:3,3], R.from_matrix(wrist_6d[0:3,0:3]).as_euler('zyx'), hand_action[i]], axis=0))
+qpos = np.array(qpos).astype(np.float32)
+# qpos = np.concatenate([qpos, hand_action], axis=1)
+rm = Robot_Module(get_robot_urdf_path(None, "allegro"), state=qpos)
 
-qpos = np.concatenate([qpos, hand_action], axis=1)
-rm = Robot_Module(get_robot_urdf_path("xarm", "allegro"), state=qpos)
-print(rm.link_list)
 renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=2048, height=1536, device='cuda')
-
-for fid in index_list:
+print(rm.link_list)
+for fi, fid in enumerate(index_list):
     img_dir = os.path.join(eef_calib_path, fid, "undistort")
     robot_mesh_list = rm.get_mesh(int(fid))
     robot_mesh = robot_mesh_list[0]
     for i in range(1, len(robot_mesh_list)):
+        # robot_mesh += robot_mesh_list[i]
         robot_mesh += robot_mesh_list[i]
-        
+    # transform X open3d
+    # robot_mesh.transform(X @ robot_cor[fi] )
     img_dict = {img_name:cv2.imread(os.path.join(img_dir, img_name)) for img_name in serial_list}
     os.makedirs(os.path.join(eef_calib_path, fid, "overlay"), exist_ok=True)
     

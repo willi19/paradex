@@ -39,7 +39,7 @@ def simulate(traj, hand_traj, pick_6D, place_6D, hand_name, obj_name, start_even
                             "object_vis":{f"{obj_name}_start":obj_name, f"{obj_name}_end":obj_name}})
 
     robot = RobotWrapper(os.path.join(rsc_path, "robot", f"{arm_name}_{hand_name}.urdf"))
-
+    
     while not start_event.is_set() and not stop_event.is_set():
         init_action, success = robot.solve_ik(traj[0], "link6")
         last_q = init_action.copy()
@@ -47,12 +47,10 @@ def simulate(traj, hand_traj, pick_6D, place_6D, hand_name, obj_name, start_even
         sim.reset("inference", {"robot":{},
                 "robot_vis":{"right":init_action.copy()},
                 "object":{},
-                "object_vis":{f"{obj_name}":pick_6D.copy()}
+                "object_vis":{f"{obj_name}_start":pick_6D.copy(), f"{obj_name}_end":place_6D.copy()}
                 })
         
         for i in range(0, len(traj), 1):
-            sim.tick()
-            time.sleep(1/30)
             action, success = robot.solve_ik(traj[i], "link6", last_q)
             
             last_q = action.copy()
@@ -65,6 +63,9 @@ def simulate(traj, hand_traj, pick_6D, place_6D, hand_name, obj_name, start_even
                     f"{obj_name}_start":pick_6D.copy(),
                     f"{obj_name}_end":place_6D.copy()}
                 })
+            
+            sim.tick()
+            time.sleep(1/30)
             
             if start_event.is_set() or stop_event.is_set():
                 break

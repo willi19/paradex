@@ -222,7 +222,7 @@
   <joint name="arm_to_hand" type="fixed">
     <parent link="link6"/>
     <child link="wrist"/>
-    <origin rpy="0.00000 0.00000 -1.57080" xyz="-0.0001435 0.00139 0.06019"/>
+    <origin rpy="-0.00526 0.012665 -1.5592912" xyz="0.001273 -0.00054 0.06132"/>
   </joint>
   <link name="wrist">
   </link>
@@ -374,7 +374,7 @@
   <link name="thumb_tip">
     <visual>
       <geometry>
-        <mesh filename="allegro/meshes/thumb_tip.STL"/>
+        <mesh filename="allegro/meshes/tip.STL"/>
       </geometry>
       <material name="white">
         <color rgba=".9 .9 .9 1"/>
@@ -394,7 +394,7 @@
   <joint name="thumb_tip" type="fixed">
     <parent link="thumb_distal"/>
     <child link="thumb_tip"/>
-    <origin rpy="0 0 0" xyz="0 0 0.0423"/>
+    <origin rpy="0 -1.570796 0" xyz="0 0 0.0313"/>
   </joint>
   <link name="index_base">
     <visual>
@@ -507,7 +507,7 @@
   <link name="index_tip">
     <visual>
       <geometry>
-        <mesh filename="allegro/meshes/primary_tip.STL"/>
+        <mesh filename="allegro/meshes/tip.STL"/>
       </geometry>
       <material name="white">
         <color rgba=".9 .9 .9 1"/>
@@ -515,7 +515,7 @@
     </visual>
     <collision>
       <geometry>
-        <sphere radius="0.015"/>
+        <sphere radius="0.015"/>  
       </geometry>
     </collision>
     <inertial>
@@ -523,12 +523,11 @@
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <inertia ixx="9.68e-07" ixy="0" ixz="0" iyy="9.68e-07" iyz="0" izz="9.68e-07"/>
     </inertial>
-  </link>
-  <!-- need to be fixed later-->
+  </link>  <!-- need to be fixed later-->
   <joint name="index_tip" type="fixed">
     <parent link="index_distal"/>
     <child link="index_tip"/>
-    <origin rpy="0 0 0" xyz="0 0 0.0267"/>
+    <origin rpy="0 -1.570796 0" xyz="0 0 0.0157"/>
   </joint>
   <!-- [LINK 0, 4, 8] -->
   <link name="middle_base">
@@ -640,7 +639,7 @@
   <link name="middle_tip">
     <visual>
       <geometry>
-        <mesh filename="allegro/meshes/primary_tip.STL"/>
+        <mesh filename="allegro/meshes/tip.STL"/>
       </geometry>
       <material name="white">
         <color rgba=".9 .9 .9 1"/>
@@ -648,7 +647,7 @@
     </visual>
     <collision>
       <geometry>
-        <sphere radius="0.015"/>
+        <sphere radius="0.015"/>  
       </geometry>
     </collision>
     <inertial>
@@ -660,7 +659,7 @@
   <joint name="middle_tip" type="fixed">
     <parent link="middle_distal"/>
     <child link="middle_tip"/>
-    <origin rpy="0 0 0" xyz="0 0 0.0267"/>
+    <origin rpy="0 -1.570796 0" xyz="0 0 0.0157"/>
   </joint>
   <!-- [LINK 0, 4, 8] -->
   <link name="ring_base">
@@ -774,7 +773,7 @@
   <link name="ring_tip">
     <visual>
       <geometry>
-        <mesh filename="allegro/meshes/primary_tip.STL"/>
+        <mesh filename="allegro/meshes/tip.STL"/>
       </geometry>
       <material name="white">
         <color rgba=".9 .9 .9 1"/>
@@ -782,7 +781,7 @@
     </visual>
     <collision>
       <geometry>
-        <sphere radius="0.015"/>
+        <sphere radius="0.015"/> 
       </geometry>
     </collision>
     <inertial>
@@ -794,7 +793,7 @@
   <joint name="ring_tip" type="fixed">
     <parent link="ring_distal"/>
     <child link="ring_tip"/>
-    <origin rpy="0 0 0" xyz="0 0 0.0267"/>
+    <origin rpy="0 -1.570796 0" xyz="0 0 0.0157"/>
   </joint>
   <!-- THUMB -->
   <!-- [LINK 12] -->

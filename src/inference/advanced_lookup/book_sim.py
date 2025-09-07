@@ -74,7 +74,7 @@ if __name__ == "__main__":
     
     goal_marker = [("3", "xz"), ("1", "xz")]#, ("2", "xz"), ("4", "xz")]
     goal_position = get_book_goal_position(register_dict, goal_marker)
-
+    print(goal_position)
     stop_event = Event()
     start_event = Event()
  
@@ -85,7 +85,7 @@ if __name__ == "__main__":
         place_id = goal_marker[0]
         place_6D = goal_position[place_id]
         place_6D = normalize(place_6D, "book")
-        
+        print(place_6D)
         print("press y after fixing object position")        
         while not start_event.is_set() and not stop_event.is_set():
             time.sleep(0.1)

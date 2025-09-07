@@ -31,7 +31,7 @@ from paradex.image.projection import get_cammtx, project_point, project_mesh, pr
 from paradex.image.overlay import overlay_mask
 from paradex.image.merge import merge_image
 
-use_sim = True
+use_sim = False
 
 pose_index_dict = {
     ("stand", "stand"):[4, 6, 9, 11, 19, 20],
@@ -63,9 +63,7 @@ def get_object_6D(obj_name, marker, camera, path):
     img_dict = {img_name.split(".")[0]:cv2.imread(os.path.join(img_dir, img_name)) for img_name in os.listdir(img_dir)}
     
     obj_6D = get_current_object_6d(obj_name, marker, img_dict)
-    print(obj_6D)
     obj_6D = normalize(obj_6D, obj_name)
-    print(obj_6D, "final")
     return obj_6D
 
 if __name__ == "__main__":
@@ -98,17 +96,20 @@ if __name__ == "__main__":
     ####################################
     
     ########## Load Info #################
-    c2r = load_latest_C2R()
-    place_id_list = [("1", "xz"), ("2", "xz"), ("3", "xz"), ("4", "xz")]
-    place_position_dict = get_place_position(sensors["camera"], place_id_list)
-    
-    num_try = 1
-    
     stop_event = Event()
     start_event = Event()
  
     event_dict = {"q":stop_event, "y":start_event}
     listen_keyboard(event_dict)
+    num_try = 2
+    
+    c2r = load_latest_C2R()
+    place_id_list = [("1", "xz"), ("2", "xz"), ("3", "xz"), ("4", "xz")]
+    try:    
+        place_position_dict = get_place_position(sensors["camera"], place_id_list)
+    except:
+        stop_event.set()
+    
     ##########################################
     process_list = []        
     for start_state in ["lay"]:
@@ -116,9 +117,7 @@ if __name__ == "__main__":
             for table_idx in pose_index_dict[(start_state, end_state)]:
                 for place_id in place_id_list:
                     place_6D = place_position_dict[place_id]
-                    print(place_6D)
                     place_6D = normalize(place_6D, "book")
-                    print(place_6D)
                     for pick_id in place_id_list:
                         for demo_idx in range(num_try):
                             process_info = {"start_state": start_state,
@@ -131,16 +130,26 @@ if __name__ == "__main__":
                             process_list.append(process_info)
     
     for process_info in process_list:
-        save_path = os.path.join("inference", "lookup", "book", start_state, end_state, str(table_idx), place_id[0] + "_" + pick_id[1], str(demo_idx))
+        info = {"start_state": process_info["start_state"],
+                "end_state": process_info["end_state"],
+                "place_id": process_info["place_id"],
+                "pick_id": process_info["pick_id"],
+                "demo_idx": process_info["demo_idx"],
+                "table_idx":process_info["table_idx"]}
+
+        info["success"] = True
+        
+        save_path = os.path.join("inference", "lookup", "book", info["start_state"]+"_"+info["end_state"], str(info["table_idx"]), info["pick_id"][0] + "_" + info["place_id"][0], str(info["demo_idx"]))
+        
         home_robot(sensors["arm"], start_pos)
-        print(process_info["place_6D"], "place6D")
+        
         if os.path.exists(os.path.join(shared_dir, save_path, "result.json")):
             continue
         
         if stop_event.is_set():
             break
                     
-        print("press y after fixing object position")        
+        print(f"press y after fixing object position to {process_info['pick_id']} will go to {process_info['place_id']}")        
         while not start_event.is_set() and not stop_event.is_set():
             time.sleep(0.1)
         
@@ -152,9 +161,10 @@ if __name__ == "__main__":
         ##### Load pick 6D ######
         pick_path = os.path.join(save_path, "pick")
         pick_6D = get_object_6D("book", args.marker, sensors["camera"], pick_path)
-    
-        #########################################
-        
+        place_6D = process_info['place_6D'].copy()
+        ##########################################
+                    
+        ############    Load & Save traj   #############
         choosen_index, traj, hand_traj = get_traj("book", hand_name, start_pos.copy(), pick_6D.copy(), place_6D.copy(), str(process_info["table_idx"]))
         
         # Show simulation
@@ -174,8 +184,9 @@ if __name__ == "__main__":
         np.save(f'{shared_dir}/{save_path}/target_6D.npy', place_6D)
         np.save(f'{shared_dir}/{save_path}/traj.npy', traj)
         np.save(f'{shared_dir}/{save_path}/hand_traj.npy', hand_traj)
-        
-        # Start capture
+        ####################################################
+                    
+        ################ Execute ###########################
         sensors['arm'].start(f"{shared_dir}/{save_path}/raw/{arm_name}")
         sensors['hand'].start(f"{shared_dir}/{save_path}/raw/{hand_name}")
         
@@ -195,14 +206,17 @@ if __name__ == "__main__":
         sensors["arm"].end()
         sensors["hand"].end()
         
-        place_img_dir = os.path.join(shared_dir, save_path, "place")        
-        img_dict = {img_name.split(".")[0]:cv2.imread(os.path.join(place_img_dir, img_name)) for img_name in os.listdir(place_img_dir)}
-                                                                   
-        cur_6D = get_current_object_6d("book", args.marker, img_dict)
-        os.makedirs(f"{shared_dir}/{save_path}/raw/state", exist_ok=True)
-        np.save(f'{shared_dir}/{save_path}/place_6D.npy', cur_6D)
-        
-        time.sleep(1) # Need distributor to stop
+        ############## Save result ##################
+        if not stop_event.is_set():
+            place_path = os.path.join(save_path, "place")
+            try:
+                cur_6D = get_object_6D(args.object, args.marker, None, place_path)
+                np.save(os.path.join(shared_dir, save_path, 'place_6D.npy', cur_6D))
+            except:
+                print("no place detected")
+        with open(os.path.join(shared_dir, save_path, "result.json"), "w") as f:
+            json.dump(info, f, indent=4)
+        #############################################
         
         
     for sensor_name, sensor in sensors.items():

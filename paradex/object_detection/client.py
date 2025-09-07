@@ -52,6 +52,7 @@ board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_inf
 num_cam = len(serial_list)
 last_frame_ind = [-1 for _ in range(num_cam)]
 
+frame_id = -1
 while (not args.debug and not camera_loader.exit) or (args.debug):
     if args.debug:
         save_path = './tmp'
@@ -61,7 +62,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
     
     if args.debug:
         st_time = time.time()
-        
+    
     for i, serial_num in enumerate(serial_list):
         if not args.debug:
             frame_id = camera_loader.camera.get_frameid(i)
@@ -127,6 +128,8 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         msg_json = json.dumps(msg_dict)
         if not args.debug:
             socket.send_multipart([ident, msg_json.encode()])
+
+    print(f"End of frame id {frame_id}")
 
     if args.debug:
         ed_time = time.time()

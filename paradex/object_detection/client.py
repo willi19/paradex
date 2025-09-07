@@ -64,6 +64,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         st_time = time.time()
     
     for i, serial_num in enumerate(serial_list):
+        print(f"Processing camera {serial_num}...")
         if not args.debug:
             frame_id = camera_loader.camera.get_frameid(i)
             data = camera_loader.camera.get_data(i)
@@ -131,7 +132,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         if not args.debug:
             socket.send_multipart([ident, msg_json.encode()])
 
-    print(f"End of frame id {frame_id}")
+    # print(f"End of frame id {frame_id}")
 
     if args.debug:
         ed_time = time.time()

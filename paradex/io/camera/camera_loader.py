@@ -27,7 +27,7 @@ def spin2cv(pImg, h, w):
     cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)
     return cvImg
 
-class CameraManager:
+class CameraManager: # Connect to real camera in local pc
     def __init__(self, mode, serial_list = None, syncMode=True):
         self.exit = Event()
         self.start_capture = Event()
@@ -90,7 +90,7 @@ class CameraManager:
         self.lens_info = json.load(open(os.path.join(config_dir, "camera/lens_info.json"), "r"))
         self.cam_info = json.load(open(os.path.join(config_dir,"camera/camera.json"), "r"))
 
-        self.capture_threads = [
+        self.capture_threads = [ # Run Camera Set camera instance.
             Thread(target=self.run_camera, args=(i,))
             for i in range(self.num_cameras)
         ]
@@ -247,6 +247,7 @@ class CameraManager:
             self.quit_flag[i].wait()
     
     def run_camera(self, index):
+        # Get the target serial number
         serial_num = self.serial_list[index]
 
         system = ps.System.GetInstance()
@@ -261,9 +262,10 @@ class CameraManager:
         frame_rate = self.lens_info[lens_id]["fps"]
         
         try:
+            # make camera instance
             cam = Camera(camPtr, gain, exposure, frame_rate, self.mode, self.syncMode)
             self.cameras[index] = cam  # 카메라 객체 저장
-
+            # Set connect information to the event
             self.connect_flag[index].set()
             self.connect_success[index].set()
 
@@ -426,3 +428,6 @@ class CameraManager:
         
         with self.locks[index]:
             return {"image":self.image_array[index].copy(), "frameid":self.frame_num[index]}
+        
+        
+    def 

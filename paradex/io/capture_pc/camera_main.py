@@ -51,7 +51,7 @@ class RemoteCameraController():
                     recv_dict[pc_name] = True
 
                 if not recv_dict[pc_name]:
-                    success = False
+                    success = False 
             if success:
                 return True                
             time.sleep(0.01)

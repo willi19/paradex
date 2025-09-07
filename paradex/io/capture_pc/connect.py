@@ -43,6 +43,8 @@ def run_script(script: str, pc_list = None):
 
     for pc_name in pc_list:
         ip = pc_info[pc_name]["ip"]
+        
+        # activate conda environment, save script log to null
 
         remote_cmd = (
             f"cd {repo_path} && "    

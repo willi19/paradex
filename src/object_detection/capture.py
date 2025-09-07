@@ -77,9 +77,9 @@ def listen_socket(pc_name, socket):
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script(f"python src/object_detection/client.py --obj_name {args.obj_name}", pc_list)
+run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list)
 
-camera_controller = RemoteCameraController("stream", None, sync=False)
+camera_controller = RemoteCameraController("stream", None, sync=True)
 camera_controller.start()
 
 try:
@@ -124,67 +124,70 @@ try:
                         matching_output[midx]['inliers'] = inliers_mask
                         matching_output[midx]['inliers_count'] = len(inliers)
             cur_state[serial_num] = matching_output
-                        
-        # make matching item
-        matchingitem_dict = {}
-        st_time = time.time()
-        # make matching item
-        for serial_num in cur_state:
-            proj_matrix = cam2intr[serial_num]@cam2extr[serial_num]
-            # For each mask
-            for midx in cur_state[serial_num]:
-                tmp_matching = cur_state[serial_num][midx]
-                if tmp_matching['count']>0 and tmp_matching['inliers_count'] > inliers_threshold:
-                    transformed_verts = torch.einsum('mn, jn -> jm', initial_3d_bucket[serial_num][midx][0][:3,:3], \
-                                                sampled_obj_verts)+ initial_3d_bucket[serial_num][midx][0][:3,3]
-
-                    new_item = MatchItem(cam_id=serial_num, midx=midx, matching_item=tmp_matching,\
-                        detection=tmp_matching['tg_masks'], \
-                        initial_T=initial_3d_bucket[serial_num][midx][0], \
-                        transformed_verts=transformed_verts.detach().cpu().numpy(),
-                        proj_matrix=proj_matrix)
-
-                    matchingitem_dict[f'{serial_num}_{midx}'] = new_item
-                    # translated_T = np.copy(new_item.initial_T)
         
-        # DO matching and get 6Dㄴ
+        
+        Next=False
+        if Next:
+            # make matching item
+            matchingitem_dict = {}
+            st_time = time.time()
+            # make matching item
+            for serial_num in cur_state:
+                proj_matrix = cam2intr[serial_num]@cam2extr[serial_num]
+                # For each mask
+                for midx in cur_state[serial_num]:
+                    tmp_matching = cur_state[serial_num][midx]
+                    if tmp_matching['count']>0 and tmp_matching['inliers_count'] > inliers_threshold:
+                        transformed_verts = torch.einsum('mn, jn -> jm', initial_3d_bucket[serial_num][midx][0][:3,:3], \
+                                                    sampled_obj_verts)+ initial_3d_bucket[serial_num][midx][0][:3,3]
 
-        matchingset_list = []
-        keys_sorted = sorted(matchingitem_dict.keys(), key=lambda k: matchingitem_dict[k].inlier_count, reverse=True)
+                        new_item = MatchItem(cam_id=serial_num, midx=midx, matching_item=tmp_matching,\
+                            detection=tmp_matching['tg_masks'], \
+                            initial_T=initial_3d_bucket[serial_num][midx][0], \
+                            transformed_verts=transformed_verts.detach().cpu().numpy(),
+                            proj_matrix=proj_matrix)
 
-        for key in keys_sorted:
-            print(f"** {key} Optimization")
-            serial_num, midx = key.split("_")
-            new_item = matchingitem_dict[key]
+                        matchingitem_dict[f'{serial_num}_{midx}'] = new_item
+                        # translated_T = np.copy(new_item.initial_T)
             
-            min_validset_idx = None
-            min_valid_distance = None
-            min_optim_output = None
+            # DO matching and get 6Dㄴ
 
-            valid = False
-            for sidx, exising_set in enumerate(matchingset_list):
-                # check with optim
-                # NOTE: translation thres: I increased translation threshold because few pnp output result in bad translation (no depth input)
-                # validate compatibility: check center distance + run group optimization and return and filtering result
-                loss, distance, optim_output = exising_set.validate_compatibility(new_item, obj_dict=obj_dict, \
-                                                                        translation_thres=0.3, loss_thres=10, \
-                                                                        loop_numb=30, vis=(args.vis and args.debug), ceres=True)
-                print(f'loss:{loss} distance:{distance} optim_ouptput:{optim_output}')
+            matchingset_list = []
+            keys_sorted = sorted(matchingitem_dict.keys(), key=lambda k: matchingitem_dict[k].inlier_count, reverse=True)
 
-                # move rendered image target information: loss, set number
-                if loss is not None: # optimization run
-                    if optim_output is not None: # Optimization Run
-                        valid = True 
-                        if min_validset_idx is None or min_valid_distance>distance:
-                            min_validset_idx = sidx
-                            min_valid_distance = distance
-                            min_optim_output = optim_output
+            for key in keys_sorted:
+                print(f"** {key} Optimization")
+                serial_num, midx = key.split("_")
+                new_item = matchingitem_dict[key]
+                
+                min_validset_idx = None
+                min_valid_distance = None
+                min_optim_output = None
 
-            if len(matchingset_list)>0 and valid:
-                matchingset_list[min_validset_idx].add(new_item)
-                matchingset_list[min_validset_idx].update_T(min_optim_output)
-            else:
-                matchingset_list.append(MatchingSet(len(matchingset_list), new_item, tg_scene=None, img_bucket=img_bucket))
+                valid = False
+                for sidx, exising_set in enumerate(matchingset_list):
+                    # check with optim
+                    # NOTE: translation thres: I increased translation threshold because few pnp output result in bad translation (no depth input)
+                    # validate compatibility: check center distance + run group optimization and return and filtering result
+                    loss, distance, optim_output = exising_set.validate_compatibility(new_item, obj_dict=obj_dict, \
+                                                                            translation_thres=0.3, loss_thres=10, \
+                                                                            loop_numb=30, vis=(args.vis and args.debug), ceres=True)
+                    print(f'loss:{loss} distance:{distance} optim_ouptput:{optim_output}')
+
+                    # move rendered image target information: loss, set number
+                    if loss is not None: # optimization run
+                        if optim_output is not None: # Optimization Run
+                            valid = True 
+                            if min_validset_idx is None or min_valid_distance>distance:
+                                min_validset_idx = sidx
+                                min_valid_distance = distance
+                                min_optim_output = optim_output
+
+                if len(matchingset_list)>0 and valid:
+                    matchingset_list[min_validset_idx].add(new_item)
+                    matchingset_list[min_validset_idx].update_T(min_optim_output)
+                else:
+                    matchingset_list.append(MatchingSet(len(matchingset_list), new_item, tg_scene=None, img_bucket=img_bucket))
         
         
 finally:

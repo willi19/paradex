@@ -68,10 +68,10 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         if not args.debug:
             frame_id = camera_loader.camera.get_frameid(i)
             data = camera_loader.camera.get_data(i)
-            last_frame_ind[i] = data["frameid"]
-            last_image = data["image"]
             if frame_id == last_frame_ind[i]:
                 continue
+            last_frame_ind[i] = data["frameid"]
+            last_image = data["image"]
         else:
             last_image = cv2.cvtColor(cv2.imread(os.path.join(save_path, f'{serial_num}.png')), cv2.COLOR_BGR2RGB)
             cv2.imwrite(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg', last_image)

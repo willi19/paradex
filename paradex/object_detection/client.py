@@ -11,6 +11,7 @@ from paradex.utils.file_io import config_dir
 from paradex.image.aruco import detect_charuco, merge_charuco_detection
 from paradex.io.capture_pc.util import get_server_socket
 from paradex.io.capture_pc.camera_local import CameraCommandReceiver
+from paradex.utils.file_io import shared_dir
 
 # Insert object name
 import argparse
@@ -37,12 +38,15 @@ if not args.debug:
     camera_loader = CameraCommandReceiver()
     ident = camera_loader.ident
     serial_list = camera_loader.camera.serial_list
+    socket = get_server_socket(5564)
 else:
     from paradex.io.camera.camera_loader import CameraManager
     camera = CameraManager("image")
     num_cam = camera.num_cameras
     serial_list = camera.serial_list
-# socket = get_server_socket(5564)
+
+    NAS_IMG_SAVEDIR = Path(shared_dir)/'current_img'
+    os.makedirs(NAS_IMG_SAVEDIR, exist_ok=True)
 
 board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
 num_cam = len(serial_list)
@@ -55,7 +59,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         camera.start(save_path)
         camera.wait_for_capture_end()
     
-    result_dict = {}    
+      
     for i, serial_num in enumerate(serial_list):
         if not args.debug:
             frame_id = camera_loader.camera.get_frameid(i)
@@ -66,10 +70,12 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                 continue
         else:
             last_image = cv2.cvtColor(cv2.imread(os.path.join(save_path, f'{serial_num}.png')), cv2.COLOR_BGR2RGB)
+            cv2.imwrite(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg', last_image)
 
         last_image = cv2.resize(last_image, dsize=template.img_template[serial_num].shape[:2][::-1])
         detections = mask_detector.process_img(last_image, top_1=False)
-        
+        result_dict = {}  
+
         for midx, tg_mask in enumerate(detections.mask):
             tg_mask = np.repeat(tg_mask[..., None], 3, axis=2).astype(np.int64)*255.0
     
@@ -113,6 +119,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             "serial_num": serial_num}
     
         msg_json = json.dumps(msg_dict)
-        # socket.send_multipart([ident, msg_json.encode()])
+        if not args.debug:
+            socket.send_multipart([ident, msg_json.encode()])
         
     time.sleep(0.01)

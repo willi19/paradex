@@ -9,7 +9,6 @@ import torch
 
 from pathlib import Path
 
-
 os.environ["MODEL_CACHE_DIR"] = str(Path(__file__).absolute().parent.parent/'cache')
 print("Model Cache Directory:", os.environ["MODEL_CACHE_DIR"])
 

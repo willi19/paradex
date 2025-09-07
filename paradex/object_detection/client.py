@@ -55,6 +55,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         camera.start(save_path)
         camera.wait_for_capture_end()
     
+    result_dict = {}    
     for i, serial_num in enumerate(serial_list):
         if not args.debug:
             frame_id = camera_loader.camera.get_frameid(i)
@@ -66,16 +67,14 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         else:
             last_image = cv2.imread(os.path.join(save_path, f'{serial_num}.png'))
 
-        result_dict = {}
-        
         detections = mask_detector.process_img(last_image, top_1=False)
         for midx, tg_mask in enumerate(detections.mask):
             tg_mask = np.repeat(tg_mask[..., None], 3, axis=2).astype(np.int64)*255.0
     
             src_3d_dict, tg_2d_dict, org_2d_dict = \
                 matcherto3d.match_img2template(last_image, tg_mask, \
-                                            template, paircount_threshold, batch_size=args.batch, \
-                                            draw=False, use_crop=True)
+                                            template, paircount_threshold, batch_size=24, \
+                                            draw=True, use_crop=True)
             
             pair_count = 0
             src_3d_points = []
@@ -88,15 +87,14 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                     src_3d_points.append(src_3d_dict[src_cam_id])
                     tg_2d_points.append(tg_2d_dict[src_cam_id])
                     src_cam_ids.append([src_cam_id]*len(src_3d_dict[src_cam_id]))
-                    
-            src_3d_points = np.vstack(src_3d_points).astype(np.float64)
-            tg_2d_points = np.vstack(tg_2d_points).astype(np.float64)
-            
-            combined_src_3d = src_3d_points # combined array
-            combined_tg_2d = tg_2d_points # combined_array
-            src_arr_cam_ids = np.hstack(src_cam_ids)
                         
             if pair_count > 0:
+                src_3d_points = np.vstack(src_3d_points).astype(np.float64)
+                tg_2d_points = np.vstack(tg_2d_points).astype(np.float64)
+                
+                combined_src_3d = src_3d_points # combined array
+                combined_tg_2d = tg_2d_points # combined_array
+                src_arr_cam_ids = np.hstack(src_cam_ids)
                 result = {'count':pair_count,'combined_src_3d':combined_src_3d, \
                     'combined_tg_2d':combined_tg_2d,\
                     'src_arr_cam_ids':src_arr_cam_ids, 'tg_mask':tg_mask}

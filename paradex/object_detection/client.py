@@ -59,7 +59,9 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         camera.start(save_path)
         camera.wait_for_capture_end()
     
-      
+    if args.debug:
+        st_time = time.time()
+        
     for i, serial_num in enumerate(serial_list):
         if not args.debug:
             frame_id = camera_loader.camera.get_frameid(i)
@@ -82,7 +84,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             src_3d_dict, tg_2d_dict, org_2d_dict = \
                 matcherto3d.match_img2template(last_image, tg_mask, \
                                             template, paircount_threshold, batch_size=24, \
-                                            draw=(args.debug), use_crop=True)
+                                            draw=False, use_crop=True)
             
             pair_count = 0
             src_3d_points = []
@@ -121,5 +123,9 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         msg_json = json.dumps(msg_dict)
         if not args.debug:
             socket.send_multipart([ident, msg_json.encode()])
+
+    if args.debug:
+        ed_time = time.time()
+        print(f"Time for matchng in one desktop {ed_time-st_time}")
         
     time.sleep(0.01)

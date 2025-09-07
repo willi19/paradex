@@ -65,9 +65,11 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             if frame_id == last_frame_ind[i]:
                 continue
         else:
-            last_image = cv2.imread(os.path.join(save_path, f'{serial_num}.png'))
+            last_image = cv2.cvtColor(cv2.imread(os.path.join(save_path, f'{serial_num}.png')), cv2.COLOR_BGR2RGB)
 
+        last_image = cv2.resize(last_image, dsize=template.img_template[serial_num].shape[:2][::-1])
         detections = mask_detector.process_img(last_image, top_1=False)
+        
         for midx, tg_mask in enumerate(detections.mask):
             tg_mask = np.repeat(tg_mask[..., None], 3, axis=2).astype(np.int64)*255.0
     
@@ -95,9 +97,10 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                 combined_src_3d = src_3d_points # combined array
                 combined_tg_2d = tg_2d_points # combined_array
                 src_arr_cam_ids = np.hstack(src_cam_ids)
-                result = {'count':pair_count,'combined_src_3d':combined_src_3d, \
-                    'combined_tg_2d':combined_tg_2d,\
-                    'src_arr_cam_ids':src_arr_cam_ids, 'tg_mask':tg_mask}
+                result = {'count':pair_count,'combined_src_3d':combined_src_3d.tolist(), \
+                    'combined_tg_2d':combined_tg_2d.tolist(),\
+                    'src_arr_cam_ids':src_arr_cam_ids.tolist()}
+                # TODO send image and mask
             else:
                 result = {'count':0}
                 
@@ -107,9 +110,8 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             "frame": int(last_frame_ind[i]),
             "detect_result": result_dict,
             "type": "2D_matching",
-            "serial_num": serial_num
-        }
-        
+            "serial_num": serial_num}
+    
         msg_json = json.dumps(msg_dict)
         # socket.send_multipart([ident, msg_json.encode()])
         

@@ -82,7 +82,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             src_3d_dict, tg_2d_dict, org_2d_dict = \
                 matcherto3d.match_img2template(last_image, tg_mask, \
                                             template, paircount_threshold, batch_size=24, \
-                                            draw=True, use_crop=True)
+                                            draw=(args.debug), use_crop=True)
             
             pair_count = 0
             src_3d_points = []

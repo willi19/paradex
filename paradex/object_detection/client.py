@@ -70,13 +70,13 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             data = camera_loader.camera.get_data(i)
             last_frame_ind[i] = data["frameid"]
             last_image = data["image"]
-            
             if frame_id == last_frame_ind[i]:
+                print(f"[{serial_num}] Frame {frame_id} already processed.")
                 continue
         else:
             last_image = cv2.cvtColor(cv2.imread(os.path.join(save_path, f'{serial_num}.png')), cv2.COLOR_BGR2RGB)
             cv2.imwrite(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg', last_image)
-
+        print(f"Before Mask Detection: Camera {serial_num} capturing frame {last_frame_ind[i]}")
         last_image = cv2.resize(last_image, dsize=template.img_template[serial_num].shape[:2][::-1])
         detections = mask_detector.process_img(last_image, top_1=False)
         result_dict = {}  

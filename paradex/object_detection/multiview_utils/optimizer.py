@@ -12,14 +12,14 @@ sys.path.append(PROJECT_PATH)
 from scipy.optimize import least_squares
 from scipy.spatial.transform import Rotation
 
-from object_pose_recon.optimize_module import EarlyStopping
-from utils.geometry import rotation_6d_to_matrix, rotation_6d_to_matrix_np, \
+from paradex.object_detection.optimize_module import EarlyStopping
+from paradex.object_detection.obj_utils.geometry import rotation_6d_to_matrix, rotation_6d_to_matrix_np, \
                         matrix_to_rotation_6d, \
                         project_3d_to_2d, project_3d_to_2d_tensor
-from multiview_template2tracking.img_processing import draw_pairs_wtext, draw_inliers, \
+from paradex.object_detection.multiview_utils.img_processing import draw_pairs_wtext, draw_inliers, \
                             rendersil_obj2allview, SRC_COLOR, SET_COLOR, draw_match
-from utils.vis_utils import make_grid_image_np
-from utils.io import makevideo
+from paradex.object_detection.obj_utils.vis_utils import make_grid_image_np
+from paradex.object_detection.obj_utils.io import makevideo
 
 
 

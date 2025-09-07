@@ -7,7 +7,7 @@ import time
 import os
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-from paradex.utils.file_io import shared_dir
+from paradex.utils.file_io import shared_dir, load_current_camparam
 from paradex.utils.env import get_pcinfo, get_serial_list
 
 from paradex.io.capture_pc.camera_main import RemoteCameraController
@@ -18,6 +18,7 @@ from paradex.image.aruco import draw_charuco
 from paradex.image.merge import merge_image
 
 from paradex.object_detection.multiview_utils.template import Template
+from paradex.object_detection.obj_utils.vis_utils import parse_objectmesh_objdict
 from paradex.object_detection.object_optim_config import template_path
 from paradex.object_detection.object_optim_config import obj_list
 from paradex.object_detection.obj_utils.io import read_camerainfo
@@ -31,8 +32,10 @@ args = parser.parse_args()
 inliers_threshold = 30
 
 assert args.obj_name in obj_list, 'Check the object name or object is already registered'
-template = Template(template_path[args.obj_name], obj_name=args.obj_name)
-org_scaled_verts = template.obj_dict['verts'][0].clone().detach()
+obj_dict = parse_objectmesh_objdict(args.obj_name, min_vertex_num=1000, \
+                                            remove_uv=True, renderer_type='nvdiffrast', device=DEVICE)
+# template = Template(template_path[args.obj_name], obj_name=args.obj_name)
+org_scaled_verts = obj_dict['verts'][0].clone().detach()
 sampled_indexes = torch.randperm(org_scaled_verts.shape[0])[:100]
 sampled_obj_verts = org_scaled_verts[sampled_indexes]
 
@@ -49,6 +52,8 @@ cur_state = {serial_num:{} for serial_num in serial_list}
 
 capture_idx = 0
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+
+intrinsic, extrinsic = load_current_camparam()
 
 height, width, proj_matrix, cam_params, cam2extr, cam2intr = read_camerainfo(args.camerainfo_dir)
 
@@ -161,7 +166,7 @@ try:
                 # check with optim
                 # NOTE: translation thres: I increased translation threshold because few pnp output result in bad translation (no depth input)
                 # validate compatibility: check center distance + run group optimization and return and filtering result
-                loss, distance, optim_output = exising_set.validate_compatibility(new_item, obj_dict=template.obj_dict, \
+                loss, distance, optim_output = exising_set.validate_compatibility(new_item, obj_dict=obj_dict, \
                                                                         translation_thres=0.3, loss_thres=10, \
                                                                         loop_numb=30, vis=(args.vis and args.debug), ceres=True)
                 print(f'loss:{loss} distance:{distance} optim_ouptput:{optim_output}')

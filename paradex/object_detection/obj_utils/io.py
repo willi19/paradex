@@ -148,8 +148,12 @@ def get_binary_mask(mask):
 
 
 def read_camerainfo(camerainfo_dir):
-    extrinsics_dict = json.load(open(Path(camerainfo_dir)/'cam_param'/'extrinsics.json'))
-    intrinsics_dict = json.load(open(Path(camerainfo_dir)/'cam_param'/'intrinsics.json'))
+    if os.path.exists(Path(camerainfo_dir)/'cam_param'):
+        extrinsics_dict = json.load(open(Path(camerainfo_dir)/'cam_param'/'extrinsics.json'))
+        intrinsics_dict = json.load(open(Path(camerainfo_dir)/'cam_param'/'intrinsics.json'))
+    else:
+        extrinsics_dict = json.load(open(Path(camerainfo_dir)/'extrinsics.json'))
+        intrinsics_dict = json.load(open(Path(camerainfo_dir)/'intrinsics.json'))
 
     height, width = None, None
     proj_matrix = {}

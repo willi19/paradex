@@ -64,7 +64,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         st_time = time.time()
     
     for i, serial_num in enumerate(serial_list):
-        print(f"Processing camera {serial_num}...")
+        # print(f"Processing camera {serial_num}...")
         if not args.debug:
             frame_id = camera_loader.camera.get_frameid(i)
             data = camera_loader.camera.get_data(i)

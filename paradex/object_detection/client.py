@@ -69,6 +69,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             data = camera_loader.camera.get_data(i)
             last_frame_ind[i] = data["frameid"]
             last_image = data["image"]
+            
             if frame_id == last_frame_ind[i]:
                 continue
         else:
@@ -78,6 +79,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         last_image = cv2.resize(last_image, dsize=template.img_template[serial_num].shape[:2][::-1])
         detections = mask_detector.process_img(last_image, top_1=False)
         result_dict = {}  
+        print("after detection", len(detections.box))
 
         ttl_pair_count = 0
         for midx, tg_mask in enumerate(detections.mask):

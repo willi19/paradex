@@ -23,7 +23,7 @@ class CameraCommandReceiver():
             
     def get_message(self):
         port = get_network_info()["remote_camera"]
-        self.socket = get_server_socket(port)
+        self.socket = get_server_socket(port) # Socket for camera
         
         self.register()
         try:
@@ -81,7 +81,7 @@ class CameraCommandReceiver():
     
     def register(self):
         print("start register")
-        ident, msg = self.socket.recv_multipart()
+        ident, msg = self.socket.recv_multipart() # indent : clinet 구분.
         print(msg)
         msg = msg.decode()
         if msg == "register":

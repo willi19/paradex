@@ -6,7 +6,7 @@ from paradex.io.capture_pc.util import get_client_socket
 from paradex.utils.file_io import copy_calib_files, shared_dir
 
 class RemoteCameraController():
-    def __init__(self, mode, serial_list,sync=False):  
+    def __init__(self, mode, serial_list, sync=False):  
         self.pc_info = get_pcinfo()
         self.mode = mode
         self.serial_list = serial_list
@@ -48,7 +48,7 @@ class RemoteCameraController():
                     recv_dict[pc_name] = True
 
                 if not recv_dict[pc_name]:
-                    success = False
+                    success = False 
             if success:
                 return True                
             time.sleep(0.01)

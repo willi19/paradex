@@ -58,122 +58,29 @@ hand_action = []
 qpos = []
 
 for idx in index_list:
-    # robot_cor.append(np.load(os.path.join(eef_calib_path, idx, "robot.npy")))
+    robot_cor.append(np.load(os.path.join(eef_calib_path, idx, "robot.npy")))
     hand_action.append(np.load(os.path.join(eef_calib_path, idx, "hand.npy")))
     qpos.append(np.load(os.path.join(eef_calib_path, idx, "qpos.npy")))
     
     arm.compute_forward_kinematics(qpos[-1])
     robot_cor.append(arm.get_link_pose(link_index))
     
-    if not os.path.exists(os.path.join(eef_calib_path, idx, "marker_3d.npy")):        
-        img_dir = os.path.join(eef_calib_path, idx, "image")
-        
-        img_dict = {}
-        for img_name in os.listdir(img_dir):
-            img_dict[img_name.split(".")[0]] = cv2.imread(os.path.join(img_dir, img_name))
-        
-        cor_3d = triangulate_marker(img_dict, intrinsic, extrinsic)
-        cor_3d2 = triangulate_marker(img_dict, intrinsic, extrinsic, "4X4_50")
-        cor_3d.update(cor_3d2)
-        
-        for serial_num, img in img_dict.items():
-            if serial_num not in cammtx:
-                continue
-            
-            undist_img = undistort_img(img, intrinsic[serial_num])
-            
-            os.makedirs(os.path.join(eef_calib_path, idx, "undistort"), exist_ok=True)
-            cv2.imwrite(os.path.join(eef_calib_path, idx, "undistort", f"{serial_num}.png"), undist_img)
-            
-            undist_kypt, ids = detect_aruco(undist_img)
-            undist_kypt2, ids2 = detect_aruco(undist_img, '4X4_50')
-            
-            if ids is not None and ids2 is not None:
-                ids = np.concatenate([ids, ids2], axis=0)
-                undist_kypt = np.concatenate([undist_kypt, undist_kypt2], axis=0)
-            
-            elif ids is None and ids2 is not None:
-                ids = ids2
-                undist_kypt = undist_kypt2
-                
-            if ids is None:
-                continue
-            draw_aruco(undist_img, undist_kypt, ids, (0, 0, 255))
-            
-            for mid in finger_id_list:
-                if mid not in ids or cor_3d[mid] is None:
-                    continue
-                pt_2d = project(cammtx[serial_num], cor_3d[mid])
-                draw_aruco(undist_img, [pt_2d], None, (255, 0, 0))
-            
-            os.makedirs(os.path.join(eef_calib_path, idx, "debug"), exist_ok=True)
-            cv2.imwrite(os.path.join(eef_calib_path, idx, "debug", f"{serial_num}.png"), undist_img)
-
-        marker_3d = {}
-        for mid in finger_id_list:
-            if mid not in cor_3d or cor_3d[mid] is None:
-                continue
-            marker_3d[mid] = cor_3d[mid]
-        np.save(os.path.join(eef_calib_path, idx, "marker_3d.npy"), marker_3d)
+    img_dir = os.path.join(eef_calib_path, idx, "image")
     
-    else:
-        marker_3d = np.load(os.path.join(eef_calib_path, idx, "marker_3d.npy"),allow_pickle=True).item()
-    cam_cor.append(marker_3d)
-
-A_list = []
-B_list = []
-finger_name = []
-index_name = []
-
-# ans = np.linalg.inv(DEVICE2WRIST["xarm"]) @ DEVICE2WRIST["allegro"]
-for i in range(len(index_list)-1):
-    T_r1 = robot_cor[i]
-    T_r2 = robot_cor[i+1]
+    img_dict = {}
+    for img_name in os.listdir(img_dir):
+        img_dict[img_name.split(".")[0]] = cv2.imread(os.path.join(img_dir, img_name))
     
-    marker_3d1 = cam_cor[i]
-    marker_3d2 = cam_cor[i+1]
-    
-    hand_action1 = hand_action[i]
-    hand_action2 = hand_action[i+1]
-
-    for finger_id in finger_id_list:
-        if finger_id not in marker_3d1 or finger_id not in marker_3d2:
+    for serial_num, img in img_dict.items():
+        if serial_num not in cammtx:
             continue
         
-        if marker_3d1[finger_id] is None or marker_3d2[finger_id] is None:
-            continue
+        undist_img = undistort_img(img, intrinsic[serial_num])
         
-        A = rigid_transform_3D(marker_3d2[finger_id], marker_3d1[finger_id])
-        
-        robot.compute_forward_kinematics(hand_action1)
-        T_h1 = robot.get_link_pose(finger_index[finger_marker[finger_id]])
-
-        robot.compute_forward_kinematics(hand_action2)
-        T_h2 = robot.get_link_pose(finger_index[finger_marker[finger_id]])
-        try:
-            A = np.linalg.inv(T_r1) @ np.linalg.inv(c2r) @ A @ c2r @ T_r2
-            B = T_h1 @ np.linalg.inv(T_h2)
-        except:
-            import pdb; pdb.set_trace()
-
-        A_list.append(A)
-        B_list.append(B)
-        finger_name.append(finger_marker[finger_id])
-        index_name.append(i)
-        
-X = np.eye(4)
-theta, b_x = solve(A_list, B_list)
-X[0:3, 0:3] = theta
-X[0:3, -1] = b_x.flatten()
-X, loss = solve_axb_pytorch(A_list, B_list,X.copy(),learning_rate=0.001)
-print(X, R.from_matrix(X[0:3,0:3]).as_euler('xyz'))
-
-np.save(os.path.join(eef_calib_path, "0", "eef.npy"), X)
-
-# for i in range(len(index_list)-1):
-#    print(A_list[i] @ X - X @ B_list[i], "error")
-#     # print(A_list[i] @ ans - ans @ B_list[i], index_name[i], finger_name[i])
-#     print(A_list[i] @ X - X @ B_list[i], index_name[i], finger_name[i])
+        os.makedirs(os.path.join(eef_calib_path, idx, "undistort"), exist_ok=True)
+        cv2.imwrite(os.path.join(eef_calib_path, idx, "undistort", f"{serial_num}.png"), undist_img)
+            
+X = np.load("/home/temp_id/shared_data/eef/20250907_184610/0/eef.npy")
 
 extrinsic_list = []
 intrinsic_list = []
@@ -198,7 +105,9 @@ for i in range(len(index_list)):
     q[5] = euler[0]
     q[4] = euler[1]
     q[3] = euler[2]
-    q[6:] = hand_action[i]
+    q[6] = -0.1# hand_action[i][4]
+    q[7] = hand_action[i][1] + 0.296
+    print(hand_action[i])
     qpos.append(q)
     # qpos.append(np.concatenate([wrist_6d[0:3,3], R.from_matrix(wrist_6d[0:3,0:3]).as_euler('zyx'), hand_action[i]], axis=0))
 qpos = np.array(qpos).astype(np.float32)
@@ -206,14 +115,15 @@ qpos = np.array(qpos).astype(np.float32)
 rm = Robot_Module(get_robot_urdf_path(None, "allegro"), state=qpos)
 
 renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=2048, height=1536, device='cuda')
-print(rm.link_list)
+
 for fi, fid in enumerate(index_list):
     img_dir = os.path.join(eef_calib_path, fid, "undistort")
     robot_mesh_list = rm.get_mesh(int(fid))
     robot_mesh = robot_mesh_list[0]
     for i in range(1, len(robot_mesh_list)):
         # robot_mesh += robot_mesh_list[i]
-        robot_mesh += robot_mesh_list[i]
+        if "index" in rm.link_list[i]:
+            robot_mesh += robot_mesh_list[i]
     # transform X open3d
     # robot_mesh.transform(X @ robot_cor[fi] )
     img_dict = {img_name:cv2.imread(os.path.join(img_dir, img_name)) for img_name in serial_list}

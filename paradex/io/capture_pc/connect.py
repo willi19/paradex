@@ -38,7 +38,7 @@ def git_pull(branch, pc_list=None):
             print(f"[{pc_name}] Failed: {e}")
 
 
-def run_script(script: str, pc_list = None):    
+def run_script(script: str, pc_list = None, log=False):    
     pc_info = load_pc_info(pc_list)
 
     for pc_name in pc_list:
@@ -46,12 +46,17 @@ def run_script(script: str, pc_list = None):
         
         # activate conda environment, save script log to null
 
+        if log:
+            logoutput = 'test.log'
+        else:
+            logoutput = '/dev/null'
+            
         remote_cmd = (
             f"cd {repo_path} && "    
             f"nohup bash -i -c '"
             f"source ~/anaconda3/etc/profile.d/conda.sh && "
             f"conda activate flir_python && "
-            f"{script} &' </dev/null > /dev/null 2>&1 & "
+            f"{script} &' </dev/null > {logoutput} 2>&1 & "
         )
 
         ssh_cmd = f"ssh -p {ssh_port} {pc_name}@{ip} \"{remote_cmd}\""

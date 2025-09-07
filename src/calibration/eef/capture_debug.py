@@ -40,21 +40,9 @@ start_pos= np.array([[0, 0, 1, 0.35],
 dex_arm = get_arm(arm_name)
 hand = get_hand(hand_name)
 dex_arm.home_robot(start_pos)
-for i in range(30):
+for i in range(1):
     
-    if False:#os.path.exists(f"data/eef/{i}_handqpos.npy"):
-        hand_action = np.load(f"data/eef/{i}_handqpos.npy")
-    else:
-        hand_action = np.zeros(16)
-        for j in range(3):
-            hand_action[j*4] = (random.random() - 0.5) / 2
-            hand_action[j*4+1] = random.random()
-            np.save(f"data/eef/{i}_handqpos.npy",hand_action)
-        hand_action[12] = 1.4 - random.random() / 2
-        hand_action[13] = random.random()
-        if i == 0:
-            hand_action = np.zeros(16)
-            
+    hand_action = np.zeros(16)
     hand.set_target_action(hand_action)
     
     time.sleep(0.5)
@@ -70,6 +58,7 @@ for i in range(30):
     camera_loader.end()
     
     hand_pose = hand.get_data()
+    print(hand_pose)
     np.save(f"{shared_dir}/eef/{filename}/{i}/hand.npy", hand_pose)
     
 copy_calib_files(f"{shared_dir}/eef/{filename}/0")

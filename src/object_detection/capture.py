@@ -69,6 +69,7 @@ def listen_socket(pc_name, socket):
         if data.get("type") == "2D_matching":
             serial_num = data["serial_num"]
             matching_output = data["detect_result"]
+            print(matching_output)
             frame = data["frame"]
             cur_state[serial_num] = matching_output                
 
@@ -77,9 +78,9 @@ def listen_socket(pc_name, socket):
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list)
+# run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list, log=True)
 
-camera_controller = RemoteCameraController("stream", None, sync=True)
+camera_controller = RemoteCameraController("stream", None, sync=True, debug=True)
 camera_controller.start()
 
 try:

@@ -61,9 +61,10 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         camera.start(save_path)
         camera.wait_for_capture_end()
     
-    if args.debug:
-        st_time = time.time()
+
+    st_time = time.time()
     
+    ttl_pair_count_perpc = 0
     for i, serial_num in enumerate(serial_list):
         # print(f"Processing camera {serial_num}...")
         if not args.debug:
@@ -128,13 +129,13 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         
         if args.debug:
             print(f"[{serial_num}] Frame {last_frame_ind[i]}: {ttl_pair_count} detected.")
+        ttl_pair_count_perpc += ttl_pair_count
     
         msg_json = json.dumps(msg_dict)
         if not args.debug:
             socket.send_multipart([ident, msg_json.encode()])
 
-    if args.debug:
-        ed_time = time.time()
-        print(f"Time for matchng in one desktop {ed_time-st_time}")
+    ed_time = time.time()
+    print(f"Time for matchng in one desktop {ed_time-st_time} total pair count {ttl_pair_count_perpc}")
         
     time.sleep(0.01)

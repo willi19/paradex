@@ -78,7 +78,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             # cv2.imwrite(str(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg'), last_image)
         
         last_image = cv2.resize(last_image, dsize=template.img_template[serial_num].shape[:2][::-1])
-        cv2.imwrite(str(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg'), last_image)
+        # cv2.imwrite(str(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg'), last_image)
         detections = mask_detector.process_img(last_image, top_1=False)
         result_dict = {}  
 

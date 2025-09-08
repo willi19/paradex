@@ -115,6 +115,7 @@ class MultiCamScene:
     def get_image(self, cam_id, rgb=False):
         assert cam_id in self.cam_params, f'{cam_id} not in the camera list'
         if os.path.exists(os.path.join(NAS_IMG_SAVEDIR, f'{cam_id}.jpeg')):
+            try:
             resized_img = cv2.resize(cv2.imread(os.path.join(NAS_IMG_SAVEDIR, f'{cam_id}.jpeg')), (self.width, self.height))
             if rgb:
                 resized_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2RGB)

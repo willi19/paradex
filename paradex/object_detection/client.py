@@ -46,8 +46,8 @@ else:
     num_cam = camera.num_cameras
     serial_list = camera.serial_list
 
-    NAS_IMG_SAVEDIR = Path(shared_dir)/'current_img'
-    os.makedirs(NAS_IMG_SAVEDIR, exist_ok=True)
+NAS_IMG_SAVEDIR = Path(shared_dir)/'current_img'
+os.makedirs(NAS_IMG_SAVEDIR, exist_ok=True)
 
 board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
 num_cam = len(serial_list)

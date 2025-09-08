@@ -57,7 +57,7 @@ capture_idx = 0
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
 scene = MultiCamScene(rescale_factor=args.default_rescale, device=DEVICE)
-scene.get_batched_renderer()
+scene.get_batched_renderer(tg_cam_list=scene.cam_ids)
 DEBUG_VIS = Path(NAS_IMG_SAVEDIR)/'debug'
 os.makedirs(DEBUG_VIS, exist_ok=True)
 
@@ -157,8 +157,9 @@ try:
                                 mean_distance_inlier = np.sum(inliers_mask*np.linalg.norm((projected_2d-combined_tg_2d),axis=1))/np.sum(inliers_mask)
                                 rendered_sil, _ = rendersil_obj2allview(scene, obj_dict, obj_tg_T, img_dict, \
                                                                 highlight={serial_num:SRC_COLOR})
-                                cv2.imwrite(str(DEBUG_VIS/f'{serial_num}_{midx}_using_combined_{inliers.shape[0]}_inliernumb{matching_output[midx]['inliers_count']}_loss{mean_distance_inlier}.jpeg') ,\
-                                    rendered_sil)
+                                inlier_count = matching_output[midx]['inliers_count']
+                                img_name = f'{serial_num}_{midx}_using_combined_{inliers.shape[0]}_inliernumb{inlier_count}_loss{mean_distance_inlier}.jpeg'
+                                cv2.imwrite(str(DEBUG_VIS/img_name), rendered_sil)
                             
                         
 

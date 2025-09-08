@@ -66,17 +66,24 @@ import open3d as o3d
 from paradex.utils.file_io import rsc_path
 from paradex.visualization_.robot_module import Robot_Module
 from paradex.robot.mimic_joint import parse_inspire
+from paradex.object_detection.obj_utils.vis_utils import read_mesh, get_initial_mesh
+
 
 class ViserViewer:
     def __init__(
         self,
         obj_mesh,
-        obj_T,
-        urdf_path,
-        qpos,
+        obj_T=None,
+        urdf_path=None,
+        qpos=None,
         c2r=None,
         object_nm="object"):
             
+            
+        '''
+            If all value is None including obj_T, urdf_path, qpos
+        '''
+        
         self.obj_T = obj_T
         self.mesh = copy.deepcopy(obj_mesh)
         self.object_nm = object_nm
@@ -90,23 +97,36 @@ class ViserViewer:
         self.load_server()
         
         # Load URDF
-        urdf = yourdfpy.URDF.load(urdf_path)
-        self.urdf = urdf
-        self.urdf_vis = ViserUrdf(self.server, urdf)
-        self.qpos = qpos
-        
-        # Print joint information for debugging
-        print("=== URDF Joint Information ===")
-        print(f"Total joints: {len(urdf.joint_map)}")
-        print(f"Actuated joints: {len(urdf.actuated_joint_names)}")
-        print("Joint order:")
-        for i, joint_name in enumerate(urdf.actuated_joint_names):
-            print(f"  {i}: {joint_name}")
-        print(f"Expected qpos shape: ({self.num_frames}, {len(urdf.actuated_joint_names)})")
-        print(f"Actual qpos shape: {qpos.shape}")
-        print("=" * 30)
-        
-        self.num_frames = min(self.qpos.shape[0], self.obj_T.shape[0])
+        if urdf_path is not None and qpos is not None:
+            urdf = yourdfpy.URDF.load(urdf_path)
+            self.urdf = urdf
+            self.urdf_vis = ViserUrdf(self.server, urdf)
+            self.qpos = qpos
+            
+            # Print joint information for debugging
+            print("=== URDF Joint Information ===")
+            print(f"Total joints: {len(urdf.joint_map)}")
+            print(f"Actuated joints: {len(urdf.actuated_joint_names)}")
+            print("Joint order:")
+            for i, joint_name in enumerate(urdf.actuated_joint_names):
+                print(f"  {i}: {joint_name}")
+            print(f"Expected qpos shape: ({self.num_frames}, {len(urdf.actuated_joint_names)})")
+            print(f"Actual qpos shape: {qpos.shape}")
+            print("=" * 30)
+            
+            if obj_T is not None:
+                self.num_frames = min(self.qpos.shape[0], self.obj_T.shape[0])
+            else:
+                self.num_frames = self.qpos.shape[0]
+        else:
+            self.urdf, self.urdf_vis, self.qpos = None, None, None
+            if obj_T is not None:
+                self.num_frames = self.obj_T.shape[0]
+            else:
+                self.num_frames = 1
+                
+        if obj_T is None:
+            self.obj_loaded = False
 
         self.add_frames()
         self.add_player()
@@ -330,15 +350,17 @@ class ViserViewer:
     def add_initial_meshes(self):
         """Add initial meshes for timestep 0"""
         # Add initial robot configuration
-        self.urdf_vis.update_cfg(self.qpos[0])
-        
-        # Add initial object
-        initial_obj_mesh = copy.deepcopy(self.mesh).apply_transform(self.obj_T[0])
-        self.server.scene.add_mesh_trimesh(
-            name=self.object_nm,
-            mesh=initial_obj_mesh,
-            position=(0.0, 0.0, 0.0),
-        )
+        if self.urdf_vis is not None:
+            self.urdf_vis.update_cfg(self.qpos[0])
+            
+        if self.obj_T is not None:    
+            # Add initial object
+            initial_obj_mesh = copy.deepcopy(self.mesh).apply_transform(self.obj_T[0])
+            self.server.scene.add_mesh_trimesh(
+                name=self.object_nm,
+                mesh=initial_obj_mesh,
+                position=(0.0, 0.0, 0.0),
+            )
         
         # Add floor
         self.update_floor()
@@ -346,17 +368,42 @@ class ViserViewer:
     def update_scene(self, timestep):
         """Update scene for given timestep"""
         with self.server.atomic():
-            # Update robot configuration
-            self.urdf_vis.update_cfg(self.qpos[timestep])
-            
-            # Update object mesh
-            transformed_obj_mesh = copy.deepcopy(self.mesh).apply_transform(self.obj_T[timestep])
-            self.server.scene.remove_by_name(self.object_nm)
-            self.server.scene.add_mesh_trimesh(
-                name=self.object_nm,
-                mesh=transformed_obj_mesh,
-                position=(0.0, 0.0, 0.0),
-            )
+            if self.urdf_vis is not None:
+                # Update robot configuration
+                self.urdf_vis.update_cfg(self.qpos[timestep])
+                
+            if self.obj_T is not None:
+                # Update object mesh
+                transformed_obj_mesh = copy.deepcopy(self.mesh).apply_transform(self.obj_T[timestep])
+                self.server.scene.remove_by_name(self.object_nm)
+                self.server.scene.add_mesh_trimesh(
+                    name=self.object_nm,
+                    mesh=transformed_obj_mesh,
+                    position=(0.0, 0.0, 0.0),
+                )
+            else:
+                obj_T_path = '/home/temp_id/paradex/objoutput/obj_T.pkl'
+                if os.path.exists(obj_T_path):
+                    try:
+                        cur_obj_T = pickle.load(open(obj_T_path, 'rb'))
+                    except:
+                        return
+                    
+                    if self.obj_loaded:
+                        self.server.scene.remove_by_name(self.object_nm)
+                    
+                    for sidx, obj_T in cur_obj_T.items():
+                        # Get Current Object Transformation 
+                        transformed_obj_mesh = copy.deepcopy(self.mesh).apply_transform(obj_T)
+                        
+                        self.server.scene.add_mesh_trimesh(
+                            name=self.object_nm,
+                            mesh=transformed_obj_mesh,
+                            position=(0.0, 0.0, 0.0),
+                        )
+                        self.obj_loaded = True
+                        break
+                        
             
         self.prev_timestep = timestep
         self.server.flush()
@@ -381,8 +428,12 @@ class ViserViewer:
     def update(self):
         """Main update loop - call this in a loop"""
         if self.gui_playing.value:
-            next_timestep = (self.gui_timestep.value + 1) % self.num_frames
-            self.gui_timestep.value = next_timestep
+            if self.num_frames > 1:
+                next_timestep = (self.gui_timestep.value + 1) % self.num_frames
+                self.gui_timestep.value = next_timestep
+            else:
+                self.update_scene(0)
+            
             
         time.sleep(1.0 / self.gui_framerate.value)
     
@@ -400,12 +451,11 @@ class ViserViewer:
 
 # Example usage:
 if __name__ == "__main__":
-    # Example parameters (replace with your actual data)
-    # obj_mesh = trimesh.load("path/to/your/object.obj")
-    # obj_T = np.random.rand(100, 4, 4)  # 100 frames of 4x4 transforms
-    # urdf_path = "path/to/your/robot.urdf"
-    # qpos = np.random.rand(100, 7)  # 100 frames of 7 joint positions
+
+
+    obj_name = 'pringles'
+    obj_mesh, scaled = get_initial_mesh(obj_name, return_type='trimesh', simplify=True,\
+                                        device=DEFAULT_DEVICE)
     
-    # viewer = ViserViewer(obj_mesh, obj_T, urdf_path, qpos)
-    # viewer.start_viewer()
-    pass
+    viewer = ViserViewer(obj_mesh, object_nm='pringles')
+    viewer.start_viewer()

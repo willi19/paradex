@@ -34,7 +34,7 @@ parser.add_argument('--obj_name', type=str, required=True)
 parser.add_argument('--camerainfo_dir', required=True, type=str)
 parser.add_argument('--debug', action='store_true')
 parser.add_argument('--default_rescale', type=float, default=0.5)
-parser.add_argument('--loss_thres', type=float, default=12)
+parser.add_argument('--loss_thres', type=float, default=10)
 args = parser.parse_args()
 inliers_threshold = 30
 
@@ -161,7 +161,7 @@ try:
                             # translated_T = np.copy(new_item.initial_T)
                             # Render output
                             
-                            if args.debug:
+                            if args.debug and False:
                                 #  Render To All View
                                 transformed_verts = np.einsum('mn, jn -> jm', obj_tg_T[:3,:3].detach().cpu().numpy(), combined_src_3d)+ obj_tg_T[:3,3].detach().cpu().numpy()
                                 projected_2d = project_3d_to_2d(transformed_verts, proj_matrix[None]).squeeze().astype(np.int64)

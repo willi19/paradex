@@ -5,6 +5,7 @@ import cv2
 import json
 import time
 import os
+from pathlib import Path
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 from paradex.utils.file_io import shared_dir, load_current_camparam
@@ -14,20 +15,22 @@ from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.capture_pc.util import get_client_socket
 from paradex.io.capture_pc.connect import git_pull, run_script
 
-from paradex.image.aruco import draw_charuco
-from paradex.image.merge import merge_image
-
 from paradex.object_detection.multiview_utils.template import Template
 from paradex.object_detection.obj_utils.vis_utils import parse_objectmesh_objdict
 from paradex.object_detection.object_optim_config import template_path
 from paradex.object_detection.object_optim_config import obj_list
 from paradex.object_detection.obj_utils.io import read_camerainfo
+from paradex.object_detection.obj_utils.multicam_system import MultiCamScene, NAS_IMG_SAVEDIR
+from paradex.object_detection.obj_utils.geometry import project_3d_to_2d
+from paradex.object_detection.multiview_utils.img_processing import draw_inliers, \
+                            rendersil_obj2allview, SRC_COLOR, draw_text
 from paradex.object_detection.multiview_utils.matchingset import MatchItem, MatchingSet, group_optimization
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--obj_name', type=str, required=True)
 parser.add_argument('--camerainfo_dir', required=True, type=str)
 parser.add_argument('--debug', action='store_true')
+parser.add_argument('--default_rescale', type=float, default=0.5)
 args = parser.parse_args()
 inliers_threshold = 30
 
@@ -53,9 +56,10 @@ cur_state = {serial_num:{} for serial_num in serial_list}
 capture_idx = 0
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
-intrinsic, extrinsic = load_current_camparam()
-
-height, width, proj_matrix, cam_params, cam2extr, cam2intr = read_camerainfo(args.camerainfo_dir)
+scene = MultiCamScene(rescale_factor=args.default_rescale, device=DEVICE)
+scene.get_batched_renderer()
+DEBUG_VIS = Path(NAS_IMG_SAVEDIR)/'debug'
+os.makedirs(DEBUG_VIS, exist_ok=True)
 
 def listen_socket(pc_name, socket):
     while True:
@@ -80,7 +84,7 @@ pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 # run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list, log=True)
 
-camera_controller = RemoteCameraController("stream", None, sync=True, debug=True)
+camera_controller = RemoteCameraController("stream", None, sync=True, debug=args.debug)
 camera_controller.start()
 
 try:
@@ -91,25 +95,32 @@ try:
         
     while True:
         img_dict = {}
-        initial_3d_bucket = {}
+        matchingitem_dict = {}
         # TODO change here.
         for serial_num in serial_list:
-            img = saved_corner_img[serial_num].copy()
+            if serial_num not in scene.cam2intr:
+                continue
+
+            img_dict[serial_num] = scene.get_image(serial_num, rgb=True)
+            # img = saved_corner_img[serial_num].copy()
             matching_output = cur_state[serial_num]
-            
+            proj_matrix = scene.proj_matrix[serial_num]
             for midx in matching_output:
-                # {'count':pair_count,'combined_src_3d':combined_src_3d, 'combined_tg_2d':combined_tg_2d, 'src_arr_cam_ids':src_arr_cam_ids}
+                # {'count':pair_count,'combined_src_3d':combined_src_3d, \
+                # 'combined_tg_2d':combined_tg_2d, 'src_arr_cam_ids':src_arr_cam_ids}
                 if 'count' in matching_output[midx] and matching_output[midx]['count']>0:
+                    for key in ['combined_src_3d', 'combined_tg_2d', 'src_arr_cam_ids']:
+                        matching_output[midx][key] = np.array(matching_output[midx][key])
                     combined_src_3d, combined_tg_2d = matching_output[midx]['combined_src_3d'], matching_output[midx]['combined_tg_2d']
                     src_cam_ids = matching_output[midx]['src_arr_cam_ids']
                     
                     tg_cam_extr_4X4 = np.eye(4)
-                    tg_cam_extr_4X4[:3] = cam2extr[serial_num]
-                    
+                    tg_cam_extr_4X4[:3] = scene.cam2extr[serial_num]
+                
                     ret, rvec, tvec, inliers = cv2.solvePnPRansac(
-                        combined_src_3d,
-                        combined_tg_2d,
-                        cam2intr[serial_num], distCoeffs=None,
+                        objectPoints = combined_src_3d,
+                        imagePoints = combined_tg_2d,
+                        cameraMatrix = scene.cam2intr[serial_num], distCoeffs=None,
                         reprojectionError=8,
                         flags=cv2.SOLVEPNP_ITERATIVE)
                     
@@ -118,77 +129,79 @@ try:
                         obj2img_matrix[:3, :3] = cv2.Rodrigues(rvec)[0]
                         obj2img_matrix[:3, 3]  = tvec[:, 0]
                         obj_tg_T = torch.tensor(np.linalg.inv(tg_cam_extr_4X4)@obj2img_matrix, device=DEVICE).float()
-                        initial_3d_bucket[serial_num][midx] = (obj_tg_T, inliers)
+                        # initial_3d_bucket[serial_num][midx] = (obj_tg_T, inliers)
 
                         inliers_mask = np.zeros((combined_src_3d.shape[0]))
                         inliers_mask[inliers]=1
                         matching_output[midx]['inliers'] = inliers_mask
                         matching_output[midx]['inliers_count'] = len(inliers)
+                        
+                        if matching_output[midx]['inliers_count'] > inliers_threshold:
+                            transformed_verts = torch.einsum('mn, jn -> jm', obj_tg_T[:3,:3], \
+                            sampled_obj_verts)+ obj_tg_T[:3,3]
+
+                            new_item = MatchItem(cam_id=serial_num, midx=midx, matching_item=matching_output[midx],\
+                                mask=None, \
+                                initial_T=obj_tg_T, \
+                                transformed_verts=transformed_verts.detach().cpu().numpy(),
+                                proj_matrix=proj_matrix)
+
+                            matchingitem_dict[f'{serial_num}_{midx}'] = new_item
+                            # translated_T = np.copy(new_item.initial_T)
+                            # Render output
+                            
+                            if args.debug:
+                                #  Render To All View
+                                transformed_verts = np.einsum('mn, jn -> jm', obj_tg_T[:3,:3].detach().cpu().numpy(), combined_src_3d)+ obj_tg_T[:3,3].detach().cpu().numpy()
+                                projected_2d = project_3d_to_2d(transformed_verts, proj_matrix[None]).squeeze().astype(np.int64)
+                                mean_distance_inlier = np.sum(inliers_mask*np.linalg.norm((projected_2d-combined_tg_2d),axis=1))/np.sum(inliers_mask)
+                                rendered_sil, _ = rendersil_obj2allview(scene, obj_dict, obj_tg_T, img_dict, \
+                                                                highlight={serial_num:SRC_COLOR})
+                                cv2.imwrite(str(DEBUG_VIS/f'{serial_num}_{midx}_using_combined_{inliers.shape[0]}_inliernumb{matching_output[midx]['inliers_count']}_loss{mean_distance_inlier}.jpeg') ,\
+                                    rendered_sil)
+                            
+                        
+
             cur_state[serial_num] = matching_output
-        
-        
-        Next=False
-        if Next:
-            # make matching item
-            matchingitem_dict = {}
-            st_time = time.time()
-            # make matching item
-            for serial_num in cur_state:
-                proj_matrix = cam2intr[serial_num]@cam2extr[serial_num]
-                # For each mask
-                for midx in cur_state[serial_num]:
-                    tmp_matching = cur_state[serial_num][midx]
-                    if tmp_matching['count']>0 and tmp_matching['inliers_count'] > inliers_threshold:
-                        transformed_verts = torch.einsum('mn, jn -> jm', initial_3d_bucket[serial_num][midx][0][:3,:3], \
-                                                    sampled_obj_verts)+ initial_3d_bucket[serial_num][midx][0][:3,3]
+        matchingset_list = []
+        keys_sorted = sorted(matchingitem_dict.keys(), key=lambda k: matchingitem_dict[k].inlier_count, reverse=True)
 
-                        new_item = MatchItem(cam_id=serial_num, midx=midx, matching_item=tmp_matching,\
-                            detection=tmp_matching['tg_masks'], \
-                            initial_T=initial_3d_bucket[serial_num][midx][0], \
-                            transformed_verts=transformed_verts.detach().cpu().numpy(),
-                            proj_matrix=proj_matrix)
-
-                        matchingitem_dict[f'{serial_num}_{midx}'] = new_item
-                        # translated_T = np.copy(new_item.initial_T)
+        for key in keys_sorted:
+            print(f"** {key} Optimization")
+            serial_num, midx = key.split("_")
+            new_item = matchingitem_dict[key]
             
-            # DO matching and get 6Dㄴ
+            min_validset_idx = None
+            min_valid_distance = None
+            min_optim_output = None
 
-            matchingset_list = []
-            keys_sorted = sorted(matchingitem_dict.keys(), key=lambda k: matchingitem_dict[k].inlier_count, reverse=True)
+            valid = False
+            for sidx, exising_set in enumerate(matchingset_list):
+                # check with optim
+                # NOTE: translation thres: I increased translation threshold because few pnp output result in bad translation (no depth input)
+                # validate compatibility: check center distance + run group optimization and return and filtering result
+                loss, distance, optim_output = exising_set.validate_compatibility(new_item, obj_dict=obj_dict, \
+                                                                        translation_thres=0.3, loss_thres=10, \
+                                                                        loop_numb=30, vis=False, ceres=True)
+                print(f'loss:{loss} distance:{distance} optim_ouptput:{optim_output}')
 
-            for key in keys_sorted:
-                print(f"** {key} Optimization")
-                serial_num, midx = key.split("_")
-                new_item = matchingitem_dict[key]
+                # move rendered image target information: loss, set number
+                if loss is not None: # optimization run
+                    if optim_output is not None: # Optimization Run
+                        valid = True 
+                        if min_validset_idx is None or min_valid_distance>distance:
+                            min_validset_idx = sidx
+                            min_valid_distance = distance
+                            min_optim_output = optim_output
+
+            if len(matchingset_list)>0 and valid:
+                matchingset_list[min_validset_idx].add(new_item)
+                matchingset_list[min_validset_idx].update_T(min_optim_output)
+            else:
+                matchingset_list.append(MatchingSet(len(matchingset_list), new_item, tg_scene=None, img_bucket=img_dict))
                 
-                min_validset_idx = None
-                min_valid_distance = None
-                min_optim_output = None
-
-                valid = False
-                for sidx, exising_set in enumerate(matchingset_list):
-                    # check with optim
-                    # NOTE: translation thres: I increased translation threshold because few pnp output result in bad translation (no depth input)
-                    # validate compatibility: check center distance + run group optimization and return and filtering result
-                    loss, distance, optim_output = exising_set.validate_compatibility(new_item, obj_dict=obj_dict, \
-                                                                            translation_thres=0.3, loss_thres=10, \
-                                                                            loop_numb=30, vis=(args.vis and args.debug), ceres=True)
-                    print(f'loss:{loss} distance:{distance} optim_ouptput:{optim_output}')
-
-                    # move rendered image target information: loss, set number
-                    if loss is not None: # optimization run
-                        if optim_output is not None: # Optimization Run
-                            valid = True 
-                            if min_validset_idx is None or min_valid_distance>distance:
-                                min_validset_idx = sidx
-                                min_valid_distance = distance
-                                min_optim_output = optim_output
-
-                if len(matchingset_list)>0 and valid:
-                    matchingset_list[min_validset_idx].add(new_item)
-                    matchingset_list[min_validset_idx].update_T(min_optim_output)
-                else:
-                    matchingset_list.append(MatchingSet(len(matchingset_list), new_item, tg_scene=None, img_bucket=img_bucket))
+        print(f"Total {len(matchingset_list)} sets")
+        # Rendering! 
         
         
 finally:

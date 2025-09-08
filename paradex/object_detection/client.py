@@ -18,6 +18,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--obj_name', type=str, required=True)
 parser.add_argument('--debug', action='store_true')
+parser.add_argument('--saveimg', action='store_true')
 args = parser.parse_args()
 obj_name = args.obj_name
 
@@ -74,9 +75,10 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             last_image = data["image"]
         else:
             last_image = cv2.cvtColor(cv2.imread(os.path.join(save_path, f'{serial_num}.png')), cv2.COLOR_BGR2RGB)
-            cv2.imwrite(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg', last_image)
+            # cv2.imwrite(str(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg'), last_image)
         
         last_image = cv2.resize(last_image, dsize=template.img_template[serial_num].shape[:2][::-1])
+        cv2.imwrite(str(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg'), last_image)
         detections = mask_detector.process_img(last_image, top_1=False)
         result_dict = {}  
 
@@ -87,7 +89,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             src_3d_dict, tg_2d_dict, org_2d_dict = \
                 matcherto3d.match_img2template(last_image, tg_mask, \
                                             template, paircount_threshold, batch_size=24, \
-                                            draw=False, use_crop=True)
+                                            draw=args.saveimg, use_crop=True, image_name=str(NAS_IMG_SAVEDIR/f'matching_{serial_num}_{midx}.png'))
             
             pair_count = 0
             src_3d_points = []

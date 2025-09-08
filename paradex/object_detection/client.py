@@ -126,13 +126,12 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             "type": "2D_matching",
             "serial_num": serial_num}
         
-        print(f"[{serial_num}] Frame {last_frame_ind[i]}: {ttl_pair_count} detected.")
+        if args.debug:
+            print(f"[{serial_num}] Frame {last_frame_ind[i]}: {ttl_pair_count} detected.")
     
         msg_json = json.dumps(msg_dict)
         if not args.debug:
             socket.send_multipart([ident, msg_json.encode()])
-
-    # print(f"End of frame id {frame_id}")
 
     if args.debug:
         ed_time = time.time()

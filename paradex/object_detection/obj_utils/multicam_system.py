@@ -3,6 +3,7 @@ import numpy as np
 import sys
 from pathlib import Path
 import os
+import time
 
 PROJECT_DIR = Path(__file__).absolute().parent.parent
 sys.path.insert(0, str(PROJECT_DIR))
@@ -113,11 +114,19 @@ class MultiCamScene:
         return self.batched_renderer
     
     def get_image(self, cam_id, rgb=False):
-        assert cam_id in self.cam_params, f'{cam_id} not in the camera list'
+        if cam_id not in self.cam_ids:
+            print(f'{cam_id} not in the camera list')
+            resized_img = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+            return resized_img
+        
         if os.path.exists(os.path.join(NAS_IMG_SAVEDIR, f'{cam_id}.jpeg')):
-            try:
-            resized_img = cv2.resize(cv2.imread(os.path.join(NAS_IMG_SAVEDIR, f'{cam_id}.jpeg')), (self.width, self.height))
-            if rgb:
+            while True:
+                img = cv2.imread(os.path.join(NAS_IMG_SAVEDIR, f'{cam_id}.jpeg'))
+                if img is not None:
+                    break
+                time.sleep(0.1)
+            resized_img = cv2.resize(img, (self.width, self.height))
+            if rgb:             
                 resized_img = cv2.cvtColor(resized_img, cv2.COLOR_BGR2RGB)
         else:
             print(f"[Warning] No image for {cam_id}! \

@@ -20,3 +20,6 @@ paradex/model/*.pth
 paradex/model/*.jit
 paradex/model/*.pth
 paradex/pose_utils/dex-retargeting
+tmp*
+tmp/*
+objoutput

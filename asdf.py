@@ -105,8 +105,69 @@ motion_gen_config = MotionGenConfig.load_from_robot_config(
         collision_checker_type=CollisionCheckerType.MESH
     )
 motion_gen = MotionGen(motion_gen_config)
-world = WorldConfig().from_dict(world_cfg[0])
-world.save_world_as_mesh("scene.obj")
+# world = WorldConfig().from_dict(world_cfg[0])
+# world.save_world_as_mesh("scene.obj")
+motion_gen_batch_env = MotionGen(motion_gen_config)
+motion_gen_batch_env.reset()
+motion_gen_batch_env.warmup(
+    enable_graph=False, batch=len(obj_list)*2, warmup_js_trajopt=False, batch_env_mode=True
+)
+n_envs =  len(obj_list)*2
+retract_cfg = motion_gen_batch_env.get_retract_config().clone()
+state = motion_gen_batch_env.compute_kinematics(
+    JointState.from_position(retract_cfg.view(1, -1))
+)
+
+goal_pose = Pose(
+    state.ee_pos_seq.squeeze(), quaternion=state.ee_quat_seq.squeeze()
+).repeat_seeds(n_envs)
+
+start_state = JointState.from_position(retract_cfg.view(1, -1) + 0.3).repeat_seeds(n_envs)
+
+goal_pose.position[1, 0] -= 0.2
+
+m_config = MotionGenPlanConfig(
+    False, True, max_attempts=1, enable_graph_attempt=None, enable_finetune_trajopt=False
+)
+result = motion_gen_batch_env.plan_batch_env(start_state, goal_pose, m_config)
+
+print(n_envs, result.total_time, result.total_time / n_envs)
+# for pick_id in obj_list:
+#     for state in ["start", "end"]:
+#         scene_obj_dict = {}
+        
+#         for obj_name in obj_list:
+#             if obj_name < pick_id:
+#                 scene_obj_dict[obj_name] = obj_dict[obj_name]["end"]
+#             elif obj_name > pick_id:
+#                 scene_obj_dict[obj_name] = obj_dict[obj_name]["start"]
+#             if obj_name == pick_id and state == "start":
+#                 scene_obj_dict[obj_name] = obj_dict[obj_name]["start"]
+#         world_cfg = load_world_config(scene_obj_dict)
+#         motion_gen.update_world_config(world_cfg)
+#         target_link_name = "link6"
+#         start_pose = np.eye(4)
+#         start_pose[:3, 3] = [0.3, -0.3, 0.4]
+#         end_pose = np.eye(4)
+#         end_pose[:3, 3] = [0.3, 0.3, 0.4]
+#         start_quat, start_pos = se3_to_quat(start_pose)
+#         end_quat, end_pos = se3_to_quat(end_pose)
+#         timesteps, dt = 50, 0.04
+#         # Solve trajectory optimization
+#         start_time = time.time()
+#         traj = motion_gen.plan(
+#             target_link_name,
+#             start_pos,
+#             start_quat,
+#             end_pos,
+#             end_quat,
+#             timesteps,
+#             dt,
+#         )
+#         print(time.time()-start_time, "cost")
+#         traj = np.array(traj)
+#         os.makedirs(f"pickplace/{pick_id}/{state}", exist_ok=True)
+#         np.save(f"pickplace/{pick_id}/{state}/traj.npy", traj)
 # pick_traj = np.load(f"{rsc_path}/lookup/pringles/stand_allegro/1/pick.npy")
 # place_traj = np.load(f"{rsc_path}/lookup/pringles/stand_allegro/1/place.npy")
 # pick_pose = Pose(state.ee_pos_seq.squeeze(), quaternion=state.ee_quat_seq.squeeze())

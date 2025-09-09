@@ -26,7 +26,7 @@ import trimesh
 from scipy.spatial.transform import Rotation as R
 import os
 
-from paradex.utils.file_io import rsc_path
+from paradex.utils.file_io import rsc_path, shared_dir
 from paradex.robot.curobo import load_world_config
 
 def se3_to_quat(obj_pose):
@@ -75,6 +75,17 @@ obj_dict = load_object("pringles")
 obj_list = sorted(list(obj_dict.keys()))
 
 world_cfg = []
+
+
+lookup_table_path = os.path.join(shared_dir, "capture", "lookup")
+index = "1"
+index_path = os.path.join(lookup_table_path, "pringles", index)
+pick_lookup_traj = np.load(f"{index_path}/refined_pick_action.npy")
+place_lookup_traj = np.load(f"{index_path}/refined_place_action.npy")
+
+start_state_batch = []
+goal_pose_batch = []
+
 for pick_id in obj_list:
     for state in ["start", "end"]:
         scene_obj_dict = {}
@@ -88,6 +99,7 @@ for pick_id in obj_list:
                 scene_obj_dict[obj_name] = obj_dict[obj_name]["start"]
             world_cfg.append(load_world_config(scene_obj_dict))
 
+    
 tensor_args = TensorDeviceType()
 motion_gen_config = MotionGenConfig.load_from_robot_config(
         robot_cfg,
@@ -104,9 +116,28 @@ motion_gen_config = MotionGenConfig.load_from_robot_config(
         grad_trajopt_iters=30,
         collision_checker_type=CollisionCheckerType.MESH
     )
-motion_gen = MotionGen(motion_gen_config)
+
+for pick_id in obj_list:
+    pick_traj = obj_dict[pick_id]["start"]["pose"] @ pick_lookup_traj
+    place_traj = obj_dict[pick_id]["end"]["pose"] @ place_lookup_traj
+    
+    for state in ["start", "end"]:
+        start_pose = Pose(start_pos[:3, 3], quaternion=R.from_matrix(start_pos[:3, :3]).as_quat())
+        if state == "start":
+            goal_pose = Pose(pick_traj[0, :3, 3], quaternion=se3_to_quat(pick_traj[0])[0])
+        if state == "end":
+            goal_pose = Pose(place_traj[0, :3, 3], quaternion=se3_to_quat(place_traj[0])[0])
+            
+        start_state_batch.append(JointState.from_position(motion_gen_config.solve_ik()))
+        if state == "start":
+            goal_pose_batch.append(Goal(pick_traj[-1, :3, 3], quaternion=se3_to_quat(pick_traj[-1])[0]))
+        else:
+            goal_pose_batch.append(Goal(place_traj[-1, :3, 3], quaternion=se3_to_quat(place_traj[-1])[0]))
+            start_state_batch.append(JointState.from_position(place_traj[0, 3, :] + 0.3))
 # world = WorldConfig().from_dict(world_cfg[0])
 # world.save_world_as_mesh("scene.obj")
+    
+    
 motion_gen_batch_env = MotionGen(motion_gen_config)
 motion_gen_batch_env.reset()
 motion_gen_batch_env.warmup(
@@ -114,6 +145,7 @@ motion_gen_batch_env.warmup(
 )
 n_envs =  len(obj_list)*2
 retract_cfg = motion_gen_batch_env.get_retract_config().clone()
+print(retract_cfg)
 state = motion_gen_batch_env.compute_kinematics(
     JointState.from_position(retract_cfg.view(1, -1))
 )
@@ -123,15 +155,18 @@ goal_pose = Pose(
 ).repeat_seeds(n_envs)
 
 start_state = JointState.from_position(retract_cfg.view(1, -1) + 0.3).repeat_seeds(n_envs)
-
+print(start_state)
 goal_pose.position[1, 0] -= 0.2
 
 m_config = MotionGenPlanConfig(
     False, True, max_attempts=1, enable_graph_attempt=None, enable_finetune_trajopt=False
 )
 result = motion_gen_batch_env.plan_batch_env(start_state, goal_pose, m_config)
-
+q = result.optimized_plan.position.detach().cpu().numpy()
+import pdb; pdb.set_trace()
 print(n_envs, result.total_time, result.total_time / n_envs)
+np.save("pickplace/traj.npy", q)
+
 # for pick_id in obj_list:
 #     for state in ["start", "end"]:
 #         scene_obj_dict = {}

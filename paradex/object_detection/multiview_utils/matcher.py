@@ -43,7 +43,7 @@ class MatcherTo3D:
     def process_imgs(self, imgs:list):
         processed_imgs = []
         for img in imgs:
-            processed_imgs.append(self.process_img(img, device=self.device)[0])
+            processed_imgs.append(self.process_img(img)[0])
         return torch.stack(processed_imgs)
     
     def process_mask(self, mask):

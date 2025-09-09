@@ -19,7 +19,7 @@ from thirdparty.EfficientLoFTR.src.loftr import LoFTR, full_default_cfg, reparam
 
 # TODO: add bundle adjustment
 
-device = 'cuda'
+# device = 'cuda'
 
 class MatcherTo3D:
     def __init__(self, device, img_L=256, ckpt_path = ELOFTR_CKPT_PATH):
@@ -30,20 +30,20 @@ class MatcherTo3D:
         # Load pretrained weights
         matcher.load_state_dict(torch.load(ckpt_path)['state_dict'])
         matcher = reparameter(matcher)  # Essential for good performance
-        matcher = matcher.eval().cuda()
+        matcher = matcher.eval().to(self.device)
         self.matcher = matcher
         self.img_L = img_L
 
     def process_img(self, img):
         img_gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
         img_gray_raw = cv2.resize(img_gray, (img_gray.shape[1]//32*32, img_gray.shape[0]//32*32))
-        img_tensor = torch.from_numpy(img_gray_raw)[None][None].cuda() / 255.
+        img_tensor = torch.from_numpy(img_gray_raw)[None][None].to(self.device) / 255.
         return img_tensor
     
     def process_imgs(self, imgs:list):
         processed_imgs = []
         for img in imgs:
-            processed_imgs.append(self.process_img(img)[0])
+            processed_imgs.append(self.process_img(img, device=self.device)[0])
         return torch.stack(processed_imgs)
     
     def process_mask(self, mask):

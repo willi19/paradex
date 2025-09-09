@@ -87,7 +87,7 @@ def listen_socket(pc_name, socket):
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-# run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list, log=True)
+run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list, log=True)
 
 camera_controller = RemoteCameraController("stream", None, sync=True, debug=args.debug)
 camera_controller.start()
@@ -219,7 +219,7 @@ try:
         output_idx = 0
         reoptim = False
         for matchingset in matchingset_list: 
-            if len(matchingset.set) >= 2: # TODO: check thres
+            if len(matchingset.set) >= 3: # TODO: check thres
                     if args.debug:
                         if reoptim:
                             firstitem = list(matchingset.set)[0]

@@ -27,9 +27,9 @@ from paradex.object_detection.object_optim_config import template_path
 from paradex.object_detection.multiview_utils.matcher import MatcherTo3D
 
 # TODO: check cuda device work
-DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+DEVICE = "cpu"
 template = Template(template_path[obj_name], obj_name=obj_name)
-matcherto3d = MatcherTo3D(DEVICE, img_L=256)
+matcherto3d = MatcherTo3D(device=DEVICE, img_L=256)
 paircount_threshold=40
 
 from paradex.model.yolo_world_module import YOLO_MODULE
@@ -70,7 +70,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         if not args.debug:
             frame_id = camera_loader.camera.get_frameid(i)
             data = camera_loader.camera.get_data(i)
-            if frame_id == last_frame_ind[i]:
+            if frame_id == last_frame_ind[i]: # if already processed, skip
                 continue
             last_frame_ind[i] = data["frameid"]
             last_image = data["image"]

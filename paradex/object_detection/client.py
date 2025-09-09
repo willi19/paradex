@@ -27,7 +27,7 @@ from paradex.object_detection.object_optim_config import template_path
 from paradex.object_detection.multiview_utils.matcher import MatcherTo3D
 
 # TODO: check cuda device work
-DEVICE = "cpu"
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 template = Template(template_path[obj_name], obj_name=obj_name)
 matcherto3d = MatcherTo3D(device=DEVICE, img_L=256)
 paircount_threshold=40

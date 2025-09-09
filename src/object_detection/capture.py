@@ -22,7 +22,7 @@ from paradex.object_detection.multiview_utils.template import Template
 from paradex.object_detection.obj_utils.vis_utils import parse_objectmesh_objdict
 from paradex.object_detection.object_optim_config import template_path
 from paradex.object_detection.object_optim_config import obj_list
-from paradex.object_detection.obj_utils.io import read_camerainfo
+from paradex.object_detection.obj_utils.io import read_camerainfo,get_ttl_framenumb
 from paradex.object_detection.obj_utils.multicam_system import MultiCamScene, NAS_IMG_SAVEDIR
 from paradex.object_detection.obj_utils.geometry import project_3d_to_2d
 from paradex.object_detection.multiview_utils.img_processing import draw_inliers, \
@@ -57,6 +57,8 @@ serial_list = get_serial_list()
 
 saved_corner_img = {serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
 cur_state = {}
+for serial_num in serial_list:
+    cur_state[serial_num] = {}
 
 capture_idx = 0
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -71,7 +73,10 @@ os.makedirs(OUTPUTDIR, exist_ok=True)
 signal_generator = UTGE900()
 signal_generator.generate(freq=1)
 
+cur_tg_frame = -1
+
 def listen_socket(pc_name, socket):
+    global cur_tg_frame
     while True:
         msg = socket.recv_string()
         try:
@@ -84,9 +89,11 @@ def listen_socket(pc_name, socket):
             serial_num = data["serial_num"]
             matching_output = data["detect_result"]
             frame = data["frame"]
-            if frame not in cur_state:
-                cur_state[frame] = {}
-            cur_state[frame][serial_num] = matching_output         
+            cur_state[serial_num][frame] = matching_output   
+            if len(matching_output)>0:
+                print(f"{frame}_{serial_num}")
+                if cur_tg_frame==-1:
+                    cur_tg_frame = frame+20
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
@@ -98,8 +105,6 @@ run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name
 camera_controller = RemoteCameraController("stream", None, sync=True, debug=args.debug)
 camera_controller.start()
 signal_generator.on(1)
-
-cur_tg_frame = 1
 
 try:
     socket_dict = {name:get_client_socket(pc_info["ip"], 5564) for name, pc_info in pc_info.items()}
@@ -116,7 +121,10 @@ try:
     
     processing_frame = 1
     while True:
-        if cur_tg_frame in cur_state and len(cur_state[cur_tg_frame]) > 20:    
+        if cur_tg_frame==-1: # Not intial matching output is given
+            continue
+
+        if get_ttl_framenumb(cur_state, cur_tg_frame)>10:   
             print(f"Processing start with frame {cur_tg_frame}")
             
             matchingitem_dict = {}
@@ -127,7 +135,7 @@ try:
                     continue
 
                 # img = saved_corner_img[serial_num].copy()
-                matching_output = cur_state[cur_tg_frame][serial_num]
+                matching_output = cur_state[serial_num][cur_tg_frame]
                 
                 proj_matrix = scene.proj_matrix[serial_num]
                 for midx in matching_output:
@@ -187,7 +195,7 @@ try:
                                     cv2.imwrite(str(DEBUG_VIS/img_name), rendered_sil)
                                 
                         
-                cur_state[cur_tg_frame][serial_num] = matching_output
+                cur_state[serial_num].pop(cur_tg_frame)
                 
             cur_state.pop(cur_tg_frame)
                 

@@ -9,9 +9,9 @@ def to_quat(obj_pose):
     rotation_matrix = obj_pose[:3, :3]
     r = R.from_matrix(rotation_matrix)
     quat_xyzw = r.as_quat()  # scipy는 xyzw 순서로 반환
-    ret[0] = quat_xyzw[3]
-    ret[1:4] = quat_xyzw[0:3]
-    ret[4:7] = obj_pose[:3, 3]
+    ret[3] = quat_xyzw[3]
+    ret[4:7] = quat_xyzw[0:3]
+    ret[:3] = obj_pose[:3, 3]
     return ret
 
 def load_world_config(obj_dict):

@@ -13,6 +13,7 @@ from curobo.types.math import Pose
 from curobo.types.robot import JointState, RobotConfig
 from curobo.util_file import get_robot_configs_path, get_world_configs_path, join_path, load_yaml
 from curobo.wrap.reacher.motion_gen import MotionGen, MotionGenConfig, MotionGenPlanConfig
+from curobo.wrap.reacher.ik_solver import IKSolver, IKSolverConfig
 """Trajectory Optimization with Custom URDF
 Basic Trajectory Optimization using PyRoKi with custom URDF file.
 Robot going over a wall, while avoiding world-collisions.
@@ -35,6 +36,7 @@ def se3_to_quat(obj_pose):
     quat_xyzw = r.as_quat()  # scipy는 xyzw 순서로 반환
     quat_wxyz = np.array([quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]])  # wxyz로 변환
     position = obj_pose[:3, 3]
+    
     return quat_wxyz, position
 
 def load_urdf(urdf_path, default_joint_config = None):
@@ -83,8 +85,6 @@ index_path = os.path.join(lookup_table_path, "pringles", index)
 pick_lookup_traj = np.load(f"{index_path}/refined_pick_action.npy")
 place_lookup_traj = np.load(f"{index_path}/refined_place_action.npy")
 
-start_state_batch = []
-goal_pose_batch = []
 
 for pick_id in obj_list:
     for state in ["start", "end"]:
@@ -97,7 +97,8 @@ for pick_id in obj_list:
                 scene_obj_dict[obj_name] = obj_dict[obj_name]["start"]
             if obj_name == pick_id and state == "start":
                 scene_obj_dict[obj_name] = obj_dict[obj_name]["start"]
-            world_cfg.append(load_world_config(scene_obj_dict))
+        
+        world_cfg.append(load_world_config(scene_obj_dict))
 
     
 tensor_args = TensorDeviceType()
@@ -111,31 +112,14 @@ motion_gen_config = MotionGenConfig.load_from_robot_config(
         num_ik_seeds=30,
         num_batch_ik_seeds=30,
         evaluate_interpolated_trajectory=True,
-        interpolation_dt=0.05,
+        interpolation_dt=0.03,
         interpolation_steps=500,
         grad_trajopt_iters=30,
         collision_checker_type=CollisionCheckerType.MESH
     )
 
-for pick_id in obj_list:
-    pick_traj = obj_dict[pick_id]["start"]["pose"] @ pick_lookup_traj
-    place_traj = obj_dict[pick_id]["end"]["pose"] @ place_lookup_traj
-    
-    for state in ["start", "end"]:
-        start_pose = Pose(start_pos[:3, 3], quaternion=R.from_matrix(start_pos[:3, :3]).as_quat())
-        if state == "start":
-            goal_pose = Pose(pick_traj[0, :3, 3], quaternion=se3_to_quat(pick_traj[0])[0])
-        if state == "end":
-            goal_pose = Pose(place_traj[0, :3, 3], quaternion=se3_to_quat(place_traj[0])[0])
-            
-        start_state_batch.append(JointState.from_position(motion_gen_config.solve_ik()))
-        if state == "start":
-            goal_pose_batch.append(Goal(pick_traj[-1, :3, 3], quaternion=se3_to_quat(pick_traj[-1])[0]))
-        else:
-            goal_pose_batch.append(Goal(place_traj[-1, :3, 3], quaternion=se3_to_quat(place_traj[-1])[0]))
-            start_state_batch.append(JointState.from_position(place_traj[0, 3, :] + 0.3))
-# world = WorldConfig().from_dict(world_cfg[0])
-# world.save_world_as_mesh("scene.obj")
+world = WorldConfig().from_dict(world_cfg[0])
+world.save_world_as_mesh("scene.obj")
     
     
 motion_gen_batch_env = MotionGen(motion_gen_config)
@@ -144,29 +128,72 @@ motion_gen_batch_env.warmup(
     enable_graph=False, batch=len(obj_list)*2, warmup_js_trajopt=False, batch_env_mode=True
 )
 n_envs =  len(obj_list)*2
-retract_cfg = motion_gen_batch_env.get_retract_config().clone()
-print(retract_cfg)
-state = motion_gen_batch_env.compute_kinematics(
-    JointState.from_position(retract_cfg.view(1, -1))
-)
 
-goal_pose = Pose(
-    state.ee_pos_seq.squeeze(), quaternion=state.ee_quat_seq.squeeze()
-).repeat_seeds(n_envs)
+start_state_batch = []
+goal_quat_batch = []
+goal_pose_batch = []
+for pick_id in obj_list:
+    pick_traj = obj_dict[pick_id]["start"]["pose"] @ pick_lookup_traj
+    place_traj = obj_dict[pick_id]["end"]["pose"] @ place_lookup_traj
+    
+    for state in ["start", "end"]:
+        start_pose = Pose(torch.from_numpy(start_pos[:3, 3]).float().to('cuda'), quaternion=torch.from_numpy(se3_to_quat(start_pos)[0]).float().to('cuda'))
+        start_qpos = motion_gen_batch_env.solve_ik(start_pose).solution
+        start_state_batch.append(start_qpos)# JointState.from_position(start_qpos))
+        
+        if state == "start":
+            goal_pose_batch.append(torch.from_numpy(pick_traj[0, :3, 3]).float().to('cuda'))
+            goal_quat_batch.append(torch.from_numpy(se3_to_quat(pick_traj[0])[0]).float().to('cuda'))
+            start_pos = pick_traj[-1]
+            # goal_pose = Pose(torch.from_numpy(pick_traj[0, :3, 3]), quaternion=torch.from_numpy(se3_to_quat(pick_traj[0])[0]))
+        if state == "end":
+            goal_pose_batch.append(torch.from_numpy(place_traj[0, :3, 3]).float().to('cuda'))
+            goal_quat_batch.append(torch.from_numpy(se3_to_quat(place_traj[0])[0]).float().to('cuda'))
+            start_pos = place_traj[-1]
+            # goal_pose = Pose(torch.from_numpy(place_traj[0, :3, 3]), quaternion=torch.from_numpy(se3_to_quat(place_traj[0])[0]))
+        
+        # goal_pose_batch.append(goal_pose)
 
-start_state = JointState.from_position(retract_cfg.view(1, -1) + 0.3).repeat_seeds(n_envs)
-print(start_state)
-goal_pose.position[1, 0] -= 0.2
+goal_pose = Pose(torch.stack(goal_pose_batch), quaternion=torch.stack(goal_quat_batch))
+start_state = JointState.from_position(torch.stack(start_state_batch))
 
 m_config = MotionGenPlanConfig(
     False, True, max_attempts=1, enable_graph_attempt=None, enable_finetune_trajopt=False
 )
 result = motion_gen_batch_env.plan_batch_env(start_state, goal_pose, m_config)
 q = result.optimized_plan.position.detach().cpu().numpy()
-import pdb; pdb.set_trace()
 print(n_envs, result.total_time, result.total_time / n_envs)
-np.save("pickplace/traj.npy", q)
+# np.save("pickplace/traj.npy", q)
 
+ik_config = IKSolverConfig.load_from_robot_config(
+    robot_cfg,
+    None,
+    rotation_threshold=0.05,
+    position_threshold=0.005,
+    num_seeds=20,
+    self_collision_check=True,
+    self_collision_opt=True,
+    tensor_args=tensor_args,
+    use_cuda_graph=True,
+)
+ik_solver = IKSolver(ik_config)
+
+total_traj = []
+for i, pick_id in enumerate(obj_list):
+    pick_traj = obj_dict[pick_id]["start"]["pose"] @ pick_lookup_traj
+    place_traj = obj_dict[pick_id]["end"]["pose"] @ place_lookup_traj
+    
+    pick_q_traj = motion_gen_batch_env.solve_ik(Pose(torch.from_numpy(pick_traj[:, :3, 3]).float().to('cuda'), \
+                                                        quaternion=torch.from_numpy(np.array([se3_to_quat(pick_traj[i])[0] for i in range(len(pick_traj))])).float().to('cuda'))).solution.detach().cpu().numpy()
+    place_q_traj = motion_gen_batch_env.solve_ik(Pose(torch.from_numpy(place_traj[:, :3, 3]).float().to('cuda'), \
+                                                        quaternion=torch.from_numpy(np.array([se3_to_quat(place_traj[i])[0] for i in range(len(place_traj))])).float().to('cuda'))).solution.detach().cpu().numpy()
+    total_traj.append(q[2 * i])
+    total_traj.append(pick_q_traj.squeeze(1))
+    total_traj.append(q[2 * i + 1])
+    total_traj.append(place_q_traj.squeeze(1))
+    print(q[2 * i].shape, pick_q_traj.shape, q[2 * i + 1].shape, place_q_traj.shape)
+total_traj = np.concatenate(total_traj, axis=0)
+np.save("pickplace/traj.npy", total_traj)
 # for pick_id in obj_list:
 #     for state in ["start", "end"]:
 #         scene_obj_dict = {}

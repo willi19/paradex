@@ -145,6 +145,12 @@ def get_binary_mask(mask):
 
     return result
 
+def get_ttl_framenumb(cur_state, tg_frame):
+    ttl_input = 0
+    for serial_num in cur_state:
+        if tg_frame in cur_state[serial_num]:
+            ttl_input+=1
+    return ttl_input
 
 
 def read_camerainfo(camerainfo_dir):

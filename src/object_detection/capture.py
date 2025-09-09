@@ -107,11 +107,11 @@ try:
         img_dict = {}
         
     while True:
-        incoming_frames = 0
+        incoming_frames = 1
         for serial_num in serial_list:
             if cur_tg_frame in cur_state[serial_num]:
                 incoming_frames += 1
-        if incoming_frames != len(serial_list):
+        if incoming_frames < len(serial_list)-2:
             continue
         print(f"Processing start with frame {cur_tg_frame}")
         
@@ -186,7 +186,7 @@ try:
             cur_state[serial_num] = matching_output
             
         for serial_num in cur_state:
-            del  cur_state[serial_num].pop(cur_tg_frame)
+            cur_state[serial_num].pop(cur_tg_frame)
             
         matchingset_list = []
         keys_sorted = sorted(matchingitem_dict.keys(), key=lambda k: matchingitem_dict[k].inlier_count, reverse=True)

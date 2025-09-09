@@ -99,7 +99,7 @@ def optimize_ceres(src_3d_arr:np.ndarray, tg_2d_arr:np.ndarray, proj_matrixes:np
                                                 img_bucket, highlights, device),
         method="trf",  # Trust Region Reflective
         max_nfev=loop_numb,
-        verbose=1,
+        verbose=0,
         ftol=1e-3
     )
     

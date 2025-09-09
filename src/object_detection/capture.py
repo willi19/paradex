@@ -56,6 +56,7 @@ serial_list = get_serial_list()
 
 saved_corner_img = {serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
 cur_state = {serial_num:{} for serial_num in serial_list}
+cur_frame = {serial_num:None for serial_num in serial_list}
 
 capture_idx = 0
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -80,8 +81,8 @@ def listen_socket(pc_name, socket):
             serial_num = data["serial_num"]
             matching_output = data["detect_result"]
             frame = data["frame"]
-            cur_state[serial_num] = matching_output                
-
+            cur_state[serial_num] = matching_output 
+            cur_frame[serial_num] = frame            
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
@@ -115,6 +116,8 @@ try:
 
             # img = saved_corner_img[serial_num].copy()
             matching_output = cur_state[serial_num]
+            frame_numb = cur_frame[serial_num]
+            print(f"Camera {serial_num} frame {frame_numb}")
             proj_matrix = scene.proj_matrix[serial_num]
             for midx in matching_output:
                 # {'count':pair_count,'combined_src_3d':combined_src_3d, \

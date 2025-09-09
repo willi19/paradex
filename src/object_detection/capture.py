@@ -56,7 +56,6 @@ serial_list = get_serial_list()
 
 saved_corner_img = {serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
 cur_state = {serial_num:{} for serial_num in serial_list}
-cur_frame = {serial_num:None for serial_num in serial_list}
 
 capture_idx = 0
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -81,8 +80,7 @@ def listen_socket(pc_name, socket):
             serial_num = data["serial_num"]
             matching_output = data["detect_result"]
             frame = data["frame"]
-            cur_state[serial_num] = matching_output 
-            cur_frame[serial_num] = frame            
+            cur_state[serial_num][frame] = matching_output         
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
@@ -92,6 +90,8 @@ run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name
 
 camera_controller = RemoteCameraController("stream", None, sync=True, debug=args.debug)
 camera_controller.start()
+
+cur_tg_frame = 1
 
 try:
     socket_dict = {name:get_client_socket(pc_info["ip"], 5564) for name, pc_info in pc_info.items()}
@@ -107,6 +107,14 @@ try:
         img_dict = {}
         
     while True:
+        incoming_frames = 0
+        for serial_num in serial_list:
+            if cur_tg_frame in cur_state[serial_num]:
+                incoming_frames += 1
+        if incoming_frames != len(serial_list):
+            continue
+        print(f"Processing start with frame {cur_tg_frame}")
+        
         matchingitem_dict = {}
         # TODO change here.
         st_time = time.time()
@@ -115,9 +123,8 @@ try:
                 continue
 
             # img = saved_corner_img[serial_num].copy()
-            matching_output = cur_state[serial_num]
-            frame_numb = cur_frame[serial_num]
-            print(f"Camera {serial_num} frame {frame_numb}")
+            matching_output = cur_state[serial_num][cur_tg_frame]
+            
             proj_matrix = scene.proj_matrix[serial_num]
             for midx in matching_output:
                 # {'count':pair_count,'combined_src_3d':combined_src_3d, \
@@ -175,9 +182,12 @@ try:
                                 img_name = f'{serial_num}_{midx}_using_combined_{inliers.shape[0]}_inliernumb{inlier_count}_loss{mean_distance_inlier}.jpeg'
                                 cv2.imwrite(str(DEBUG_VIS/img_name), rendered_sil)
                             
-                        
-
+                    
             cur_state[serial_num] = matching_output
+            
+        for serial_num in cur_state:
+            del  cur_state[serial_num].pop(cur_tg_frame)
+            
         matchingset_list = []
         keys_sorted = sorted(matchingitem_dict.keys(), key=lambda k: matchingitem_dict[k].inlier_count, reverse=True)
 

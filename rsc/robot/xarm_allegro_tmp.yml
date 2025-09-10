@@ -1,0 +1,38 @@
+robot_cfg:
+  kinematics:
+    use_usd_kinematics: False
+    urdf_path: "robot/xarm_allegro.urdf"
+    base_link: "world"
+
+    ee_link: palm_link
+    collision_spheres: spheres/xarm_allegro.yml
+    collision_sphere_buffer: 0.005
+
+    collision_link_names:
+      - link1
+      - link2
+      - link3
+      - link4
+      - link5
+      - link6
+      - wrist
+      - palm_link
+      - index_base
+      - index_proximal
+      - index_medial
+      - index_distal
+      - index_tip
+      - middle_base
+      - middle_proximal
+      - middle_medial
+      - middle_distal
+      - middle_tip
+      - ring_base
+      - ring_proximal
+      - ring_medial
+      - ring_distal
+      - ring_tip
+      - thumb_base
+      - thumb_proximal
+      - thumb_distal  
+      - thumb_tip

@@ -57,6 +57,7 @@ serial_list = get_serial_list()
 
 saved_corner_img = {serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
 cur_state = {}
+cur_numinput = {}
 for serial_num in serial_list:
     cur_state[serial_num] = {}
 
@@ -71,7 +72,7 @@ OUTPUTDIR = './objoutput'
 os.makedirs(OUTPUTDIR, exist_ok=True)
 
 signal_generator = UTGE900()
-signal_generator.generate(freq=1)
+signal_generator.generate(freq=1000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
 
 cur_tg_frame = -1
 
@@ -89,11 +90,16 @@ def listen_socket(pc_name, socket):
             serial_num = data["serial_num"]
             matching_output = data["detect_result"]
             frame = data["frame"]
-            cur_state[serial_num][frame] = matching_output   
+            if int(frame/2) not in cur_state[serial_num]:
+                if int(frame/2) not in cur_numinput:
+                    cur_numinput[int(frame/2)]=1
+                else:
+                    cur_numinput[int(frame/2)]+=1
+                print(f"Numer of inputs {int(frame/2)}: {cur_numinput[int(frame/2)]}")
+            cur_state[serial_num][int(frame/2)] = matching_output   
             if len(matching_output)>0:
-                print(f"{frame}_{serial_num}")
                 if cur_tg_frame==-1:
-                    cur_tg_frame = frame+20
+                    cur_tg_frame = frame+5
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
@@ -123,15 +129,18 @@ try:
     while True:
         if cur_tg_frame==-1: # Not intial matching output is given
             continue
+        print(f'Frame: {cur_tg_frame} number of input image: {get_ttl_framenumb(cur_state, cur_tg_frame)}')
 
-        if get_ttl_framenumb(cur_state, cur_tg_frame)>10:   
+        if cur_numinput[cur_tg_frame]>=10:   
             print(f"Processing start with frame {cur_tg_frame}")
             
             matchingitem_dict = {}
             # TODO change here.
             st_time = time.time()
             for serial_num in serial_list:
-                if serial_num not in scene.cam2intr:
+                if serial_num not in scene.cam2intr and serial_num in cur_state:
+                    continue
+                if cur_tg_frame not in  cur_state[serial_num]:
                     continue
 
                 # img = saved_corner_img[serial_num].copy()
@@ -194,10 +203,11 @@ try:
                                     img_name = f'{serial_num}_{midx}_using_combined_{inliers.shape[0]}_inliernumb{inlier_count}_loss{mean_distance_inlier}.jpeg'
                                     cv2.imwrite(str(DEBUG_VIS/img_name), rendered_sil)
                                 
-                        
-                cur_state[serial_num].pop(cur_tg_frame)
+                for serial_num in serial_list:
+                    if cur_tg_frame in cur_state[serial_num]:
+                        cur_state[serial_num].pop(cur_tg_frame)
                 
-            cur_state.pop(cur_tg_frame)
+            # cur_state.pop(cur_tg_frame)
                 
             matchingset_list = []
             keys_sorted = sorted(matchingitem_dict.keys(), key=lambda k: matchingitem_dict[k].inlier_count, reverse=True)
@@ -277,7 +287,8 @@ try:
             print(f"One round time {ed_time-st_time:.2f} sec")
             
             cur_tg_frame+=1
-
+        else:
+            time.sleep(0.1)
 
 
         

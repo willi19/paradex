@@ -8,7 +8,6 @@ import cv2
 HOME_PATH = Path.home()
 
 from paradex.utils.file_io import config_dir
-from paradex.image.aruco import detect_charuco, merge_charuco_detection
 from paradex.io.capture_pc.util import get_server_socket
 from paradex.io.capture_pc.camera_local import CameraCommandReceiver
 from paradex.utils.file_io import shared_dir

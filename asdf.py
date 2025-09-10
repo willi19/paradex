@@ -91,19 +91,20 @@ for pick_id in obj_list:
         scene_obj_dict = {}
         
         for obj_name in obj_list:
-            if obj_name < pick_id:
-                scene_obj_dict[obj_name] = obj_dict[obj_name]["end"]
-            elif obj_name > pick_id:
-                scene_obj_dict[obj_name] = obj_dict[obj_name]["start"]
-            if obj_name == pick_id and state == "start":
-                scene_obj_dict[obj_name] = obj_dict[obj_name]["start"]
+            # if obj_name < pick_id:
+            #     scene_obj_dict[obj_name] = obj_dict[obj_name]["end"]
+            # elif obj_name > pick_id:
+            #     scene_obj_dict[obj_name] = obj_dict[obj_name]["start"]
+            # if obj_name == pick_id and state == "start":
+            #     scene_obj_dict[obj_name] = obj_dict[obj_name]["start"]
+            pass
         
         world_cfg.append(load_world_config(scene_obj_dict))
 
     
 tensor_args = TensorDeviceType()
 motion_gen_config = MotionGenConfig.load_from_robot_config(
-        robot_cfg,
+        os.path.join(f"{rsc_path}/robot/xarm_allegro.yml"),
         world_cfg,
         tensor_args,
         trajopt_tsteps=30,
@@ -162,9 +163,8 @@ m_config = MotionGenPlanConfig(
 )
 result = motion_gen_batch_env.plan_batch_env(start_state, goal_pose, m_config)
 q = result.optimized_plan.position.detach().cpu().numpy()
-print(n_envs, result.total_time, result.total_time / n_envs)
+# print(n_envs, result.total_time, result.total_time / n_envs)
 # np.save("pickplace/traj.npy", q)
-
 ik_config = IKSolverConfig.load_from_robot_config(
     robot_cfg,
     None,
@@ -183,15 +183,15 @@ for i, pick_id in enumerate(obj_list):
     pick_traj = obj_dict[pick_id]["start"]["pose"] @ pick_lookup_traj
     place_traj = obj_dict[pick_id]["end"]["pose"] @ place_lookup_traj
     
-    pick_q_traj = motion_gen_batch_env.solve_ik(Pose(torch.from_numpy(pick_traj[:, :3, 3]).float().to('cuda'), \
+    pick_q_traj = ik_solver.solve_batch(Pose(torch.from_numpy(pick_traj[:, :3, 3]).float().to('cuda'), \
                                                         quaternion=torch.from_numpy(np.array([se3_to_quat(pick_traj[i])[0] for i in range(len(pick_traj))])).float().to('cuda'))).solution.detach().cpu().numpy()
-    place_q_traj = motion_gen_batch_env.solve_ik(Pose(torch.from_numpy(place_traj[:, :3, 3]).float().to('cuda'), \
+    place_q_traj = ik_solver.solve_batch(Pose(torch.from_numpy(place_traj[:, :3, 3]).float().to('cuda'), \
                                                         quaternion=torch.from_numpy(np.array([se3_to_quat(place_traj[i])[0] for i in range(len(place_traj))])).float().to('cuda'))).solution.detach().cpu().numpy()
     total_traj.append(q[2 * i])
     total_traj.append(pick_q_traj.squeeze(1))
     total_traj.append(q[2 * i + 1])
     total_traj.append(place_q_traj.squeeze(1))
-    print(q[2 * i].shape, pick_q_traj.shape, q[2 * i + 1].shape, place_q_traj.shape)
+    # print(q[2 * i].shape, pick_q_traj.shape, q[2 * i + 1].shape, place_q_traj.shape)
 total_traj = np.concatenate(total_traj, axis=0)
 np.save("pickplace/traj.npy", total_traj)
 # for pick_id in obj_list:

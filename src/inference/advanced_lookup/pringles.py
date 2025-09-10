@@ -159,7 +159,6 @@ if __name__ == "__main__":
                     pick_6D = get_object_6D(args.object, args.marker, sensors["camera"], pick_path)
                     if np.linalg.norm(pick_6D[:3, 3] - cur_6D[:3, 3]) < 0.05 and pick_6D[2, 2] > 0.8:
                         break 
-                                     
                     print(f"press y after fixing object position to {cur_id}")        
                     chime.warning()
                     while not start_event.is_set() and not stop_event.is_set():

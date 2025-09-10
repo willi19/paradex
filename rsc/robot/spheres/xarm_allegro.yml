@@ -1,0 +1,148 @@
+collision_spheres:
+  link_base:
+    - "center": [0.0, 0.0, 0.0]
+      "radius": 0.06
+    - "center": [0.0, 0.0, 0.06]
+      "radius": 0.06
+    - "center": [0.0, 0.0, 0.12]
+      "radius": 0.06
+  link1:
+    - "center": [0.0, 0.0, -0.01]
+      "radius": 0.065
+    - "center": [0.0, 0.06, 0.0]
+      "radius": 0.065
+    - "center": [0.0, 0.0, -0.07]
+      "radius": 0.065
+  link2:
+    - "center": [0.0, 0.0, 0.08]
+      "radius": 0.065
+    - "center": [0.0, -0.1, 0.08]
+      "radius": 0.065
+    - "center": [0.0, -0.1, 0.0]
+      "radius": 0.065
+    - "center": [0.0, -0.17, 0.0]
+      "radius": 0.065
+    - "center": [0.0, -0.25, 0.0]
+      "radius": 0.065
+    - "center": [0.05, -0.28, -0.02]
+      "radius": 0.065
+    - "center": [0.05, -0.28, 0.03]
+      "radius": 0.065
+  link3:
+    - "center": [0.0, 0.0, 0.075]
+      "radius": 0.05
+    - "center": [0.04, 0.04, 0.085]
+      "radius": 0.03
+    - "center": [0.075, 0.075, 0.075]
+      "radius": 0.055
+    - "center": [0.08, 0.08, 0.005]
+      "radius": 0.055
+    - "center": [0.08, 0.14, 0.0]
+      "radius": 0.055
+  link4:
+    - "center": [0.0, 0.0, -0.15]
+      "radius": 0.05
+    - "center": [0.0, 0.04, -0.11]
+      "radius": 0.03
+    - "center": [0.0, 0.07, -0.07]
+      "radius": 0.03
+    - "center": [0.0, 0.04, 0.0]
+      "radius": 0.055
+  link5:
+    - "center": [0.0, 0.01, 0.02]
+      "radius": 0.05
+    - "center": [0.075, 0.04, 0.0]
+      "radius": 0.045
+    - "center": [0.075, -0.005, 0.0]
+      "radius": 0.045
+  link6:
+    - "center": [0.0, 0.0, -0.015]
+      "radius": 0.04
+  wrist:
+    - "center": [0.0, 0.0, 0.0]
+      "radius": 0.06
+  palm_link:
+    - "center": [-0.01, -0.02, -0.06]
+      "radius": 0.04
+    - "center": [-0.01, 0.035, -0.025]
+      "radius": 0.03
+    - "center": [-0.01, -0.035, -0.025]
+      "radius": 0.03
+    - "center": [-0.01, -0.0, -0.025]
+      "radius": 0.03
+  index_base:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+  index_proximal:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+    - "center": [0.0, 0.0, 0.04]
+      "radius": 0.02
+  index_medial:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+    - "center": [0.0, 0.0, 0.04]
+      "radius": 0.02
+  index_distal:
+    - "center": [0.0, 0.0, 0.00]
+      "radius": 0.02
+  index_tip:
+    - "center": [0.012, 0.0, 0.00]
+      "radius": 0.018
+  middle_base:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+  middle_proximal:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+    - "center": [0.0, 0.0, 0.04]
+      "radius": 0.02
+  middle_medial:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+    - "center": [0.0, 0.0, 0.04]
+      "radius": 0.02
+  middle_distal:
+    - "center": [0.0, 0.0, 0.00]
+      "radius": 0.02
+  middle_tip:
+    - "center": [0.012, 0.0, 0.00]
+      "radius": 0.018
+  ring_base:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+  ring_proximal:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+    - "center": [0.0, 0.0, 0.04]
+      "radius": 0.02
+  ring_medial:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+    - "center": [0.0, 0.0, 0.04]
+      "radius": 0.02
+  ring_distal:
+    - "center": [0.0, 0.0, 0.00]
+      "radius": 0.02
+  ring_tip:
+    - "center": [0.012, 0.0, 0.00]
+      "radius": 0.018
+  thumb_base:
+    - "center": [-0.02, 0.01, 0.015]
+      "radius": 0.025
+  thumb_proximal:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+  thumb_medial:
+    - "center": [0.0, 0.0, 0.01]
+      "radius": 0.02
+    - "center": [0.0, 0.0, 0.04]
+      "radius": 0.02
+  thumb_distal:
+    - "center": [0.0, 0.0, 0.00]
+      "radius": 0.015
+    - "center": [0.0, 0.0, 0.02]
+      "radius": 0.02
+  thumb_tip:
+    - "center": [0.012, 0.0, 0.00]
+      "radius": 0.018

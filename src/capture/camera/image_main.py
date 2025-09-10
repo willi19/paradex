@@ -19,7 +19,7 @@ pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 run_script(f"python src/capture/camera/image_client.py", pc_list)
 
-camera_loader = RemoteCameraController("image", None)
+camera_loader = RemoteCameraController("image", None, debug=True)
 
 stop_event = Event()
 save_event = Event()

@@ -144,7 +144,6 @@ def get_current_object_6d_marker(obj_name, img_dict=None):
     
     A = np.concatenate(A)
     B = np.concatenate(B)
-    wwwwwww
     obj_T = rigid_transform_3D(A, B)
     obj_T = np.linalg.inv(c2r) @ obj_T
     return obj_T
@@ -164,7 +163,7 @@ def get_current_object_6d(obj_name, marker=False, img_dict = None):
     intrinsic, extrinsic = load_current_camparam()
     c2r = load_latest_C2R()
     
-    wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww(
+    object6d_silhouette(
         scene_path,
         obj_name, 
         renderer_type = 'nvdiffrast',

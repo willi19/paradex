@@ -34,7 +34,7 @@ def se3_to_quat(obj_pose):
     rotation_matrix = obj_pose[:3, :3]
     r = R.from_matrix(rotation_matrix)
     quat_xyzw = r.as_quat()  # scipy는 xyzw 순서로 반환
-    quat_wxyz = np.array([quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]])  # wxyz로 변환
+    quat_wxyz = np.array([quat_xyzw[1], quat_xyzw[2], quat_xyzw[3], quat_xyzw[0]])  # wxyz로 변환
     position = obj_pose[:3, 3]
     
     return quat_wxyz, position
@@ -116,7 +116,9 @@ motion_gen_config = MotionGenConfig.load_from_robot_config(
         interpolation_dt=0.03,
         interpolation_steps=500,
         grad_trajopt_iters=30,
-        collision_checker_type=CollisionCheckerType.MESH
+        collision_checker_type=CollisionCheckerType.MESH,
+        self_collision_check=False,
+        self_collision_opt=False,
     )
 
 world = WorldConfig().from_dict(world_cfg[0])
@@ -163,6 +165,7 @@ m_config = MotionGenPlanConfig(
 )
 result = motion_gen_batch_env.plan_batch_env(start_state, goal_pose, m_config)
 q = result.optimized_plan.position.detach().cpu().numpy()
+print(q.shape)
 # print(n_envs, result.total_time, result.total_time / n_envs)
 # np.save("pickplace/traj.npy", q)
 ik_config = IKSolverConfig.load_from_robot_config(
@@ -184,13 +187,16 @@ for i, pick_id in enumerate(obj_list):
     place_traj = obj_dict[pick_id]["end"]["pose"] @ place_lookup_traj
     
     pick_q_traj = ik_solver.solve_batch(Pose(torch.from_numpy(pick_traj[:, :3, 3]).float().to('cuda'), \
-                                                        quaternion=torch.from_numpy(np.array([se3_to_quat(pick_traj[i])[0] for i in range(len(pick_traj))])).float().to('cuda'))).solution.detach().cpu().numpy()
+                                                        quaternion=torch.from_numpy(np.array([se3_to_quat(pick_traj[i])[0] for i in range(len(pick_traj))])).float().to('cuda'))).solution.detach().cpu().numpy().squeeze(1)
     place_q_traj = ik_solver.solve_batch(Pose(torch.from_numpy(place_traj[:, :3, 3]).float().to('cuda'), \
-                                                        quaternion=torch.from_numpy(np.array([se3_to_quat(place_traj[i])[0] for i in range(len(place_traj))])).float().to('cuda'))).solution.detach().cpu().numpy()
+                                                        quaternion=torch.from_numpy(np.array([se3_to_quat(place_traj[i])[0] for i in range(len(place_traj))])).float().to('cuda'))).solution.detach().cpu().numpy().squeeze(1)
+    pick_q_traj = np.concatenate([pick_q_traj, np.zeros((pick_q_traj.shape[0], 16))], axis=1)
+    place_q_traj = np.concatenate([place_q_traj, np.zeros((place_q_traj.shape[0], 16))], axis=1)
+    # print(pick_q
     total_traj.append(q[2 * i])
-    total_traj.append(pick_q_traj.squeeze(1))
+    total_traj.append(pick_q_traj)
     total_traj.append(q[2 * i + 1])
-    total_traj.append(place_q_traj.squeeze(1))
+    total_traj.append(place_q_traj)
     # print(q[2 * i].shape, pick_q_traj.shape, q[2 * i + 1].shape, place_q_traj.shape)
 total_traj = np.concatenate(total_traj, axis=0)
 np.save("pickplace/traj.npy", total_traj)

@@ -35,7 +35,7 @@ parser.add_argument('--obj_name', type=str, required=True)
 parser.add_argument('--camerainfo_dir', required=True, type=str)
 parser.add_argument('--debug', action='store_true')
 parser.add_argument('--default_rescale', type=float, default=0.5)
-parser.add_argument('--loss_thres', type=float, default=10)
+parser.add_argument('--loss_thres', type=float, default=12)
 args = parser.parse_args()
 inliers_threshold = 30
 
@@ -95,7 +95,7 @@ def listen_socket(pc_name, socket):
                     cur_numinput[int(frame/2)]=1
                 else:
                     cur_numinput[int(frame/2)]+=1
-                print(f"Numer of inputs {int(frame/2)}: {cur_numinput[int(frame/2)]}")
+                    # print(f"Numer of inputs {int(frame/2)}: {cur_numinput[int(frame/2)]}")
             cur_state[serial_num][int(frame/2)] = matching_output   
             if len(matching_output)>0:
                 if cur_tg_frame==-1:
@@ -129,11 +129,16 @@ try:
     while True:
         if cur_tg_frame==-1: # Not intial matching output is given
             continue
-        print(f'Frame: {cur_tg_frame} number of input image: {get_ttl_framenumb(cur_state, cur_tg_frame)}')
+        # print(f'Frame: {cur_tg_frame} number of input image: {get_ttl_framenumb(cur_state, cur_tg_frame)}')
 
         if cur_tg_frame in cur_numinput and cur_numinput[cur_tg_frame]>=10:   
             print(f"Processing start with frame {cur_tg_frame}")
-            
+
+            if serial_num in serial_list:
+                img_path = str(NAS_IMG_SAVEDIR/f'frame_{cur_tg_frame}_{serial_num}.jpeg')
+                if os.path.exist(img_path):
+                    img_dict[serial_num] = cv2.imread(img_path)
+                    
             matchingitem_dict = {}
             # TODO change here.
             st_time = time.time()
@@ -177,6 +182,7 @@ try:
                             inliers_mask[inliers]=1
                             matching_output[midx]['inliers'] = inliers_mask
                             matching_output[midx]['inliers_count'] = len(inliers)
+                            print(f"inliercount : {matching_output[midx]['inliers_count'] }")
                             
                             if matching_output[midx]['inliers_count'] > inliers_threshold:
                                 transformed_verts = torch.einsum('mn, jn -> jm', obj_tg_T[:3,:3], \
@@ -203,12 +209,12 @@ try:
                                     img_name = f'{serial_num}_{midx}_using_combined_{inliers.shape[0]}_inliernumb{inlier_count}_loss{mean_distance_inlier}.jpeg'
                                     cv2.imwrite(str(DEBUG_VIS/img_name), rendered_sil)
                                 
-                for serial_num in serial_list:
-                    if cur_tg_frame in cur_state[serial_num]:
-                        cur_state[serial_num].pop(cur_tg_frame)
+            for serial_num in serial_list:
+                if cur_tg_frame in cur_state[serial_num]:
+                    cur_state[serial_num].pop(cur_tg_frame)
                 
             # cur_state.pop(cur_tg_frame)
-                
+            print(f"matching list number : {len(matchingitem_dict)}")
             matchingset_list = []
             keys_sorted = sorted(matchingitem_dict.keys(), key=lambda k: matchingitem_dict[k].inlier_count, reverse=True)
 
@@ -229,7 +235,7 @@ try:
                     loss, distance, optim_output = exising_set.validate_compatibility(new_item, obj_dict=obj_dict, \
                                                                             translation_thres=0.3, loss_thres=args.loss_thres, \
                                                                             loop_numb=50, vis=False, ceres=True)
-                    print(f'loss:{loss} distance:{distance}')
+                    print(f'{new_item.cam_id} loss:{loss} distance:{distance}')
 
                     # move rendered image target information: loss, set number
                     if loss is not None: # optimization run

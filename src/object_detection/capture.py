@@ -131,7 +131,7 @@ try:
             continue
         print(f'Frame: {cur_tg_frame} number of input image: {get_ttl_framenumb(cur_state, cur_tg_frame)}')
 
-        if cur_numinput[cur_tg_frame]>=10:   
+        if cur_tg_frame in cur_numinput and cur_numinput[cur_tg_frame]>=10:   
             print(f"Processing start with frame {cur_tg_frame}")
             
             matchingitem_dict = {}

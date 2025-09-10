@@ -34,7 +34,7 @@ def se3_to_quat(obj_pose):
     rotation_matrix = obj_pose[:3, :3]
     r = R.from_matrix(rotation_matrix)
     quat_xyzw = r.as_quat()  # scipy는 xyzw 순서로 반환
-    quat_wxyz = np.array([quat_xyzw[1], quat_xyzw[2], quat_xyzw[3], quat_xyzw[0]])  # wxyz로 변환
+    quat_wxyz = np.array([quat_xyzw[3], quat_xyzw[0], quat_xyzw[1], quat_xyzw[2]])  # wxyz로 변환
     position = obj_pose[:3, 3]
     
     return quat_wxyz, position
@@ -194,9 +194,9 @@ for i, pick_id in enumerate(obj_list):
     place_q_traj = np.concatenate([place_q_traj, np.zeros((place_q_traj.shape[0], 16))], axis=1)
     # print(pick_q
     total_traj.append(q[2 * i])
-    total_traj.append(pick_q_traj)
+    total_traj.append(pick_q_traj.squeeze(1))
     total_traj.append(q[2 * i + 1])
-    total_traj.append(place_q_traj)
+    total_traj.append(place_q_traj.squeeze(1))
     # print(q[2 * i].shape, pick_q_traj.shape, q[2 * i + 1].shape, place_q_traj.shape)
 total_traj = np.concatenate(total_traj, axis=0)
 np.save("pickplace/traj.npy", total_traj)

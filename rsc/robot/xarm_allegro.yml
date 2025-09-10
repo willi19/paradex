@@ -33,7 +33,7 @@ robot_cfg:
       - thumb_tip
     
     collision_sphere_buffer: 0.005
-    ee_link: palm_link
+    ee_link: link6
     # link_names:
     #   - link1
     #   - link2

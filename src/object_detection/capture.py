@@ -39,6 +39,7 @@ parser.add_argument('--loss_thres', type=float, default=12)
 parser.add_argument('--toggle', action='store_true')
 args = parser.parse_args()
 inliers_threshold = 30
+cam_numb_thres = 22
 
 assert args.obj_name in obj_list, 'Check the object name or object is already registered'
 obj_dict = parse_objectmesh_objdict(args.obj_name, min_vertex_num=1000, \
@@ -114,7 +115,6 @@ git_pull("merging", pc_list)
 # else:
 run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list, log=True)
 
-
 camera_controller = RemoteCameraController("stream", None, sync=True, debug=args.debug)
 camera_controller.start()
 if args.toggle:
@@ -141,11 +141,11 @@ try:
             continue
         # print(f'Frame: {cur_tg_frame} number of input image: {get_ttl_framenumb(cur_state, cur_tg_frame)}')
 
-        if cur_tg_frame in cur_numinput and cur_numinput[cur_tg_frame]>=18:   
+        if cur_tg_frame in cur_numinput and cur_numinput[cur_tg_frame]>=cam_numb_thres:   
             print(f"Processing start with frame {cur_tg_frame}")
 
             if serial_num in serial_list:
-                img_path = os.path.join(NAS_IMG_SAVEDIR,f'frame_{cur_tg_frame%10}_{serial_num}.jpeg')
+                img_path = os.path.join(NAS_IMG_SAVEDIR,f'frame_{serial_num}_{cur_tg_frame%10}.jpeg')
                 if os.path.exists(img_path):
                     img_dict[serial_num] = cv2.imread(img_path)
                     
@@ -337,6 +337,8 @@ try:
             
             cur_tg_frame+=1
         else:
+            current_number = 0 if cur_tg_frame not in cur_numinput else cur_numinput[cur_tg_frame]
+            print(f"Waiting for more input: {current_number}/{cam_numb_thres}")
             time.sleep(0.1)
 
 

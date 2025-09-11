@@ -68,13 +68,13 @@ filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
 scene = MultiCamScene(rescale_factor=args.default_rescale, device=DEVICE, height=1536, width=2048)
 scene.get_batched_renderer(tg_cam_list=scene.cam_ids)
-DEBUG_VIS = Path(NAS_IMG_SAVEDIR)/'debug'
+DEBUG_VIS = Path('./debug')
 os.makedirs(DEBUG_VIS, exist_ok=True)
 OUTPUTDIR = './objoutput'
 os.makedirs(OUTPUTDIR, exist_ok=True)
 
 signal_generator = UTGE900()
-signal_generator.generate(freq=2000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
+signal_generator.generate(freq=3000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
 
 cur_tg_frame = -1
 
@@ -112,7 +112,7 @@ git_pull("merging", pc_list)
 # if args.debug:
 #     run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name} --saveimg", pc_list, log=True)
 # else:
-#     run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list, log=True)
+run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list, log=True)
 
 
 camera_controller = RemoteCameraController("stream", None, sync=True, debug=args.debug)
@@ -266,7 +266,7 @@ try:
             # output visualization if needed
             output_dict = {}
             output_idx = 0
-            reoptim = False
+            reoptim = True
 
             # combine matchingset using the translation
 
@@ -307,23 +307,25 @@ try:
 
                                 min_loss, optim_output = group_optimization(list(matchingset.set), matchingset.optim_T, \
                                                                     scene, img_dict, obj_dict, \
-                                                                    loop_numb=30, stepsize=2, vis= args.debug, use_ceres=True)
+                                                                    loop_numb=30, stepsize=2, vis=False, use_ceres=True)
                                 print(f'loss:{loss} optim_ouptput:{optim_output}')
                                 
                                 if min_loss is not None and optim_output is not None:
-                                    shutil.move('./tmp/optim/rendered_pairs_optim.mp4', str(DEBUG_VIS/f'rendered_pairs_optim_set{matchingset.idx}_{serial_num}_{midx}.mp4'))
-                                    valid = True if optim_output is not None else False
-                                    target_path = str(DEBUG_VIS/f'set{matchingset.idx}_{valid}_loss_{min_loss}_match.jpeg')
-                                    shutil.copy('tmp_pairs.jpeg', target_path)
-                            else:
-                                target_path = str(DEBUG_VIS/f'set{matchingset.idx}_match.jpeg')
-                                highlights = {}
-                                for matchingitem in list(matchingset.set):
-                                    highlights[matchingitem.cam_id] = SRC_COLOR
+                                    # shutil.move('./tmp/optim/rendered_pairs_optim.mp4', str(DEBUG_VIS/f'rendered_pairs_optim_set{matchingset.idx}_{serial_num}_{midx}.mp4'))
+                                    # valid = True if optim_output is not None else False
+                                    # target_path = str(DEBUG_VIS/f'set{matchingset.idx}_{valid}_loss_{min_loss}_match.jpeg')
+                                    # shutil.copy('tmp_pairs.jpeg', target_path)
+                                    matchingset.update_T(optim_output)
 
-                                rendered_on_overlaid = combined_visualizer(matchingset.optim_T, scene, obj_dict, list(matchingset.set), \
-                                                    img_dict, highlights, DEVICE)
-                                cv2.imwrite(target_path, rendered_on_overlaid)                        
+                            target_path = str(DEBUG_VIS/('%05d_set%02dmatch.jpeg'%(cur_tg_frame, matchingset.idx)))
+                            highlights = {}
+                            for matchingitem in list(matchingset.set):
+                                highlights[matchingitem.cam_id] = SRC_COLOR
+
+                            rendered_on_overlaid = combined_visualizer(matchingset.optim_T, scene, obj_dict, list(matchingset.set), \
+                                                img_dict, highlights, DEVICE)
+                            cv2.imwrite(target_path, rendered_on_overlaid)       
+                            print("Saved combined visualization to ", target_path)                 
                         output_dict[output_idx] = matchingset.optim_T
                         output_idx+=1
                         

@@ -92,15 +92,15 @@ def listen_socket(pc_name, socket):
             serial_num = data["serial_num"]
             matching_output = data["detect_result"]
             frame = data["frame"]
-            if int(frame/2) not in cur_state[serial_num]:
-                cur_state[serial_num][int(frame/2)] = matching_output   
-                if int(frame/2) not in cur_numinput:
-                    cur_numinput[int(frame/2)]=1
+            if frame not in cur_state[serial_num]:
+                cur_state[serial_num][frame] = matching_output   
+                if frame not in cur_numinput:
+                    cur_numinput[frame]=1
                 else:
-                    cur_numinput[int(frame/2)]+=1
-                    print(f"Number of inputs {int(frame/2)}: {cur_numinput[int(frame/2)]}")
+                    cur_numinput[frame]+=1
+                    print(f"Number of inputs {frame}: {cur_numinput[frame]}")
             else:
-                cur_state[serial_num][int(frame/2)] = matching_output   
+                cur_state[serial_num][frame] = matching_output   
             if len(matching_output)>0:
                 if cur_tg_frame==-1:
                     cur_tg_frame = frame+5

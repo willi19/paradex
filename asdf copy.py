@@ -50,8 +50,8 @@ def load_object(obj_name):
     mesh_path = f"{rsc_path}/object/{obj_name}/{obj_name}.obj"
     os.makedirs(f"pickplace/object/{obj_name}", exist_ok=True)
     
-    num_row = 2
-    num_col = 3
+    num_row = 1
+    num_col = 1
     obj_list = {}
     
     for i in range(num_row):
@@ -61,10 +61,10 @@ def load_object(obj_name):
             obj_list[ind] = {"start":{}, "end":{}}
             z = 0.096 - 0.041
             obj_list[ind]["start"]["pose"] = np.eye(4)
-            obj_list[ind]["start"]["pose"][:3, 3] = [0.15 * i + 0.25, 0.15 * j - 0.3, z]
+            obj_list[ind]["start"]["pose"][:3, 3] = [0.15 * i + 0.35, 0.15 * j - 0.3, z]
             obj_list[ind]["start"]["file_path"] = mesh_path
             obj_list[ind]["end"]["pose"]  = np.eye(4)
-            obj_list[ind]["end"]["pose"][:3, 3] = [0.15 * i + 0.25, 0.15 * j + 0.3, z]
+            obj_list[ind]["end"]["pose"][:3, 3] = [0.15 * i + 0.35, 0.15 * j + 0.3, z]
             obj_list[ind]["end"]["file_path"] = mesh_path
     return obj_list
 
@@ -117,8 +117,8 @@ motion_gen_config = MotionGenConfig.load_from_robot_config(
         interpolation_steps=500,
         grad_trajopt_iters=30,
         collision_checker_type=CollisionCheckerType.MESH,
-        self_collision_check=False,
-        self_collision_opt=False,
+        self_collision_check=True,
+        self_collision_opt=True,
     )
 
 world = WorldConfig().from_dict(world_cfg[0])
@@ -194,9 +194,9 @@ for i, pick_id in enumerate(obj_list):
     place_q_traj = np.concatenate([place_q_traj, np.zeros((place_q_traj.shape[0], 16))], axis=1)
     # print(pick_q
     total_traj.append(q[2 * i])
-    total_traj.append(pick_q_traj.squeeze(1))
+    total_traj.append(pick_q_traj)
     total_traj.append(q[2 * i + 1])
-    total_traj.append(place_q_traj.squeeze(1))
+    total_traj.append(place_q_traj)
     # print(q[2 * i].shape, pick_q_traj.shape, q[2 * i + 1].shape, place_q_traj.shape)
 total_traj = np.concatenate(total_traj, axis=0)
 np.save("pickplace/traj.npy", total_traj)

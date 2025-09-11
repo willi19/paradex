@@ -36,6 +36,7 @@ parser.add_argument('--camerainfo_dir', required=True, type=str)
 parser.add_argument('--debug', action='store_true')
 parser.add_argument('--default_rescale', type=float, default=0.5)
 parser.add_argument('--loss_thres', type=float, default=12)
+parser.add_argument('--toggle', action='store_true')
 args = parser.parse_args()
 inliers_threshold = 30
 
@@ -46,6 +47,7 @@ obj_dict = parse_objectmesh_objdict(args.obj_name, min_vertex_num=1000, \
 org_scaled_verts = obj_dict['verts'][0].clone().detach()
 sampled_indexes = torch.randperm(org_scaled_verts.shape[0])[:100]
 sampled_obj_verts = org_scaled_verts[sampled_indexes]
+min_L = min(sampled_obj_verts.max(axis=0)[0]-sampled_obj_verts.min(axis=0)[0]).item()
 
 BOARD_COLORS = [
     (0, 0, 255), 
@@ -64,7 +66,7 @@ for serial_num in serial_list:
 capture_idx = 0
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
-scene = MultiCamScene(rescale_factor=args.default_rescale, device=DEVICE)
+scene = MultiCamScene(rescale_factor=args.default_rescale, device=DEVICE, height=1536, width=2048)
 scene.get_batched_renderer(tg_cam_list=scene.cam_ids)
 DEBUG_VIS = Path(NAS_IMG_SAVEDIR)/'debug'
 os.makedirs(DEBUG_VIS, exist_ok=True)
@@ -72,7 +74,7 @@ OUTPUTDIR = './objoutput'
 os.makedirs(OUTPUTDIR, exist_ok=True)
 
 signal_generator = UTGE900()
-signal_generator.generate(freq=1000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
+signal_generator.generate(freq=2000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
 
 cur_tg_frame = -1
 
@@ -91,12 +93,14 @@ def listen_socket(pc_name, socket):
             matching_output = data["detect_result"]
             frame = data["frame"]
             if int(frame/2) not in cur_state[serial_num]:
+                cur_state[serial_num][int(frame/2)] = matching_output   
                 if int(frame/2) not in cur_numinput:
                     cur_numinput[int(frame/2)]=1
                 else:
                     cur_numinput[int(frame/2)]+=1
-                    # print(f"Numer of inputs {int(frame/2)}: {cur_numinput[int(frame/2)]}")
-            cur_state[serial_num][int(frame/2)] = matching_output   
+                    print(f"Numer of inputs {int(frame/2)}: {cur_numinput[int(frame/2)]}")
+            else:
+                cur_state[serial_num][int(frame/2)] = matching_output   
             if len(matching_output)>0:
                 if cur_tg_frame==-1:
                     cur_tg_frame = frame+5
@@ -105,12 +109,18 @@ def listen_socket(pc_name, socket):
 
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
-run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list, log=True)
+# if args.debug:
+#     run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name} --saveimg", pc_list, log=True)
+# else:
+#     run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list, log=True)
 
 
 camera_controller = RemoteCameraController("stream", None, sync=True, debug=args.debug)
 camera_controller.start()
-signal_generator.on(1)
+if args.toggle:
+    signal_generator.off(1)
+else:
+    signal_generator.on(1)
 
 try:
     socket_dict = {name:get_client_socket(pc_info["ip"], 5564) for name, pc_info in pc_info.items()}
@@ -131,12 +141,12 @@ try:
             continue
         # print(f'Frame: {cur_tg_frame} number of input image: {get_ttl_framenumb(cur_state, cur_tg_frame)}')
 
-        if cur_tg_frame in cur_numinput and cur_numinput[cur_tg_frame]>=10:   
+        if cur_tg_frame in cur_numinput and cur_numinput[cur_tg_frame]>=20:   
             print(f"Processing start with frame {cur_tg_frame}")
 
             if serial_num in serial_list:
-                img_path = str(NAS_IMG_SAVEDIR/f'frame_{cur_tg_frame}_{serial_num}.jpeg')
-                if os.path.exist(img_path):
+                img_path = os.path.join(NAS_IMG_SAVEDIR,f'frame_{cur_tg_frame}_{serial_num}.jpeg')
+                if os.path.exists(img_path):
                     img_dict[serial_num] = cv2.imread(img_path)
                     
             matchingitem_dict = {}
@@ -182,7 +192,7 @@ try:
                             inliers_mask[inliers]=1
                             matching_output[midx]['inliers'] = inliers_mask
                             matching_output[midx]['inliers_count'] = len(inliers)
-                            print(f"inliercount : {matching_output[midx]['inliers_count'] }")
+                            # print(f"inliercount : {matching_output[midx]['inliers_count'] }")
                             
                             if matching_output[midx]['inliers_count'] > inliers_threshold:
                                 transformed_verts = torch.einsum('mn, jn -> jm', obj_tg_T[:3,:3], \
@@ -258,6 +268,35 @@ try:
             output_dict = {}
             output_idx = 0
             reoptim = False
+
+            # combine matchingset using the translation
+
+            if len(matchingset_list)>=2:
+                print("converge")
+                for midx in range(len(matchingset_list)):
+                    for mmidx in range(midx+1, len(matchingset_list)):
+                        set1, set2 = matchingset_list[midx], matchingset_list[mmidx]
+                        if set1 and set2 is not None:
+                            center_dist = np.linalg.norm(set1.optim_T[:3,3]-set2.optim_T[:3,3])
+                            if center_dist<min_L:
+                                # Check combineable
+                                min_loss, optim_output = group_optimization(list(set1.set)+list(set2.set), set1.optim_T, scene, img_dict, obj_dict, loop_numb=50)
+                                if min_loss < args.loss_thres:
+                                    set1.set = set1.set.union(set2.set)
+                                    set1.update_T(optim_output)
+                                    matchingset_list[mmidx] = None
+                                else:
+                                    print(f"Not merging {midx} with {mmidx} because of the loss {min_loss}")
+                                    if len(set1.set)>= len(set2.set):
+                                        matchingset_list[mmidx] = None
+                                    else:
+                                        matchingset_list[midx] = None
+                    
+                                    
+                                    
+
+
+
             for matchingset in matchingset_list: 
                 if len(matchingset.set) >= 3: # TODO: check thres
                         if args.debug:
@@ -302,5 +341,8 @@ try:
 finally:
     camera_controller.end()
     camera_controller.quit()        
-    signal_generator.off(1)
+    if args.toggle:
+        signal_generator.on(1)
+    else:
+        signal_generator.off(1)
     signal_generator.quit()

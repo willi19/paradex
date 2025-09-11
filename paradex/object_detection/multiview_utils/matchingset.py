@@ -103,8 +103,8 @@ class MatchingSet:
         if (np.linalg.norm(self.optim_T[:3,3]-new_item.initial_T[:3,3]) < translation_thres):
             # min_loss
             min_loss, optim_output = group_optimization(list(self.set)+[new_item], self.optim_T, \
-                                                    self.tg_scene, self.img_bucket, obj_dict, loop_numb=loop_numb, \
-                                                    lr=1e-4, stepsize=5, vis=vis, use_ceres=ceres)
+                                    self.tg_scene, self.img_bucket, obj_dict, loop_numb=loop_numb, \
+                                    lr=1e-4, stepsize=5, vis=vis, use_ceres=ceres)
             
             # Check the optimization output to current new item
             T_opt = np.eye(4)

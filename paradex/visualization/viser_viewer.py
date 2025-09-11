@@ -194,25 +194,25 @@ class ViserViewer:
         except:
             pass
         
-        for i in range(100):
-            try:
-                self.server.scene.remove_by_name(f"grid_x_{i}")
-                self.server.scene.remove_by_name(f"grid_y_{i}")
-            except:
-                pass
+        # for i in range(100):
+        #     try:
+        #         self.server.scene.remove_by_name(f"grid_x_{i}")
+        #         self.server.scene.remove_by_name(f"grid_y_{i}")
+        #     except:
+        #         pass
         
-        if self.floor_visible.value:
-            size = self.floor_size.value
+        # if self.floor_visible.value:
+        #     size = self.floor_size.value
             
-            self.server.scene.add_box(
-                name="floor",
-                dimensions=(size * 2, size * 2, 0.02),
-                position=(0.0, 0.0, -0.041),
-                color=(0.7, 0.7, 0.7)
-            )
+        #     self.server.scene.add_box(
+        #         name="floor",
+        #         dimensions=(size * 2, size * 2, 0.02),
+        #         position=(0.0, 0.0, -0.041),
+        #         color=(0.7, 0.7, 0.7)
+        #     )
             
-            if self.grid_visible.value:
-                self.add_grid_lines(size=size)
+        #     if self.grid_visible.value:
+        #         self.add_grid_lines(size=size)
 
     def add_grid_lines(self, size=1.0):
         grid_spacing = 0.01

@@ -14,7 +14,7 @@ import torch
 NAS_IMG_SAVEDIR = os.path.join(shared_dir, 'current_img')
 
 class MultiCamScene:
-    def __init__(self, rescale_factor=0.5, device='cuda'):
+    def __init__(self, rescale_factor=0.5, device='cuda', height=None, width=None):
         intrinsic, extrinsic = load_current_camparam()
         
         # parsing intrinsic, extrinsic
@@ -44,8 +44,11 @@ class MultiCamScene:
             }
             
         self.cam_ids = list(self.cam2intr.keys())
-        self.height, self.width = int(intrinsic[cam_id]['height']*rescale_factor), \
-                                    int(intrinsic[cam_id]['width']*rescale_factor)
+        if height is None and width is None:
+            self.height, self.width = int(intrinsic[cam_id]['height']*rescale_factor), \
+                                        int(intrinsic[cam_id]['width']*rescale_factor)
+        else: 
+            self.height, self.width = int(height*rescale_factor), int(width*rescale_factor)
                                     
     
 

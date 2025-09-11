@@ -7,7 +7,6 @@ from pathlib import Path
 import yaml
 
 from paradex.utils.file_io import rsc_path, get_robot_urdf_path
-from paradex.robot.robot_wrapper import RobotWrapper
 from paradex.robot.curobo import to_quat
 
 from curobo.geom.types import Capsule, Cuboid, Cylinder, Mesh, Sphere, WorldConfig
@@ -175,16 +174,11 @@ sphere_dict = yaml.safe_load(open(spehre_path, 'r'))['collision_spheres']
 dom = xml.dom.minidom.parse(xml_path)
 links = dom.getElementsByTagName("link")
 
-robot = RobotWrapper(xml_path)
-robot.compute_forward_kinematics(np.zeros(22))
-
 for link in links:
     link_name = link.getAttribute("name")
-    if link_name not in ["link4"]:
+    print(link_name)
+    if link_name not in ["thumb_distal"]:
         continue
-    
-    link_pose = robot.get_link_pose(robot.get_link_index(link_name))
-    
     visuals = link.getElementsByTagName("visual")
     mesh_dict[link_name] = []
     sph_dict[link_name] = []
@@ -195,15 +189,12 @@ for link in links:
         mesh_subpath = visual.getElementsByTagName("geometry")[0].getElementsByTagName("mesh")[0].getAttribute("filename")
         mesh_path = str(root_path/mesh_subpath)
         mesh = trimesh.load(mesh_path)
-        mesh.apply_transform(link_pose)
-        mesh_dict[link_name].append(mesh) 
-               
+        mesh_dict[link_name].append(mesh)        
     for sph in sphere_dict.get(link_name, []):
         m = trimesh.creation.icosphere(radius=sph['radius'])
         se3 = np.eye(4)
         se3[:3, 3] = sph['center']
         m.apply_transform(se3)
-        m.apply_transform(link_pose)
         mesh_dict[link_name].append(m)
         # mesh_cu = Mesh(name = f"{visual_name}_{i}", vertices=mesh.vertices, faces=mesh.faces, pose=to_quat(np.eye(4)))
         
@@ -221,4 +212,3 @@ for link in links:
     if len(visuals) > 0:
         visualize_meshlist(mesh_dict[link_name])
 # visualize_single_robot(mesh_dict)
-# visualize_meshlist([m for meshes in mesh_dict.values() for m in meshes])

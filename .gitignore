@@ -24,3 +24,5 @@ tmp*
 tmp/*
 objoutput
 *.obj
+*.ply
+*.npy

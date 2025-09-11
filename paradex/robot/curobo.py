@@ -17,8 +17,8 @@ def to_quat(obj_pose):
 def load_world_config(obj_dict):
     world_config_dict = {'mesh':{}, 'cuboid':{}}
     world_config_dict["cuboid"]["table"] = {
-            "pose": [0.0, 0.0, -0.041, 0.0, 0.0, 0.0, 1.0],
-            "dims": [1.0, 1.0, 0.082],
+            "pose": [0.0, 0.0, -0.141, 0.0, 0.0, 0.0, 1.0],
+            "dims": [2.0, 2.0, 0.2],
             "color": [0.8, 0.6, 0.4, 1.0]
         }
     

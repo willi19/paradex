@@ -30,10 +30,6 @@ DEFAULT_DEVICE = (
     "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 )
 
-from paradex.utils.file_io import rsc_path
-from paradex.visualization_.robot_module import Robot_Module
-from paradex.robot.mimic_joint import parse_inspire
-
 """
 env: hoifield_310
 play /stop / next frame/ previous frame
@@ -63,10 +59,11 @@ from viser.extras import ViserUrdf
 import yourdfpy
 
 import open3d as o3d
-from paradex.utils.file_io import rsc_path
+from paradex.utils.file_io import rsc_path, load_latest_C2R, get_robot_urdf_path
 from paradex.visualization_.robot_module import Robot_Module
 from paradex.robot.mimic_joint import parse_inspire
 from paradex.object_detection.obj_utils.vis_utils import read_mesh, get_initial_mesh
+
 
 
 class ViserViewer:
@@ -102,7 +99,7 @@ class ViserViewer:
             self.urdf = urdf
             self.urdf_vis = ViserUrdf(self.server, urdf)
             self.qpos = qpos
-            
+            self.num_frames  = self.qpos.shape[0]
             # Print joint information for debugging
             print("=== URDF Joint Information ===")
             print(f"Total joints: {len(urdf.joint_map)}")
@@ -115,9 +112,7 @@ class ViserViewer:
             print("=" * 30)
             
             if obj_T is not None:
-                self.num_frames = min(self.qpos.shape[0], self.obj_T.shape[0])
-            else:
-                self.num_frames = self.qpos.shape[0]
+                self.num_frames = min(self.num_frames, self.obj_T.shape[0])
         else:
             self.urdf, self.urdf_vis, self.qpos = None, None, None
             if obj_T is not None:
@@ -132,12 +127,14 @@ class ViserViewer:
         self.add_player()
         self.prev_timestep = 0
         self.add_initial_meshes()
+        
+        self.last_obj_number = 0
     
     def load_server(self):
         self.server = viser.ViserServer()
         self.server.gui.configure_theme(dark_mode=False)
         
-        self.server.scene.set_up_direction(self.c2r[:3,2])
+        self.server.scene.set_up_direction(-self.c2r[:3,2])
         self.server.scene.world_axes
 
         # z_near, z_far setting
@@ -390,19 +387,23 @@ class ViserViewer:
                         return
                     
                     if self.obj_loaded:
-                        self.server.scene.remove_by_name(self.object_nm)
-                    
-                    for sidx, obj_T in cur_obj_T.items():
+                        for oidx in range(self.last_obj_number):
+                            self.server.scene.remove_by_name(f"{self.object_nm}_{oidx}")
+
+                    for oidx, obj_T in cur_obj_T.items():
                         # Get Current Object Transformation 
-                        transformed_obj_mesh = copy.deepcopy(self.mesh).apply_transform(obj_T)
-                        
+                        transformed_obj_mesh = \
+                            copy.deepcopy(self.mesh).apply_transform(np.linalg.inv(self.c2r)@obj_T)
+                        # c2r = np.linalg.inv(self.c2r)
                         self.server.scene.add_mesh_trimesh(
-                            name=self.object_nm,
+                            name=f"{self.object_nm}_{oidx}",
                             mesh=transformed_obj_mesh,
                             position=(0.0, 0.0, 0.0),
                         )
                         self.obj_loaded = True
-                        break
+                        
+                    self.last_obj_number = len(cur_obj_T)
+
                         
             
         self.prev_timestep = timestep
@@ -452,10 +453,20 @@ class ViserViewer:
 # Example usage:
 if __name__ == "__main__":
 
-
+    urdf_path = get_robot_urdf_path("xarm", "allegro")
     obj_name = 'pringles'
     obj_mesh, scaled = get_initial_mesh(obj_name, return_type='trimesh', simplify=True,\
                                         device=DEFAULT_DEVICE)
+    qpos = []
+    for obj_id in os.listdir("pickplace/traj"):
+        qpos.append(np.load(f"pickplace/traj/{obj_id}/start_qpos.npy"))
+        qpos.append(np.load(f"pickplace/traj/{obj_id}/pick_qpos.npy"))
+        qpos.append(np.load(f"pickplace/traj/{obj_id}/end_qpos.npy"))
+        qpos.append(np.load(f"pickplace/traj/{obj_id}/place_qpos.npy"))
+    qpos = np.concatenate(qpos, axis=0)
     
-    viewer = ViserViewer(obj_mesh, object_nm='pringles')
+    c2r = load_latest_C2R()
+    
+    viewer = ViserViewer(obj_mesh, object_nm='pringles', c2r=c2r, \
+                        urdf_path=urdf_path, qpos=qpos)
     viewer.start_viewer()

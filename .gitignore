@@ -27,4 +27,4 @@ objoutput
 *.ply
 *.npy
 debug
-paradex/pose_utils/dex_retargeting
+paradex/pose_utils/_dex_retargeting

@@ -98,7 +98,7 @@ def listen_socket(pc_name, socket):
                     cur_numinput[frame]=1
                 else:
                     cur_numinput[frame]+=1
-                    print(f"Number of inputs {frame}: {cur_numinput[frame]}")
+                    # print(f"Number of inputs {frame}: {cur_numinput[frame]}")
             else:
                 cur_state[serial_num][frame] = matching_output   
             if len(matching_output)>0:
@@ -141,7 +141,7 @@ try:
             continue
         # print(f'Frame: {cur_tg_frame} number of input image: {get_ttl_framenumb(cur_state, cur_tg_frame)}')
 
-        if cur_tg_frame in cur_numinput and cur_numinput[cur_tg_frame]>=20:   
+        if cur_tg_frame in cur_numinput and cur_numinput[cur_tg_frame]>=18:   
             print(f"Processing start with frame {cur_tg_frame}")
 
             if serial_num in serial_list:
@@ -262,7 +262,6 @@ try:
                 else:
                     matchingset_list.append(MatchingSet(len(matchingset_list), new_item, tg_scene=scene, img_bucket=img_dict))
                     
-            print(f"Total {len(matchingset_list)} sets")
 
             # output visualization if needed
             output_dict = {}
@@ -280,8 +279,11 @@ try:
                             center_dist = np.linalg.norm(set1.optim_T[:3,3]-set2.optim_T[:3,3])
                             if center_dist<min_L:
                                 # Check combineable
-                                min_loss, optim_output = group_optimization(list(set1.set)+list(set2.set), set1.optim_T, scene, img_dict, obj_dict, loop_numb=50)
+                                min_loss, optim_output = group_optimization(list(set1.set)+list(set2.set), set1.optim_T, \
+                                                                                            scene, img_dict, obj_dict, \
+                                                                                            loop_numb=50, stepsize=2, use_ceres=True)
                                 if min_loss < args.loss_thres:
+                                    print(f"Merged {midx} with {mmidx} with the loss {min_loss}")
                                     set1.set = set1.set.union(set2.set)
                                     set1.update_T(optim_output)
                                     matchingset_list[mmidx] = None
@@ -293,8 +295,8 @@ try:
                                         matchingset_list[midx] = None
                     
                                     
-                                    
-
+            matchingset_list = [s for s in matchingset_list if s is not None]
+            print(f"Total {len(matchingset_list)} sets")
 
 
             for matchingset in matchingset_list: 
@@ -326,7 +328,7 @@ try:
                         output_idx+=1
                         
             if len(output_dict)>0:
-                pickle.dump(output_dict,open(os.path.join(OUTPUTDIR,'obj_T.pkl'),'wb'))
+                pickle.dump(output_dict, open(os.path.join(OUTPUTDIR,'obj_T.pkl'),'wb'))
 
             ed_time = time.time()
             print(f"One round time {ed_time-st_time:.2f} sec")

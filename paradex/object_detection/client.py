@@ -66,6 +66,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
     ttl_pair_count_perpc = 0
     for i, serial_num in enumerate(serial_list):
         # print(f"Processing camera {serial_num}...")
+        
         if not args.debug:
             frame_id = camera_loader.camera.get_frameid(i)
             data = camera_loader.camera.get_data(i)
@@ -79,7 +80,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         
         last_image = cv2.resize(last_image, dsize=template.img_template[serial_num].shape[:2][::-1])
         cv2.imwrite(str(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg'), last_image)
-        cv2.imwrite(str(NAS_IMG_SAVEDIR/f'frame_{last_frame_ind[i]%100}_{serial_num}.jpeg'), last_image)
+        cv2.imwrite(str(NAS_IMG_SAVEDIR/f'frame_{int(last_frame_ind[i]%10)}_{serial_num}.jpeg'), last_image)
         detections = mask_detector.process_img(last_image, top_1=False)
         result_dict = {}  
 

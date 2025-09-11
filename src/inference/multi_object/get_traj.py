@@ -36,6 +36,9 @@ class PickPlaceTraj():
     def __init__(self, obj_info_list, init_pose, arm_name = "xarm", hand_name="allegro"): # obj_info_list : [{"name":str, "start":np.ndarray(4,4), "end":np.ndarray(4,4)}] order is pick order
         self.obj_info_list = obj_info_list
         self.init_pose = init_pose
+        
+        self.arm_name = arm_name
+        self.hand_name = hand_name
 
         self.robot_cfg = RobotConfig.from_basic(get_robot_urdf_path(arm_name, hand_name), "world", "link6")
         self.robot_cfg["kinematics"]["extra_collision_spheres"] = {"attached_object": 100}
@@ -44,8 +47,8 @@ class PickPlaceTraj():
         self.world_config = WorldConfig().from_dict(self.init_world_cfg_dict)
         
         self.tensor_args = TensorDeviceType()
-        motion_gen_config = MotionGenConfig.load_from_robot_config(
-                get_robot_configs_path(arm_name, hand_name),
+        self.se3_to_quatmotion_gen_config = MotionGenConfig.load_from_robot_config(
+                os.path.join(f"{rsc_path}/robot/{self.arm_name}_{self.hand_name}.yml"),
                 self.world_config,
                 self.tensor_args,
                 trajopt_tsteps=200,
@@ -62,7 +65,7 @@ class PickPlaceTraj():
                 self_collision_opt=False,
             )
         
-        self.motion_gen_env = MotionGen(motion_gen_config)
+        self.motion_gen_env = MotionGen(self.motion_gen_config)
         self.motion_gen_env.reset()
         self.motion_gen_env.warmup(
             enable_graph=True, warmup_js_trajopt=True, batch_env_mode=False
@@ -72,7 +75,7 @@ class PickPlaceTraj():
             True, True, max_attempts=5, enable_graph_attempt=3, enable_finetune_trajopt=True
         )
 
-        ik_config = IKSolverConfig.load_from_robot_config(
+        self.ik_config = IKSolverConfig.load_from_robot_config(
             self.robot_cfg,
             None,
             rotation_threshold=0.05,
@@ -83,8 +86,9 @@ class PickPlaceTraj():
             tensor_args=self.tensor_args,
             use_cuda_graph=True,
         )
-        self.ik_solver = IKSolver(ik_config)
+        self.ik_solver = IKSolver(self.ik_config)
     
+    @ staticmethod
     def se3_to_quat(obj_pose):
         rotation_matrix = obj_pose[:3, :3]
         r = R.from_matrix(rotation_matrix)
@@ -93,31 +97,9 @@ class PickPlaceTraj():
         
         return quat_wxyz
     
-    def load_urdf(urdf_path, default_joint_config = None):
-        if urdf_path is None:
-            raise ValueError("URDF path must be provided for custom robot")
-        # Load custom URDF from file using yourdfpy (올바른 방법)
-        urdf = ydf.URDF.load(urdf_path)
-        return urdf
-
-    def load_object(obj_name, obj_pose_list):
-        mesh_path = f"{rsc_path}/object/{obj_name}/{obj_name}.obj"
-
-        move = {"0":("6", "0"), "1":("9", "3")}
-        obj_list = {}
+    def get_lookup_pickplace_traj(self, index):
+        obj_name = self.obj_info_list[index]["name"]
         
-        for obj_name, (pick_id, place_id) in move.items():
-            os.makedirs(f"pickplace/object/{obj_name}", exist_ok=True)
-            obj_list[obj_name] = {"start":{}, "end":{}}
-
-            obj_list[obj_name]["start"]["pose"] = obj_pose_list[pick_id]
-            obj_list[obj_name]["start"]["file_path"] = mesh_path
-            
-            obj_list[obj_name]["end"]["pose"] = obj_pose_list[place_id]
-            obj_list[obj_name]["end"]["file_path"] = mesh_path
-        return obj_list
-
-    def get_lookup_pickplace_traj(self, obj_name, index):
         pick_lookup_traj = np.load(f"{shared_dir}/capture/lookup/{obj_name}/{index}/refined_pick_action.npy")
         place_lookup_traj = np.load(f"{shared_dir}/capture/lookup/{obj_name}/{index}/refined_place_action.npy")
         pick_obj_T = np.load(f"{shared_dir}/capture/lookup/{obj_name}/{index}/pick_objT.npy")
@@ -165,10 +147,26 @@ start_pos= np.array([[0, 0, 1, 0.3],
                     [0, 0, 0, 1]])
 
 
-obj_pose_list = np.load("pickplace_position.npy", allow_pickle=True).item()
+def load_object(obj_name, obj_pose_list):
+    mesh_path = f"{rsc_path}/object/{obj_name}/{obj_name}.obj"
 
-# obj_dict = load_object("pringles", obj_pose_list)
-# obj_list = sorted(list(obj_dict.keys()))
+    move = {"0":("6", "0"), "1":("9", "3")}
+    obj_list = {}
+    
+    for obj_name, (pick_id, place_id) in move.items():
+        os.makedirs(f"pickplace/object/{obj_name}", exist_ok=True)
+        obj_list[obj_name] = {"start":{}, "end":{}}
+
+        obj_list[obj_name]["start"]["pose"] = obj_pose_list[pick_id]
+        obj_list[obj_name]["start"]["file_path"] = mesh_path
+        
+        obj_list[obj_name]["end"]["pose"] = obj_pose_list[place_id]
+        obj_list[obj_name]["end"]["file_path"] = mesh_path
+    return obj_list
+
+obj_pose_list = np.load("pickplace_position.npy", allow_pickle=True).item()
+obj_dict = load_object("pringles", obj_pose_list)
+obj_list = sorted(list(obj_dict.keys()))
 
 # os.makedirs("pickplace/traj", exist_ok=True)
 

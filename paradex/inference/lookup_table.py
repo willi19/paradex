@@ -3,10 +3,25 @@ from scipy.spatial.transform import Rotation as R
 from scipy.spatial.transform import Rotation as R, Slerp
 import os
 import random
+import json
 
 from paradex.utils.file_io import shared_dir
 
 lookup_table_path = os.path.join(shared_dir, "capture", "lookup")
+
+class LookupTraj():
+    def __init__(self, obj, index):
+        self.root_path = os.path.join(lookup_table_path, obj, index)
+        self.info = json.load(open(os.path.join(self.root_path, "info.json"), 'r'))
+        
+        self.traj = {"eef_se3": {}, "hand_qpos":{}} 
+        self.pick_traj = np.load(os.path.join(self.root_path, "refined_pick_action.npy"))
+        self.place_traj = np.load(os.path.join(self.root_path, "refined_place_action.npy"))
+        
+        self.pick
+    
+    def get_traj():
+        pass
 
 def get_pringles_index(hand, pick6D, place6D):
     # pick_lay = False

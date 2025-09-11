@@ -18,6 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--obj_name', type=str, required=True)
 parser.add_argument('--debug', action='store_true')
 parser.add_argument('--saveimg', action='store_true')
+parser.add_argument('--paircount', type=int, default=30)
 args = parser.parse_args()
 obj_name = args.obj_name
 
@@ -29,7 +30,7 @@ from paradex.object_detection.multiview_utils.matcher import MatcherTo3D
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 template = Template(template_path[obj_name], obj_name=obj_name)
 matcherto3d = MatcherTo3D(device=DEVICE, img_L=256)
-paircount_threshold=40
+paircount_threshold=args.paircount
 
 from paradex.model.yolo_world_module import YOLO_MODULE
 mask_detector = YOLO_MODULE(categories=obj_name, device=DEVICE)

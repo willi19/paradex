@@ -39,7 +39,7 @@ parser.add_argument('--loss_thres', type=float, default=12)
 parser.add_argument('--toggle', action='store_true')
 parser.add_argument('--static', action='store_true')
 args = parser.parse_args()
-inliers_threshold = 30
+inliers_threshold = 20
 cam_numb_thres = 22
 
 assert args.obj_name in obj_list, 'Check the object name or object is already registered'
@@ -60,11 +60,16 @@ pc_info = get_pcinfo()
 serial_list = get_serial_list()
 
 saved_corner_img = {serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
-cur_state = {}
-cur_numinput = {}
-for serial_num in serial_list:
-    cur_state[serial_num] = {}
 
+if not args.static:
+    cur_state = {}
+    cur_numinput = {} # for each frame
+    for serial_num in serial_list:
+        cur_state[serial_num] = {}
+else:
+    cur_state = {}
+    cur_numinput = None
+    
 capture_idx = 0
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
@@ -76,10 +81,22 @@ OUTPUTDIR = './objoutput'
 os.makedirs(OUTPUTDIR, exist_ok=True)
 
 signal_generator = UTGE900()
-signal_generator.generate(freq=5000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
+signal_generator.generate(freq=3000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
 
 cur_tg_frame = -1
 
+def get_framenumber(cur_state, cur_numinput, frame, static):
+    if static:
+        return len(cur_state)
+    else:
+        return cur_numinput[frame] if frame in cur_numinput else 0
+    
+def get_frameinfo(cur_state, frame, serial_num, static):
+    if static:
+        return cur_state[serial_num] if serial_num in cur_state else None
+    else:
+        return cur_state[serial_num][frame] if serial_num in cur_state and frame in cur_state[serial_num] else None
+        
 def listen_socket(pc_name, socket):
     global cur_tg_frame
     while True:
@@ -94,25 +111,23 @@ def listen_socket(pc_name, socket):
             serial_num = data["serial_num"]
             matching_output = data["detect_result"]
             frame = data["frame"]
-            if args.static:
-                frame = 0
-                
-            if frame not in cur_state[serial_num]:
-                cur_state[serial_num][frame] = matching_output   
-                if frame not in cur_numinput:
-                    cur_numinput[frame]=1
-                else:
-                    cur_numinput[frame]+=1
-                    # print(f"Number of inputs {frame}: {cur_numinput[frame]}")
-            else:
-                cur_state[serial_num][frame] = matching_output   
-                
             if len(matching_output)>0:
-                if cur_tg_frame==-1:
-                    if args.static:
+                if args.static: # save all frame into 0
+                    if cur_tg_frame==-1:
                         cur_tg_frame = 0
-                    else:
+                    cur_state[serial_num] = matching_output
+                else:
+                    if cur_tg_frame==-1:
                         cur_tg_frame = frame+3
+                    if frame not in cur_state[serial_num]:
+                        cur_state[serial_num][frame] = matching_output   
+                        if frame not in cur_numinput:
+                            cur_numinput[frame]=1
+                        else:
+                            cur_numinput[frame]+=1
+                    else:
+                        cur_state[serial_num][frame] = matching_output   
+            print(f"Frame {frame} got total {get_framenumber(cur_state, cur_numinput, frame, args.static)} inputs")
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
@@ -149,30 +164,27 @@ try:
             continue
         # print(f'Frame: {cur_tg_frame} number of input image: {get_ttl_framenumb(cur_state, cur_tg_frame)}')
 
-        if cur_tg_frame in cur_numinput and cur_numinput[cur_tg_frame]>=cam_numb_thres:   
+        if get_framenumber(cur_state, cur_numinput, cur_tg_frame, args.static) >= cam_numb_thres:   
             print(f"Processing start with frame {cur_tg_frame}")
 
-            for serial_num in serial_list:
-                img_path = os.path.join(NAS_IMG_SAVEDIR,f'frame_{serial_num}_{cur_tg_frame%10}.jpeg')
-                if os.path.exists(img_path):
-                    img_dict[serial_num] = cv2.imread(img_path)
-                    
+            if args.debug: # Get Image
+                for serial_num in serial_list:
+                    img_path = os.path.join(NAS_IMG_SAVEDIR,f'frame_{serial_num}_{cur_tg_frame%10}.jpeg')
+                    if os.path.exists(img_path):
+                        img_dict[serial_num] = cv2.imread(img_path)
+                        
             matchingitem_dict = {}
-            # TODO change here.
+
             st_time = time.time()
             for serial_num in serial_list:
-                if serial_num not in scene.cam2intr and serial_num in cur_state:
+                if serial_num not in scene.cam2intr:
                     continue
-                if cur_tg_frame not in  cur_state[serial_num]:
+                matching_output = get_frameinfo(cur_state, cur_tg_frame, serial_num, args.static)
+                if matching_output is None:
                     continue
-
-                # img = saved_corner_img[serial_num].copy()
-                matching_output = cur_state[serial_num][cur_tg_frame]
                 
                 proj_matrix = scene.proj_matrix[serial_num]
                 for midx in matching_output:
-                    # {'count':pair_count,'combined_src_3d':combined_src_3d, \
-                    # 'combined_tg_2d':combined_tg_2d, 'src_arr_cam_ids':src_arr_cam_ids}
                     if 'count' in matching_output[midx] and matching_output[midx]['count']>0:
                         for key in ['combined_src_3d', 'combined_tg_2d', 'src_arr_cam_ids']:
                             matching_output[midx][key] = np.array(matching_output[midx][key])
@@ -226,10 +238,11 @@ try:
                                     inlier_count = matching_output[midx]['inliers_count']
                                     img_name = f'{serial_num}_{midx}_using_combined_{inliers.shape[0]}_inliernumb{inlier_count}_loss{mean_distance_inlier}.jpeg'
                                     cv2.imwrite(str(DEBUG_VIS/img_name), rendered_sil)
-                                
-            for serial_num in serial_list:
-                if cur_tg_frame in cur_state[serial_num]:
-                    cur_state[serial_num].pop(cur_tg_frame)
+
+            if not args.static: # in order to save memory, delete frame information after processing
+                for serial_num in serial_list:
+                    if cur_tg_frame in cur_state[serial_num]:
+                        cur_state[serial_num].pop(cur_tg_frame)
                 
             # cur_state.pop(cur_tg_frame)
             print(f"matching list number : {len(matchingitem_dict)}")
@@ -271,10 +284,6 @@ try:
                     matchingset_list.append(MatchingSet(len(matchingset_list), new_item, tg_scene=scene, img_bucket=img_dict))
                     
 
-            # output visualization if needed
-            output_dict = {}
-            output_idx = 0
-            reoptim = True
 
             # combine matchingset using the translation
 
@@ -301,43 +310,43 @@ try:
                                         matchingset_list[mmidx] = None
                                     else:
                                         matchingset_list[midx] = None
-                    
-                                    
-            matchingset_list = [s for s in matchingset_list if s is not None]
+            matchingset_list = [s for s in matchingset_list if s is not None or len(s.set) >= 3]
             print(f"Total {len(matchingset_list)} sets")
-
-
+            
+            # output visualization if needed
+            output_dict = {}
+            output_idx = 0
+            reoptim = True
             for matchingset in matchingset_list: 
                 if len(matchingset.set) >= 3: # TODO: check thres
-                        if args.debug:
-                            if reoptim:
-                                firstitem = list(matchingset.set)[0]
+                        if reoptim:
+                            firstitem = list(matchingset.set)[0]
+                            min_loss, optim_output = group_optimization(list(matchingset.set), matchingset.optim_T, \
+                                                                scene, img_dict, obj_dict, \
+                                                                loop_numb=30, stepsize=2, vis=args.debug, use_ceres=True)
+                            print(f'Re optim set {output_idx}: loss:{min_loss}')
 
-                                min_loss, optim_output = group_optimization(list(matchingset.set), matchingset.optim_T, \
-                                                                    scene, img_dict, obj_dict, \
-                                                                    loop_numb=30, stepsize=2, vis=False, use_ceres=True)
-                                print(f'loss:{loss} optim_ouptput:{optim_output}')
-                                
-                                if min_loss is not None and optim_output is not None:
-                                    # shutil.move('./tmp/optim/rendered_pairs_optim.mp4', str(DEBUG_VIS/f'rendered_pairs_optim_set{matchingset.idx}_{serial_num}_{midx}.mp4'))
-                                    # valid = True if optim_output is not None else False
-                                    # target_path = str(DEBUG_VIS/f'set{matchingset.idx}_{valid}_loss_{min_loss}_match.jpeg')
-                                    # shutil.copy('tmp_pairs.jpeg', target_path)
-                                    matchingset.update_T(optim_output)
-
-                            target_path = str(DEBUG_VIS/('%05d_set%02dmatch.jpeg'%(cur_tg_frame, matchingset.idx)))
-                            highlights = {}
-                            for matchingitem in list(matchingset.set):
-                                highlights[matchingitem.cam_id] = SRC_COLOR
-
-                            rendered_on_overlaid = combined_visualizer(matchingset.optim_T, scene, obj_dict, list(matchingset.set), \
-                                                img_dict, highlights, DEVICE)
-                            cv2.imwrite(target_path, rendered_on_overlaid)       
-                            print("Saved combined visualization to ", target_path)                 
+                            if min_loss is not None and optim_output is not None:
+                                if args.debug:
+                                    shutil.move('./tmp/optim/rendered_pairs_optim.mp4', str(DEBUG_VIS/f'rendered_pairs_optim_set{matchingset.idx}_{serial_num}_{midx}.mp4'))
+                                    valid = True if optim_output is not None else False
+                                    target_path = str(DEBUG_VIS/f'set{matchingset.idx}_{valid}_loss_{min_loss}_match.jpeg')
+                                    shutil.copy('tmp_pairs.jpeg', target_path)
+                                    target_path = str(DEBUG_VIS/('%05d_set%02dmatch.jpeg'%(cur_tg_frame, matchingset.idx)))
+                                    highlights = {}
+                                    for matchingitem in list(matchingset.set):
+                                        highlights[matchingitem.cam_id] = SRC_COLOR
+                                    rendered_on_overlaid = combined_visualizer(matchingset.optim_T, scene, obj_dict, list(matchingset.set), \
+                                                        img_dict, highlights, DEVICE)
+                                    cv2.imwrite(target_path, rendered_on_overlaid)       
+                                    print("Saved combined visualization to ", target_path)     
+                                matchingset.update_T(optim_output)
+            
                         output_dict[output_idx] = matchingset.optim_T
                         output_idx+=1
                         
             if len(output_dict)>0:
+                output_dict['timestamp'] = time.time()
                 pickle.dump(output_dict, open(os.path.join(OUTPUTDIR,'obj_T.pkl'),'wb'))
 
             ed_time = time.time()
@@ -345,6 +354,9 @@ try:
             
             if not args.static:
                 cur_tg_frame+=1
+            else:
+                cur_state = {}
+                cur_numinput = None
         else:
             current_number = 0 if cur_tg_frame not in cur_numinput else cur_numinput[cur_tg_frame]
             print(f"Waiting for more input: {current_number}/{cam_numb_thres}")

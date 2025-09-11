@@ -10,79 +10,71 @@ from paradex.utils.file_io import shared_dir
 lookup_table_path = os.path.join(shared_dir, "capture", "lookup")
 
 class LookupTraj():
-    def __init__(self, obj, index):
-        self.root_path = os.path.join(lookup_table_path, obj, index)
+    def __init__(self, root_path):
+        self.root_path = root_path
         self.info = json.load(open(os.path.join(self.root_path, "info.json"), 'r'))
         
-        self.traj = {"eef_se3": {}, "hand_qpos":{}} 
-        self.pick_traj = np.load(os.path.join(self.root_path, "refined_pick_action.npy"))
-        self.place_traj = np.load(os.path.join(self.root_path, "refined_place_action.npy"))
-        
-        self.pick
+        self.traj = {"eef_se3": {}, "hand_qpos":{}, "obj_T":{}} 
+        for state in ["pick", "place"]:
+            self.traj["eef_se3"][state] = np.load(os.path.join(self.root_path, f"refined_{state}_action.npy"))
+            self.traj["obj_T"][state] = np.load(os.path.join(self.root_path, f"{state}_objT.npy"))
+            self.traj["hand_qpos"][state] = np.load(os.path.join(self.root_path, f"refined_{state}_hand.npy"))
     
-    def get_traj():
-        pass
+    def get_traj(self, pick_6D, place_6D):
+        ret = {}
+        for state in ["pick", "place"]:
+            self.ret[state] = {}
+            self.ret[state]["eef_se3"] = pick_6D @ self.traj["eef_se3"][state] if state == "pick" else place_6D @ self.traj["eef_se3"][state]
+            self.ret[state]["obj_T"] = pick_6D @ self.traj["obj_T"][state] if state == "pick" else place_6D @ self.traj["obj_T"][state]
+            self.ret[state]["hand_qpos"] = self.traj["hand_qpos"][state]
+        return ret
 
-def get_pringles_index(hand, pick6D, place6D):
-    # pick_lay = False
-    # if pick6D[2, 2] < 0.7:# or place6D[2, 2] < 0.7:
-    #     pick_lay = True
-    
-    # place_lay = False
-    # if place6D[2, 2] < 0.7:# or place6D[2, 2] < 0.7:
-    #     place_lay = True
-    
-    # table_path = os.path.join(lookup_table_path, "pringles")
-    # index_list = os.listdir(table_path)
-    
-    # candidate = []
-    # for index in index_list:
-    #     pick_T = np.load(os.path.join(table_path, index, "pick_obj_T.npy"))[0]
-    #     place_T = np.load(os.path.join(table_path, index, "place_obj_T.npy"))[-1]
-        
-    #     table_pick_lay = (pick_T[2, 2]< 0.7)
-    #     table_place_lay = (place_T[2, 2] < 0.7)
-        
-    #     score = 1
-    #     if pick_lay != table_pick_lay or place_lay != table_place_lay:
-    #         score = 0
-    #     candidate.append((index, score))
-    
-    # indices, weights = zip(*candidate)
-    # selected_index = random.choices(indices, weights=weights, k=1)[0]
-    # return selected_index
-    return "1"
+class LookupTable():
+    def __init__(self, obj_name, hand, grasp_type=None):
+        self.root_path = os.path.join(lookup_table_path, obj)
+        self.index_list = os.listdir(self.root_path)
+        self.lookup_traj = {}
+        for index in self.index_list:
+            self.lookup_traj[index] = LookupTraj(self.root_path, index)
 
-def get_traj(obj, hand, start6D, pick6D, place6D, index=-1):
-    if index == -1:
-        index = get_pringles_index(hand, pick6D, place6D)
-    index_path = os.path.join(lookup_table_path, obj, index)
+    def get_traj(self, pick_6D, place_6D, index=-1):
+        if index not in self.index_list:
+            raise ValueError(f"Index {index} not found in lookup table for object {obj}")
+        return self.lookup_traj[index].get_traj(pick_6D, place_6D)
     
-    pick_traj = np.load(f"{index_path}/refined_pick_action.npy")
-    place_traj = np.load(f"{index_path}/refined_place_action.npy")
-    
-    pick_hand_traj = np.load(f"{index_path}/refined_pick_hand.npy")
-    place_hand_traj = np.load(f"{index_path}/refined_place_hand.npy")
-    start_hand = np.zeros((pick_hand_traj.shape[1]))
-    pick_traj = pick6D @ pick_traj
-    place_traj = place6D @ place_traj 
-    
-    approach_traj, approach_hand_traj = get_linear_path(start6D, pick_traj[0], start_hand, pick_hand_traj[0])
-    return_traj, return_hand_traj = get_linear_path(place_traj[-1], start6D, place_hand_traj[-1], start_hand)
-    move_traj, move_hand = get_linear_path(pick_traj[-1], place_traj[0], pick_hand_traj[-1], place_hand_traj[0])
-    
-    
-    traj = np.concatenate([approach_traj, pick_traj, move_traj, place_traj, return_traj])
-    hand_traj = np.concatenate([approach_hand_traj, pick_hand_traj, move_hand, place_hand_traj, return_hand_traj])
-    
-    state = np.zeros((len(traj)))
-    state[len(approach_traj):len(approach_traj)+len(pick_traj)] = 1
-    state[len(approach_traj)+len(pick_traj):len(approach_traj)+len(pick_traj)+len(move_traj)] = 2
-    state[len(approach_traj)+len(pick_traj)+len(move_traj):len(approach_traj)+len(pick_traj)+len(move_traj)+len(place_traj)] = 3
-    state[len(approach_traj)+len(pick_traj)+len(move_traj)+len(place_traj):] = 4
+    def get_total_traj(self, pick_6D, place_6D, index=-1):
+        ret = {}
+        for index in self.index_list:
+            ret[index] = self.lookup_traj[index].get_traj(pick_6D, place_6D)
+        if index == -1:
+            index = get_pringles_index(hand, pick6D, place6D)
+        index_path = os.path.join(lookup_table_path, obj, index)
+        
+        pick_traj = np.load(f"{index_path}/refined_pick_action.npy")
+        place_traj = np.load(f"{index_path}/refined_place_action.npy")
+        
+        pick_hand_traj = np.load(f"{index_path}/refined_pick_hand.npy")
+        place_hand_traj = np.load(f"{index_path}/refined_place_hand.npy")
+        start_hand = np.zeros((pick_hand_traj.shape[1]))
+        pick_traj = pick6D @ pick_traj
+        place_traj = place6D @ place_traj 
+        
+        approach_traj, approach_hand_traj = get_linear_path(start6D, pick_traj[0], start_hand, pick_hand_traj[0])
+        return_traj, return_hand_traj = get_linear_path(place_traj[-1], start6D, place_hand_traj[-1], start_hand)
+        move_traj, move_hand = get_linear_path(pick_traj[-1], place_traj[0], pick_hand_traj[-1], place_hand_traj[0])
+        
+        
+        traj = np.concatenate([approach_traj, pick_traj, move_traj, place_traj, return_traj])
+        hand_traj = np.concatenate([approach_hand_traj, pick_hand_traj, move_hand, place_hand_traj, return_hand_traj])
+        
+        state = np.zeros((len(traj)))
+        state[len(approach_traj):len(approach_traj)+len(pick_traj)] = 1
+        state[len(approach_traj)+len(pick_traj):len(approach_traj)+len(pick_traj)+len(move_traj)] = 2
+        state[len(approach_traj)+len(pick_traj)+len(move_traj):len(approach_traj)+len(pick_traj)+len(move_traj)+len(place_traj)] = 3
+        state[len(approach_traj)+len(pick_traj)+len(move_traj)+len(place_traj):] = 4
 
-    
-    return index, traj, hand_traj, state
+        
+        return index, traj, hand_traj, state
 
 def refine_trajectory(wrist_pos, qpos, hand_qpos, tolerance=1e-6, max_acc=40.0, max_vel=0.15, max_ang_vel=2.0, dt=1 / 30):
     """
@@ -304,17 +296,5 @@ def get_linear_path(start_6D, end_6D, start_hand, end_hand, max_vel=0.2, max_ang
         
         # 핸드 관절 보간
         move_hand[i] = start_hand * (1 - alpha) + end_hand * alpha
-    
-    # 실제 속도 정보 출력
-    actual_linear_vel = linear_distance / total_time if total_time > 0 else 0
-    actual_angular_vel = angular_distance / total_time if total_time > 0 else 0
-    
-    # print(f"Path generation:")
-    # print(f"  Linear distance: {linear_distance:.4f} m")
-    # print(f"  Angular distance: {angular_distance:.4f} rad")
-    # print(f"  Total time: {total_time:.3f} s")
-    # print(f"  Steps: {length}")
-    # print(f"  Actual linear velocity: {actual_linear_vel:.3f} m/s (limit: {max_vel:.3f})")
-    # print(f"  Actual angular velocity: {actual_angular_vel:.3f} rad/s (limit: {max_ang_vel:.3f})")
-    
+     
     return move_traj, move_hand

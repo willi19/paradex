@@ -122,6 +122,7 @@ class ViserViewer:
                 
         if obj_T is None:
             self.obj_loaded = False
+            self.prev_objtimestamp = -1
 
         self.add_frames()
         self.add_player()
@@ -194,6 +195,8 @@ class ViserViewer:
                 step=0.01,
             )
             
+            self.manual_update = self.server.gui.add_button("Manual Update", disabled=True)
+            
             @gui_up.on_update
             def _(_) -> None:
                 self.server.scene.set_up_direction(gui_up.value)
@@ -233,7 +236,11 @@ class ViserViewer:
             self.gui_timestep.disabled = self.gui_playing.value
             self.gui_next_frame.disabled = self.gui_playing.value
             self.gui_prev_frame.disabled = self.gui_playing.value
-
+            
+        @self.manual_update.on_click
+        def _(_) -> None:
+            self.update_scene(self.gui_timestep.value)
+            
     def add_frames(self):
         # NOTE: scene setting start
         self.server.scene.add_frame(
@@ -385,7 +392,9 @@ class ViserViewer:
                         cur_obj_T = pickle.load(open(obj_T_path, 'rb'))
                     except:
                         return
-                    
+                    if self.prev_objtimestamp == cur_obj_T['timestamp']:
+                        return
+                    print(f"Updating objects")
                     if self.obj_loaded:
                         for oidx in range(self.last_obj_number):
                             self.server.scene.remove_by_name(f"{self.object_nm}_{oidx}")

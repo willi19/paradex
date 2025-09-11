@@ -37,6 +37,7 @@ parser.add_argument('--debug', action='store_true')
 parser.add_argument('--default_rescale', type=float, default=0.5)
 parser.add_argument('--loss_thres', type=float, default=12)
 parser.add_argument('--toggle', action='store_true')
+parser.add_argument('--static', action='store_true')
 args = parser.parse_args()
 inliers_threshold = 30
 cam_numb_thres = 22
@@ -75,7 +76,7 @@ OUTPUTDIR = './objoutput'
 os.makedirs(OUTPUTDIR, exist_ok=True)
 
 signal_generator = UTGE900()
-signal_generator.generate(freq=3000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
+signal_generator.generate(freq=5000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
 
 cur_tg_frame = -1
 
@@ -93,6 +94,9 @@ def listen_socket(pc_name, socket):
             serial_num = data["serial_num"]
             matching_output = data["detect_result"]
             frame = data["frame"]
+            if args.static:
+                frame = 0
+                
             if frame not in cur_state[serial_num]:
                 cur_state[serial_num][frame] = matching_output   
                 if frame not in cur_numinput:
@@ -102,9 +106,13 @@ def listen_socket(pc_name, socket):
                     # print(f"Number of inputs {frame}: {cur_numinput[frame]}")
             else:
                 cur_state[serial_num][frame] = matching_output   
+                
             if len(matching_output)>0:
                 if cur_tg_frame==-1:
-                    cur_tg_frame = frame+5
+                    if args.static:
+                        cur_tg_frame = 0
+                    else:
+                        cur_tg_frame = frame+3
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
@@ -144,7 +152,7 @@ try:
         if cur_tg_frame in cur_numinput and cur_numinput[cur_tg_frame]>=cam_numb_thres:   
             print(f"Processing start with frame {cur_tg_frame}")
 
-            if serial_num in serial_list:
+            for serial_num in serial_list:
                 img_path = os.path.join(NAS_IMG_SAVEDIR,f'frame_{serial_num}_{cur_tg_frame%10}.jpeg')
                 if os.path.exists(img_path):
                     img_dict[serial_num] = cv2.imread(img_path)
@@ -335,7 +343,8 @@ try:
             ed_time = time.time()
             print(f"One round time {ed_time-st_time:.2f} sec")
             
-            cur_tg_frame+=1
+            if not args.static:
+                cur_tg_frame+=1
         else:
             current_number = 0 if cur_tg_frame not in cur_numinput else cur_numinput[cur_tg_frame]
             print(f"Waiting for more input: {current_number}/{cam_numb_thres}")

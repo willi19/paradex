@@ -98,7 +98,7 @@ def listen_socket(pc_name, socket):
                     cur_numinput[int(frame/2)]=1
                 else:
                     cur_numinput[int(frame/2)]+=1
-                    print(f"Numer of inputs {int(frame/2)}: {cur_numinput[int(frame/2)]}")
+                    print(f"Number of inputs {int(frame/2)}: {cur_numinput[int(frame/2)]}")
             else:
                 cur_state[serial_num][int(frame/2)] = matching_output   
             if len(matching_output)>0:
@@ -145,7 +145,7 @@ try:
             print(f"Processing start with frame {cur_tg_frame}")
 
             if serial_num in serial_list:
-                img_path = os.path.join(NAS_IMG_SAVEDIR,f'frame_{cur_tg_frame}_{serial_num}.jpeg')
+                img_path = os.path.join(NAS_IMG_SAVEDIR,f'frame_{cur_tg_frame%10}_{serial_num}.jpeg')
                 if os.path.exists(img_path):
                     img_dict[serial_num] = cv2.imread(img_path)
                     

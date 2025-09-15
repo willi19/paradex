@@ -93,7 +93,7 @@ class RawVideoProcessorWithProgress():
         fps = processed_frames / elapsed_time if elapsed_time > 0 else 0
         remaining_frames = total_frames - processed_frames
         eta_seconds = remaining_frames / fps if fps > 0 else 0
-        
+        print(self.processor.log)
         return {
             'timestamp': datetime.now().isoformat(),
             'status': 'processing' if not self.processor.finished() else 'completed',

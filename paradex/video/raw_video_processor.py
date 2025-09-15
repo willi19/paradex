@@ -32,7 +32,7 @@ class RawVideoProcessor():
         self.overwrite = overwrite
         
         self.frame_counter = {vid_path:self.manager.Value('i', 0) for vid_path in self.valid_video_path_list}
-        
+        print(self.process_list)
         self.pool = Pool()
         self.process()
         

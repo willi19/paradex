@@ -12,7 +12,7 @@ lookup_table_path = os.path.join(shared_dir, "capture", "lookup")
 class LookupTraj():
     def __init__(self, root_path):
         self.root_path = root_path
-        self.info = json.load(open(os.path.join(self.root_path, "info.json"), 'r'))
+        self.info = json.load(open(os.path.join(self.root_path, "meta.json"), 'r'))
         
         self.traj = {"eef_se3": {}, "hand_qpos":{}, "obj_T":{}} 
         for state in ["pick", "place"]:
@@ -23,58 +23,33 @@ class LookupTraj():
     def get_traj(self, pick_6D, place_6D):
         ret = {}
         for state in ["pick", "place"]:
-            self.ret[state] = {}
-            self.ret[state]["eef_se3"] = pick_6D @ self.traj["eef_se3"][state] if state == "pick" else place_6D @ self.traj["eef_se3"][state]
-            self.ret[state]["obj_T"] = pick_6D @ self.traj["obj_T"][state] if state == "pick" else place_6D @ self.traj["obj_T"][state]
-            self.ret[state]["hand_qpos"] = self.traj["hand_qpos"][state]
+            ret[state] = {}
+            ret[state]["eef_se3"] = pick_6D @ self.traj["eef_se3"][state] if state == "pick" else place_6D @ self.traj["eef_se3"][state]
+            ret[state]["obj_T"] = pick_6D @ self.traj["obj_T"][state] if state == "pick" else place_6D @ self.traj["obj_T"][state]
+            ret[state]["hand_qpos"] = self.traj["hand_qpos"][state]
         return ret
 
 class LookupTable():
-    def __init__(self, obj_name, hand, grasp_type=None):
-        self.root_path = os.path.join(lookup_table_path, obj)
-        self.index_list = os.listdir(self.root_path)
+    def __init__(self, obj_name, hand, grasp_type_list=None, index_list=None):
+        self.root_path = os.path.join(lookup_table_path, obj_name)
+        
         self.lookup_traj = {}
+        index_list = os.listdir(self.root_path) if index_list is None else index_list
+        
+        for index in index_list:
+            demo_path = os.path.join(self.root_path, index)
+            element = LookupTraj(demo_path)
+            if element.info["hand_name"] == hand and (grasp_type_list is None or element.info["grasp_type"] in grasp_type_list):
+                self.lookup_traj[index] = element
+        self.index_list = list(self.lookup_traj.keys())
+        
+    def get_trajs(self, pick_6D, place_6D):
+        ret = []
         for index in self.index_list:
-            self.lookup_traj[index] = LookupTraj(self.root_path, index)
-
-    def get_traj(self, pick_6D, place_6D, index=-1):
-        if index not in self.index_list:
-            raise ValueError(f"Index {index} not found in lookup table for object {obj}")
-        return self.lookup_traj[index].get_traj(pick_6D, place_6D)
-    
-    def get_total_traj(self, pick_6D, place_6D, index=-1):
-        ret = {}
-        for index in self.index_list:
-            ret[index] = self.lookup_traj[index].get_traj(pick_6D, place_6D)
-        if index == -1:
-            index = get_pringles_index(hand, pick6D, place6D)
-        index_path = os.path.join(lookup_table_path, obj, index)
-        
-        pick_traj = np.load(f"{index_path}/refined_pick_action.npy")
-        place_traj = np.load(f"{index_path}/refined_place_action.npy")
-        
-        pick_hand_traj = np.load(f"{index_path}/refined_pick_hand.npy")
-        place_hand_traj = np.load(f"{index_path}/refined_place_hand.npy")
-        start_hand = np.zeros((pick_hand_traj.shape[1]))
-        pick_traj = pick6D @ pick_traj
-        place_traj = place6D @ place_traj 
-        
-        approach_traj, approach_hand_traj = get_linear_path(start6D, pick_traj[0], start_hand, pick_hand_traj[0])
-        return_traj, return_hand_traj = get_linear_path(place_traj[-1], start6D, place_hand_traj[-1], start_hand)
-        move_traj, move_hand = get_linear_path(pick_traj[-1], place_traj[0], pick_hand_traj[-1], place_hand_traj[0])
-        
-        
-        traj = np.concatenate([approach_traj, pick_traj, move_traj, place_traj, return_traj])
-        hand_traj = np.concatenate([approach_hand_traj, pick_hand_traj, move_hand, place_hand_traj, return_hand_traj])
-        
-        state = np.zeros((len(traj)))
-        state[len(approach_traj):len(approach_traj)+len(pick_traj)] = 1
-        state[len(approach_traj)+len(pick_traj):len(approach_traj)+len(pick_traj)+len(move_traj)] = 2
-        state[len(approach_traj)+len(pick_traj)+len(move_traj):len(approach_traj)+len(pick_traj)+len(move_traj)+len(place_traj)] = 3
-        state[len(approach_traj)+len(pick_traj)+len(move_traj)+len(place_traj):] = 4
-
-        
-        return index, traj, hand_traj, state
+            traj = self.lookup_traj[index].get_traj(pick_6D, place_6D)
+            traj["index"] = index
+            ret.append(traj)
+        return ret
 
 def refine_trajectory(wrist_pos, qpos, hand_qpos, tolerance=1e-6, max_acc=40.0, max_vel=0.15, max_ang_vel=2.0, dt=1 / 30):
     """

@@ -163,7 +163,6 @@ def visualize_lookup_table(demo_path, logger=[], overwrite=False):
         change_to_h264(output_tmp_path, output_path)
         copy_file(output_path, os.path.join(demo_path, f"{demo_type}.mp4"))
             
-
 def generate_lookup_table(demo_path):
     result = {}
     obj_name = os.path.basename(os.path.dirname(demo_path))
@@ -250,3 +249,5 @@ def generate_lookup_table(demo_path):
         for data_name, data in result[type].items():
             np.save(f"{demo_path}/{type}_{data_name}.npy", data)
     return result
+
+    

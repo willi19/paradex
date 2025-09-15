@@ -80,9 +80,6 @@ os.makedirs(DEBUG_VIS, exist_ok=True)
 OUTPUTDIR = './objoutput'
 os.makedirs(OUTPUTDIR, exist_ok=True)
 
-signal_generator = UTGE900()
-signal_generator.generate(freq=4000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
-
 cur_tg_frame = -1
 
 def get_framenumber(cur_state, cur_numinput, frame, static):
@@ -138,12 +135,9 @@ git_pull("merging", pc_list)
 # else:
 run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name}", pc_list, log=True)
 
-camera_controller = RemoteCameraController("stream", None, sync=False, debug=args.debug)
+camera_controller = RemoteCameraController("image", None, debug=args.debug)
 camera_controller.start()
-if args.toggle:
-    signal_generator.off(1)
-else:
-    signal_generator.on(1)
+
 
 try:
     socket_dict = {name:get_client_socket(pc_info["ip"], 5564) for name, pc_info in pc_info.items()}
@@ -367,8 +361,3 @@ try:
 finally:
     camera_controller.end()
     camera_controller.quit()        
-    if args.toggle:
-        signal_generator.on(1)
-    else:
-        signal_generator.off(1)
-    signal_generator.quit()

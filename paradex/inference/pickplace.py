@@ -29,26 +29,30 @@ import os
 
 from paradex.utils.file_io import rsc_path, shared_dir, get_robot_urdf_path
 from paradex.robot.curobo import load_world_config
-from paradex.inference.lookup_table import get_traj
+from paradex.inference.lookup_table import LookupTable
 
 
-class PickPlaceTraj():
-    def __init__(self, obj_info_list, init_pose, arm_name = "xarm", hand_name="allegro"): # obj_info_list : [{"name":str, "start":np.ndarray(4,4), "end":np.ndarray(4,4)}] order is pick order
+class CollisionAvoidanceTraj():
+    def __init__(self, obj_info_list, cur_pose, arm_name = "xarm", hand_name="allegro"): # obj_info_list : [{"name":str, "start":np.ndarray(4,4), "end":np.ndarray(4,4)}] order is pick order
         self.obj_info_list = obj_info_list
-        self.init_pose = init_pose
-        
+        self.obj_list = list(set([obj_info["name"] for obj_info in obj_info_list.values()]))
+        self.cur_state = JointState.from_position(torch.from_numpy(cur_pose).float().to('cuda').unsqueeze(0))
+
         self.arm_name = arm_name
         self.hand_name = hand_name
-
-        self.robot_cfg = RobotConfig.from_basic(get_robot_urdf_path(arm_name, hand_name), "world", "link6")
-        self.robot_cfg["kinematics"]["extra_collision_spheres"] = {"attached_object": 100}
         
-        self.init_world_cfg_dict = load_world_config({obj_info["name"]:obj_info["start"] for obj_info in obj_info_list})
-        self.world_config = WorldConfig().from_dict(self.init_world_cfg_dict)
+        urdf_path = get_robot_urdf_path(arm_name, hand_name)
+        yml_path = os.path.join(f"{rsc_path}/robot/{arm_name}_{hand_name}.yml")
+        
+        self.robot_cfg = load_yaml(yml_path)['robot_cfg']
+        self.robot_cfg["kinematics"]["extra_collision_spheres"] = {"attached_object": 100}
+
+        self.world_cfg_dict = load_world_config({obj_name:obj_info["start"] for obj_name, obj_info in obj_info_list.items()})
+        self.world_config = WorldConfig().from_dict(self.world_cfg_dict)
         
         self.tensor_args = TensorDeviceType()
-        self.se3_to_quatmotion_gen_config = MotionGenConfig.load_from_robot_config(
-                os.path.join(f"{rsc_path}/robot/{self.arm_name}_{self.hand_name}.yml"),
+        self.motion_gen_config = MotionGenConfig.load_from_robot_config(
+                self.robot_cfg,
                 self.world_config,
                 self.tensor_args,
                 trajopt_tsteps=200,
@@ -72,7 +76,7 @@ class PickPlaceTraj():
         )
         
         self.m_config = MotionGenPlanConfig(
-            True, True, max_attempts=5, enable_graph_attempt=3, enable_finetune_trajopt=True
+            True, True, enable_finetune_trajopt=True
         )
 
         self.ik_config = IKSolverConfig.load_from_robot_config(
@@ -87,44 +91,26 @@ class PickPlaceTraj():
             use_cuda_graph=True,
         )
         self.ik_solver = IKSolver(self.ik_config)
+        
+        self.lookup_table = {obj_name:LookupTable(obj_name, self.hand_name, None) for obj_name in self.obj_list}
     
     @ staticmethod
     def eef_se3_to_Pose(eef_se3):
-        position = torch.from_numpy(eef_se3[:3, 3]).float().to('cuda')
-        quat = R.from_matrix(eef_se3[:3, :3]).as_quat() # x, y, z, w
-        quaternion = torch.from_numpy(quat[[3, 0, 1, 2]]).float().to('cuda') # w, x, y, z
+        position = torch.from_numpy(eef_se3[..., :3, 3]).float().to('cuda').unsqueeze(0)
+        quat = R.from_matrix(eef_se3[..., :3, :3]).as_quat() # x, y, z, w
+        quaternion = torch.from_numpy(quat[..., [3, 0, 1, 2]]).float().to('cuda').unsqueeze(0) # w, x, y, z
         return Pose(position, quaternion)
     
-    def get_lookup_pickplace_traj(self, index):
-        obj_name = self.obj_info_list[index]["name"]
+    # def get_pickplace_traj(self, obj_name, pick_6d, place_6d):
+    #     pickplace_traj = self.get_lookup_pickplace_traj(obj_name, "59")
+    #     # move from self.cur_pos to pick_T
         
-        pick_lookup_traj = np.load(f"{shared_dir}/capture/lookup/{obj_name}/{index}/refined_pick_action.npy")
-        place_lookup_traj = np.load(f"{shared_dir}/capture/lookup/{obj_name}/{index}/refined_place_action.npy")
-        pick_obj_T = np.load(f"{shared_dir}/capture/lookup/{obj_name}/{index}/pick_objT.npy")
-        place_obj_T = np.load(f"{shared_dir}/capture/lookup/{obj_name}/{index}/place_objT.npy")
-        pick_hand_lookup_traj = np.load(f"{shared_dir}/capture/lookup/{obj_name}/{index}/refined_pick_hand.npy")
-        place_hand_lookup_traj = np.load(f"{shared_dir}/capture/lookup/{obj_name}/{index}/refined_place_hand.npy")
+    #     # grab object 
         
-        ret = {
-            "pick_traj": pick_lookup_traj,
-            "place_traj": place_lookup_traj,
-            "pick_obj_T": pick_obj_T,
-            "place_obj_T": place_obj_T,
-            "pick_hand_lookup_traj": pick_hand_lookup_traj,
-            "place_hand_lookup_traj": place_hand_lookup_traj,
-        }
-        return ret
-    
-    def get_pickplace_traj(self, obj_name, pick_6d, place_6d):
-        pickplace_traj = self.get_lookup_pickplace_traj(obj_name, "59")
-        # move from self.cur_pos to pick_T
+    #     # move from pick_T to place_T
         
-        # grab object 
-        
-        # move from pick_T to place_T
-        
-        # release object
-        return eef_se3, hand_qpos, qpos, state
+    #     # release object
+    #     return eef_se3, hand_qpos, qpos, state
     
     def move(self, goal_pos, update=True, start_pos=None):
         if start_pos is None:
@@ -140,74 +126,51 @@ class PickPlaceTraj():
         qpos = result.optimized_plan.position.detach().cpu().numpy()
         if update:
             self.cur_pos = qpos[-1]
-        
-    def update(self, obj_name, place_6d):
+
+    def update_world(self, obj_name, obj_pose):
+        self.world_cfg_dict[obj_name] = obj_pose
+        self.world_config = WorldConfig().from_dict(self.world_cfg_dict)
+        self.motion_gen_env.update_world(self.world_config)
+
+    def get_world_mesh(self):
+        return self.world_config.save_world_as_mesh()
+    
+    def pickplace(self, obj_name, place_6d):
         # Start : Cur pos -> pick pos
         # Pick : pick pos trajectory
         # Move : pick pos -> place pos
         # Place : place pos trajectory
         # End : place pos -> rest pos
+        obj_type = self.obj_info_list[obj_name]["name"]
+
+        start_state = self.cur_state
+        pick_6D = self.obj_info_list[obj_name]["start"]["pose"]
+        place_6D = self.obj_info_list[obj_name]["end"]["pose"]
+
+        pickplace_traj = self.lookup_table[obj_type].get_trajs(pick_6D, place_6D) # Multiple pick traj to search
+        grasp_poses_se3 = [pickplace_traj[idx]["pick"]["eef_se3"][0] for idx in range(len(pickplace_traj))]
+        grasp_poses = self.eef_se3_to_Pose(np.array(grasp_poses_se3))
+        goal_motion_gen_result = self.motion_gen_env.plan_goalset(start_state, grasp_poses, self.m_config)
+        action = goal_motion_gen_result.get_interpolated_plan()
         
-        pick_6D = self.obj_info_list[obj_name]
+        return action.position.detach().cpu().numpy()
         
-        pick_obj_pose = self.obj_info_list[index]["start"]["pose"]
-        place_obj_pose = self.obj_info_list[index]["end"]["pose"]
+        # Pick
+        # we simply follow the pick traj
+        # Then we need to update the world+
         
+        # Add object to the robot collision
+        # Change the object pose in the world
+        # Change the robot pose to the last of pick traj
         
-        start_pose = Pose(torch.from_numpy(start_pos[:3, 3]).float().to('cuda'), quaternion=torch.from_numpy(self.se3_to_quat(start_pos)).float().to('cuda'))
-        pickplace_traj = self.get_pickplace_traj(pick_obj_pose, place_obj_pose)
-
-        pick_traj = obj_dict[pick_id]["start"]["pose"] @ pick_lookup_traj
-        place_traj = obj_dict[pick_id]["end"]["pose"] @ place_lookup_traj
-
-        for state in ["start", "end"]:
-            motion_gen_env.update_world(WorldConfig().from_dict(world_cfg[cnt]))
-            cnt += 1
-            start_pose = Pose(torch.from_numpy(start_pos[:3, 3]).float().to('cuda'), quaternion=torch.from_numpy(se3_to_quat(start_pos)[0]).float().to('cuda'))
-            start_qpos = motion_gen_env.solve_ik(start_pose).solution[0]
-            start_state = JointState.from_position(start_qpos)
-            if state == "start":
-                goal_pose = Pose(torch.from_numpy(pick_traj[0, :3, 3]), quaternion=torch.from_numpy(se3_to_quat(pick_traj[0])[0]))
-                start_pos = pick_traj[-1]
-            if state == "end":
-                goal_pose = Pose(torch.from_numpy(place_traj[0, :3, 3]), quaternion=torch.from_numpy(se3_to_quat(place_traj[0])[0]))
-                start_pos = place_traj[-1]
-
-            # goal_pose_batch.append(goal_pose)
-            result = motion_gen_env.plan_single(start_state, goal_pose, m_config)
-            
-            qpos = result.optimized_plan.position.detach().cpu().numpy()
-            hand_qpos = qpos[:, -16:]
-            
-            ee_traj = motion_gen_env.compute_kinematics(result.optimized_plan)
-            pos = ee_traj.ee_pos_seq.detach().cpu().numpy()
-            quat = ee_traj.ee_quat_seq.detach().cpu().numpy()
-            
-            eef_se3 = np.zeros((pos.shape[0], 4, 4))
-            eef_se3[:, :3, 3] = pos
-            eef_se3[:, :3, :3] = R.from_quat(quat[:, [1, 2, 3, 0]]).as_matrix()
-            eef_se3[:, 3, 3] = 1.0
-            
-            np.save(f"pickplace/traj/{pick_id}/{state}.npy", eef_se3)
-            np.save(f"pickplace/traj/{pick_id}/{state}_hand.npy", hand_qpos)
-            np.save(f"pickplace/traj/{pick_id}/{state}_qpos.npy", qpos)
-
-
-        # total_traj = []
-        for i, pick_id in enumerate(obj_list):
-            
-            pick_q_traj = ik_solver.solve_batch(Pose(torch.from_numpy(pick_traj[:, :3, 3]).float().to('cuda'), \
-                                                                quaternion=torch.from_numpy(np.array([se3_to_quat(pick_traj[i])[0] for i in range(len(pick_traj))])).float().to('cuda'))).solution.detach().cpu().numpy().squeeze(1)
-            place_q_traj = ik_solver.solve_batch(Pose(torch.from_numpy(place_traj[:, :3, 3]).float().to('cuda'), \
-                                                                quaternion=torch.from_numpy(np.array([se3_to_quat(place_traj[i])[0] for i in range(len(place_traj))])).float().to('cuda'))).solution.detach().cpu().numpy().squeeze(1)
-            pick_traj_q = np.concatenate([pick_q_traj, pick_hand_lookup_traj], axis=1)
-            place_traj_q = np.concatenate([place_q_traj, place_hand_lookup_traj], axis=1)
-
-            np.save(f"pickplace/traj/{pick_id}/pick.npy", pick_traj)
-            np.save(f"pickplace/traj/{pick_id}/place.npy", place_traj)
-
-            np.save(f"pickplace/traj/{pick_id}/pick_hand.npy", pick_hand_lookup_traj)
-            np.save(f"pickplace/traj/{pick_id}/place_hand.npy", place_hand_lookup_traj)
-
-            np.save(f"pickplace/traj/{pick_id}/pick_qpos.npy", pick_traj_q)
-            np.save(f"pickplace/traj/{pick_id}/place_qpos.npy", place_traj_q)
+        # Move
+        # We need to move from the last of pick traj to the first of place traj
+        
+        # Place
+        # we simply follow the place traj
+        # Then we need to update the world
+        # Remove object from the robot collision
+        # Change the object pose in the world
+        # Change the robot pose to the last of place traj       
+        
+    

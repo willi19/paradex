@@ -15,7 +15,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--save_path', required=True)
 args = parser.parse_args()
 
-pc_list = list(pc_info.keys())
+pc_list = list(pc_info.keys()) # list of capture pc
 git_pull("merging", pc_list)
 run_script(f"python src/capture/camera/image_client.py", pc_list)
 

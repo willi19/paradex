@@ -19,13 +19,13 @@ pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 run_script(f"python src/capture/camera/video_client.py", pc_list)
 
-camera_loader = RemoteCameraController("video", None)
+camera_loader = RemoteCameraController("video", None,debug=True)
 
 stop_event = Event()
 start_capture = Event()
 end_capture = Event()
 
-listen_keyboard({"s":start_capture, "q":stop_event, "e" : end_capture})
+listen_keyboard({"s":start_capture, "e" : end_capture, "q":stop_event})
 
 try:
     capture_idx = 0

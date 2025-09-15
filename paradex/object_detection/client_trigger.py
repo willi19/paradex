@@ -35,16 +35,10 @@ paircount_threshold=args.paircount
 from paradex.model.yolo_world_module import YOLO_MODULE
 mask_detector = YOLO_MODULE(categories=obj_name, device=DEVICE)
 
-if not args.debug:
-    camera_loader = CameraCommandReceiver()
-    ident = camera_loader.ident
-    serial_list = camera_loader.camera.serial_list
-    socket = get_server_socket(5564)
-else:
-    from paradex.io.camera.camera_loader import CameraManager
-    camera = CameraManager("image")
-    num_cam = camera.num_cameras
-    serial_list = camera.serial_list
+camera_loader = CameraCommandReceiver()
+ident = camera_loader.ident
+serial_list = camera_loader.camera.serial_list
+socket = get_server_socket(5564)
 
 NAS_IMG_SAVEDIR = Path(shared_dir)/'current_img'
 os.makedirs(NAS_IMG_SAVEDIR, exist_ok=True)

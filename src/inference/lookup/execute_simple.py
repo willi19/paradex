@@ -56,7 +56,7 @@ if __name__ == "__main__":
     start_pos= np.array([[0, 0, 1, 0.3],
                         [1, 0, 0, -0.4],
                         [0, 1, 0, 0.10], 
-                        [0, 0, 0, 1]])
+                        [0, 0, 0, 1]]) 
     
     end_pos= np.array([[0, 0, 1, 0.25],
                         [1, 0, 0, 0.0],
@@ -83,6 +83,7 @@ if __name__ == "__main__":
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     place_id_list = ["1"]
     
+    # Detect the placing position
     sensors["camera"].start(f"shared_data/inference/register_{timestamp}")
     sensors["camera"].end()
     
@@ -92,6 +93,7 @@ if __name__ == "__main__":
         register_dict[serial_num] = cv2.imread(f"{shared_dir}/inference/register_{timestamp}/{img_name}")
     
     place_position_dict = get_goal_position(register_dict, place_id_list)
+    ################################################
     
     shared_path = os.path.join(shared_dir, save_path)
     os.makedirs(shared_path, exist_ok=True)
@@ -121,6 +123,7 @@ if __name__ == "__main__":
         
         start_event.clear()
         
+        # Capture the Object and get the 6D pose
         sensors["camera"].start(os.path.join("shared_data", save_path, str(capture_idx), "pick"))
         sensors["camera"].end()
         
@@ -130,7 +133,8 @@ if __name__ == "__main__":
         
         pick_6D = get_current_object_6d(args.object, args.marker, img_dict)
         pick_6d = normalize_cylinder(pick_6D)
-
+        ################################################
+        
         choosen_index, traj, hand_traj = get_traj(args.object, hand_name, start_pos.copy(), pick_6D.copy(), place_6D.copy())
         
         # Show simulation

@@ -9,6 +9,7 @@ def build_allegro_retargeter_right():
     cfg_path = get_default_config_path(
         RobotName.allegro, RetargetingType.position, HandType.right
     )
+    print(cfg_path)
     return RetargetingConfig.load_from_file(cfg_path).build()
 
 def position_retarget(hand_keypoint_dict):

@@ -6,7 +6,7 @@ import argparse
 import os
 import time
 
-camera = CameraManager("image")
+camera = CameraManager("image") # video, image, stream
 num_cam = camera.num_cameras
 
 stop_event = Event()

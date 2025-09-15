@@ -77,8 +77,23 @@ obj_dict = load_object("pringles")
 obj_list = sorted(list(obj_dict.keys()))
 
 world_cfg = []
-
-
+    
+tensor_args = TensorDeviceType()
+ik_config = IKSolverConfig.load_from_robot_config(
+    robot_cfg,
+    None,
+    rotation_threshold=0.05,
+    position_threshold=0.005,
+    num_seeds=20,
+    self_collision_check=True,
+    self_collision_opt=True,
+    tensor_args=tensor_args,
+    use_cuda_graph=True,
+)
+ik_solver = IKSolver(ik_config)
+tmp = ik_solver.solve_single(Pose(torch.from_numpy(start_pos[:3, 3]).float().to('cuda'), quaternion=torch.from_numpy(se3_to_quat(start_pos)[0]).float().to('cuda'))).solution.detach().cpu().numpy()
+print(tmp * 180/3.14159)
+import pdb; pdb.set_trace()
 lookup_table_path = os.path.join(shared_dir, "capture", "lookup")
 index = "1"
 index_path = os.path.join(lookup_table_path, "pringles", index)
@@ -101,8 +116,7 @@ for pick_id in obj_list:
         
         world_cfg.append(load_world_config(scene_obj_dict))
 
-    
-tensor_args = TensorDeviceType()
+
 motion_gen_config = MotionGenConfig.load_from_robot_config(
         os.path.join(f"{rsc_path}/robot/xarm_allegro.yml"),
         world_cfg,
@@ -168,18 +182,7 @@ q = result.optimized_plan.position.detach().cpu().numpy()
 print(q.shape)
 # print(n_envs, result.total_time, result.total_time / n_envs)
 # np.save("pickplace/traj.npy", q)
-ik_config = IKSolverConfig.load_from_robot_config(
-    robot_cfg,
-    None,
-    rotation_threshold=0.05,
-    position_threshold=0.005,
-    num_seeds=20,
-    self_collision_check=True,
-    self_collision_opt=True,
-    tensor_args=tensor_args,
-    use_cuda_graph=True,
-)
-ik_solver = IKSolver(ik_config)
+
 
 total_traj = []
 for i, pick_id in enumerate(obj_list):

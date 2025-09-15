@@ -29,7 +29,7 @@ import os
 
 from paradex.utils.file_io import rsc_path, shared_dir, get_robot_urdf_path
 from paradex.robot.curobo import load_world_config
-from paradex.inference.pickplace import PickPlaceTraj
+from paradex.inference.pickplace import CollisionAvoidanceTraj
 
 def load_object(obj_name, obj_pose_list):
     mesh_path = f"{rsc_path}/object/{obj_name}/{obj_name}.obj"
@@ -37,36 +37,35 @@ def load_object(obj_name, obj_pose_list):
     move = {"0":("6", "0"), "1":("9", "3")}
     obj_list = {}
     
-    for obj_name, (pick_id, place_id) in move.items():
-        os.makedirs(f"pickplace/object/{obj_name}", exist_ok=True)
-        obj_list[obj_name] = {"start":{}, "end":{}}
+    for obj_id, (pick_id, place_id) in move.items():
+        obj_list[obj_id] = {"start":{}, "end":{}}
 
-        obj_list[obj_name]["start"]["pose"] = obj_pose_list[pick_id]
-        obj_list[obj_name]["start"]["file_path"] = mesh_path
-        
-        obj_list[obj_name]["end"]["pose"] = obj_pose_list[place_id]
-        obj_list[obj_name]["end"]["file_path"] = mesh_path
+        obj_list[obj_id]["start"]["pose"] = obj_pose_list[pick_id]
+        obj_list[obj_id]["start"]["file_path"] = mesh_path
+
+        obj_list[obj_id]["end"]["pose"] = obj_pose_list[place_id]
+        obj_list[obj_id]["end"]["file_path"] = mesh_path
+
+        obj_list[obj_id]["name"] = "pringles"
     return obj_list
 
-start_pos= np.array([[0, 0, 1, 0.3],
-                    [1, 0, 0, -0.3],
-                    [0, 1, 0, 0.4], 
-                    [0, 0, 0, 1]])
+start_pos = np.zeros(22)
+start_pos[:6] = np.array([-48.7, -14.2, -44.9, 114.1, 55.7, 142.6]) / 180 * 3.14159
+start_pos[18] = 0.36
 
 obj_pose_list = np.load("pickplace_position.npy", allow_pickle=True).item()
 obj_dict = load_object("pringles", obj_pose_list)
 obj_list = sorted(list(obj_dict.keys()))
+traj_generator = CollisionAvoidanceTraj(obj_dict, start_pos)
 
-os.makedirs("pickplace/traj", exist_ok=True)
+for obj_id in obj_list:
+    obj_info = obj_dict[obj_id]
+    action = traj_generator.pickplace(obj_id, obj_info["start"]["pose"], obj_info["end"]["pose"])
+    start_pos = action[-1]
+    np.save(f"pickplace/traj/{obj_id}/start_qpos.npy", action[0])
+    np.save(f"pickplace/traj/{obj_id}/pick_qpos.npy", action[len(action)//3])
+    np.save(f"pickplace/traj/{obj_id}/end_qpos.npy", action[2*len(action)//3])
+    np.save(f"pickplace/traj/{obj_id}/place_qpos.npy", action[-1])
 
-traj_generator = PickPlaceTraj(start_pos, obj_dict)
 
-cnt = 0
-for pick_id in obj_list:
-    os.makedirs(f"pickplace/traj/{pick_id}", exist_ok=True)
-
-    ret = traj_generator.update(pick_id, obj_dict[pick_id]["end"]["pose"]) # eef_se3, hand_qpos, qpos, state, obj_T
-    for name, val in ret.items():
-        np.save(f"pickplace/traj/{pick_id}/{name}.npy", val) # what is the point? ans 
-            
-    
+np.save("test_traj.npy", action)

@@ -330,7 +330,7 @@ class ViserViewer:
                 self.server.scene.add_box(
                     name="floor",
                     dimensions=(size * 2, size * 2, 0.02),  # width, height, thickness
-                    position=(0.0, 0.0, -0.01),  # Position slightly below z=0
+                    position=(0.0, 0.0, -0.041),  # Position slightly below z=0
                     color=(0.7, 0.7, 0.7)
                 )
                 
@@ -393,7 +393,11 @@ class ViserViewer:
                     except:
                         return
                     if self.prev_objtimestamp == cur_obj_T['timestamp']:
+                        # print("No update in object pose")
                         return
+                    else:
+                        self.prev_objtimestamp = cur_obj_T['timestamp']
+                        cur_obj_T.pop('timestamp')
                     print(f"Updating objects")
                     if self.obj_loaded:
                         for oidx in range(self.last_obj_number):

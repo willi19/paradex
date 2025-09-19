@@ -248,7 +248,7 @@ def load_keypoints_from_mano_params(scene_path) -> np.ndarray:
     )  # (T, 21, 3)
     return keypoint_3d
 
-def get_keypoint_trajectory(scene_path, start_6d, obj_name, no_rot=False):
+def get_keypoint_trajectory(scene_path, start_6d, obj_name, no_rot=False, wrist_up=False):
     obj_initial_T, obj_mesh = None, None
     obj_trajectory = {}
     if obj_name is not None:
@@ -336,11 +336,16 @@ def get_keypoint_trajectory(scene_path, start_6d, obj_name, no_rot=False):
         keypoint_new_coord = (T_i @ keypoint_frame.T).T[:, :3]
         keypoint_dict[frame] = keypoint_new_coord
     
+    if wrist_up:
+        for frame in range(len(keypoint_dict)):
+            keypoint_dict[frame][:, 2] += 0.05
+            keypoint_dict[frame][0, 2] += 0.05
+
 
     return keypoint_dict, new_obj_trajectory
 
 
-def visualize_new_trajectory(obj_name, hand_keypoint_dict, obj_trajectory_dict, q_pose_dict):
+def visualize_new_trajectory(obj_name, wrist_6d, hand_keypoint_dict, obj_trajectory_dict, q_pose_dict):
     intrinsic, extrinsic = load_current_camparam()
     c2r = load_latest_C2R()
     r2c = np.linalg.inv(c2r)
@@ -349,4 +354,4 @@ def visualize_new_trajectory(obj_name, hand_keypoint_dict, obj_trajectory_dict, 
         extrinsic_np = np.array(extrinsic[cam_id]) @ r2c
         intrinsic_np = np.array(intrinsic[cam_id]['intrinsics_undistort'])
         cam_params[cam_id] = {'extrinsic': extrinsic_np, 'intrinsic':intrinsic_np}
-    visualize_keypoint_object(obj_name, cam_params, hand_keypoint_dict, obj_trajectory_dict, q_pose_dict)
+    visualize_keypoint_object(obj_name, cam_params, wrist_6d, hand_keypoint_dict, obj_trajectory_dict, q_pose_dict)

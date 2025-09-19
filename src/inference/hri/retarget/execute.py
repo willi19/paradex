@@ -16,7 +16,7 @@ from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.utils.env import get_pcinfo, get_serial_list
 from paradex.pose_utils.optimize_initial_frame import object6d_silhouette
 from paradex.pose_utils.retarget_utils import get_keypoint_trajectory, visualize_new_trajectory
-from paradex.pose_utils.retarget import position_retarget, qpose_dict_to_traj
+from paradex.pose_utils.retarget import position_retarget, qpose_dict_to_traj, wrist6d_traj_to_SE3
 from paradex.utils.file_io import eef_calib_path, load_latest_eef
 
 if __name__ == "__main__":
@@ -25,6 +25,8 @@ if __name__ == "__main__":
     parser.add_argument("--obj_name", required=True)
     parser.add_argument("--vis", action ='store_true')
     parser.add_argument("--no_rot", action="store_true")
+    parser.add_argument("--wrist_up", action="store_true")
+
     # parser.add_argument("--grasp_type", required=True)
 
     args = parser.parse_args()
@@ -55,13 +57,26 @@ if __name__ == "__main__":
     print(start_6d) # camera space
 
     # robot space
-    hand_trajectory_dict, obj_trajectory_dict = get_keypoint_trajectory(scene_path, start_6d, args.obj_name, no_rot=args.no_rot)
-    import pdb; pdb.set_trace()
+    hand_trajectory_dict, obj_trajectory_dict = get_keypoint_trajectory(scene_path, start_6d, args.obj_name, no_rot=args.no_rot, wrist_up=args.wrist_up)
+    
     q_pose_dict = position_retarget(hand_trajectory_dict)
+    # def convert_numpy(obj):
+    #     if isinstance(obj, np.float32) or isinstance(obj, np.float64):
+    #         return float(obj)
+    #     elif isinstance(obj, np.ndarray):
+    #         return obj.tolist()  
+    #     raise TypeError(f"Type {type(obj)} is not serializable")
+    # with open("/home/temp_id/paradex/qpose.json", "w", encoding="utf-8") as file:
+    #     json.dump(q_pose_dict, file, ensure_ascii=False, indent = 4, default=convert_numpy)
+
+    wrist_6d, _ = qpose_dict_to_traj(q_pose_dict)
+    wrist_6d = wrist6d_traj_to_SE3(wrist_6d) ## 다시 봐야함 base_link 기준이라 6d가
+
     if args.vis:
-        visualize_new_trajectory(args.obj_name, hand_trajectory_dict, obj_trajectory_dict, q_pose_dict)
-    
-    
+        visualize_new_trajectory(args.obj_name, wrist_6d, hand_trajectory_dict, obj_trajectory_dict, q_pose_dict)
+   
+
+
     
     # pick_traj = np.load(f"{demo_path}/pick.npy")
     # place_traj = np.load(f"{demo_path}/place.npy")
@@ -93,14 +108,7 @@ if __name__ == "__main__":
         # traj, hand_traj = get_traj(pick_traj, pick_6D, place_traj, place_6D, pick_hand_traj, place_hand_traj)
         traj, hand_traj = qpose_dict_to_traj(q_pose_dict)
         
-        def convert_numpy(obj):
-            if isinstance(obj, np.float32) or isinstance(obj, np.float64):
-                return float(obj)
-            elif isinstance(obj, np.ndarray):
-                return obj.tolist()  
-            raise TypeError(f"Type {type(obj)} is not serializable")
-        with open(os.path.join("qpose.json"), "w", encoding="utf-8") as file:
-            json.dump(q_pose_dict, file, ensure_ascii=False, indent = 4, default=convert_numpy)
+
 
 
         for i in range(len(traj)):
@@ -179,3 +187,52 @@ if __name__ == "__main__":
         if sensor_name == "camera":
             continue
         sensor.quit()
+        
+        
+        
+        
+        
+
+
+    def add_local_frames(
+        self,
+        traj: dict,  # {frame_idx: 4x4 array}
+        axes_length: float = 0.1,
+        axes_radius: float = 0.004,
+    ):
+        """
+        traj: {frame_idx: (4,4) numpy array} 형태
+        Playback 슬라이더로 재생 가능.
+        """
+        # dict -> list of keys (정렬 여부 선택 가능)
+        frame_ids = list(traj.keys())   # 입력 순서 유지 (Python3.7+)
+        self._ensure_playback(len(frame_ids))
+
+        for local_idx, frame_id in enumerate(frame_ids):
+            T = np.asarray(traj[frame_id])
+            assert T.shape == (4,4), f"Frame {frame_id} has wrong shape {T.shape}"
+            
+            node = self.server.scene.add_frame(
+                f"/frames/t/{local_idx}",
+                wxyz=tf.SO3.from_matrix(T[:3,:3]).wxyz,
+                position=T[:3,3],
+                axes_length=axes_length,
+                axes_radius=axes_radius,
+                visible=False
+            )
+            self.frame_nodes[local_idx] = node
+
+        # 첫 프레임 보이도록
+        if 0 in self.frame_nodes:
+            self.frame_nodes[0].visible = True
+
+        prev_local = 0
+        @self.gui_timestep.on_update
+        def _(_):
+            nonlocal prev_local
+            cur = int(self.gui_timestep.value)
+            if prev_local in self.frame_nodes:
+                self.frame_nodes[prev_local].visible = False
+            if cur in self.frame_nodes:
+                self.frame_nodes[cur].visible = True
+            prev_local = cur

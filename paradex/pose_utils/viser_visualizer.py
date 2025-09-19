@@ -441,10 +441,13 @@ class KeypointObjectCameraVisualizer:
 
         # Root for per-frame content
         self.server.scene.add_frame("/frames/t", show_axes=False)
+        
+
 
     def add_hand_and_object(
         self,
         obj_name: Optional[str],
+        wrist_6d:  Dict[int, np.ndarray],
         hand_keypoint_dict: Dict[int, np.ndarray],  # (21, 3) world
         obj_trajectory_dict: Optional[Dict[int, np.ndarray]] = None,  # 4x4 or {"T":4x4}
         q_pose_dict: Dict[int, np.ndarray]=None,
@@ -487,6 +490,18 @@ class KeypointObjectCameraVisualizer:
         for local_idx, fidx in enumerate(frames):
             node = self.server.scene.add_frame(f"/frames/t/{local_idx}", show_axes=False, visible=False)
             self.frame_nodes[local_idx] = node
+            
+            Ti = _homogenize(np.asarray(wrist_6d[fidx]))
+            self.server.scene.add_frame(
+                f"/frames/t/{local_idx}/local_axes",
+                wxyz=tf.SO3.from_matrix(Ti[:3, :3]).wxyz,
+                position=Ti[:3, 3],
+                axes_length=0.1,
+                axes_radius=0.003,
+                show_axes=True,
+                visible=True,  # 부모 프레임 가시성과 맞추기 (아래에서 0번만 True로 설정)
+            )
+            
 
             # 1) Object mesh (transformed)
             if obj_mesh is not None and obj_trajectory_dict is not None and fidx in obj_trajectory_dict:
@@ -575,6 +590,7 @@ class KeypointObjectCameraVisualizer:
 def visualize_keypoint_object(
     obj_name: Optional[str],
     cam_params: Dict[str, Dict[str, np.ndarray]],
+    wrist_6d: Dict[int, np.ndarray],  # frame -> (6,) in world
     hand_keypoint_dict: Dict[int, np.ndarray],  # frame -> (21,3) in world
     obj_trajectory_dict: Dict[int, np.ndarray],  # frame -> 4x4 or {"T":4x4}
     q_pose_dict,
@@ -605,8 +621,8 @@ def visualize_keypoint_object(
     viz.draw_cameras(cam_params, width=W, height=H, cam_imgs=cam_imgs, downsample_factor=12)
     if target_ids_for_plane is not None:
         viz.add_camera_plane_from_ids(cam_params, target_ids_for_plane, drop=0.18, size=10.0, step=0.25)
-    viz.add_hand_and_object(obj_name=obj_name, hand_keypoint_dict=hand_keypoint_dict, obj_trajectory_dict=obj_trajectory_dict, q_pose_dict=q_pose_dict)
-
+    viz.add_hand_and_object(obj_name=obj_name, wrist_6d= wrist_6d, hand_keypoint_dict=hand_keypoint_dict, obj_trajectory_dict=obj_trajectory_dict, q_pose_dict=q_pose_dict)
+    # viz.add_local_frames(wrist_6d)
     
     # viz.add_frame_from_up_front(name="object", up_world)
     

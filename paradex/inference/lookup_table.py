@@ -51,6 +51,36 @@ class LookupTable():
             ret.append(traj)
         return ret
 
+
+def get_traj(obj, hand, start6D, pick6D, place6D, index):
+    index_path = os.path.join(lookup_table_path, obj, index)
+    
+    pick_traj = np.load(f"{index_path}/refined_pick_action.npy")
+    place_traj = np.load(f"{index_path}/refined_place_action.npy")
+    
+    pick_hand_traj = np.load(f"{index_path}/refined_pick_hand.npy")
+    place_hand_traj = np.load(f"{index_path}/refined_place_hand.npy")
+    start_hand = np.zeros((pick_hand_traj.shape[1]))
+    pick_traj = pick6D @ pick_traj
+    place_traj = place6D @ place_traj 
+    
+    approach_traj, approach_hand_traj = get_linear_path(start6D, pick_traj[0], start_hand, pick_hand_traj[0])
+    return_traj, return_hand_traj = get_linear_path(place_traj[-1], start6D, place_hand_traj[-1], start_hand)
+    move_traj, move_hand = get_linear_path(pick_traj[-1], place_traj[0], pick_hand_traj[-1], place_hand_traj[0])
+    
+    
+    traj = np.concatenate([approach_traj, pick_traj, move_traj, place_traj, return_traj])
+    hand_traj = np.concatenate([approach_hand_traj, pick_hand_traj, move_hand, place_hand_traj, return_hand_traj])
+    
+    state = np.zeros((len(traj)))
+    state[len(approach_traj):len(approach_traj)+len(pick_traj)] = 1
+    state[len(approach_traj)+len(pick_traj):len(approach_traj)+len(pick_traj)+len(move_traj)] = 2
+    state[len(approach_traj)+len(pick_traj)+len(move_traj):len(approach_traj)+len(pick_traj)+len(move_traj)+len(place_traj)] = 3
+    state[len(approach_traj)+len(pick_traj)+len(move_traj)+len(place_traj):] = 4
+
+    
+    return index, traj, hand_traj, state
+
 def refine_trajectory(wrist_pos, qpos, hand_qpos, tolerance=1e-6, max_acc=40.0, max_vel=0.15, max_ang_vel=2.0, dt=1 / 30):
     """
     wrist_pos에서 이전 상태와 동일한 중복 프레임들을 제거하고,

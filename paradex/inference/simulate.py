@@ -4,7 +4,7 @@ import argparse
 import json
 import cv2
 
-from paradex.inference.lookup_table import get_traj
+# from paradex.inference.lookup_table import get_traj
 from paradex.simulator import IsaacSimulator
 from paradex.robot import RobotWrapper
 from paradex.utils.file_io import rsc_path
@@ -19,7 +19,7 @@ import json
 import cv2
 import time
 
-from paradex.inference.lookup_table import get_traj
+# from paradex.inference.lookup_table import get_traj
 from paradex.simulator import IsaacSimulator
 from paradex.robot import RobotWrapper
 from paradex.utils.file_io import rsc_path
@@ -87,8 +87,8 @@ def simulate_temp(traj, hand_traj, pick_6D, place_6D, hand_name, obj_name, start
     robot = RobotWrapper(os.path.join(rsc_path, "robot", f"{arm_name}_{hand_name}.urdf"))
 
     while not start_event.is_set() and not stop_event.is_set():
-        # init_action, success = robot.solve_ik(traj[0], "link6")
-        init_action = traj[0]
+        init_action, success = robot.solve_ik(traj[0], "link6")
+        # init_action = traj[0]
         last_q = init_action.copy()
 
         sim.reset("inference", {"robot":{},
@@ -100,8 +100,8 @@ def simulate_temp(traj, hand_traj, pick_6D, place_6D, hand_name, obj_name, start
         for i in range(0, len(traj), 3):
             sim.tick()
             time.sleep(1/30)
-            # action, success = robot.solve_ik(traj[i], "link6", last_q)
-            action = traj[i]
+            action, success = robot.solve_ik(traj[i], "link6", last_q)
+            # action = traj[i]
             last_q = action.copy()
             
             action[6:] = hand_traj[i]

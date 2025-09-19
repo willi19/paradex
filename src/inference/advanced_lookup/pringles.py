@@ -111,7 +111,7 @@ if __name__ == "__main__":
     #####################################
     
     ########### Prepare capture ###############
-    num_try = 20
+    num_try = 30
     
     stop_event = Event()
     start_event = Event()

@@ -2,7 +2,7 @@ import numpy as np
 import os
 import tqdm
 
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot.robot_wrapper_updating import RobotWrapper
 from paradex.utils.file_io import rsc_path
 
 arm_name = "xarm"

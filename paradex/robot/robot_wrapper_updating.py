@@ -70,7 +70,7 @@ class RobotWrapper:
     def get_frame_list(self):
         return self.model.frames
 
-    # -------------------------------------------------------------------------- #
+    # --------------------------------  ------------------------------------------ #
     # Kinematics function
     # -------------------------------------------------------------------------- #
     def compute_forward_kinematics(self, qpos: npt.NDArray):

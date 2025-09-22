@@ -157,15 +157,10 @@ def generate_db(database_path, intrinsics_dict, serial_list, keypoint_dict):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Manage timestamped directories.")
     parser.add_argument("--name", type=str, help="Name of the directory to detect keypoint.")
-    parser.add_argument("--latest", action="store_true", help="Split the latest video files.")
     
     args = parser.parse_args()
     
-    if not args.latest and not args.name:
-        print("Please specify either --latest or --name.")
-        exit()
-    
-    if args.latest:
+    if args.name is None:
         name = find_latest_directory(extrinsic_dir)
     else:
         name = args.name

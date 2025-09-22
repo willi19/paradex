@@ -3,11 +3,12 @@ import time
 import os
 import shutil
 
-from paradex.utils.file_io import shared_dir, find_latest_directory
+from paradex.utils.file_io import shared_dir, find_latest_directory, get_robot_urdf_path
 from paradex.utils.env import get_pcinfo
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.robot_controller import get_arm
+from paradex.robot.robot_wrapper import RobotWrapper
 
 def copy_calib_files(save_path):
     camparam_dir = os.path.join(shared_dir, "cam_param")
@@ -29,28 +30,31 @@ run_script("python src/calibration/handeyecalibration/client.py", pc_list)
 
 camera_loader = RemoteCameraController("image", None)
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+robot = RobotWrapper(get_robot_urdf_path(arm_name, None))
 
+# try:
+for i in range(31):
+    target_action = np.load(f"data/hecalib/{i}_qpos.npy")
+    robot.compute_forward_kinematics(target_action)
+    target_6d = robot.get_link_pose(robot.get_link_index("link6"))
+    target_6d[2, 3] += 0.08
+    
+    dex_arm.home_robot(target_6d)
+    time.sleep(0.5)
+    
+    wrist6d = dex_arm.get_position()
+    qpos = dex_arm.get_qpos()
+    
+    os.makedirs(f"{shared_dir}/handeye_calibration/{filename}/{i}/image", exist_ok=True)
+    np.save(f"{shared_dir}/handeye_calibration/{filename}/{i}/robot", wrist6d)
+    np.save(f"{shared_dir}/handeye_calibration/{filename}/{i}/qpos", qpos)
+    
+    camera_loader.start(f'shared_data/handeye_calibration/{filename}/{i}/image')
+    camera_loader.end()
 
-try:
-    for i in range(31):
-        target_action = np.load(f"data/hecalib/{i}_qpos.npy")
-        dex_arm.home_robot(target_action)
-        
-        time.sleep(0.5)
-        
-        wrist6d = dex_arm.get_position()
-        qpos = dex_arm.get_qpos()
-        
-        os.makedirs(f"{shared_dir}/handeye_calibration/{filename}/{i}/image", exist_ok=True)
-        np.save(f"{shared_dir}/handeye_calibration/{filename}/{i}/robot", wrist6d)
-        np.save(f"{shared_dir}/handeye_calibration/{filename}/{i}/qpos", qpos)
-        
-        camera_loader.start(f'shared_data/handeye_calibration/{filename}/{i}/image')
-        camera_loader.end()
-        
-    copy_calib_files(f"/home/temp_id/shared_data/handeye_calibration/{filename}/0")
+copy_calib_files(f"/home/temp_id/shared_data/handeye_calibration/{filename}/0")
 
-finally:
-    camera_loader.quit()
-    dex_arm.quit()   
-    exit(0) 
+# finally:
+#     camera_loader.quit()
+#     dex_arm.quit()   
+#     exit(0) 

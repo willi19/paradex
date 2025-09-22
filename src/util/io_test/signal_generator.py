@@ -13,8 +13,8 @@ if __name__ == "__main__":
     sleep(5)
     print("on")
     
-    # gSgen.off(1)
-    # sleep(5)
+    gSgen.off(1)
+    sleep(5)
     gSgen.quit()
     
     

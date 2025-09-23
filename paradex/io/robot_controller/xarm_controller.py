@@ -232,11 +232,13 @@ class XArmController:
                     self.data[name] = []
             self.save_path = None
                     
-    def quit(self):
+    def quit(self, set_break=True):
         self.save()
         self.exit.set()
         self.thread.join()
-        self.arm.motion_enable(enable=False)
+        if set_break:
+            self.arm.motion_enable(enable=False)
         self.arm.disconnect()
         print("robot terminate")
         
+    

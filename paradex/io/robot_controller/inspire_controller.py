@@ -138,8 +138,8 @@ class InspireController:
     
     def get_qpos(self):
         with self.lock:
-            current_hand_angles = np.asarray(self.read6('getactangle'))            
-            return current_hand_angles            
+            # self.current_hand_angles = np.asarray(self.read6('getactangle'))            
+            return self.current_hand_angles            
     
     def get_force(self):
         with self.lock:
@@ -150,6 +150,7 @@ class InspireController:
         self.fps = 100
         self.open_serial()
         self.hand_lock = Lock()
+        
 
         self.write6('setspeed', [1000, 1000, 1000, 1000, 1000, 1000])
         self.write6('setpower', [200, 200, 200, 200, 200, 200])
@@ -162,6 +163,8 @@ class InspireController:
                 self.write6('setangle', action)
 
             current_hand_angles = np.asarray(self.read6('getactangle'))
+            self.current_hand_angles = current_hand_angles.copy()
+            
             current_force = np.asarray(self.read6('getactforce'))
             # current_action = np.asarray(self.read6('angleSet'))
             with self.lock:

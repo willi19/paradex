@@ -15,6 +15,7 @@ socket = get_server_socket(5564)
 
 board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
 serial_list = camera_loader.camera.serial_list
+print(serial_list)
 num_cam = len(serial_list)
 last_frame_ind = [-1 for _ in range(num_cam)]
 

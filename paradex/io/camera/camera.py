@@ -67,7 +67,14 @@ class Camera():
         return serialnum
 
     def get_image(self):
-        pImageRaw = self.cam.GetNextImage()
+        while True:
+            try:
+                pImageRaw = self.cam.GetNextImage(100)
+                return pImageRaw
+            except:
+                self.stop()
+                self.start()
+
         return pImageRaw
 
     def start(self):
@@ -156,16 +163,15 @@ class Camera():
             return False
         
         ptrTriggerMode.SetIntValue(ptrTriggerModeOff.GetValue())
-        ptrValAuto = ps.CEnumerationPtr(nodeMap.GetNode("AcquisitionFrameRateAuto"))
-        if not ps.IsReadable(ptrValAuto) or not ps.IsWritable(ptrValAuto):
+
+
+        #############################################
+        ptrValEnable = ps.CBooleanPtr(nodeMap.GetNode("AcquisitionFrameRateEnable"))
+        if not ps.IsReadable(ptrValEnable) or not ps.IsWritable(ptrValEnable):
             # print("Unable to disable automatic framerate (node retrieval). Aborting...")
             return False
+        ptrValEnable.SetValue(True)
         
-        ptrValAutoOff = ps.CEnumEntryPtr(ptrValAuto.GetEntryByName("Off"))
-        if not ps.IsReadable(ptrValAutoOff):
-            # print("Unable to disable automatic framerate (enum entry retrieval). Aborting...")
-            return False
-        ptrValAuto.SetIntValue(ptrValAutoOff.GetValue())
         ptrVal = ps.CFloatPtr(nodeMap.GetNode("AcquisitionFrameRate"))
         if not ps.IsReadable(ptrVal) or not ps.IsWritable(ptrVal):
             # print("Unable to get or set framerate. Aborting...")

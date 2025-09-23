@@ -21,7 +21,7 @@ last_frame_ind = [-1 for _ in range(num_cam)]
 while not camera_loader.exit:
     for i, serial_num in enumerate(serial_list):
         frame_id = camera_loader.camera.get_frameid(i)
-        
+        print(frame_id)
         if frame_id == last_frame_ind[i]:
             continue
         

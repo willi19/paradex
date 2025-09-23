@@ -1,0 +1,7 @@
+# Created by Open3D 
+# object name: red_ramen_von
+newmtl red_ramen_von_0
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 0.000 0.000 0.000
+map_Kd red_ramen_von_0.png

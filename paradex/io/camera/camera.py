@@ -72,9 +72,9 @@ class Camera():
                 pImageRaw = self.cam.GetNextImage(100)
                 return pImageRaw
             except:
-                print("failed")
-                self.stop()
-                self.start()
+                if self.mode == "image":
+                    self.stop()
+                    self.start()
 
         return pImageRaw
 

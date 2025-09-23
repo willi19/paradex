@@ -23,8 +23,8 @@ def process(root_dir, logger=[]):
     print(logger)
     logger = []
     
-    generate_lookup_table(root_dir)
-    visualize_lookup_table(root_dir, logger, overwrite=True)
+    # generate_lookup_table(root_dir)
+    # visualize_lookup_table(root_dir, logger, overwrite=True)
     
     download_root_dir = root_dir.replace(shared_dir, download_dir)
     if os.path.exists(download_root_dir):

@@ -19,6 +19,7 @@ from paradex.image.overlay import overlay_mask
 from paradex.image.projection import get_cammtx, project_point, project_mesh, project_mesh_nvdiff
 from paradex.image.merge import merge_image
 from paradex.image.aruco import detect_aruco
+from paradex.robot.mimic_joint import parse_inspire
 
 from paradex.geometry.triangulate import ransac_triangulation
 from paradex.geometry.math import rigid_transform_3D
@@ -300,6 +301,8 @@ def overlay(root_dir, logger=[], overwrite=False):
         qpos = np.load(os.path.join(root_dir, "arm", "qpos.npy"))
         if hand:
             qpos_hand = np.load(os.path.join(root_dir, "hand", "qpos.npy"))
+            if hand == "inspire":
+                qpos_hand = parse_inspire(qpos_hand)
             qpos = np.concatenate([qpos, qpos_hand], axis=1)
         rm = Robot_Module(get_robot_urdf_path(arm, hand), state=qpos)
     

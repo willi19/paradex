@@ -18,7 +18,7 @@ parser.add_argument('--save_path', required=True)
 args = parser.parse_args()
 
 pc_list = list(pc_info.keys()) # list of capture pc
-git_pull("merging", pc_list)
+git_pull("paradex2", pc_list)
 run_script(f"python src/capture/camera/image_client.py", pc_list)
 
 camera_loader = RemoteCameraController("image", None, debug=True)

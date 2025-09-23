@@ -70,7 +70,6 @@ class Camera():
         while True:
             try:
                 pImageRaw = self.cam.GetNextImage(100)
-                print("asdfasdf")
                 return pImageRaw
             except:
                 print("failed")

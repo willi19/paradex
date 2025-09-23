@@ -7,13 +7,13 @@ from paradex.process.util import merge, overlay, match_sync, get_object6D
 from paradex.process.lookup import generate_lookup_table, visualize_lookup_table
 
 def process(root_dir, logger=[]):
-    match_sync(root_dir, logger)
-    print(logger)
-    logger = []
+    # match_sync(root_dir, logger)
+    # print(logger)
+    # logger = []
     
-    get_object6D(root_dir, logger, overwrite=False)
-    print(logger)
-    logger = []
+    # get_object6D(root_dir, logger, overwrite=False)
+    # print(logger)
+    # logger = []
     
     overlay(root_dir, logger, overwrite=False)
     print(logger)

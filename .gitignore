@@ -23,7 +23,7 @@ paradex/pose_utils/dex-retargeting
 tmp*
 tmp/*
 objoutput
-*.obj
+# *.obj
 *.ply
 *.npy
 debug

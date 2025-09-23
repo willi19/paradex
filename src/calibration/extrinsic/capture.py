@@ -50,8 +50,8 @@ def listen_socket(pc_name, socket):
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
 pc_list = list(pc_info.keys())
-git_pull("merging", pc_list)
-run_script(f"python src/calibration/extrinsic/client.py", pc_list)
+git_pull("paradex2", pc_list)
+# run_script(f"python src/calibration/extrinsic/client.py", pc_list)
 
 camera_controller = RemoteCameraController("stream", None, sync=False, debug=True)
 camera_controller.start()

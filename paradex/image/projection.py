@@ -1,10 +1,7 @@
 import numpy as np
 import cv2
-import plotly.graph_objects as go
 
 from paradex.geometry.conversion import project
-import trimesh
-import open3d as o3d
 
 def get_cammtx(intrinsic, extrinsic):
     cammat = {}
@@ -24,7 +21,9 @@ def project_point(verts, cammtx, image, color=(255, 0, 0)):
     return image
 
 def project_mesh(image, mesh, intrinsic, extrinsic, obj_T=None, renderer=None):
+    import trimesh
     import pyrender
+    import open3d as o3d
     material = pyrender.MetallicRoughnessMaterial(
         baseColorFactor=[1.0, 0.2, 0.2, 0.4],  
         metallicFactor=0.2,

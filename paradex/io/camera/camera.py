@@ -72,6 +72,7 @@ class Camera():
                 pImageRaw = self.cam.GetNextImage(100)
                 return pImageRaw
             except:
+                print(f"time out in {self.serialnum}")
                 if self.mode == "image":
                     self.stop()
                     self.start()

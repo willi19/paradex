@@ -54,7 +54,7 @@ def load_colmap_camparam(path):
 
         extrinsics[serialnum] = dict()
         
-        cam_pose = images[imid].cam_from_world.matrix()
+        cam_pose = images[imid].cam_from_world().matrix()
         
         extrinsics[serialnum] = cam_pose.tolist()
     

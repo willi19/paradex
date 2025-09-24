@@ -339,7 +339,7 @@ class CameraManager:
                     break
                 raw_frame = cam.get_image()
                 framenum = raw_frame.GetFrameID()
-                # print(f"Camera {serial_num} capturing frame {framenum}")
+                print(f"Camera {serial_num} capturing frame {framenum}")
                 if raw_frame.IsIncomplete():
                     if self.mode == "stream":
                         with self.locks[index]:

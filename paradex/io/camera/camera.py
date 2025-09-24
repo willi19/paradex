@@ -69,7 +69,7 @@ class Camera():
     def get_image(self):
         while True:
             try:
-                pImageRaw = self.cam.GetNextImage(100)
+                pImageRaw = self.cam.GetNextImage()
                 return pImageRaw
             except:
                 print(f"time out in {self.serialnum}")

@@ -101,7 +101,8 @@ def get_total_keypoint(keypoint_dict, serial_list):
     kypt_offset = {serial_num:0 for serial_num in serial_list}
     
     for index, kypt_data in keypoint_dict.items():
-        kypt_serial_list = list(kypt_data.keys())
+        kypt_serial_list = list(kypt_data.keys()
+                                )
         for i in range(len(kypt_serial_list)):
             for j in range(i+1, len(kypt_serial_list)):
                 serial_1 = kypt_serial_list[i]

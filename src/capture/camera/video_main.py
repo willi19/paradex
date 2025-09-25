@@ -22,7 +22,7 @@ pc_list = list(pc_info.keys())
 git_pull("paradex2", pc_list)
 # run_script(f"python src/capture/camera/video_client.py", pc_list)
 
-camera_loader = RemoteCameraController("video", None, sync=False, debug=True)
+camera_loader = RemoteCameraController("video", None, sync=True, debug=True)
 
 stop_event = Event()
 start_capture = Event()
@@ -44,6 +44,8 @@ try:
         
         end_capture.clear()
         camera_loader.start(f'{args.save_path}/{capture_idx}')
+        print("Turn on sync generator")
+        # time.sleep(10)
         # gSgen.on(1)
         
         while not end_capture.is_set():
@@ -53,6 +55,7 @@ try:
         camera_loader.end()
         print("end_capture")
         start_capture.clear()
+        # time.sleep(10)
         # gSgen.off(1)
         time.sleep(0.5)
         capture_idx += 1

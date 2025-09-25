@@ -44,4 +44,4 @@ while not camera_loader.exit:
         msg_json = json.dumps(msg_dict)
         socket.send_multipart([ident, msg_json.encode()])
         
-    time.sleep(0.1)
+    time.sleep(1)

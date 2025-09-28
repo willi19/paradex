@@ -141,6 +141,8 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                     "type": "2D_matching",
                     "serial_num": serial_num}
                 
+                print(msg_dict)
+                
                 if args.debug:
                     print(f"[{serial_num}] Frame {last_frame_ind[i]}: {ttl_pair_count} detected.")
                 ttl_pair_count_perpc += ttl_pair_count

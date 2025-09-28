@@ -104,13 +104,23 @@ class Camera():
         
         # if self.mode == "video":
         #     ret &= self.configurePacketDelay(nodeMap)
-            
+        if not ret:
+            print("Error configure trigger")
+
         ret &= self.configureExposure(nodeMap)
+        if not ret:
+            print("Error configure exposure")
         ret &= self.configureAcquisition(nodeMap)
+        if not ret:
+            print("Error configure Acquisition")
         # Set Exposure time, Gain, Throughput limit, Trigger mode,
         ret &= self.configureChunk(nodeMap)  # getting timestamp
+        if not ret:
+            print("Error configure chunk")
         # self.configureBuffer(nodeMap)
         ret &= self.configurePacketSize(self.nodeMap)
+        if not ret:
+            print("Error configure packet")
         return ret
 
     def configureGain(self, nodeMap):
@@ -190,20 +200,20 @@ class Camera():
     def configureTrigger(self, nodeMap):
         ptrTriggerMode = ps.CEnumerationPtr(nodeMap.GetNode("TriggerMode"))
         if not ps.IsReadable(ptrTriggerMode):
-            # print("Unable to disable trigger mode (node retrieval). Aborting...")
+            print("Unable to disable trigger mode (node retrieval). Aborting...")
             return False
         ptrTriggerModeOff = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("Off"))
         if not ps.IsReadable(ptrTriggerModeOff):
-            # print("Unable to disable trigger mode (enum entry retrieval). Aborting...")
+            print("Unable to disable trigger mode (enum entry retrieval). Aborting...")
             return False
         ptrTriggerMode.SetIntValue(ptrTriggerModeOff.GetValue())
         ptrTriggerSelector = ps.CEnumerationPtr(nodeMap.GetNode("TriggerSelector"))
         if not ps.IsReadable(ptrTriggerSelector) or not ps.IsWritable(ptrTriggerSelector):
-            # print("Unable to get or set trigger selector (node retrieval). Aborting...")
+            print("Unable to get or set trigger selector (node retrieval). Aborting...")
             return False
         ptrTriggerSelectorFrameStart = ps.CEnumEntryPtr(ptrTriggerSelector.GetEntryByName("FrameStart"))
         if not ps.IsReadable(ptrTriggerSelectorFrameStart):
-            # print("Unable to get trigger selector FrameStart (enum entry retrieval). Aborting...")
+            print("Unable to get trigger selector FrameStart (enum entry retrieval). Aborting...")
             return False
         
         # Set Frame start

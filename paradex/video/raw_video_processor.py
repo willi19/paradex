@@ -53,8 +53,8 @@ class RawVideoProcessor():
             
             if not check_valid(timestamp):
                 self.log.append(f"{video_path} : sync or lan cable connection unstable")
-                os.remove(video_path)
-                os.remove(timestamp_path)            
+                # os.remove(video_path)
+                # os.remove(timestamp_path)            
                 continue
             self.valid_video_path_list.append(video_path)
     

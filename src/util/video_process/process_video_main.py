@@ -9,7 +9,7 @@ from paradex.utils.env import get_pcinfo
 
 pc_info = get_pcinfo()
 pc_list = list(pc_info.keys())
-run_script("python src/util/video_process/process_video_client.py",pc_list)
+# run_script("python src/util/video_process/process_video_client.py",pc_list)
 
 monitor = ProgressMonitor()
 monitor.monitor()

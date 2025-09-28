@@ -342,7 +342,7 @@ class Camera():
             return False
         
         if self.mode == "video":
-            buffer_count.SetValue(10)
+            buffer_count.SetValue(1)
 
         else:
             buffer_count.SetValue(1)

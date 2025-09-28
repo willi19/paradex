@@ -335,11 +335,12 @@ class CameraManager:
             # cam start takes 0.02 second so should not be a problem(maybe)
             
             while self.start_capture.is_set():
+                print(f"Camera {serial_num} waiting for capture... ")
                 if self.exit.is_set() or self.mode_change.is_set():
                     break
                 raw_frame = cam.get_image()
                 framenum = raw_frame.GetFrameID()
-                # print(f"Camera {serial_num} capturing frame {framenum}")
+                print(f"Camera {serial_num} capturing frame {framenum}")
                 if raw_frame.IsIncomplete():
                     if self.mode == "stream":
                         with self.locks[index]:

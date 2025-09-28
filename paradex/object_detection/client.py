@@ -68,7 +68,6 @@ next_frame_idx = 1
 while (not args.debug and not camera_loader.exit) or (args.debug):
     # Check new image
     cur_save_path = os.path.join(save_path, '%05d'%next_frame_idx)
-    print("here")
     if os.path.exists(cur_save_path):
         num_imgs = 0
         all_exist = True

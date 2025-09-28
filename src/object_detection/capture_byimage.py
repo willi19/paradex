@@ -108,7 +108,7 @@ git_pull("merging", pc_list)
 
 camera_controller = RemoteCameraController("image", None, debug=args.debug)
 
-save_path = './tmp_images'
+save_path = './shared_data/tmp_images'
 if os.path.exists(save_path):
     shutil.rmtree(save_path)
 os.makedirs(save_path, exist_ok=True)

@@ -19,6 +19,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).absolute().parent))
 from paradex.model.sam import load, inference_with_boxes
+from paradex.object_detection.default_config import yolo_pretrained_path
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # from video_module import (
@@ -52,7 +53,8 @@ class YOLO_MODULE:
         self.YOLO_WORLD_MODEL = YOLOWorld(model_id="yolo_world/l")
         
         if use_pretrained:
-            self.YOLO_FINETUNED = YOLO('./checkpoint/best_v2.pt')
+            print(f"yolo path {str(yolo_pretrained_path)}")
+            self.YOLO_FINETUNED = YOLO(str(yolo_pretrained_path))
         else:
             self.YOLO_FINETUNED = None
 

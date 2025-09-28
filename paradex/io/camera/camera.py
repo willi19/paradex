@@ -209,6 +209,11 @@ class Camera():
             print("Unable to enable trigger On (enum entry retrieval). Aborting...")
             return False
         ptrTriggerMode.SetIntValue(ptrTriggerModeOn.GetValue())
+        
+        ptrTriggerSource = ps.CEnumerationPtr(nodeMap.GetNode("TriggerSource"))
+        if not ps.IsReadable(ptrTriggerSource) or not ps.IsWritable(ptrTriggerSource):
+            print("Unable to get or set trigger mode (node retrieval). Aborting...")
+            return False
 
         # Set trigger mode to hardware ('Line0')
         ptrTriggerSourceHardware = ps.CEnumEntryPtr(ptrTriggerSource.GetEntryByName("Line0"))
@@ -234,10 +239,7 @@ class Camera():
         
         # Set Frame start
         ptrTriggerSelector.SetIntValue(ptrTriggerSelectorFrameStart.GetValue())
-        ptrTriggerSource = ps.CEnumerationPtr(nodeMap.GetNode("TriggerSource"))
-        if not ps.IsReadable(ptrTriggerSource) or not ps.IsWritable(ptrTriggerSource):
-            print("Unable to get or set trigger mode (node retrieval). Aborting...")
-            return False
+        
         # Set Rising-edge trigger
         ptrTriggerActivation = ps.CEnumerationPtr(nodeMap.GetNode("TriggerActivation"))
         if not ps.IsReadable(ptrTriggerActivation) or not ps.IsWritable(ptrTriggerActivation):

@@ -20,7 +20,7 @@ args = parser.parse_args()
 
 pc_list = list(pc_info.keys())
 git_pull("paradex2", pc_list)
-# run_script(f"python src/capture/camera/video_client.py", pc_list)
+run_script(f"python src/capture/camera/video_client.py", pc_list)
 
 camera_loader = RemoteCameraController("video", None, sync=True, debug=True)
 

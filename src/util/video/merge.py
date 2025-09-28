@@ -27,6 +27,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     dir_name = os.path.dirname(args.out_path)
+    print(dir_name)
     os.makedirs(dir_name, exist_ok=True)
     
     process_video_list(args.path, 

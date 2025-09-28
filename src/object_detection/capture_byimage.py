@@ -63,7 +63,7 @@ saved_corner_img = {serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for 
 cur_state = {}
 cur_numinput = None
     
-capture_idx = 0
+capture_idx = 1
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 
 scene = MultiCamScene(rescale_factor=args.default_rescale, device=DEVICE, height=1536, width=2048)
@@ -91,8 +91,6 @@ def listen_socket(pc_name, socket):
             matching_output = data["detect_result"]
             frame = data["frame"]
             if len(matching_output)>0:
-                if cur_tg_frame==-1:
-                    cur_tg_frame = 0
                 cur_state[serial_num] = matching_output
             print(f"Frame {frame} got total {len(cur_state)} inputs")
         else:
@@ -121,14 +119,20 @@ try:
     for pc_name, sock in socket_dict.items():
         threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
     
-    processing_frame = 1
     while True:
-        camera_controller.start(os.path.join(save_path, '%05d'%capture_idx))
+        cur_save_path = os.path.join(save_path, '%05d'%capture_idx)
+        cur_save_abspath = str(Path.home()/cur_save_path)
+        camera_controller.start(cur_save_path)
         camera_controller.end()
-        time.sleep(0.5)  # wait for file to be fully written
-        cur_state = {}
+        time.sleep(0.5)
+        # cur_state = {}
+        while not os.path.exists(cur_save_abspath) or len(os.listdir(cur_save_abspath)) > len(cur_state) or len(cur_state)<10:
+            time.sleep(0.5)
+            
+        print("here")
+        
+        capture_idx+=1
 
-        
-        
+
 finally:
     camera_controller.quit()        

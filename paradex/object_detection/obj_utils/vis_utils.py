@@ -107,7 +107,7 @@ def repeat_pytorch3d_mesh(pytorch3d_mesh, batch_num):
     return pytorch3d_mesh
 
 
-MESH_DIR = os.path.join(os.environ['NAS_PATH'], '202510_demo' 'mesh')
+MESH_DIR = os.path.join(os.environ['NAS_PATH'], '202510_demo', 'mesh')
 MESH_DIR_BEFORE_PROCESSING = MESH_DIR.replace('mesh','mesh_before_processed')
 
 

@@ -169,6 +169,7 @@ def read_mesh(mesh_path, return_type='open3d', post_processing=False, simplify=F
     elif mesh.has_triangle_uvs():
         mesh_uvs = np.array(mesh.triangle_uvs).reshape((-1, 3, 2))
         mesh_texture = np.array(mesh.textures[0])[:,:,::-1]
+        #mesh_texture = np.array(mesh.textures[0])[:,:,::-1]
 
     else:
         print("Mesh Doesn't have vertex color which is subsituted using gray color")

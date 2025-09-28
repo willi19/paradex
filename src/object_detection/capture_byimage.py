@@ -30,12 +30,14 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--obj_names', type=str, required=True, nargs='+')
 parser.add_argument('--debug', action='store_true')
+parser.add_argument('--vis_final', action='store_true')
 parser.add_argument('--default_rescale', type=float, default=0.5)
 parser.add_argument('--loss_thres', type=float, default=12)
 parser.add_argument('--toggle', action='store_true')
 args = parser.parse_args()
 inliers_threshold = 20
 cam_numb_thres = 18
+loss_thres = 10
 
 obj_dict_bucket = {}
 for obj_name in args.obj_names:
@@ -70,8 +72,17 @@ scene = MultiCamScene(rescale_factor=args.default_rescale, device=DEVICE, height
 scene.get_batched_renderer(tg_cam_list=scene.cam_ids)
 DEBUG_VIS = Path('./debug')
 os.makedirs(DEBUG_VIS, exist_ok=True)
-OUTPUTDIR = './objoutput'
-os.makedirs(OUTPUTDIR, exist_ok=True)
+
+timestamp = time.strftime("%Y%m%d-%H%M%S")
+objoutput_path = os.path.join( './obj_output', timestamp)
+os.makedirs(objoutput_path, exist_ok=True)
+oneview_dir = Path(objoutput_path+'/one_view')
+os.makedirs(oneview_dir, exist_ok=True)
+optimization_dir = Path(objoutput_path+'/optim')
+os.makedirs(optimization_dir, exist_ok=True)
+set_root_dir = Path(objoutput_path+'/set')
+os.makedirs(set_root_dir, exist_ok=True)
+    
 
 
     
@@ -99,10 +110,10 @@ def listen_socket(pc_name, socket):
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 
-# if args.debug:
-#     run_script(f"python paradex/object_detection/client.py --obj_name {args.obj_name} --saveimg", pc_list, log=True)
-# else:
-#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=True)
+if args.debug:
+    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
+else:
+    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
 
 camera_controller = RemoteCameraController("image", None, debug=args.debug)
 
@@ -110,7 +121,6 @@ save_path = './shared_data/tmp_images'
 if os.path.exists(save_path):
     shutil.rmtree(save_path)
 os.makedirs(save_path, exist_ok=True)
-
 
 
 try:
@@ -130,9 +140,173 @@ try:
             time.sleep(0.5)
             
         print("here")
-        
-        capture_idx+=1
+        if args.debug or args.vis_final:
+            img_bucket = {}
+            for i, serial_num in enumerate(serial_list):
+                img_bucket[serial_num]=cv2.resize(cv2.imread(os.path.join(cur_save_abspath, f'{serial_num}.png')), dsize=(1024,768))
 
+        start_time = time.time()
+        ttl_output_dict = {}
+        ttl_matchingset_list = {}
+        
+        for obj_name in args.obj_names:
+            initial_3d_bucket = {}
+            # matching_bucket = {}
+            matchingitem_dict = {}
+            for serial_num in cur_state:
+                initial_3d_bucket[serial_num] = {}
+                if obj_name in cur_state[serial_num]:
+                    for midx in cur_state[serial_num][obj_name]:
+                        if cur_state[serial_num][obj_name][midx]['count']>0:
+                            tmp_matching = cur_state[serial_num][obj_name][midx]
+                            for key in ['combined_src_3d', 'combined_tg_2d', 'src_arr_cam_ids']:
+                                tmp_matching[key] = np.array(tmp_matching[key])
+                            
+                            combined_src_3d, combined_tg_2d = tmp_matching['combined_src_3d'], tmp_matching['combined_tg_2d']
+                            src_cam_ids = tmp_matching['src_arr_cam_ids']
+                            
+                            ret, rvec, tvec, inliers = cv2.solvePnPRansac(
+                                objectPoints=combined_src_3d,
+                                imagePoints=combined_tg_2d,
+                                cameraMatrix=scene.cam2intr[serial_num], distCoeffs=None,
+                                reprojectionError=8,
+                                flags=cv2.SOLVEPNP_ITERATIVE)
+                            
+                            if ret:
+                                obj2img_matrix = np.eye(4)
+                                obj2img_matrix[:3, :3] = cv2.Rodrigues(rvec)[0]
+                                obj2img_matrix[:3, 3]  = tvec[:, 0]
+                                obj_tg_T = torch.tensor(np.linalg.inv(scene.cam2extr_4X4[serial_num])@obj2img_matrix, device=DEVICE).float()
+                                initial_3d_bucket[serial_num][midx] = (obj_tg_T, inliers)
+
+                                inliers_mask = np.zeros((combined_src_3d.shape[0]))
+                                inliers_mask[inliers]=1
+                                tmp_matching['inliers'] = inliers_mask
+                                tmp_matching['inliers_count'] = len(inliers)
+                                
+                                if args.debug:
+                                    #  Render To All View
+                                    transformed_verts = np.einsum('mn, jn -> jm', obj_tg_T[:3,:3].detach().cpu().numpy(), combined_src_3d)+ obj_tg_T[:3,3].detach().cpu().numpy()
+                                    projected_2d = project_3d_to_2d(transformed_verts, scene.proj_matrix[serial_num][None]).squeeze().astype(np.int64)
+                                    mean_distance_inlier = np.sum(inliers_mask*np.linalg.norm((projected_2d-combined_tg_2d),axis=1))/np.sum(inliers_mask)
+                                    rendered_sil, _ = rendersil_obj2allview(scene, obj_dict_bucket[obj_name], obj_tg_T, img_bucket, \
+                                                                    highlight={serial_num:SRC_COLOR})
+                                    cv2.imwrite(str(oneview_dir/f"{serial_num}_{midx}_using_combined_{inliers.shape[0]}_{mean_distance_inlier}_{tmp_matching['inliers_count']}.jpeg") ,\
+                                        rendered_sil)
+                                    
+                                if tmp_matching['inliers_count'] > inliers_threshold:
+                                    transformed_verts = torch.einsum('mn, jn -> jm', initial_3d_bucket[serial_num][midx][0][:3,:3], \
+                                                sampled_obj_verts)+ initial_3d_bucket[serial_num][midx][0][:3,3]
+
+                                    new_item = MatchItem(cam_id=serial_num, midx=midx, matching_item=tmp_matching,\
+                                        mask=None, \
+                                        initial_T=initial_3d_bucket[serial_num][midx][0], \
+                                        transformed_verts=transformed_verts.detach().cpu().numpy(),
+                                        proj_matrix=scene.proj_matrix[serial_num])
+
+                            matchingitem_dict[f'{serial_num}_{midx}'] = new_item
+                        # matching_bucket[serial_num][midx] = tmp_matching       
+         
+
+            # Make Set using Optimization
+            matchingset_list = []
+            keys_sorted = sorted(matchingitem_dict.keys(), key=lambda k: matchingitem_dict[k].inlier_count, reverse=True)
+
+            for key in keys_sorted:
+                print(f"** {key} Optimization, Finding set from {len(matchingset_list)} set")
+                serial_num, midx = key.split("_")
+                new_item = matchingitem_dict[key]
+                
+                min_validset_idx = None
+                min_valid_distance = None
+                min_optim_output = None
+
+                valid = False
+                for sidx, exising_set in enumerate(matchingset_list):
+                    # check with optim
+                    # NOTE: translation thres: I increased translation threshold because few pnp output result in bad translation (no depth input)
+                    # validate compatibility: check center distance + run group optimization and return and filtering result
+                    loss, distance, optim_output = exising_set.validate_compatibility(new_item, obj_dict=obj_dict_bucket[obj_name], \
+                                                                            translation_thres=0.3, loss_thres=loss_thres, \
+                                                                            loop_numb=30, vis=(args.debug), ceres=True)
+                    print(f'loss:{loss} distance:{distance}')
+                    if loss is not None and optim_output is not None:
+                            valid = True 
+                            if (args.debug):
+                                shutil.move('./tmp/optim/rendered_pairs_optim.mp4', str(optimization_dir/f'rendered_pairs_optim_set{exising_set.idx}_{serial_num}_{midx}.mp4'))
+                                target_path = str(optimization_dir/f'set{exising_set.idx}_{new_item.cam_id}_{new_item.midx}_{valid}_loss_{loss}_match.jpeg')
+                                #shutil.copy('tmp_pairs_after_optim.jpeg', target_path)
+                                shutil.copy('tmp_pairs.jpeg', target_path)
+                            if min_validset_idx is None or min_valid_distance>distance:
+                                min_validset_idx = sidx
+                                min_valid_distance = distance
+                                min_optim_output = optim_output
+
+                if len(matchingset_list)>0 and valid:
+                    matchingset_list[min_validset_idx].add(new_item)
+                    matchingset_list[min_validset_idx].update_T(min_optim_output)
+                else:
+                    print("Make New matching set")
+                    matchingset_list.append(MatchingSet(len(matchingset_list), new_item, tg_scene=scene, img_bucket=img_bucket))
+
+            ed_time = time.time()
+            
+            for matchingset in matchingset_list: 
+                if len(matchingset.set) >= 3: # TODO: check thres
+                    ttl_matchingset_list[f'{obj_name}_set{matchingset.idx}'] = matchingset
+
+
+
+
+        ttl_output_dict = {obj_name:{} for obj_name in args.obj_names}
+        reoptim = False
+
+        ttl_matchingset_list = sorted(ttl_matchingset_list, key=lambda item: len(item.set), reverse=True) 
+        
+        for matchingset_key in ttl_matchingset_list: 
+            obj_name, set_idx = matchingset_key.split("_set")
+            duplicate = False
+            for prev_key in ttl_output_dict:
+                if np.linalg.norm(ttl_output_dict[prev_key][:3,3]-matchingset.optim_T[:3,3]) < obj_dict_bucket[obj_name]['min_L']:
+                    # Duplicate
+                    duplicate = True
+            if duplicate:
+                continue
+            
+            if reoptim:
+                firstitem = list(matchingset.set)[0]
+                # Run Optimization onemore
+                min_loss, optim_output = group_optimization(list(matchingset.set), matchingset.optim_T, \
+                                                        scene, img_bucket, obj_dict_bucket[obj_name], loop_numb=30, stepsize=2, vis=True, use_ceres=True)
+                print(f'loss:{loss} optim_ouptput:{optim_output}')
+                
+                if args.debug:
+                    if min_loss is not None and optim_output is not None:
+                        shutil.move('./tmp/optim/rendered_pairs_optim.mp4', str(set_root_dir/f'rendered_pairs_optim_set{matchingset.idx}_{serial_num}_{midx}.mp4'))
+                        valid = True if optim_output is not None else False
+                        target_path = os.path.join(set_root_dir,f'set{matchingset.idx}_{valid}_loss_{min_loss}_match.jpeg')
+                        shutil.copy('tmp_pairs.jpeg', target_path)
+            if args.vis_final:
+                target_path = os.path.join(set_root_dir,f'{obj_name}_set{matchingset.idx}_match.jpeg')
+                highlights = {}
+                for matchingitem in list(matchingset.set):
+                    highlights[matchingitem.cam_id] = SRC_COLOR
+
+                rendered_on_overlaid = combined_visualizer(matchingset.optim_T, scene, obj_dict_bucket[obj_name], list(matchingset.set), \
+                                    img_bucket, highlights, DEVICE)
+                cv2.imwrite(target_path, cv2.cvtColor(rendered_on_overlaid, cv2.COLOR_BGR2RGB))                        
+            ttl_output_dict[obj_name][len(ttl_output_dict[obj_name])] = matchingset.optim_T
+            
+        print(f"Found object : { ','.join([key for key in ttl_output_dict])}")
+
+        pickle.dump(ttl_output_dict, open(os.path.join(objoutput_path,'obj_T.pkl'),'wb'))
+        end_time = time.time()
+        
+        print(f'Total Time for Frame {capture_idx}  : {end_time-start_time} sec')        
+        capture_idx+=1
+        cur_state = {}
+        if args.toggle:
+            input("Press Enter to continue...")
 
 finally:
     camera_controller.quit()        

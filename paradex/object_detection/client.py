@@ -68,7 +68,7 @@ next_frame_idx = 1
 while (not args.debug and not camera_loader.exit) or (args.debug):
     # Check new image
     cur_save_path = os.path.join(save_path, '%05d'%next_frame_idx)
-    print(f"Checking frame {next_frame_idx} at {cur_save_path}")
+
     if os.path.exists(cur_save_path):
         num_imgs = 0
         all_exist = True
@@ -77,7 +77,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                 num_imgs += 1
             else:
                 all_exist = False
-        print(f"Frame {next_frame_idx}: {num_imgs}/{len(serial_list)} images exist.")
+
         if all_exist:
             print(f"Got all {num_imgs} images for frame {next_frame_idx}")
             

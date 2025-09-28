@@ -16,7 +16,7 @@ listen_keyboard({"q":stop_event})
 save_dir = os.path.join(capture_path_list[0], args.save_path)
 last_idx = find_latest_index(save_dir) if os.path.exists(save_dir) else -1
 
-camera = CameraManager("video", syncMode=False) # SyncMode = True : follow signal generator
+camera = CameraManager("video", syncMode=True) # SyncMode = True : follow signal generator
 num_cam = camera.num_cameras
 
 save_path = f"{args.save_path}/{int(last_idx)+1}/video"

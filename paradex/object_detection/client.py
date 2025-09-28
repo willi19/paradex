@@ -67,12 +67,30 @@ save_path = './tmp_images'
 next_frame_idx = 1
 while (not args.debug and not camera_loader.exit) or (args.debug):
     # Check new image
-    if os.path.exists(os.path.join(save_path, '%05d'%next_frame_idx)):
-        for file in os.listdir(os.path.join(save_path, '%05d'%next_frame_idx)):
-            print(file)
+    cur_save_path = os.path.join(save_path, '%05d'%next_frame_idx)
+    if os.path.exists(cur_save_path):
+        num_imgs = 0
+        all_exist = True
+        for serial_num in serial_list:
+            if os.path.exists(os.path.join(cur_save_path, f'{serial_num}.png')):
+                num_imgs += 1
+            else:
+                all_exist = False
+        if all_exist:
+            print(f"Got all {num_imgs} images for frame {next_frame_idx}")
             
-        # last_image = cv2.imread(os.path.join(save_path, f'{next_frame_idx}', 'image.jpeg'))
-        # next_frame_idx += 1
+        
+            next_frame_idx += 1
+    else:
+        time.sleep(0.01)
+            
+        
+
+            
+        
+            
+    #     last_image = cv2.imread(os.path.join(save_path, f'{next_frame_idx}', 'image.jpeg'))
+    #     next_frame_idx += 1
 
     # st_time = time.time()
     

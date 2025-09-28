@@ -202,6 +202,14 @@ class Camera():
         if not ps.IsReadable(ptrTriggerMode):
             print("Unable to disable trigger mode (node retrieval). Aborting...")
             return False
+        
+        # Turn trigger mode on
+        ptrTriggerModeOn = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("On"))
+        if not ps.IsReadable(ptrTriggerModeOn):
+            print("Unable to enable trigger On (enum entry retrieval). Aborting...")
+            return False
+        ptrTriggerMode.SetIntValue(ptrTriggerModeOn.GetValue())
+        
         # ptrTriggerModeOff = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("Off"))
         # if not ps.IsReadable(ptrTriggerModeOff):
         #     print("Unable to disable trigger mode (enum entry retrieval). Aborting...")
@@ -241,12 +249,6 @@ class Camera():
             return False
         ptrTriggerSource.SetIntValue(ptrTriggerSourceHardware.GetValue())
 
-        # Turn trigger mode on
-        ptrTriggerModeOn = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("On"))
-        if not ps.IsReadable(ptrTriggerModeOn):
-            print("Unable to enable trigger On (enum entry retrieval). Aborting...")
-            return False
-        ptrTriggerMode.SetIntValue(ptrTriggerModeOn.GetValue())
 
         # Set Trigger Overlap mode
         ptrTriggerOverlap = ps.CEnumerationPtr(nodeMap.GetNode("TriggerOverlap"))

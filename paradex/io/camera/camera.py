@@ -202,11 +202,11 @@ class Camera():
         if not ps.IsReadable(ptrTriggerMode):
             print("Unable to disable trigger mode (node retrieval). Aborting...")
             return False
-        ptrTriggerModeOff = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("Off"))
-        if not ps.IsReadable(ptrTriggerModeOff):
-            print("Unable to disable trigger mode (enum entry retrieval). Aborting...")
-            return False
-        ptrTriggerMode.SetIntValue(ptrTriggerModeOff.GetValue())
+        # ptrTriggerModeOff = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("Off"))
+        # if not ps.IsReadable(ptrTriggerModeOff):
+        #     print("Unable to disable trigger mode (enum entry retrieval). Aborting...")
+        #     return False
+        # ptrTriggerMode.SetIntValue(ptrTriggerModeOff.GetValue())
         ptrTriggerSelector = ps.CEnumerationPtr(nodeMap.GetNode("TriggerSelector"))
         if not ps.IsReadable(ptrTriggerSelector) or not ps.IsWritable(ptrTriggerSelector):
             print("Unable to get or set trigger selector (node retrieval). Aborting...")

@@ -78,6 +78,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         if not args.debug:
             frame_id = camera_loader.camera.get_frameid(i)
             data = camera_loader.camera.get_data(i)
+            print(f"Got frame {frame_id} from {serial_num}")
             if frame_id == last_frame_ind[i]: # if already processed, skip
                 continue
             last_frame_ind[i] = data["frameid"]

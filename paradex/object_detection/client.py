@@ -88,7 +88,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                 print(f"Processing camera {serial_num}...")
                 img_dict[serial_num]=cv2.imread(os.path.join(cur_save_path, f'{serial_num}.png'))
         
-                last_image = cv2.resize(last_image, dsize=tmp_template.img_template[serial_num].shape[:2][::-1])
+                last_image = cv2.resize(img_dict[serial_num], dsize=tmp_template.img_template[serial_num].shape[:2][::-1])
                 # cv2.imwrite(str(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg'), last_image)
                 # cv2.imwrite(str(NAS_IMG_SAVEDIR/f'frame_{serial_num}_{int(last_frame_ind[i]%10)}.jpeg'), last_image)
                 detections, output_image = mask_detector.process_img(last_image, top_1=False, draw_mask=args.debug)

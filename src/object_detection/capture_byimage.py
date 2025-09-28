@@ -73,8 +73,6 @@ os.makedirs(DEBUG_VIS, exist_ok=True)
 OUTPUTDIR = './objoutput'
 os.makedirs(OUTPUTDIR, exist_ok=True)
 
-signal_generator = UTGE900()
-signal_generator.generate(freq=4000) # 100 frequency > 10Hz 1000 > 1Hz , 2000 > 0.5Hz
 
     
 def get_frameinfo(cur_state, serial_num):
@@ -115,10 +113,6 @@ if os.path.exists(save_path):
     shutil.rmtree(save_path)
 os.makedirs(save_path, exist_ok=True)
 
-if args.toggle:
-    signal_generator.off(1)
-else:
-    signal_generator.on(1)
 
 try:
     socket_dict = {name:get_client_socket(pc_info["ip"], 5564) for name, pc_info in pc_info.items()}
@@ -137,8 +131,3 @@ try:
         
 finally:
     camera_controller.quit()        
-    if args.toggle:
-        signal_generator.on(1)
-    else:
-        signal_generator.off(1)
-    signal_generator.quit()

@@ -209,7 +209,15 @@ class Camera():
             print("Unable to enable trigger On (enum entry retrieval). Aborting...")
             return False
         ptrTriggerMode.SetIntValue(ptrTriggerModeOn.GetValue())
-        
+
+        # Set trigger mode to hardware ('Line0')
+        ptrTriggerSourceHardware = ps.CEnumEntryPtr(ptrTriggerSource.GetEntryByName("Line0"))
+        if not ps.IsReadable(ptrTriggerSourceHardware):
+            print("Unable to set trigger mode Line0. Aborting...")
+            return False
+        ptrTriggerSource.SetIntValue(ptrTriggerSourceHardware.GetValue())
+
+
         # ptrTriggerModeOff = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("Off"))
         # if not ps.IsReadable(ptrTriggerModeOff):
         #     print("Unable to disable trigger mode (enum entry retrieval). Aborting...")
@@ -242,12 +250,6 @@ class Camera():
             return False
         ptrTriggerActivation.SetIntValue(ptrRisingEdge.GetValue())
 
-        # Set trigger mode to hardware ('Line0')
-        ptrTriggerSourceHardware = ps.CEnumEntryPtr(ptrTriggerSource.GetEntryByName("Line0"))
-        if not ps.IsReadable(ptrTriggerSourceHardware):
-            print("Unable to set trigger mode Line0. Aborting...")
-            return False
-        ptrTriggerSource.SetIntValue(ptrTriggerSourceHardware.GetValue())
 
 
         # Set Trigger Overlap mode

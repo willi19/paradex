@@ -110,16 +110,15 @@ def repeat_pytorch3d_mesh(pytorch3d_mesh, batch_num):
 MESH_DIR = os.path.join(os.environ['NAS_PATH'], 'mesh')
 MESH_DIR_BEFORE_PROCESSING = MESH_DIR.replace('mesh','mesh_before_processed')
 
-def get_initial_mesh(obj_name, return_type='open3d', post_processing=False, simplify=False, centered=True, device='cuda'):
 
-    scaled = False
-
+def get_mesh_path(obj_name):
+    canonicalized = False
     if os.path.exists(os.path.join(MESH_DIR, obj_name+".ply")):
         mesh_path = os.path.join(MESH_DIR, obj_name+".ply")
-        scaled = True
+        canonicalized = True
     elif os.path.exists(os.path.join(MESH_DIR, obj_name, obj_name+".obj")):
         mesh_path = os.path.join(MESH_DIR, obj_name, obj_name+".obj")
-        scaled = True
+        canonicalized = True
         post_processing = True # For
     elif os.path.exists(os.path.join(MESH_DIR_BEFORE_PROCESSING, obj_name+".ply")):
         mesh_path = os.path.join(MESH_DIR_BEFORE_PROCESSING, obj_name+".ply")
@@ -128,8 +127,23 @@ def get_initial_mesh(obj_name, return_type='open3d', post_processing=False, simp
         post_processing = True # For
     else:
         raise "Mesh file not found"
+    return mesh_path, canonicalized
 
-    return read_mesh(mesh_path, return_type=return_type, post_processing=post_processing, simplify=simplify, centered=centered, device=device), scaled
+
+def get_mesh_center(obj_name, post_processing=False):
+    import open3d as o3d
+    mesh_path, canonicalized = get_mesh_path(obj_name)
+    mesh = o3d.io.read_triangle_mesh(mesh_path, enable_post_processing=post_processing)
+    mesh.compute_vertex_normals()
+    center = (mesh.get_max_bound()+mesh.get_min_bound())/2
+    return center, canonicalized
+
+
+def get_initial_mesh(obj_name, return_type='open3d', post_processing=False, simplify=False, centered=True, device='cuda'):
+
+    mesh_path, canonicalized = get_mesh_path(obj_name)
+
+    return read_mesh(mesh_path, return_type=return_type, post_processing=post_processing, simplify=simplify, centered=(not canonicalized), device=device), canonicalized
 
 
 def read_mesh(mesh_path, return_type='open3d', post_processing=False, simplify=False, centered=True, device='cuda'):
@@ -234,7 +248,7 @@ def parse_trimesh_objdict(mesh:trimesh.Trimesh, device='cuda:0'):
                 'col_idx':torch.tensor(mesh.faces, dtype=torch.int32, device=device)}
     return mesh_dict
 
-    
+
 
 def parse_objectmesh_objdict(obj_name, min_vertex_num=None, remove_uv=False, renderer_type='pytorch3d', device='cuda', simplify=True):
 
@@ -242,7 +256,7 @@ def parse_objectmesh_objdict(obj_name, min_vertex_num=None, remove_uv=False, ren
         from pytorch3d.structures import Meshes
         from pytorch3d.renderer import TexturesVertex
 
-        pytorch3d_mesh, scaled = get_initial_mesh(obj_name, return_type='pytorch3d', post_processing=True, simplify=simplify, device=device)
+        pytorch3d_mesh, canonicalized = get_initial_mesh(obj_name, return_type='pytorch3d', post_processing=True, simplify=simplify, device=device)
         p3d_verts = pytorch3d_mesh.verts_padded().float().to(device).requires_grad_(False)
         p3d_faces = pytorch3d_mesh.faces_padded().to(device).requires_grad_(False)
         # _p3d_textures = pytorch3d_mesh.textures.verts_features_padded().float().to(device).requires_grad_(False)
@@ -262,9 +276,9 @@ def parse_objectmesh_objdict(obj_name, min_vertex_num=None, remove_uv=False, ren
                 vertex_colors_t = torch.tensor(gray_color[np.newaxis, :, :3], dtype=torch.float32, device=device).float().requires_grad_(False) 
                 p3d_textures = TexturesVertex(verts_features=vertex_colors_t)
 
-        return {'verts':p3d_verts, 'faces':p3d_faces, 'textures':p3d_textures, 'scaled': scaled}
+        return {'verts':p3d_verts, 'faces':p3d_faces, 'textures':p3d_textures, 'canonicalized': canonicalized}
     else: # nvdiff 
-        o3d_mesh, scaled = get_initial_mesh(obj_name, return_type='open3d', post_processing=True, simplify=simplify, device=device)
+        o3d_mesh, canonicalized = get_initial_mesh(obj_name, return_type='open3d', post_processing=True, simplify=simplify, device=device)
 
         vtx_pos = torch.tensor(np.array(o3d_mesh.vertices)).type(torch.float32).to(device).unsqueeze(0)
         pos_idx = torch.tensor(np.array(o3d_mesh.triangles)).type(torch.int32).to(device) # triangles
@@ -275,11 +289,11 @@ def parse_objectmesh_objdict(obj_name, min_vertex_num=None, remove_uv=False, ren
             pos_idx = torch.tensor(new_faces).type(torch.int32).to(device)
             vtx_col = torch.tensor(new_colors).type(torch.float32)[:,[2,1,0]].to(device)
 
-            return {'type':'vertex_color', 'verts':vtx_pos, 'faces':pos_idx, 'vtx_col':vtx_col, 'col_idx':pos_idx, 'scaled': scaled}
+            return {'type':'vertex_color', 'verts':vtx_pos, 'faces':pos_idx, 'vtx_col':vtx_col, 'col_idx':pos_idx, 'canonicalized': canonicalized}
         elif o3d_mesh.has_vertex_colors():
             vtx_col = torch.tensor(o3d_mesh.vertex_colors).type(torch.float32)[:,[2,1,0]].to(device)
             col_idx = pos_idx
-            return {'type':'vertex_color', 'verts':vtx_pos, 'faces':pos_idx, 'vtx_col':vtx_col, 'col_idx':col_idx, 'scaled': scaled}
+            return {'type':'vertex_color', 'verts':vtx_pos, 'faces':pos_idx, 'vtx_col':vtx_col, 'col_idx':col_idx, 'canonicalized': canonicalized}
         elif o3d_mesh.has_triangle_uvs():
             uvs = torch.tensor(np.asarray(o3d_mesh.triangle_uvs), dtype=torch.float32).cuda().reshape(-1, 2)
             uv_idx = torch.arange(uvs.shape[0], dtype=torch.int32, device=uvs.device).reshape(-1, 3)
@@ -288,10 +302,10 @@ def parse_objectmesh_objdict(obj_name, min_vertex_num=None, remove_uv=False, ren
             if remove_uv:
                 gray_color = np.tile(np.array([[0.5, 0.5, 0.5]]), (vtx_pos.shape[1], 1))
                 vtx_col = torch.tensor(gray_color, dtype=torch.float32, device=device).float().requires_grad_(False)
-                return {'type':'vertex_color', 'verts':vtx_pos, 'faces':pos_idx, 'vtx_col':vtx_col, 'col_idx':pos_idx, 'scaled': scaled}
+                return {'type':'vertex_color', 'verts':vtx_pos, 'faces':pos_idx, 'vtx_col':vtx_col, 'col_idx':pos_idx, 'canonicalized': canonicalized}
             else:
                 return {'type':'triangle_uvs', 'verts':vtx_pos, 'faces':pos_idx, 'uvs':uvs, 'uv_idx':uv_idx, \
-                        'texture_tensor':texture_tensor, 'scaled': scaled}
+                        'texture_tensor':texture_tensor, 'canonicalized': canonicalized}
         else:
             raise("Mesh doesn't have texture")
     

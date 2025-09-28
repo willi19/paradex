@@ -171,12 +171,12 @@ class YOLO_MODULE:
     ) -> np.ndarray:
         labels = [
             (
-                f"{categories[class_id]}: {confidence:.3f}"
+                f"{class_name}: {confidence:.3f}"
                 if with_confidence
-                else f"{categories[class_id]}"
+                else f"{class_name}"
             )
-            for class_id, confidence in
-            zip(detections.class_id, detections.confidence)
+            for class_name, confidence in
+            zip(detections.data['class_name'], detections.confidence)
         ]
         output_image = self.MASK_ANNOTATOR.annotate(input_image, detections)
         output_image = self.BOUNDING_BOX_ANNOTATOR.annotate(output_image, detections)

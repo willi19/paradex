@@ -62,7 +62,7 @@ print(f"Listening to cameras: {serial_list}")
 num_cam = len(serial_list)
 last_frame_ind = [-1 for _ in range(num_cam)]
 
-save_path = './shared_data/tmp_images'
+save_path = str(Path.home()/'shared_data/tmp_images')
 
 next_frame_idx = 1
 while (not args.debug and not camera_loader.exit) or (args.debug):

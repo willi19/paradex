@@ -13,6 +13,7 @@ os.environ["MODEL_CACHE_DIR"] = str(Path(__file__).absolute().parent.parent/'cac
 print("Model Cache Directory:", os.environ["MODEL_CACHE_DIR"])
 
 from inference.models.yolo_world import YOLOWorld
+from ultralytics import YOLO
 
 import sys
 from pathlib import Path
@@ -42,10 +43,18 @@ def check_mask(mask):
 
 
 class YOLO_MODULE:
-    def __init__(self, model_id='yolo_world/v2-l', categories:str=None, device=DEVICE):
-        self.EFFICIENT_SAM_MODEL = load(device=DEVICE)
-        self.YOLO_WORLD_MODEL = YOLOWorld(model_id=model_id)
-        # print("YOLO World Model Loaded")
+    def __init__(self, model_id='yolo_world/v2-l', categories:str=None, device=DEVICE, use_sam=False, use_pretrained = True):
+        if use_sam:
+            self.EFFICIENT_SAM_MODEL = load(device=DEVICE)
+        else:
+            self.EFFICIENT_SAM_MODEL = None
+            
+        self.YOLO_WORLD_MODEL = YOLOWorld(model_id="yolo_world/l")
+        
+        if use_pretrained:
+            self.YOLO_FINETUNED = YOLO('./checkpoint/best_v2.pt')
+        else:
+            self.YOLO_FINETUNED = None
 
         # parse annotators
         self.BOUNDING_BOX_ANNOTATOR = sv.BoxAnnotator()
@@ -70,10 +79,15 @@ class YOLO_MODULE:
             with_confidence: bool = False,
             with_class_agnostic_nms: bool = False,
             confidence: float = 0.001,
-            top_1: bool = True
+            top_1: bool = True,
+            draw_mask: bool = False
             ):
-        results = self.YOLO_WORLD_MODEL.infer(input_image, confidence=confidence)
-        detections = sv.Detections.from_inference(results)
+        if self.YOLO_FINETUNED is None:
+            results = self.YOLO_WORLD_MODEL.infer(input_image, confidence=confidence)
+            detections = sv.Detections.from_inference(results)
+        else:
+            results = self.YOLO_FINETUNED(input_image, save=True)
+            detections = sv.Detections.from_ultralytics(results[0])
         # remain only largest confidence items
 
         if top_1:
@@ -83,22 +97,50 @@ class YOLO_MODULE:
             class_agnostic=with_class_agnostic_nms,
             threshold=iou_threshold
         )
-        if with_segmentation:
+        if with_segmentation and self.EFFICIENT_SAM_MODEL is not None:
             detections.mask = inference_with_boxes(
                 image=input_image,
                 xyxy=detections.xyxy,
                 model=self.EFFICIENT_SAM_MODEL,
                 device=DEVICE
             )
-        # output_image = cv2.cvtColor(input_image, cv2.COLOR_RGB2BGR)
-        # output_image = self.annotate_image(
-        #     input_image=output_image,
-        #     detections=detections,
-        #     categories=self.categories,
-        #     with_confidence=with_confidence
-        # )
-        # return cv2.cvtColor(output_image, cv2.COLOR_BGR2RGB)
-        return detections
+
+        if draw_mask:
+            if len(self.categories)>1 and len(np.unique(detections.class_id))>1:
+                # parsing
+                result_imgs = []
+                for class_id in range(len(self.categories)):
+                    flag = (detections.class_id==class_id)
+                    tmp_detections = copy.deepcopy(detections)
+                    # tmp_detections.box_area = tmp_detections.box_area[flag]
+                    tmp_detections.class_id = tmp_detections.class_id[flag]
+                    tmp_detections.confidence = tmp_detections.confidence[flag]
+                    tmp_detections.data['class_name'] = tmp_detections.data['class_name'][flag]
+                    tmp_detections.mask = tmp_detections.mask[flag]
+                    tmp_detections.xyxy = tmp_detections.xyxy[flag]
+
+                    tmp_img = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
+                    tmp_img = self.annotate_image(
+                        input_image=tmp_img,
+                        detections=tmp_detections,
+                        categories=self.categories,
+                        with_confidence=True
+                    )
+                    result_imgs.append(tmp_img)
+                output_image = np.vstack(result_imgs)
+            else:
+                output_image = cv2.cvtColor(input_image, cv2.COLOR_BGR2RGB)
+                output_image = self.annotate_image(
+                    input_image=output_image,
+                    detections=detections,
+                    categories=self.categories,
+                    with_confidence=True
+                )
+            bgr_output_img = cv2.cvtColor(output_image, cv2.COLOR_RGB2BGR)
+        else:
+            bgr_output_img = None
+
+        return detections, bgr_output_img
     
     def parse_detection(self, detections):
         if len(detections)<=0:

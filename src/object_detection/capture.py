@@ -31,7 +31,7 @@ from paradex.object_detection.multiview_utils.optimizer import combined_visualiz
 from paradex.object_detection.multiview_utils.matchingset import MatchItem, MatchingSet, group_optimization
 import argparse
 parser = argparse.ArgumentParser()
-parser.add_argument('--obj_name', type=str, required=True)
+parser.add_argument('--obj_names', type=str, required=True, nargs='+')
 parser.add_argument('--camerainfo_dir', required=True, type=str)
 parser.add_argument('--debug', action='store_true')
 parser.add_argument('--default_rescale', type=float, default=0.5)
@@ -43,6 +43,7 @@ inliers_threshold = 20
 cam_numb_thres = 18
 
 assert args.obj_name in obj_list, 'Check the object name or object is already registered'
+
 obj_dict = parse_objectmesh_objdict(args.obj_name, min_vertex_num=1000, \
                                             remove_uv=True, renderer_type='nvdiffrast', device=DEVICE)
 # template = Template(template_path[args.obj_name], obj_name=args.obj_name)

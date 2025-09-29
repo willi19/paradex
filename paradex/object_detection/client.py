@@ -90,7 +90,6 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             print(f"Got all {num_imgs} images for frame {next_frame_idx}")
             
             st_time = time.time()
-            img_dict = {}
             ttl_pair_count_perpc = 0
             for i, serial_num in enumerate(serial_list):
                 print(f"Processing camera {serial_num}...")

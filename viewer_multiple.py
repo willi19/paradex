@@ -551,16 +551,15 @@ class ViserViewer:
             index = obj_names.index(mesh_name)
             mesh_handle.mesh = obj_meshes[index].apply_transform(obj_Ts[index][0])
 
-        #key_list = [img.split(".")[0] for img in os.listdir("obj_output/image") if ".png" in img]
-        #for key in key_list:
-        #    image_cam_id = cv2.imread(f"obj_output/image/{cam_id}.png")
-        #    print(cam2intr[image_cam_id])
-        #    viewer.add_camera_with_image(
-        #        cam2intr[image_cam_id],
-        #        cam2extr[image_cam_id],
-        #        image_cam_id,
-        #        name=f"Camera: {image_cam_id}",
-        #    )
+        key_list = [img.split(".")[0] for img in os.listdir("obj_output/image") if ".png" in img]
+        for key in key_list:
+            image_cam_id = cv2.imread(f"obj_output/image/{key}.png")
+            viewer.add_camera_with_image(
+                cam2intr[key],
+                cam2extr[key],
+                image_cam_id,
+                name=f"Camera: {key}",
+            )
 
         time.sleep(1.0 / self.gui_framerate.value)
     
@@ -686,12 +685,12 @@ if __name__ == "__main__":
 
     key_list = [img.split(".")[0] for img in os.listdir("obj_output/image") if ".png" in img]
     for key in key_list:
-        image_cam_id = cv2.imread(f"obj_output/image/{cam_id}.png")
+        image_cam_id = cv2.imread(f"obj_output/image/{key}.png")
         viewer.add_camera_with_image(
-            cam2intr[image_cam_id],
-            cam2extr[image_cam_id],
+            cam2intr[key],
+            cam2extr[key],
             image_cam_id,
-            name=f"Camera: {image_cam_id}",
+            name=f"Camera: {key}",
         )
 
     #for cam_id in cam2extr.keys():

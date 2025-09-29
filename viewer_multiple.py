@@ -536,6 +536,7 @@ class ViserViewer:
             if "brown" in key: obj_name = "brown_ramen_von"
             elif "red" in key: obj_name = "red_ramen_von"
             elif "yellow" in key: obj_name = "yellow_ramen_von"
+            elif "pringle" in key: obj_name = "pringles"
 
             for obj_idx, obj_T in val.items():
                 #if visualize_texture:
@@ -543,7 +544,10 @@ class ViserViewer:
                 #else:
                 #    obj_mesh, scaled = get_initial_mesh(obj_name, return_type='trimesh', simplify=True, device=DEFAULT_DEVICE)
                 #obj_mesh, scaled = get_initial_mesh(obj_name, return_type='trimesh', simplify=False, device=DEFAULT_DEVICE)
-                obj_mesh = trimesh.load(f"template_mesh/{obj_name}/{obj_name}.obj")
+                if obj_name == "pringles":
+                    obj_mesh = trimesh.load(f"template_mesh/{obj_name}.ply")
+                else:
+                    obj_mesh = trimesh.load(f"template_mesh/{obj_name}/{obj_name}.obj")
                 obj_meshes.append(obj_mesh)
                 obj_Ts.append(np.array([obj_T]))
                 obj_names.append(obj_name+f"_{obj_idx}")
@@ -604,7 +608,7 @@ class ViserViewer:
             name=f"{name}_frustum",
             fov=5 * np.arctan2(H / 2, fy),
             aspect=W / H,
-            scale=0.05,
+            scale=0.02,
             image=image,
             position=T_camera2world.translation(),
             wxyz=T_camera2world.rotation().wxyz,
@@ -648,6 +652,7 @@ if __name__ == "__main__":
         if "brown" in key: obj_name = "brown_ramen_von"
         elif "red" in key: obj_name = "red_ramen_von"
         elif "yellow" in key: obj_name = "yellow_ramen_von"
+        elif "pringle" in key: obj_name = "pringles"
 
         for obj_idx, obj_T in val.items():
             #if visualize_texture:
@@ -655,7 +660,10 @@ if __name__ == "__main__":
             #else:
             #    obj_mesh, scaled = get_initial_mesh(obj_name, return_type='trimesh', simplify=True, device=DEFAULT_DEVICE)
             #obj_mesh, scaled = get_initial_mesh(obj_name, return_type='trimesh', simplify=False, device=DEFAULT_DEVICE)
-            obj_mesh = trimesh.load(f"template_mesh/{obj_name}/{obj_name}.obj")
+            if obj_name == "pringles":
+                obj_mesh = trimesh.load(f"template_mesh/{obj_name}.ply")
+            else:
+                obj_mesh = trimesh.load(f"template_mesh/{obj_name}/{obj_name}.obj")
             obj_meshes.append(obj_mesh)
             obj_Ts.append(np.array([obj_T]))
             obj_names.append(obj_name+f"_{obj_idx}")

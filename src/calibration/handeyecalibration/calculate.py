@@ -172,54 +172,54 @@ for mid in marker_pos:
     
 np.save(os.path.join(he_calib_path, "0", "marker_pos.npy"), marker_pos)
 
-extrinsic_list = []
-intrinsic_list = []
+# extrinsic_list = []
+# intrinsic_list = []
 
-serial_list = os.listdir(os.path.join(he_calib_path, "0", "image"))
-serial_list.sort()
+# serial_list = os.listdir(os.path.join(he_calib_path, "0", "image"))
+# serial_list.sort()
 
-for serial_name in serial_list:
-    sn = serial_name.split(".")[0]
-    extmat = extrinsic[sn]
-    extrinsic_list.append(extmat)        
-    intrinsic_list.append(intrinsic[sn]['intrinsics_undistort'])
+# for serial_name in serial_list:
+#     sn = serial_name.split(".")[0]
+#     extmat = extrinsic[sn]
+#     extrinsic_list.append(extmat)        
+#     intrinsic_list.append(intrinsic[sn]['intrinsics_undistort'])
     
-qpos = np.array(qpos)
-rm = Robot_Module(get_robot_urdf_path("xarm"), state=qpos)
+# qpos = np.array(qpos)
+# rm = Robot_Module(get_robot_urdf_path("xarm"), state=qpos)
 
-renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=2048, height=1536, device='cuda')
+# renderer = BatchRenderer(intrinsic_list, extrinsic_list, width=2048, height=1536, device='cuda')
 
-for fid in index_list:
-    img_dir = os.path.join(he_calib_path, fid, "debug")
-    img_dict = {img_name:cv2.imread(os.path.join(img_dir, img_name)) for img_name in serial_list}
+# for fid in index_list:
+#     img_dir = os.path.join(he_calib_path, fid, "debug")
+#     img_dict = {img_name:cv2.imread(os.path.join(img_dir, img_name)) for img_name in serial_list}
     
-    robot_mesh_list = rm.get_mesh(int(fid))
-    robot_mesh = robot_mesh_list[0]
-    for i in range(1, len(robot_mesh_list)):
-        robot_mesh += robot_mesh_list[i]
-    robot_mesh.transform(X)
-    frame, mask = project_mesh_nvdiff(robot_mesh, renderer)
-    mask = mask.detach().cpu().numpy()[:,:,:,0]
-    mask = mask.astype(np.bool_)
-    for i, img_name in enumerate(serial_list):
-        if np.sum(mask[i]) > 0:
-            overlay_mask(img_dict[img_name], mask[i], 0.3, np.array((255, 0, 0)))
+#     robot_mesh_list = rm.get_mesh(int(fid))
+#     robot_mesh = robot_mesh_list[0]
+#     for i in range(1, len(robot_mesh_list)):
+#         robot_mesh += robot_mesh_list[i]
+#     robot_mesh.transform(X)
+#     frame, mask = project_mesh_nvdiff(robot_mesh, renderer)
+#     mask = mask.detach().cpu().numpy()[:,:,:,0]
+#     mask = mask.astype(np.bool_)
+#     for i, img_name in enumerate(serial_list):
+#         if np.sum(mask[i]) > 0:
+#             overlay_mask(img_dict[img_name], mask[i], 0.3, np.array((255, 0, 0)))
         
         
-    # os.makedirs(os.path.join(he_calib_path, fid, "overlay"), exist_ok=True)
-    cam_robot_pos = X @ robot_cor[int(fid)]
-    robot.compute_forward_kinematics(qpos[int(fid)])
-    rp = robot.get_link_pose(robot.get_link_index("link6"))
+#     # os.makedirs(os.path.join(he_calib_path, fid, "overlay"), exist_ok=True)
+#     cam_robot_pos = X @ robot_cor[int(fid)]
+#     robot.compute_forward_kinematics(qpos[int(fid)])
+#     rp = robot.get_link_pose(robot.get_link_index("link6"))
     
-    print(np.linalg.norm((rp-robot_cor[int(fid)])[:3,3]))
+#     print(np.linalg.norm((rp-robot_cor[int(fid)])[:3,3]))
     
-    for img_name in serial_list:
-        draw_pose_axes(img_dict[img_name], cam_robot_pos, cammtx[img_name.split(".")[0]], text="xarm", color=(0,0,255))
+#     for img_name in serial_list:
+#         draw_pose_axes(img_dict[img_name], cam_robot_pos, cammtx[img_name.split(".")[0]], text="xarm", color=(0,0,255))
     
-    cam_robot_pos = X @ rp
-    for img_name in serial_list:
-        draw_pose_axes(img_dict[img_name], cam_robot_pos, cammtx[img_name.split(".")[0]], text="qpos", color=(0,255,0))
+#     cam_robot_pos = X @ rp
+#     for img_name in serial_list:
+#         draw_pose_axes(img_dict[img_name], cam_robot_pos, cammtx[img_name.split(".")[0]], text="qpos", color=(0,255,0))
     
-    os.makedirs(os.path.join(he_calib_path, fid, "overlay"), exist_ok=True)
-    for img_name in serial_list:
-        cv2.imwrite(os.path.join(he_calib_path, fid, "overlay", f"{img_name}"), img_dict[img_name])    
+#     os.makedirs(os.path.join(he_calib_path, fid, "overlay"), exist_ok=True)
+#     for img_name in serial_list:
+#         cv2.imwrite(os.path.join(he_calib_path, fid, "overlay", f"{img_name}"), img_dict[img_name])    

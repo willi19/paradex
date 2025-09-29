@@ -172,7 +172,7 @@ class ViserViewer:
                 client.camera.far = far_slider.value
     '''
     def load_server(self):
-        self.server = viser.ViserServer(port=8081)
+        self.server = viser.ViserServer(port=8082)
         self.server.gui.configure_theme(dark_mode=False)
         
         self.server.scene.set_up_direction(-self.c2r[:3,2])
@@ -290,6 +290,7 @@ class ViserViewer:
             "/frames",
             position=(0, 0, 0),
             show_axes=False,
+            axes_length=0.2
         )
 
         self.server.scene.add_frame(
@@ -297,7 +298,8 @@ class ViserViewer:
             wxyz=tf.SO3.from_matrix(self.c2r[:3,:3]).wxyz,
             position=self.c2r[:3,3],
             show_axes=True,
-            axes_radius=0.01
+            axes_radius=0.01,
+            axes_length=0.2
         )
 
         self.frame_nodes: list[viser.FrameHandle] = []

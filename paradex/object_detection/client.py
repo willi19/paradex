@@ -38,7 +38,7 @@ for obj_name in args.obj_names:
     template_dict[obj_name] = tmp_template
     combined_yoloprompts.append(name2prompt[obj_name])
 combined_yoloprompts = ','.join(combined_yoloprompts)
-mask_detector = YOLO_MODULE(categories=combined_yoloprompts, device=DEVICE, use_pretrained=('ramen' in combined_yoloprompts))
+mask_detector = YOLO_MODULE(categories=combined_yoloprompts, device=DEVICE, use_pretrained=('ramen' in combined_yoloprompts), use_sam=True)
 # Matcher
 matcherto3d = MatcherTo3D(device=DEVICE, img_L=256)
 paircount_threshold=args.paircount
@@ -104,9 +104,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                 for obj_name in args.obj_names:
                     tmp_result_dict = {}
                     if len(detections) > 0:
-                        print(detections['class_name'])
-                        print(name2prompt[obj_name])
-                        print(detections['class_name']==name2prompt[obj_name])
+                        
                         tg_detections = detections[detections['class_name']==name2prompt[obj_name]]
                         for midx, tg_mask in enumerate(tg_detections.mask):
                             tg_mask = np.repeat(tg_mask[..., None], 3, axis=2).astype(np.int64)*255.0

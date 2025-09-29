@@ -504,7 +504,7 @@ class ViserViewer:
             except Exception as e:
                 print(f"Failed to render frame {timestep}: {e}")
         
-    def update(self, data_path):
+    def update(self, data_path, cam2extr, cam2intr):
         """Main update loop - call this in a loop"""
         if self.gui_playing.value:
             if self.num_frames > 1:
@@ -551,16 +551,27 @@ class ViserViewer:
             index = obj_names.index(mesh_name)
             mesh_handle.mesh = obj_meshes[index].apply_transform(obj_Ts[index][0])
 
+        key_list = [img.split(".")[0] for img in os.listdir("obj_output/image") if ".png" in img]
+        for key in key_list:
+            image_cam_id = cv2.imread(f"obj_output/image/{cam_id}.png")
+            print(cam2intr[image_cam_id])
+            viewer.add_camera_with_image(
+                cam2intr[image_cam_id],
+                cam2extr[image_cam_id],
+                image_cam_id,
+                name=f"Camera: {image_cam_id}",
+            )
+
         time.sleep(1.0 / self.gui_framerate.value)
     
-    def start_viewer(self, data_path):
+    def start_viewer(self, data_path, cam2extr, cam2intr):
         """Start the viewer in a loop"""
         print(f"Starting viewer with {self.num_frames} frames")
         print("Visit the URL printed above to view the visualization")
         
         try:
             while True:
-                self.update(data_path)
+                self.update(data_path, cam2extr, cam2intr)
         except KeyboardInterrupt:
             print("Viewer stopped")
 
@@ -673,16 +684,26 @@ if __name__ == "__main__":
         cam2extr[cam_id] = extrinsic_np
         cam2intr[cam_id] = intrinsic_np
 
-    for cam_id in cam2extr.keys():
-
-        # if cam_id not in ["22684210", 22684210]: continue
+    key_list = [img.split(".")[0] for img in os.listdir("obj_output/image") if ".png" in img]
+    for key in key_list:
         image_cam_id = cv2.imread(f"obj_output/image/{cam_id}.png")
         viewer.add_camera_with_image(
-            cam2intr[cam_id],
-            cam2extr[cam_id],
+            cam2intr[image_cam_id],
+            cam2extr[image_cam_id],
             image_cam_id,
-            name=f"Camera: {cam_id}",
+            name=f"Camera: {image_cam_id}",
         )
 
+    #for cam_id in cam2extr.keys():
+
+        # if cam_id not in ["22684210", 22684210]: continue
+    #    image_cam_id = cv2.imread(f"obj_output/image/{cam_id}.png")
+    #    viewer.add_camera_with_image(
+    #        cam2intr[cam_id],
+    #        cam2extr[cam_id],
+    #        image_cam_id,
+    #        name=f"Camera: {cam_id}",
+    #    )
+
     
-    viewer.start_viewer(scene_path)
+    viewer.start_viewer(scene_path, cam2extr, cam2intr)

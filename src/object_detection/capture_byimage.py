@@ -112,17 +112,18 @@ def listen_socket(pc_name, socket):
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 
-if args.debug:
-    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
-else:
-    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
-
-camera_controller = RemoteCameraController("image", None, debug=args.debug)
+# if args.debug:
+#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
+# else:
+#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
 
 save_path = './shared_data/tmp_images'
 if os.path.exists(Path.home()/save_path):
     shutil.rmtree(Path.home()/save_path)
 os.makedirs(save_path, exist_ok=True)
+
+camera_controller = RemoteCameraController("image", None, debug=args.debug)
+
 
 
 try:
@@ -138,6 +139,7 @@ try:
         print("Start Capture")
         
         cur_save_path = os.path.join(save_path, '%05d'%capture_idx)
+        os.makedirs(cur_save_path, exist_ok=True)
         cur_save_abspath = str(Path.home()/cur_save_path)
         camera_controller.start(cur_save_path)
         camera_controller.end()

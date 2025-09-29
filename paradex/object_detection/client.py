@@ -72,8 +72,16 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
     if os.path.exists(cur_save_path):
         num_imgs = 0
         all_exist = True
+        img_dict = {}
         for serial_num in serial_list:
             if os.path.exists(os.path.join(cur_save_path, f'{serial_num}.png')):
+                read_img = cv2.imread(os.path.join(cur_save_path, f'{serial_num}.png'))
+                if read_img is None:
+                    print("Image read None")
+                    all_exist = False
+                    break
+                else:
+                    img_dict[serial_num] = read_img
                 num_imgs += 1
             else:
                 all_exist = False
@@ -86,8 +94,6 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             ttl_pair_count_perpc = 0
             for i, serial_num in enumerate(serial_list):
                 print(f"Processing camera {serial_num}...")
-                img_dict[serial_num]=cv2.imread(os.path.join(cur_save_path, f'{serial_num}.png'))
-        
                 last_image = cv2.resize(img_dict[serial_num], dsize=tmp_template.img_template[serial_num].shape[:2][::-1])
                 # cv2.imwrite(str(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg'), last_image)
                 # cv2.imwrite(str(NAS_IMG_SAVEDIR/f'frame_{serial_num}_{int(last_frame_ind[i]%10)}.jpeg'), last_image)

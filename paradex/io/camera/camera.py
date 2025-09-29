@@ -67,8 +67,17 @@ class Camera():
         return serialnum
 
     def get_image(self):
-        pImageRaw = self.cam.GetNextImage()
-        return pImageRaw
+        if self.mode == "image":
+            while True:
+                try:
+                    pImageRaw = self.cam.GetNextImage(100)
+                    return pImageRaw
+                except:
+                    self.cam.EndAcquisition()
+                    self.cam.BeginAcquisition()
+        else:
+            pImageRaw = self.cam.GetNextImage()
+            return pImageRaw
 
     def start(self):
         self.cam.BeginAcquisition()

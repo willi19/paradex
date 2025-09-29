@@ -9,7 +9,7 @@ import shutil
 from pathlib import Path
 import pickle
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
+from threading import Event, Thread
 
 from paradex.utils.env import get_pcinfo, get_serial_list
 
@@ -17,7 +17,7 @@ from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.capture_pc.util import get_client_socket
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.io.signal_generator.UTGE900 import UTGE900
-
+from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.object_detection.obj_utils.vis_utils import parse_objectmesh_objdict
 from paradex.object_detection.obj_utils.io import read_camerainfo, get_ttl_framenumb
 from paradex.object_detection.obj_utils.multicam_system import MultiCamScene, NAS_IMG_SAVEDIR
@@ -59,7 +59,8 @@ BOARD_COLORS = [
 
 pc_info = get_pcinfo()
 serial_list = get_serial_list()
-
+capture_event = Event()
+listen_keyboard({"c":capture_event})
 saved_corner_img = {serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
 
 cur_state = {}
@@ -131,6 +132,11 @@ try:
         threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
     
     while True:
+        if not capture_event.is_set():
+            time.sleep(0.01)
+            continue
+        print("Start Capture")
+        
         cur_save_path = os.path.join(save_path, '%05d'%capture_idx)
         cur_save_abspath = str(Path.home()/cur_save_path)
         camera_controller.start(cur_save_path)
@@ -140,13 +146,12 @@ try:
         while not os.path.exists(cur_save_abspath) or len(os.listdir(cur_save_abspath)) > len(cur_state) or len(cur_state)<10:
             time.sleep(0.5)
             
-        print("here")
         if args.debug or args.vis_final:
             img_bucket = {}
             for i, serial_num in enumerate(serial_list):
                 img_bucket[serial_num]=cv2.resize(cv2.imread(os.path.join(cur_save_abspath, f'{serial_num}.png')), dsize=(1024,768))
                 if save_first_image:
-                    cv2.imwrite(str(image_root_dir/f'camera_{serial_num}.jpeg'), img_bucket[serial_num])
+                    cv2.imwrite(str(image_root_dir/f'{serial_num}.png'), img_bucket[serial_num])
             if save_first_image:
                 save_first_image = False
 
@@ -316,8 +321,8 @@ try:
         print(f'Total Time for Frame {capture_idx}  : {end_time-start_time} sec')        
         capture_idx+=1
         cur_state = {}
-        if args.toggle:
-            input("Press Enter to continue...")
+
+        capture_event.clear()
 
 finally:
     camera_controller.quit()        

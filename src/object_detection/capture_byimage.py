@@ -73,8 +73,8 @@ scene.get_batched_renderer(tg_cam_list=scene.cam_ids)
 DEBUG_VIS = Path('./debug')
 os.makedirs(DEBUG_VIS, exist_ok=True)
 
-timestamp = time.strftime("%Y%m%d-%H%M%S")
-objoutput_path = os.path.join( './obj_output', timestamp)
+# timestamp = time.strftime("%Y%m%d-%H%M%S")
+objoutput_path = './obj_output'
 os.makedirs(objoutput_path, exist_ok=True)
 oneview_dir = Path(objoutput_path+'/one_view')
 os.makedirs(oneview_dir, exist_ok=True)
@@ -82,8 +82,9 @@ optimization_dir = Path(objoutput_path+'/optim')
 os.makedirs(optimization_dir, exist_ok=True)
 set_root_dir = Path(objoutput_path+'/set')
 os.makedirs(set_root_dir, exist_ok=True)
-    
-
+image_root_dir = Path(objoutput_path+'/image')
+os.makedirs(image_root_dir, exist_ok=True)    
+save_first_image = True
 
     
 def get_frameinfo(cur_state, serial_num):
@@ -118,8 +119,8 @@ else:
 camera_controller = RemoteCameraController("image", None, debug=args.debug)
 
 save_path = './shared_data/tmp_images'
-if os.path.exists(save_path):
-    shutil.rmtree(save_path)
+if os.path.exists(Path.home()/save_path):
+    shutil.rmtree(Path.home()/save_path)
 os.makedirs(save_path, exist_ok=True)
 
 
@@ -144,6 +145,10 @@ try:
             img_bucket = {}
             for i, serial_num in enumerate(serial_list):
                 img_bucket[serial_num]=cv2.resize(cv2.imread(os.path.join(cur_save_abspath, f'{serial_num}.png')), dsize=(1024,768))
+                if save_first_image:
+                    cv2.imwrite(str(image_root_dir/f'camera_{serial_num}.jpeg'), img_bucket[serial_num])
+            if save_first_image:
+                save_first_image = False
 
         start_time = time.time()
         ttl_output_dict = {}
@@ -249,7 +254,7 @@ try:
                     print("Make New matching set")
                     matchingset_list.append(MatchingSet(len(matchingset_list), new_item, tg_scene=scene, img_bucket=img_bucket))
 
-            ed_time = time.time()
+            # ed_time = time.time()
             
             for matchingset in matchingset_list: 
                 if len(matchingset.set) >= 3: # TODO: check thres
@@ -258,12 +263,14 @@ try:
 
 
 
-        ttl_output_dict = {obj_name:{} for obj_name in args.obj_names}
+        ttl_output_dict = {}
         reoptim = False
 
-        ttl_matchingset_list = sorted(ttl_matchingset_list, key=lambda item: len(item.set), reverse=True) 
+        ttl_matchingset_list = dict(
+            sorted(ttl_matchingset_list.items(), key=lambda x: len(x[1].set), reverse=True)
+        )
         
-        for matchingset_key in ttl_matchingset_list: 
+        for matchingset_key, matchingset in ttl_matchingset_list.items(): 
             obj_name, set_idx = matchingset_key.split("_set")
             duplicate = False
             for prev_key in ttl_output_dict:
@@ -282,7 +289,7 @@ try:
                 
                 if args.debug:
                     if min_loss is not None and optim_output is not None:
-                        shutil.move('./tmp/optim/rendered_pairs_optim.mp4', str(set_root_dir/f'rendered_pairs_optim_set{matchingset.idx}_{serial_num}_{midx}.mp4'))
+                        shutil.move('./tmp/optim/rendered_pairs_optim.mp4', str(set_root_dir/f'rendered_pairs_optim_set{matchingset.idx}_{set_idx}.mp4'))
                         valid = True if optim_output is not None else False
                         target_path = os.path.join(set_root_dir,f'set{matchingset.idx}_{valid}_loss_{min_loss}_match.jpeg')
                         shutil.copy('tmp_pairs.jpeg', target_path)
@@ -295,11 +302,15 @@ try:
                 rendered_on_overlaid = combined_visualizer(matchingset.optim_T, scene, obj_dict_bucket[obj_name], list(matchingset.set), \
                                     img_bucket, highlights, DEVICE)
                 cv2.imwrite(target_path, cv2.cvtColor(rendered_on_overlaid, cv2.COLOR_BGR2RGB))                        
-            ttl_output_dict[obj_name][len(ttl_output_dict[obj_name])] = matchingset.optim_T
+            ttl_output_dict[f'{obj_name}_idx{len(ttl_output_dict)}'] = matchingset.optim_T
             
         print(f"Found object : { ','.join([key for key in ttl_output_dict])}")
-
-        pickle.dump(ttl_output_dict, open(os.path.join(objoutput_path,'obj_T.pkl'),'wb'))
+        
+        parsed_ttl_output_dict = {obj_name:{} for obj_name in args.obj_names}
+        for key in ttl_output_dict:
+            obj_name, sidx = key.split("_idx")
+            parsed_ttl_output_dict[obj_name][len(parsed_ttl_output_dict[obj_name])] = ttl_output_dict[key]
+        pickle.dump(parsed_ttl_output_dict, open(os.path.join(objoutput_path,'obj_T.pkl'),'wb'))
         end_time = time.time()
         
         print(f'Total Time for Frame {capture_idx}  : {end_time-start_time} sec')        

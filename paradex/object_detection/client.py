@@ -154,11 +154,11 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             ed_time = time.time()
             print(f"Time for matching in one desktop {ed_time-st_time} total pair count {ttl_pair_count_perpc}")
 
-            time.sleep(0.01)
+            time.sleep(0.1)
         
         
             next_frame_idx += 1
     else:
-        time.sleep(1)
+        time.sleep(0.05)
             
         

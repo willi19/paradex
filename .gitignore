@@ -28,3 +28,7 @@ objoutput
 # *.npy
 debug
 paradex/pose_utils/dex_retargeting
+template
+paradex/model/*.pt
+obj_output
+template_mesh

@@ -112,10 +112,10 @@ def listen_socket(pc_name, socket):
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 
-if args.debug:
-    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
-else:
-    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
+# if args.debug:
+#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
+# else:
+#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
 
 save_path = './shared_data/tmp_images'
 if os.path.exists(Path.home()/save_path):
@@ -154,8 +154,8 @@ try:
                 img_bucket[serial_num]=cv2.resize(cv2.imread(os.path.join(cur_save_abspath, f'{serial_num}.png')), dsize=(1024,768))
                 if save_first_image:
                     cv2.imwrite(str(image_root_dir/f'{serial_num}.png'), img_bucket[serial_num])
-            if save_first_image:
-                save_first_image = False
+            # if save_first_image:
+            #     save_first_image = False
 
         start_time = time.time()
         ttl_output_dict = {}

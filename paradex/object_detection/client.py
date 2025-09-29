@@ -104,6 +104,8 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                 for obj_name in args.obj_names:
                     tmp_result_dict = {}
                     if len(detections) > 0:
+                        print(detections['class_name'])
+                        print(name2prompt[obj_name])
                         tg_detections = detections[detections['class_name']==name2prompt[obj_name]]
                         for midx, tg_mask in enumerate(tg_detections.mask):
                             tg_mask = np.repeat(tg_mask[..., None], 3, axis=2).astype(np.int64)*255.0

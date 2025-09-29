@@ -549,7 +549,13 @@ class ViserViewer:
         for mesh_handle in self.mesh_handles:
             mesh_name = mesh_handle.name
             index = obj_names.index(mesh_name)
-            mesh_handle.mesh = obj_meshes[index].apply_transform(obj_Ts[index][0])
+            self.server.scene.remove_by_name(mesh_name)
+            self.server.scene.add_mesh_trimesh(
+                        name=mesh_name,
+                        mesh=obj_meshes[index].apply_transform(obj_Ts[index][0]),
+                        position=(0.0, 0.0, 0.0),
+                    )
+            #mesh_handle.mesh = obj_meshes[index].apply_transform(obj_Ts[index][0])
 
         key_list = [img.split(".")[0] for img in os.listdir("obj_output/image") if ".png" in img]
         for key in key_list:

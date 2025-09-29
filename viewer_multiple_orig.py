@@ -28,7 +28,6 @@ import open3d as o3d
 import torch
 import json
 from glob import glob
-from scipy.spatial.transform import Rotation as R
 
 from paradex.utils.file_io import load_current_camparam
 
@@ -106,8 +105,8 @@ class ViserViewer:
             urdf = yourdfpy.URDF.load(urdf_path)
             self.urdf = urdf
             self.robot_base = self.server.scene.add_frame("/robot", show_axes=False)
-            self.robot_base.position = self.c2r[:3,3]
-            self.robot_base.wxyz = tf.SO3.from_matrix(self.c2r[:3,:3]).wxyz
+            self.robot_base.position = (-0.6, 0.6, 0.625)
+            self.robot_base.wxyz = (0.0, 1.0, -0.3, 0.14)
             self.urdf_vis = ViserUrdf(self.server, urdf, root_node_name="/robot")
             self.qpos = qpos
             self.num_frames  = self.qpos.shape[0]
@@ -135,17 +134,13 @@ class ViserViewer:
             self.obj_loaded = False
             self.prev_objtimestamp = -1
 
-        self.add_frames()
         self.add_lights()
+        self.add_frames()
         self.add_player()
         self.prev_timestep = 0
         self.add_initial_meshes()
         
         self.last_obj_number = 0
-
-        self._data_path = None
-        self._cam2extr = None
-        self._cam2intr = None
     
     '''
     def load_server(self):
@@ -229,7 +224,7 @@ class ViserViewer:
             
         # Floor visibility controls
         with self.server.gui.add_folder("Scene"):
-            self.floor_visible = self.server.gui.add_checkbox("Show Floor", True)
+            self.floor_visible = self.server.gui.add_checkbox("Show Floor", False)
             self.floor_size = self.server.gui.add_slider(
                 "Floor Size", min=1.0, max=10.0, step=0.5, initial_value=5.0
             )
@@ -243,8 +238,6 @@ class ViserViewer:
                 initial_value=(0.0, -1.0, 1.0),
                 step=0.01,
             )
-
-            self.reload_button = self.server.gui.add_button("Reload (R)")
             
             self.manual_update = self.server.gui.add_button("Manual Update", disabled=True)
             
@@ -291,32 +284,26 @@ class ViserViewer:
         @self.manual_update.on_click
         def _(_) -> None:
             self.update_scene(self.gui_timestep.value, visualize_texture=self.visualize_texture)
-
-        @self.reload_button.on_click
-        def _(_) -> None:
-            # 저장된 경로/캠파라미터로 1회 갱신
-            if self._data_path is not None:
-                self.update(self._data_path, self._cam2extr, self._cam2intr)
             
             
     def add_lights(self):
         self.server.scene.add_transform_controls(
-            "/system/control_light0", position=(self.c2r[:3,:3]@[0, 1.0, -1.0]+self.c2r[:3,3]), scale=2.0
+            "/control_light0", position=(0.0, 5.0, 5.0), scale=2.0
         )
-        self.server.scene.add_label("/system/control_light0/label", "Point")
+        self.server.scene.add_label("/control_light0/label", "Point")
         point_light = self.server.scene.add_light_point(
-            name="/system/control_light0/point_light",
+            name="/control_light0/point_light",
             color=(255, 255, 255),
             intensity=100.0,
             visible=False
         )
 
         self.server.scene.add_transform_controls(
-            "/system/control_light1", position=self.c2r[:3,:3]@[0, -1.0, -1.0]+self.c2r[:3,3], scale=2.0
+            "/control_light1", position=(0.0, -5.0, 5.0), scale=2.0
         )
-        self.server.scene.add_label("/system/control_light1/label", "Point")
+        self.server.scene.add_label("/control_light1/label", "Point")
         point_light = self.server.scene.add_light_point(
-            name="/system/control_light1/point_light",
+            name="/control_light1/point_light",
             color=(255, 255, 255),
             intensity=100.0,
             visible=False
@@ -372,17 +359,16 @@ class ViserViewer:
 
     def add_grid_lines(self, size=5.0, position=(0,0,0), wxyz=(1.0,0.0,0.0,0.0)):
         """Add grid lines that follow floor's position and rotation"""
-        print(position, wxyz, "gridline")
+        import scipy.spatial.transform
+
         grid_spacing = 0.5
 
-        r = R.from_quat([wxyz[1], wxyz[2], wxyz[3], wxyz[0]])
+        r = scipy.spatial.transform.Rotation.from_quat([wxyz[1], wxyz[2], wxyz[3], wxyz[0]])
         lines_added = 0
 
         for y in np.arange(-size, size + grid_spacing, grid_spacing):
             start = np.array([-size, y, 0.001])
-            # start = self.c2r[:3,:3]@start+self.c2r[:3,3]
             end   = np.array([ size, y, 0.001])
-            # end = self.c2r[:3,:3]@end+self.c2r[:3,3]
             
             start_rotated = r.apply(start) + np.array(position)
             end_rotated   = r.apply(end) + np.array(position)
@@ -397,10 +383,8 @@ class ViserViewer:
 
         for x in np.arange(-size, size + grid_spacing, grid_spacing):
             start = np.array([x, -size, 0.001])
-            # start = self.c2r[:3,:3]@start+self.c2r[:3,3]
             end   = np.array([x,  size, 0.001])
-            # end = self.c2r[:3,:3]@end+self.c2r[:3,3]
-
+            
             start_rotated = r.apply(start) + np.array(position)
             end_rotated   = r.apply(end) + np.array(position)
             
@@ -415,11 +399,6 @@ class ViserViewer:
     def update_floor(self, position=(0.0, 0.0, -0.041), wxyz=(1.0, 0.0, 0.0, 0.0)):
         """Update floor visibility, position, and rotation"""
         try:
-            position = self.c2r[:3,3] + np.array(self.c2r[:3,2]) * -0.042
-            xyzw = R.from_matrix(self.c2r[:3,:3]).as_quat()
-            wxyz = (xyzw[3], xyzw[0], xyzw[1], xyzw[2])
-            print(position, wxyz, "floor")
-            # sposition = np.linalg.inv(self.c2r[:3,:3]) @ position
             # Remove existing floor and grid elements
             try:
                 self.server.scene.remove_by_name("floor")
@@ -451,7 +430,7 @@ class ViserViewer:
                 # Add grid lines if enabled
                 if self.grid_visible.value:
                     try:
-                        self.add_grid_lines(size=size, position=position, wxyz=wxyz)
+                        self.add_grid_lines(size=size)
                         print(f"✅ Grid lines added")
                     except Exception as e:
                         print(f"❌ Grid lines failed: {e}")
@@ -633,7 +612,6 @@ class ViserViewer:
 
         time.sleep(1.0 / self.gui_framerate.value)
     
-    '''
     def start_viewer(self, data_path, cam2extr, cam2intr):
         """Start the viewer in a loop"""
         print(f"Starting viewer with {self.num_frames} frames")
@@ -642,30 +620,6 @@ class ViserViewer:
         try:
             while True:
                 self.update(data_path, cam2extr, cam2intr)
-        except KeyboardInterrupt:
-            print("Viewer stopped")
-    '''
-
-    def start_viewer(self, data_path, cam2extr, cam2intr):
-        """서버만 띄우고 대기. Reload 버튼/키 입력 때만 update 수행"""
-        print(f"Viewer ready. Visit the URL above.")
-        print("Use GUI 'Reload (R)' button or press 'r' in this terminal to update.")
-
-        # 이후 호출에서 쓸 값 보관
-        self._data_path = data_path
-        self._cam2extr = cam2extr
-        self._cam2intr = cam2intr
-
-        # 키보드 리스너 시작
-        try:
-            self._spawn_keyboard_listener()
-        except Exception as e:
-            print(f"(keyboard listener disabled: {e})")
-
-        # 메인 스레드는 그냥 대기 (서버는 백그라운드로 계속 동작)
-        try:
-            while True:
-                time.sleep(1.0)
         except KeyboardInterrupt:
             print("Viewer stopped")
 
@@ -702,34 +656,6 @@ class ViserViewer:
             for client in self.server.get_clients().values():
                 client.camera.wxyz = frame.wxyz
                 client.camera.position = frame.position
-
-    def _spawn_keyboard_listener(self):
-        """터미널에서 r=reload, q=quit 핫키 리스너"""
-        import threading, sys, tty, termios, select, signal
-
-        def loop():
-            fd = sys.stdin.fileno()
-            old = termios.tcgetattr(fd)
-            try:
-                tty.setcbreak(fd)
-                print("Keyboard: press 'r' to reload, 'q' to quit.")
-                while True:
-                    r, _, _ = select.select([sys.stdin], [], [], 0.1)
-                    if not r:
-                        continue
-                    ch = sys.stdin.read(1)
-                    if ch.lower() == 'r':
-                        if self._data_path is not None:
-                            # 한 번만 갱신
-                            self.update(self._data_path, self._cam2extr, self._cam2intr)
-                    elif ch.lower() == 'q':
-                        print("Quit requested.")
-                        os._exit(0)
-            finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old)
-
-        t = threading.Thread(target=loop, daemon=True)
-        t.start()
 
 
 # Example usage:

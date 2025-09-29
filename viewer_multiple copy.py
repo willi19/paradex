@@ -28,7 +28,6 @@ import open3d as o3d
 import torch
 import json
 from glob import glob
-from scipy.spatial.transform import Rotation as R
 
 from paradex.utils.file_io import load_current_camparam
 
@@ -63,6 +62,7 @@ import viser
 import viser.transforms as tf
 from viser.extras import ViserUrdf
 import yourdfpy
+from scipy.spatial.transform import Rotation as R
 
 import open3d as o3d
 from paradex.utils.file_io import rsc_path, load_latest_C2R, get_robot_urdf_path
@@ -142,10 +142,6 @@ class ViserViewer:
         self.add_initial_meshes()
         
         self.last_obj_number = 0
-
-        self._data_path = None
-        self._cam2extr = None
-        self._cam2intr = None
     
     '''
     def load_server(self):
@@ -229,7 +225,7 @@ class ViserViewer:
             
         # Floor visibility controls
         with self.server.gui.add_folder("Scene"):
-            self.floor_visible = self.server.gui.add_checkbox("Show Floor", True)
+            self.floor_visible = self.server.gui.add_checkbox("Show Floor", False)
             self.floor_size = self.server.gui.add_slider(
                 "Floor Size", min=1.0, max=10.0, step=0.5, initial_value=5.0
             )
@@ -243,8 +239,6 @@ class ViserViewer:
                 initial_value=(0.0, -1.0, 1.0),
                 step=0.01,
             )
-
-            self.reload_button = self.server.gui.add_button("Reload (R)")
             
             self.manual_update = self.server.gui.add_button("Manual Update", disabled=True)
             
@@ -291,12 +285,6 @@ class ViserViewer:
         @self.manual_update.on_click
         def _(_) -> None:
             self.update_scene(self.gui_timestep.value, visualize_texture=self.visualize_texture)
-
-        @self.reload_button.on_click
-        def _(_) -> None:
-            # 저장된 경로/캠파라미터로 1회 갱신
-            if self._data_path is not None:
-                self.update(self._data_path, self._cam2extr, self._cam2intr)
             
             
     def add_lights(self):
@@ -372,7 +360,7 @@ class ViserViewer:
 
     def add_grid_lines(self, size=5.0, position=(0,0,0), wxyz=(1.0,0.0,0.0,0.0)):
         """Add grid lines that follow floor's position and rotation"""
-        print(position, wxyz, "gridline")
+
         grid_spacing = 0.5
 
         r = R.from_quat([wxyz[1], wxyz[2], wxyz[3], wxyz[0]])
@@ -380,9 +368,9 @@ class ViserViewer:
 
         for y in np.arange(-size, size + grid_spacing, grid_spacing):
             start = np.array([-size, y, 0.001])
-            # start = self.c2r[:3,:3]@start+self.c2r[:3,3]
+            start = self.c2r[:3,:3]@start+self.c2r[:3,3]
             end   = np.array([ size, y, 0.001])
-            # end = self.c2r[:3,:3]@end+self.c2r[:3,3]
+            end = self.c2r[:3,:3]@end+self.c2r[:3,3]
             
             start_rotated = r.apply(start) + np.array(position)
             end_rotated   = r.apply(end) + np.array(position)
@@ -397,9 +385,9 @@ class ViserViewer:
 
         for x in np.arange(-size, size + grid_spacing, grid_spacing):
             start = np.array([x, -size, 0.001])
-            # start = self.c2r[:3,:3]@start+self.c2r[:3,3]
+            start = self.c2r[:3,:3]@start+self.c2r[:3,3]
             end   = np.array([x,  size, 0.001])
-            # end = self.c2r[:3,:3]@end+self.c2r[:3,3]
+            end = self.c2r[:3,:3]@end+self.c2r[:3,3]
 
             start_rotated = r.apply(start) + np.array(position)
             end_rotated   = r.apply(end) + np.array(position)
@@ -415,11 +403,8 @@ class ViserViewer:
     def update_floor(self, position=(0.0, 0.0, -0.041), wxyz=(1.0, 0.0, 0.0, 0.0)):
         """Update floor visibility, position, and rotation"""
         try:
-            position = self.c2r[:3,3] + np.array(self.c2r[:3,2]) * -0.042
-            xyzw = R.from_matrix(self.c2r[:3,:3]).as_quat()
-            wxyz = (xyzw[3], xyzw[0], xyzw[1], xyzw[2])
-            print(position, wxyz, "floor")
-            # sposition = np.linalg.inv(self.c2r[:3,:3]) @ position
+            position = self.c2r[:3,3] + np.array(self.c2r[:3,2]) * -0.041
+            wxyz = R.from_matrix(self.c2r[:3,:3]).as_quat(scalar_first=True)
             # Remove existing floor and grid elements
             try:
                 self.server.scene.remove_by_name("floor")
@@ -599,13 +584,6 @@ class ViserViewer:
                     obj_mesh = trimesh.load(f"template_mesh/{obj_name}.ply")
                 else:
                     obj_mesh = trimesh.load(f"template_mesh/{obj_name}/{obj_name}.obj")
-                    
-                if obj_mesh.visual.kind=='texture':
-                    tex = obj_mesh.visual.material.image
-                    enhancer = ImageEnhance.Brightness(tex)
-                    bright_tex = enhancer.enhance(1.5)
-                    obj_mesh.visual.material.image = bright_tex
-
                 obj_meshes.append(obj_mesh)
                 obj_Ts.append(np.array([obj_T]))
                 obj_names.append(obj_name+f"_{obj_idx}")
@@ -633,7 +611,6 @@ class ViserViewer:
 
         time.sleep(1.0 / self.gui_framerate.value)
     
-    '''
     def start_viewer(self, data_path, cam2extr, cam2intr):
         """Start the viewer in a loop"""
         print(f"Starting viewer with {self.num_frames} frames")
@@ -641,31 +618,8 @@ class ViserViewer:
         
         try:
             while True:
-                self.update(data_path, cam2extr, cam2intr)
-        except KeyboardInterrupt:
-            print("Viewer stopped")
-    '''
-
-    def start_viewer(self, data_path, cam2extr, cam2intr):
-        """서버만 띄우고 대기. Reload 버튼/키 입력 때만 update 수행"""
-        print(f"Viewer ready. Visit the URL above.")
-        print("Use GUI 'Reload (R)' button or press 'r' in this terminal to update.")
-
-        # 이후 호출에서 쓸 값 보관
-        self._data_path = data_path
-        self._cam2extr = cam2extr
-        self._cam2intr = cam2intr
-
-        # 키보드 리스너 시작
-        try:
-            self._spawn_keyboard_listener()
-        except Exception as e:
-            print(f"(keyboard listener disabled: {e})")
-
-        # 메인 스레드는 그냥 대기 (서버는 백그라운드로 계속 동작)
-        try:
-            while True:
-                time.sleep(1.0)
+                # self.update(data_path, cam2extr, cam2intr)
+                pass
         except KeyboardInterrupt:
             print("Viewer stopped")
 
@@ -677,7 +631,7 @@ class ViserViewer:
         ).inverse()
 
         fy = intrinsic[1,1]
-        #image = image[::5, ::5]
+        image = image[::5, ::5]*255
 
         frame = self.server.scene.add_frame(
             name=f"{name}_frustum",
@@ -689,9 +643,9 @@ class ViserViewer:
         
         frustum = self.server.scene.add_camera_frustum(
             name=f"{name}_frustum",
-            fov= 10 * np.arctan(H / (2 * fy)),#5 * np.arctan2(H / 2, fy),
+            fov=5 * np.arctan2(H / 2, fy),
             aspect=W / H,
-            scale=0.05,
+            scale=0.01,
             image=image,
             position=T_camera2world.translation(),
             wxyz=T_camera2world.rotation().wxyz,
@@ -702,34 +656,6 @@ class ViserViewer:
             for client in self.server.get_clients().values():
                 client.camera.wxyz = frame.wxyz
                 client.camera.position = frame.position
-
-    def _spawn_keyboard_listener(self):
-        """터미널에서 r=reload, q=quit 핫키 리스너"""
-        import threading, sys, tty, termios, select, signal
-
-        def loop():
-            fd = sys.stdin.fileno()
-            old = termios.tcgetattr(fd)
-            try:
-                tty.setcbreak(fd)
-                print("Keyboard: press 'r' to reload, 'q' to quit.")
-                while True:
-                    r, _, _ = select.select([sys.stdin], [], [], 0.1)
-                    if not r:
-                        continue
-                    ch = sys.stdin.read(1)
-                    if ch.lower() == 'r':
-                        if self._data_path is not None:
-                            # 한 번만 갱신
-                            self.update(self._data_path, self._cam2extr, self._cam2intr)
-                    elif ch.lower() == 'q':
-                        print("Quit requested.")
-                        os._exit(0)
-            finally:
-                termios.tcsetattr(fd, termios.TCSADRAIN, old)
-
-        t = threading.Thread(target=loop, daemon=True)
-        t.start()
 
 
 # Example usage:
@@ -781,6 +707,10 @@ if __name__ == "__main__":
                 enhancer = ImageEnhance.Brightness(tex)
                 bright_tex = enhancer.enhance(1.5)
                 obj_mesh.visual.material.image = bright_tex
+            elif hasattr(obj_mesh.visual, "face_colors"):
+                colors = obj_mesh.visual.face_colors.copy().astype(np.float32)
+            else:
+                colors = np.ones((len(obj_mesh.vertices), 4)) * 255  # 기본 흰색
 
             obj_meshes.append(obj_mesh)
             obj_Ts.append(np.array([obj_T]))
@@ -820,7 +750,6 @@ if __name__ == "__main__":
     key_list = [img.split(".")[0] for img in os.listdir("obj_output/image") if ".png" in img]
     for key in key_list:
         image_cam_id = cv2.imread(f"obj_output/image/{key}.png")
-        image_cam_id = cv2.cvtColor(image_cam_id, cv2.COLOR_BGR2RGB)
         viewer.add_camera_with_image(
             cam2intr[key],
             cam2extr[key],

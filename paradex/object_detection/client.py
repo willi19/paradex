@@ -6,9 +6,12 @@ import numpy as np
 from pathlib import Path
 import cv2
 HOME_PATH = Path.home()
+import threading
+
+matcher_lock = threading.Lock()
 
 # For multiprocessing
-from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from paradex.utils.file_io import config_dir
 from paradex.io.capture_pc.util import get_server_socket
@@ -30,7 +33,6 @@ from paradex.object_detection.object_optim_config import template_path
 from paradex.object_detection.multiview_utils.matcher import MatcherTo3D
 from paradex.object_detection.default_config import default_template, name2prompt, prompt2name
 from paradex.model.yolo_world_module import YOLO_MODULE
-from paradex.object_detection.client_module import process_one_mask
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -46,6 +48,47 @@ mask_detector = YOLO_MODULE(categories=combined_yoloprompts, device=DEVICE, use_
 # Matcher
 matcherto3d = MatcherTo3D(device=DEVICE, img_L=256)
 paircount_threshold=args.paircount
+
+def process_one_mask(args_tuple):
+    matcherto3d, obj_name, midx, tg_mask, last_image, serial_num, template_dict, \
+                                paircount_threshold, saveimg, NAS_IMG_SAVEDIR = args_tuple
+    
+    tg_mask = np.repeat(tg_mask[..., None], 3, axis=2).astype(np.int64) * 255.0
+
+    with matcher_lock:
+        src_3d_dict, tg_2d_dict, org_2d_dict = matcherto3d.match_img2template(
+            last_image, tg_mask,
+            template_dict[obj_name], paircount_threshold, batch_size=24,
+            draw=saveimg, use_crop=True,
+            image_name=str(NAS_IMG_SAVEDIR / f'matching_{serial_num}_{midx}.png')
+        )
+
+    pair_count = 0
+    src_3d_points, tg_2d_points, src_cam_ids = [], [], []
+    for cam_id in src_3d_dict:
+        if len(src_3d_dict[cam_id]) > 0:
+            pair_count += len(src_3d_dict[cam_id])
+            src_3d_points.append(src_3d_dict[cam_id])
+            tg_2d_points.append(tg_2d_dict[cam_id])
+            src_cam_ids.append([cam_id] * len(src_3d_dict[cam_id]))
+
+    if pair_count > 0:
+        src_3d_points = np.vstack(src_3d_points).astype(np.float64)
+        tg_2d_points = np.vstack(tg_2d_points).astype(np.float64)
+        result = {
+            'count': pair_count,
+            'combined_src_3d': src_3d_points.tolist(),
+            'combined_tg_2d': tg_2d_points.tolist(),
+            'src_arr_cam_ids': np.hstack(src_cam_ids).tolist()
+        }
+    else:
+        result = {'count': 0}
+        
+    print("Finished processing mask.")
+
+    return obj_name, midx, result
+
+
 
 # Camera
 if not args.debug:
@@ -104,8 +147,6 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                 print(f"[{serial_num}] Frame {last_frame_ind[i]}: {len(detections)} detected before filtering.")
                 
                 # make list
-                result_dict = {}  
-                ttl_pair_count = 0
                 tasks = []
                 for obj_name in args.obj_names:
                     if len(detections) > 0:
@@ -116,15 +157,15 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                             tasks.append(args_tuple)
                             
                             result = process_one_mask(args_tuple)
-                
-                with ProcessPoolExecutor(max_workers=4) as executor:
-                    future_to_args = {executor.submit(process_one_mask, task): task for task in tasks}
-                    for future in as_completed(future_to_args):
+                            
+                result_dict = {}  
+                ttl_pair_count = 0
+                with ThreadPoolExecutor(max_workers=4) as executor:
+                    futures = [executor.submit(process_one_mask, t) for t in tasks]
+                    for future in as_completed(futures):
                         obj_name, midx, result = future.result()
-                        if obj_name not in result_dict:
-                            result_dict[obj_name] = {}
-                        result_dict[obj_name][midx] = result
-                        ttl_pair_count+=result['count']
+                        result_dict.setdefault(obj_name, {})[midx] = result
+                        ttl_pair_count += result['count']
 
                 msg_dict = {
                     "frame": int(last_frame_ind[i]),

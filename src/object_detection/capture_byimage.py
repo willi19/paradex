@@ -102,9 +102,9 @@ def listen_socket(pc_name, socket):
         if data.get("type") == "2D_matching":
             serial_num = data["serial_num"]
             matching_output = data["detect_result"]
+            print(f"{serial_num} got {len(matching_output)} objects")
             frame = data["frame"]
-            if len(matching_output)>0:
-                cur_state[serial_num] = matching_output
+            cur_state[serial_num] = matching_output
             print(f"Frame {frame} got total {len(cur_state)} inputs")
         else:
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
@@ -112,10 +112,10 @@ def listen_socket(pc_name, socket):
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 
-# if args.debug:
-#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
-# else:
-#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
+if args.debug:
+    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
+else:
+    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
 
 save_path = './shared_data/tmp_images'
 if os.path.exists(Path.home()/save_path):
@@ -137,7 +137,7 @@ try:
             time.sleep(0.01)
             continue
         print("Start Capture")
-        
+        st_time = time.time()
         cur_save_path = os.path.join(save_path, '%05d'%capture_idx)
         os.makedirs(cur_save_path, exist_ok=True)
         cur_save_abspath = str(Path.home()/cur_save_path)
@@ -157,7 +157,7 @@ try:
             # if save_first_image:
             #     save_first_image = False
 
-        start_time = time.time()
+        process_st_time = time.time()
         ttl_output_dict = {}
         ttl_matchingset_list = {}
         
@@ -320,7 +320,7 @@ try:
         pickle.dump(parsed_ttl_output_dict, open(os.path.join(objoutput_path,'obj_T.pkl'),'wb'))
         end_time = time.time()
         
-        print(f'Total Time for Frame {capture_idx}  : {end_time-start_time} sec')        
+        print(f'Total Time for Frame {capture_idx}  : {end_time-st_time} sec, and processing for {end_time-process_st_time} sec')        
         capture_idx+=1
         cur_state = {}
 

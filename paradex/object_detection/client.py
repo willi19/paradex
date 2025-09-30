@@ -156,8 +156,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                             args_tuple = matcherto3d, obj_name, midx, tg_mask, last_image, serial_num,\
                                             template_dict, paircount_threshold, args.saveimg, NAS_IMG_SAVEDIR
                             tasks.append(args_tuple)
-                            
-                            result = process_one_mask(args_tuple)
+                            # result = process_one_mask(args_tuple)
                             
                 result_dict = {}  
                 ttl_pair_count = 0

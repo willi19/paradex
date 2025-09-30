@@ -159,7 +159,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         
             result_dict = {}  
             ttl_pair_count = {}
-            with ThreadPoolExecutor(max_workers=4) as executor:
+            with ThreadPoolExecutor(max_workers=8) as executor:
                 futures = [executor.submit(process_one_mask, t) for t in tasks]
                 for future in as_completed(futures):
                     obj_name, serial_num, midx, result = future.result()
@@ -168,7 +168,11 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                     ttl_pair_count[serial_num] += result['count']
 
 
-            for serial_num in result_dict:
+            for serial_num in serial_list:
+                if serial_num not in result_dict:
+                    ttl_pair_count[serial_num] = 0
+                    result_dict[serial_num] = {}
+                    
                 msg_dict = {
                     "frame": int(last_frame_ind[i]),
                     "detect_result": result_dict[serial_num],

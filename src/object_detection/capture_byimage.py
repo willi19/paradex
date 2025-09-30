@@ -112,10 +112,10 @@ def listen_socket(pc_name, socket):
 pc_list = list(pc_info.keys())
 git_pull("merging", pc_list)
 
-if args.debug:
-    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
-else:
-    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
+# if args.debug:
+#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
+# else:
+#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
 
 save_path = './shared_data/tmp_images'
 if os.path.exists(Path.home()/save_path):

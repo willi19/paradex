@@ -92,6 +92,7 @@ class ViserViewer:
         self.meshes = copy.deepcopy(obj_meshes)
         self.object_nms = object_nms
         self.mesh_handles = []
+        self._handle_by_name = {}
         
         # Set default c2r if not provided
         if c2r is None:
@@ -221,7 +222,7 @@ class ViserViewer:
             )
             self.gui_next_frame = self.server.gui.add_button("Next Frame", disabled=True)
             self.gui_prev_frame = self.server.gui.add_button("Prev Frame", disabled=True)
-            self.gui_playing = self.server.gui.add_checkbox("Playing", True)
+            self.gui_playing = self.server.gui.add_checkbox("Playing", False)
             self.render_png = self.server.gui.add_checkbox("Render to PNG", False)
             self.gui_framerate = self.server.gui.add_slider(
                 "FPS", min=1, max=60, step=0.1, initial_value=10
@@ -474,14 +475,18 @@ class ViserViewer:
             # Add initial object
 
             for obj_name, mesh, obj_T in zip(self.object_nms, self.meshes, self.obj_Ts):
-                initial_obj_mesh = copy.deepcopy(mesh).apply_transform(obj_T[0])
+                #initial_obj_mesh = copy.deepcopy(mesh).apply_transform(obj_T[0])
 
-                mesh_handle = self.server.scene.add_mesh_trimesh(
+                h = self.server.scene.add_mesh_trimesh(
                     name=obj_name,
-                    mesh=initial_obj_mesh,
-                    position=(0.0, 0.0, 0.0),
+                    mesh=copy.deepcopy(mesh),
+                    position=tuple(obj_T[0][:3, 3]),
+                    wxyz=tf.SO3.from_matrix(obj_T[0][:3, :3]).wxyz,
                 )
-                self.mesh_handles.append(mesh_handle)
+                self.mesh_handles.append(h)
+                self._handle_by_name[obj_name] = h
+
+                print(f"{obj_name}:\nposition - {h.position}\nwxyz - {h.wxyz}")
         
         # Add floor
         self.update_floor()
@@ -494,15 +499,11 @@ class ViserViewer:
                 self.urdf_vis.update_cfg(self.qpos[timestep])
                 
             if self.obj_Ts is not None:
-                # Update object mesh
-                for obj_name, mesh, obj_T in zip(self.object_nms, self.meshes, self.obj_Ts):
-                    transformed_obj_mesh = copy.deepcopy(mesh).apply_transform(obj_T[timestep])
-                    self.server.scene.remove_by_name(obj_name)
-                    self.server.scene.add_mesh_trimesh(
-                        name=obj_name,
-                        mesh=transformed_obj_mesh,
-                        position=(0.0, 0.0, 0.0),
-                    )
+                for obj_name, obj_T in zip(self.object_nms, self.obj_Ts):
+                    T = obj_T[timestep]
+                    h = self._handle_by_name[obj_name]   # 아래 3) 참고
+                    h.position = tuple(np.asarray(T[:3, 3], dtype=float))
+                    h.wxyz    = tf.SO3.from_matrix(T[:3, :3]).wxyz
             else:
                 obj_T_path = '/home/temp_id/paradex/objoutput/obj_T.pkl'
                 if os.path.exists(obj_T_path):
@@ -564,7 +565,8 @@ class ViserViewer:
                 next_timestep = (self.gui_timestep.value + 1) % self.num_frames
                 self.gui_timestep.value = next_timestep
             else:
-                self.update_scene(0)
+                #self.update_scene(0)
+                pass
             
         
         if os.path.exists(f"{data_path}/obj_T.pkl"):
@@ -595,6 +597,7 @@ class ViserViewer:
                 #else:
                 #    obj_mesh, scaled = get_initial_mesh(obj_name, return_type='trimesh', simplify=True, device=DEFAULT_DEVICE)
                 #obj_mesh, scaled = get_initial_mesh(obj_name, return_type='trimesh', simplify=False, device=DEFAULT_DEVICE)
+                '''
                 if obj_name == "pringles":
                     obj_mesh = trimesh.load(f"template_mesh/{obj_name}.ply")
                 else:
@@ -609,17 +612,24 @@ class ViserViewer:
                 obj_meshes.append(obj_mesh)
                 obj_Ts.append(np.array([obj_T]))
                 obj_names.append(obj_name+f"_{obj_idx}")
-
+                '''
+                obj_Ts.append(np.array([obj_T]))
+                obj_names.append(obj_name+f"_{obj_idx}")
+                
         for mesh_handle in self.mesh_handles:
             mesh_name = mesh_handle.name
             index = obj_names.index(mesh_name)
-            self.server.scene.remove_by_name(mesh_name)
-            self.server.scene.add_mesh_trimesh(
-                        name=mesh_name,
-                        mesh=obj_meshes[index].apply_transform(obj_Ts[index][0]),
-                        position=(0.0, 0.0, 0.0),
-                    )
-            #mesh_handle.mesh = obj_meshes[index].apply_transform(obj_Ts[index][0])
+
+            mesh_handle.position=tuple(obj_Ts[index][0][:3, 3])
+            mesh_handle.wxyz=tf.SO3.from_matrix(obj_Ts[index][0][:3, :3]).wxyz
+            #self.server.scene.remove_by_name(mesh_name)
+            #self.server.scene.add_mesh_trimesh(
+            #            name=mesh_name,
+            #            mesh=obj_meshes[index].apply_transform(obj_Ts[index][0]),
+            #            position=(0.0, 0.0, 0.0),
+            #        )
+
+            print(f"{mesh_name}:\nposition - {mesh_handle.position}\nwxyz - {mesh_handle.wxyz}")
 
         key_list = [img.split(".")[0] for img in os.listdir("obj_output/image") if ".png" in img]
         for key in key_list:
@@ -631,6 +641,7 @@ class ViserViewer:
                 name=f"Camera: {key}",
             )
 
+        print("Update Scene!!")
         time.sleep(1.0 / self.gui_framerate.value)
     
     '''
@@ -801,6 +812,8 @@ if __name__ == "__main__":
     c2r = load_latest_C2R()
 
     viewer = ViserViewer(obj_meshes, object_nms=obj_names, c2r=c2r, urdf_path=urdf_path, qpos=np.zeros((1, 29)), obj_Ts=obj_Ts)
+
+
 
     #with open(f"obj_output/cam_param/extrinsics.json", "r", encoding="utf-8") as f: extrinsics_dict = json.load(f)
     #with open(f"obj_output/cam_param/intrinsics.json", "r", encoding="utf-8") as f: intrinsics_dict = json.load(f)

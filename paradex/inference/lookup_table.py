@@ -68,7 +68,6 @@ def get_traj(obj, hand, start6D, pick6D, place6D, index):
     return_traj, return_hand_traj = get_linear_path(place_traj[-1], start6D, place_hand_traj[-1], start_hand)
     move_traj, move_hand = get_linear_path(pick_traj[-1], place_traj[0], pick_hand_traj[-1], place_hand_traj[0])
     
-    
     traj = np.concatenate([approach_traj, pick_traj, move_traj, place_traj, return_traj])
     hand_traj = np.concatenate([approach_hand_traj, pick_hand_traj, move_hand, place_hand_traj, return_hand_traj])
     
@@ -78,7 +77,6 @@ def get_traj(obj, hand, start6D, pick6D, place6D, index):
     state[len(approach_traj)+len(pick_traj)+len(move_traj):len(approach_traj)+len(pick_traj)+len(move_traj)+len(place_traj)] = 3
     state[len(approach_traj)+len(pick_traj)+len(move_traj)+len(place_traj):] = 4
 
-    
     return index, traj, hand_traj, state
 
 def refine_trajectory(wrist_pos, qpos, hand_qpos, tolerance=1e-6, max_acc=40.0, max_vel=0.15, max_ang_vel=2.0, dt=1 / 30):

@@ -121,104 +121,108 @@ if __name__ == "__main__":
     ####################################
     
     grasp_obj_type = "empty" if args.object == "pringles" else args.object.split("_")[1]
-    for grasp_type in ["tip", "palm", "tripod"]:
-        pose_index_list = pose_index_dict[(grasp_type, grasp_obj_type)]
-        for pose_index in pose_index_list[:2]:
-            for i in range(2):
-                info = {
-                    "grasp_type":grasp_type,
-                    "pose_index":pose_index,
-                    "index":i,
-                    "success":True
-                    }
+    
+    grasp_type = "lay"
+    pose_index_list = pose_index_dict[(grasp_type, grasp_obj_type)]
+    for pose_index in pose_index_list[6:7]: # 0 X 1 X 2 X  3 X 4 X 5 X 6 
+        for i in range(1):
+            info = {
+                "grasp_type":grasp_type,
+                "pose_index":pose_index,
+                "index":i,
+                "success":True
+                }
+            
+            cur_id = place_id_list[(i+len(place_id_list)-1) % len(place_id_list)]
+            place_id = place_id_list[i % len(place_id_list)]
+            place_6D = place_position_dict[place_id]
+            cur_6D = place_position_dict[cur_id]
+            
+            save_path = os.path.join("inference_erasethis", "accuracy_test", args.object, grasp_type, str(pose_index), str(i))
+            os.makedirs(os.path.join(shared_dir, save_path), exist_ok=True)
                 
-                cur_id = place_id_list[(i+len(place_id_list)-1) % len(place_id_list)]
-                place_id = place_id_list[i % len(place_id_list)]
-                place_6D = place_position_dict[place_id]
-                cur_6D = place_position_dict[cur_id]
-                
-                save_path = os.path.join("inference", "accuracy_test", args.object, grasp_type, str(pose_index), str(i))
-                os.makedirs(os.path.join(shared_dir, save_path), exist_ok=True)
-                
-                if stop_event.is_set():
-                    break
-                
-                start_event.clear()
-                ######### Prepare capture ###############
-                sensors["hand"].home_robot()
-                home_robot(sensors["arm"], start_pos)
+            if stop_event.is_set():
+                break
+            
+            start_event.clear()
+            ######### Prepare capture ###############
+            sensors["hand"].home_robot()
+            home_robot(sensors["arm"], start_pos)
 
-                ##### Load pick 6D ######
-                while not stop_event.is_set():
-                    
-                    pick_path = os.path.join(save_path, "pick")
+            ##### Load pick 6D ######
+            while not stop_event.is_set() and not start_event.is_set():
+                
+                pick_path = os.path.join(save_path, "pick")
+                try:
                     pick_6D = get_object_6D(args.object, args.marker, sensors["camera"], pick_path)
-                    if np.linalg.norm(pick_6D[:3, 3] - cur_6D[:3, 3]) < 0.05 and pick_6D[2, 2] > 0.8:
-                        break 
-                    print(f"press y after fixing object position to {cur_id}")        
-                    chime.warning()
-                    while not start_event.is_set() and not stop_event.is_set():
-                        time.sleep(0.05)
+                    pick_6D[2, 3] -= 0.005
+                except:
+                    continue
+                # if np.linalg.norm(pick_6D[:3, 3] - cur_6D[:3, 3]) < 0.05 and pick_6D[2, 2] > 0.8:
+                #     break 
+                print(f"press y if okay or q for break")        
+                chime.warning()
+                time.sleep(0.05)
+            
+            if stop_event.is_set():
+                break
+            
+            start_event.clear()
+            
+            #########################################
+            
+            ############    Load & Save traj   #############
+            
+            _, traj, hand_traj, state = get_traj(args.object, hand_name, start_pos.copy(), pick_6D.copy(), place_6D.copy(), index=str(pose_index))
+            if use_sim:
+                print("press y if trajectory ok")
+                simulate(traj, hand_traj, pick_6D, place_6D, hand_name, "pringles", start_event, stop_event)
                 
                 if stop_event.is_set():
                     break
                 
                 start_event.clear()
                 
-                #########################################
-                
-                ############    Load & Save traj   #############
-                
-                _, traj, hand_traj, state = get_traj(args.object, hand_name, start_pos.copy(), pick_6D.copy(), place_6D.copy(), index=str(pose_index))
-                if use_sim:
-                    print("press y if trajectory ok")
-                    simulate(traj, hand_traj, pick_6D, place_6D, hand_name, "pringles", start_event, stop_event)
+            copy_calib_files(os.path.join(shared_dir, save_path))
+            np.save(os.path.join(shared_dir, save_path, 'C2R.npy'), c2r)
+            np.save(os.path.join(shared_dir, save_path, 'pick_6D.npy'), pick_6D)
+            np.save(os.path.join(shared_dir, save_path, 'target_6D.npy'), place_6D)
+            np.save(os.path.join(shared_dir, save_path, 'traj.npy'), traj)
+            np.save(os.path.join(shared_dir, save_path, 'hand_traj.npy'), hand_traj)
+            
+            ####################################################
+            
+            ################ Execute ###########################
+            sensors['arm'].start(os.path.join(shared_dir, save_path, "raw", arm_name))
+            sensors['hand'].start(os.path.join(shared_dir, save_path, "raw", hand_name))
+            
+            for t in range(len(traj)):
+                if t != 0 and state[t] == 4 and state[t-1] != 4:
+                    sensors["camera"].start(os.path.join("shared_data", save_path, "place"))
+                    sensors["camera"].end()
                     
-                    if stop_event.is_set():
-                        break
-                    
-                    start_event.clear()
-                    
-                copy_calib_files(os.path.join(shared_dir, save_path))
-                np.save(os.path.join(shared_dir, save_path, 'C2R.npy'), c2r)
-                np.save(os.path.join(shared_dir, save_path, 'pick_6D.npy'), pick_6D)
-                np.save(os.path.join(shared_dir, save_path, 'target_6D.npy'), place_6D)
-                np.save(os.path.join(shared_dir, save_path, 'traj.npy'), traj)
-                np.save(os.path.join(shared_dir, save_path, 'hand_traj.npy'), hand_traj)
+                sensors["arm"].set_action(traj[t])
+                sensors["hand"].set_target_action(hand_traj[t])
+                time.sleep(0.03)  # Simulate time taken for each action
                 
-                ####################################################
                 
-                ################ Execute ###########################
-                sensors['arm'].start(os.path.join(shared_dir, save_path, "raw", arm_name))
-                sensors['hand'].start(os.path.join(shared_dir, save_path, "raw", hand_name))
-                
-                for t in range(len(traj)):
-                    if t != 0 and state[t] == 4 and state[t-1] != 4:
-                        sensors["camera"].start(os.path.join("shared_data", save_path, "place"))
-                        sensors["camera"].end()
-                        
-                    sensors["arm"].set_action(traj[t])
-                    sensors["hand"].set_target_action(hand_traj[t])
-                    time.sleep(0.03)  # Simulate time taken for each action
-                    
-                    
-                    if stop_event.is_set():
-                        info["success"] = False
-                        break
-                
-                sensors["arm"].end()
-                sensors["hand"].end()
-                ###################################
-                
-                ############## Save result ##################
-                place_path = os.path.join(save_path, "place")
-                try:
-                    cur_6D = get_object_6D(args.object, args.marker, None, place_path)
-                    np.save(os.path.join(shared_dir, save_path, 'place_6D.npy', cur_6D))
-                except:
-                    print("no place detected")
-                with open(os.path.join(shared_dir, save_path, "result.json"), "w") as f:
-                    json.dump(info, f, indent=4)
+                if stop_event.is_set():
+                    info["success"] = False
+                    break
+            
+            sensors["arm"].end()
+            sensors["hand"].end()
+            ###################################
+            
+            ############## Save result ##################
+            place_path = os.path.join(save_path, "place")
+            try:
+                cur_6D = get_object_6D(args.object, args.marker, None, place_path)
+                np.save(os.path.join(shared_dir, save_path, 'place_6D.npy', cur_6D))
+            except:
+                print("no place detected")
+            with open(os.path.join(shared_dir, save_path, "result.ojsn"), "w") as f:
+                json.dump(info, f, indent=4)
                 #############################################
                 
     for sensor_name, sensor in sensors.items():

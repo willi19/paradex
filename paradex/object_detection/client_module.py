@@ -41,5 +41,7 @@ def process_one_mask(args_tuple):
         }
     else:
         result = {'count': 0}
+        
+    print("Finished processing mask.")
 
     return obj_name, midx, result

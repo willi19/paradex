@@ -159,7 +159,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
         
             result_dict = {}  
             ttl_pair_count = {}
-            with ThreadPoolExecutor(max_workers=8) as executor:
+            with ThreadPoolExecutor(max_workers=4) as executor:
                 futures = [executor.submit(process_one_mask, t) for t in tasks]
                 for future in as_completed(futures):
                     obj_name, serial_num, midx, result = future.result()

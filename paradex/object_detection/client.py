@@ -86,7 +86,7 @@ def process_one_mask(args_tuple):
         
     print("Finished processing mask.")
 
-    return obj_name, midx, result
+    return obj_name, serial_num, midx, result
 
 
 
@@ -139,6 +139,8 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             st_time = time.time()
             ttl_pair_count_perpc = 0
             send_packet_numb = 0
+            
+            tasks = []
             for i, serial_num in enumerate(serial_list):
                 print(f"Processing camera {serial_num}...")
                 last_image = cv2.resize(img_dict[serial_num], dsize=tmp_template.img_template[serial_num].shape[:2][::-1])
@@ -147,8 +149,6 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                 detections, output_image = mask_detector.process_img(last_image, top_1=False, draw_mask=args.debug)
                 print(f"[{serial_num}] Frame {last_frame_ind[i]}: {len(detections)} detected before filtering.")
                 
-                # make list
-                tasks = []
                 for obj_name in args.obj_names:
                     if len(detections) > 0:
                         tg_detections = detections[detections['class_name']==name2prompt[obj_name]]
@@ -156,28 +156,28 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                             args_tuple = matcherto3d, obj_name, midx, tg_mask, last_image, serial_num,\
                                             template_dict, paircount_threshold, args.saveimg, NAS_IMG_SAVEDIR
                             tasks.append(args_tuple)
-                            # result = process_one_mask(args_tuple)
-                            
-                result_dict = {}  
-                ttl_pair_count = 0
-                with ThreadPoolExecutor(max_workers=4) as executor:
-                    futures = [executor.submit(process_one_mask, t) for t in tasks]
-                    for future in as_completed(futures):
-                        obj_name, midx, result = future.result()
-                        result_dict.setdefault(obj_name, {})[midx] = result
-                        ttl_pair_count += result['count']
+        
+            result_dict = {}  
+            ttl_pair_count = {}
+            with ThreadPoolExecutor(max_workers=8) as executor:
+                futures = [executor.submit(process_one_mask, t) for t in tasks]
+                for future in as_completed(futures):
+                    obj_name, serial_num, midx, result = future.result()
+                    result_dict.setdefault(serial_num, {}).setdefault(obj_name, {})[midx] = result
+                    ttl_pair_count.setdefault(serial_num, 0)
+                    ttl_pair_count[serial_num] += result['count']
 
+
+            for serial_num in result_dict:
                 msg_dict = {
                     "frame": int(last_frame_ind[i]),
-                    "detect_result": result_dict,
+                    "detect_result": result_dict[serial_num],
                     "type": "2D_matching",
                     "serial_num": serial_num}
             
-                # print(msg_dict)
-                
                 if args.debug:
-                    print(f"[{serial_num}] Frame {last_frame_ind[i]}: {ttl_pair_count} detected.")
-                ttl_pair_count_perpc += ttl_pair_count
+                    print(f"[{serial_num}] Frame {last_frame_ind[i]}: {ttl_pair_count[serial_num]} detected.")
+                ttl_pair_count_perpc += ttl_pair_count[serial_num]
             
                 msg_json = json.dumps(msg_dict)
                 if not args.debug:

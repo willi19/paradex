@@ -138,6 +138,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             
             st_time = time.time()
             ttl_pair_count_perpc = 0
+            send_packet_numb = 0
             for i, serial_num in enumerate(serial_list):
                 print(f"Processing camera {serial_num}...")
                 last_image = cv2.resize(img_dict[serial_num], dsize=tmp_template.img_template[serial_num].shape[:2][::-1])
@@ -182,9 +183,10 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
                 msg_json = json.dumps(msg_dict)
                 if not args.debug:
                     socket.send_multipart([ident, msg_json.encode()])
+                    send_packet_numb += 1
 
             ed_time = time.time()
-            print(f"Time for matching in one desktop {ed_time-st_time} total pair count {ttl_pair_count_perpc}")
+            print(f"Time for matching in one desktop {ed_time-st_time} total pair count {ttl_pair_count_perpc} and sended {send_packet_numb} packets")
 
             time.sleep(0.1)
         

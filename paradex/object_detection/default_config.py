@@ -1,6 +1,6 @@
 from pathlib import Path
 
-nas_path = Path.home()/'shared_data'/'object_6d'
+nas_path = Path.home()/'shared_data'/'object_6d'/'data'
 
 default_template = {
     "pringles": nas_path/"template/pringles/0",

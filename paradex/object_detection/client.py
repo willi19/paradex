@@ -135,13 +135,6 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
 
         if all_exist:
             print(f"Got all {num_imgs} images for frame {next_frame_idx}")
-            print("serial list")
-            for serial_num in serial_list:
-                print(f"{serial_num}, type:{type(serial_num)}")
-            print("img_dict")
-            for serial_num in img_dict:
-                print(f"{serial_num}, type:{type(serial_num)}")
-            
             
             st_time = time.time()
             ttl_pair_count_perpc = 0
@@ -150,7 +143,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
             tasks = []
             for i, serial_num in enumerate(serial_list):
                 print(f"Processing camera {serial_num}...")
-                last_image = cv2.resize(img_dict[serial_num], dsize=tmp_template.img_template[serial_num].shape[:2][::-1])
+                last_image = cv2.resize(img_dict[serial_num], dsize=tmp_template.dsize)
                 # cv2.imwrite(str(NAS_IMG_SAVEDIR/f'{serial_num}.jpeg'), last_image)
                 # cv2.imwrite(str(NAS_IMG_SAVEDIR/f'frame_{serial_num}_{int(last_frame_ind[i]%10)}.jpeg'), last_image)
                 detections, output_image = mask_detector.process_img(last_image, top_1=False, draw_mask=args.debug)

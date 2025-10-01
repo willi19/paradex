@@ -91,6 +91,10 @@ class Template:
             if render_template:
                 self.render_template(self.obj_dict, obj_optim_output, render_template_path)
 
+        for serial_num in self.img_template:
+            self.dsize = self.img_template[serial_num].shape[:2][::-1]
+            break
+
     def render_template(self, obj_dict, obj_optim_output, render_template_path):
         self.scene.get_batched_renderer(self.scene.cam_ids)
         # Transform object

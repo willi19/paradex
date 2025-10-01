@@ -88,7 +88,9 @@ class CameraManager:
         self.camera_threads = []
 
         self.lens_info = json.load(open(os.path.join(config_dir, "camera/lens_info.json"), "r"))
+        print(self.lens_info)
         self.cam_info = json.load(open(os.path.join(config_dir,"camera/camera.json"), "r"))
+        print(self.cam_info)
 
         self.capture_threads = [
             Thread(target=self.run_camera, args=(i,))

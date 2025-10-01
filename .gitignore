@@ -30,3 +30,5 @@ debug
 paradex/pose_utils/dex_retargeting
 *.jit
 *.pt
+*.jpeg
+*.pkl

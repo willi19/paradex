@@ -345,6 +345,7 @@ class CameraManager:
                         with self.locks[index]:
                             np.copyto(self.image_array[index], np.zeros((self.height, self.width, 3), dtype=np.uint8))
                             self.frame_num[index] = framenum
+                    raw_frame.Release()
                     continue
                 
                 if self.mode == "video":

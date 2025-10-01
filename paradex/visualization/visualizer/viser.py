@@ -94,8 +94,10 @@ class ViserRobotModule():
             T_parent_child = self._urdf.get_transform(
                 joint.child, joint.parent, collision_geometry=not self._load_meshes
             )
-            frame_handle.wxyz = R.from_matrix(T_parent_child[:3, :3]).as_quat()
-            frame_handle.position = T_parent_child[:3, 3] * self._scale
+            
+            xyzw = R.from_matrix(T_parent_child[:3, :3].copy()).as_quat()
+            frame_handle.wxyz = xyzw[[3, 0, 1, 2]]
+            frame_handle.position = T_parent_child.copy()[:3, 3] * self._scale
     
     # def _add_joint_frames_and_meshes(
     #     self,
@@ -197,7 +199,7 @@ class ViserRobotModule():
                         joint.child,
                         prefixed_root_node_name,
                     ),
-                    show_axes=True,
+                    show_axes=False,
                 )
             )
 

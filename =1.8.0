@@ -1,0 +1,11 @@
+Requirement already satisfied: scipy in /home/temp_id/anaconda3/envs/robot/lib/python3.8/site-packages (1.10.0)
+Collecting scipy
+  Using cached scipy-1.10.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl.metadata (58 kB)
+Requirement already satisfied: numpy<1.27.0,>=1.19.5 in /home/temp_id/anaconda3/envs/robot/lib/python3.8/site-packages (from scipy) (1.24.4)
+Using cached scipy-1.10.1-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl (34.5 MB)
+Installing collected packages: scipy
+  Attempting uninstall: scipy
+    Found existing installation: scipy 1.10.0
+    Uninstalling scipy-1.10.0:
+      Successfully uninstalled scipy-1.10.0
+Successfully installed scipy-1.10.1

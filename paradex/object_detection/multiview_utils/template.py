@@ -20,8 +20,8 @@ class Template:
         Template is a set of images and matched 6D pose of object 
     '''
     def __init__(self, root_dir:str, obj_name=None, render_template_path='./check_template.jpeg', render_template=False):
-        assert root_dir is not None and os.path.exists(root_dir), 'Should check directory'
-        print(f'Load template from {root_dir}')
+        assert root_dir is not None and os.path.exists(root_dir), f'Should check directory {root_dir}'
+
         if obj_name is None:
             obj_name = root_dir.split("/")[-2] 
 

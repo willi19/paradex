@@ -28,7 +28,7 @@ class MatcherTo3D:
         matcher = LoFTR(config=_default_cfg)
 
         # Load pretrained weights
-        matcher.load_state_dict(torch.load(ckpt_path)['state_dict'])
+        matcher.load_state_dict(torch.load(ckpt_path, weights_only=True)['state_dict'])
         matcher = reparameter(matcher)  # Essential for good performance
         matcher = matcher.eval().to(self.device)
         self.matcher = matcher

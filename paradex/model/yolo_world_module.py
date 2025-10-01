@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import supervision as sv
 import torch
+import copy
 # from tqdm import tqdm
 
 from pathlib import Path

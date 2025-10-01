@@ -119,7 +119,7 @@ if os.path.exists(Path.home()/save_path):
     shutil.rmtree(Path.home()/save_path)
 os.makedirs(save_path, exist_ok=True)
 
-camera_controller = RemoteCameraController("image", None, debug=args.debug)
+camera_controller = RemoteCameraController("image", None, debug=True)
 
 try:
     socket_dict = {name:get_client_socket(pc_info["ip"], 5564) for name, pc_info in pc_info.items()}

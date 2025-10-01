@@ -5,7 +5,7 @@ import torch
 import sys
 from pathlib import Path
 PROJECT_PATH = Path(__file__).parent.parent
-sys.path.append(PROJECT_PATH)
+sys.path.append(str(PROJECT_PATH))
 
 from paradex.object_detection.obj_utils.vis_utils import overlay_mask, make_grid_image_np
 from copy import deepcopy
@@ -210,8 +210,9 @@ def rendersil_obj2allview(scene, obj_dict, obj_T, img_bucket, highlight:dict=Non
     imgs = []
     # visualize on image
     for cidx, cam_id in enumerate(scene.cam_ids):
+        if cam_id not in img_bucket or img_bucket[cam_id] is None:
+            continue
         bgr_img = img_bucket[cam_id]
-
         mask=rendered_sil[cidx].detach().cpu().numpy()
         overlaid = overlay_mask(bgr_img, mask=(mask>0))
         overlaid =  draw_text(overlaid, cam_id)

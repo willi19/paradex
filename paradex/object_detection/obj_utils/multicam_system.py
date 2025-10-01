@@ -21,6 +21,7 @@ class MultiCamScene:
         self.cam2extr = extrinsic
         self.cam2intr = {}
         self.cam2extr_t = {}
+        self.cam2extr_4X4 = {}
         self.cam2intr_t = {}
         self.proj_matrix = {}
         self.cam_params = {}
@@ -34,6 +35,10 @@ class MultiCamScene:
             
             self.cam2extr_t[cam_id] = torch.tensor(extrinsic[cam_id], device=self.device).float()
             self.cam2intr_t[cam_id] = torch.tensor(self.cam2intr[cam_id], device=self.device).float()
+
+            cam_extr_4X4 = np.eye(4)
+            cam_extr_4X4[:3] = np.array(extrinsic[cam_id])
+            self.cam2extr_4X4[cam_id] = cam_extr_4X4
             
             self.proj_matrix[cam_id] = self.cam2intr[cam_id] @ self.cam2extr[cam_id]
             

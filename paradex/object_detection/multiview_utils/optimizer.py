@@ -8,7 +8,7 @@ from copy import deepcopy
 import shutil
 from pathlib import Path
 PROJECT_PATH = Path(__file__).parent.parent
-sys.path.append(PROJECT_PATH)
+sys.path.append(str(PROJECT_PATH))
 from scipy.optimize import least_squares
 from scipy.spatial.transform import Rotation
 

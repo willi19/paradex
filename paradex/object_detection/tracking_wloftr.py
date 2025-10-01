@@ -1,7 +1,7 @@
 import sys, os
 from pathlib import Path
 PROJECT_PATH = Path(__file__).parent.parent
-sys.path.append(PROJECT_PATH)
+sys.path.append(str(PROJECT_PATH))
 import numpy as np
 import pickle
 import cv2

@@ -1,6 +1,6 @@
 import sys, os
 from pathlib import Path
-PROJECT_PATH = Path(__file__).parent.parent
+PROJECT_PATH = str(Path(__file__).parent.parent)
 sys.path.append(PROJECT_PATH)
 import numpy as np
 import cv2

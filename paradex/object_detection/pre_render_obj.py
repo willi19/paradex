@@ -21,8 +21,7 @@ from paradex.object_detection.obj_utils.vis_utils import parse_objectmesh_objdic
                             crop_and_resize_by_mask, crop_and_resize_by_mask_tensor
 
 device = torch.device("cuda:0")
-
-nas_path = Path(os.environ['NAS_PATH'])
+# nas_path = Path(os.environ['NAS_PATH'])
 mesh_template_dir = PROJECT_DIR/'mesh_rendered'
 if not os.path.exists(mesh_template_dir):
     os.makedirs(mesh_template_dir)

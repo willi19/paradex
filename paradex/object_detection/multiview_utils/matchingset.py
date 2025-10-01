@@ -5,10 +5,6 @@ import time
 from copy import deepcopy
 import torch
 
-import sys, os
-from pathlib import Path
-PROJECT_PATH = Path(__file__).parent.parent
-
 from paradex.object_detection.obj_utils.geometry import project_3d_to_2d_tensor, project_3d_to_2d, rotation_6d_to_matrix, rotation_6d_to_matrix_np
 from paradex.object_detection.multiview_utils.optimizer import optimize, optimize_ceres
 

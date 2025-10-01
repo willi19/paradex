@@ -265,10 +265,6 @@ import copy
 import sys
 import torch
 import numpy as np 
-PROJECT_DIR = Path(__file__).absolute().parent.parent
-print(f'PROJECT_DIR {PROJECT_DIR}')
-sys.path.insert(0, str(PROJECT_DIR))
-
 
 import nvdiffrast.torch as dr
 

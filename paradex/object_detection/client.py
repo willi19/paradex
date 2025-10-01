@@ -29,7 +29,7 @@ args = parser.parse_args()
 obj_names = args.obj_names
 
 from paradex.object_detection.multiview_utils.template import Template
-from paradex.object_detection.object_optim_config import template_path
+# from paradex.object_detection.object_optim_config import template_path
 from paradex.object_detection.multiview_utils.matcher import MatcherTo3D
 from paradex.object_detection.default_config import default_template, name2prompt, prompt2name
 from paradex.model.yolo_world_module import YOLO_MODULE

@@ -28,7 +28,7 @@ class MatcherTo3D:
         matcher = LoFTR(config=_default_cfg)
 
         # Load pretrained weights
-        matcher.load_state_dict(torch.load(ckpt_path, weights_only=True)['state_dict'])
+        matcher.load_state_dict(torch.load(ckpt_path, weights_only=False)['state_dict'])
         matcher = reparameter(matcher)  # Essential for good performance
         matcher = matcher.eval().to(self.device)
         self.matcher = matcher
@@ -349,4 +349,6 @@ class MatcherTo3D:
         cv2.imwrite('test.png', np.vstack(matches))
 
         return src_3d_dict, tg_2d_dict, org_2d_dict
-    
+
+if __name__ == "__main__":
+    matcherto3d = MatcherTo3D(device='cuda', img_L=256)

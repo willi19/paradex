@@ -26,18 +26,24 @@ paradex/
 pip install -e .
 ```
 
-### Basic Usage
+Basic Usage
 1. Configure your system:
-    Edit configuration files in config/ directory:
-    bash# Camera settings
-    config/camera/camera.json          # Camera parameters
-    config/camera/camera_index.json    # Camera ID mapping
-    config/camera/lens_info.json       # Lens calibration
+Edit configuration files in config/ directory:
+bash# Camera settings
+config/camera/camera.json          # Camera parameters
+config/camera/camera_index.json    # Camera ID mapping
+config/camera/lens_info.json       # Lens calibration
 
-    # Environment settings
-    config/environment/network.json    # Network configuration
-    config/environment/pc.json         # PC information
-    See config/README.md for detailed configuration guide.
+# Environment settings
+config/environment/network.json    # Network configuration
+config/environment/pc.json         # PC information
+See config/README.md for detailed configuration guide.
+2. Follow task-specific guides:
+
+Camera Capture: src/capture/capture_readme.md
+Calibration: src/calibration/calibration_readme.md
+Image Processing: paradex/image/readme.md
+Video Processing: paradex/video/readme.md
 
 See detailed guides in:
 - **Camera Capture:** [`src/capture/capture_readme.md`](src/capture/capture_readme.md)

@@ -262,6 +262,7 @@ class CameraManager:
         cam_list = system.GetCameras()
 
         camPtr = cam_list.GetBySerial(serial_num)
+        print(self.cam_info)
         print(f"Get camera {serial_num}")
         lens_id = str(self.cam_info[str(serial_num)]["lens"])
         print(f"Get Lens info for camera {serial_num}: {lens_id}")

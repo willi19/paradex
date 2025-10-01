@@ -18,9 +18,7 @@ from paradex.object_detection.obj_utils.vis_utils import make_grid_image_np, put
 # TODO: 저장해둔 object 이름들
 from paradex.utils.file_io import shared_dir
 obj_list = ['pringles']
-# template_path = {"pringles":os.path.join(shared_dir, "object_6d/template/0")}
-ELOFTR_CKPT_PATH = os.path.join(PROJECT_DIR, 'thirdparty/EfficientLoFTR/ckpts/eloftr_outdoor.ckpt')
-# 파일 형태로 저장해두면 더 좋을 듯
+
 
 hide_list = ['22641005','22645021','23280594','23180202','22641023','23029839','22640993']
 

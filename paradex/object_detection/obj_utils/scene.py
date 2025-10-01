@@ -10,7 +10,7 @@ PROJECT_DIR = Path(__file__).absolute().parent.parent
 sys.path.insert(0, str(PROJECT_DIR))
 
 from paradex.object_detection.obj_utils.vis_utils import read_frame, get_frame_number
-from paradex.object_detection.obj_utils.efficient_sam_module import inference_with_boxes
+from paradex.model.efficient_sam_module import inference_with_boxes
 import torch
 
 class Scene:

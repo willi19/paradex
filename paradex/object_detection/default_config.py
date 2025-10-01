@@ -1,6 +1,6 @@
 from pathlib import Path
 
-project_path = Path(__file__).absolute().parent.parent
+project_path = Path(__file__).absolute().parent.parent.parent
 nas_path = Path.home()/'shared_data'/'object_6d'/'data'
 
 default_template = {

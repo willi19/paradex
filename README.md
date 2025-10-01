@@ -63,29 +63,6 @@ Quick reference:
 
 ---
 
-## Frequently Asked Questions
-
-**Q: How do I capture images from cameras?**
-
-See [`src/capture/capture_readme.md`](src/capture/capture_readme.md)
-
-**Q: How do I control the robot?**
-
-Check example scripts in `src/capture/robot/` or use:
-```python
-from paradex.robot import RobotWrapper
-```
-
-**Q: How do I register a new object?**
-
-See examples in `src/register_object/` (e.g., `pringles.py`)
-
-**Q: How do I perform calibration?**
-
-See [`src/calibration/calibration_readme.md`](src/calibration/calibration_readme.md)
-
----
-
 ## Contributing
 
 1. Create feature branch: `git checkout -b feature/your-feature`

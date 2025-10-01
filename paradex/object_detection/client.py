@@ -135,6 +135,7 @@ while (not args.debug and not camera_loader.exit) or (args.debug):
 
         if all_exist:
             print(f"Got all {num_imgs} images for frame {next_frame_idx}")
+            print(f"all key {', '.join(img_dict.keys())}")
             
             st_time = time.time()
             ttl_pair_count_perpc = 0

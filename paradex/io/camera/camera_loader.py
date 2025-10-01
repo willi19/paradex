@@ -10,13 +10,6 @@ import PySpin as ps
 from paradex.io.camera.camera import Camera
 from paradex.utils.file_io import home_path, config_dir
 
-import logging
-
-logging.basicConfig(
-    level=logging.DEBUG,
-    format="%(asctime)s [%(threadName)s] %(levelname)s: %(message)s"
-)
-
 def spin2cv(pImg, h, w):
     """
     Convert Spinnaker image to OpenCV format.
@@ -95,9 +88,7 @@ class CameraManager:
         self.camera_threads = []
 
         self.lens_info = json.load(open(os.path.join(config_dir, "camera/lens_info.json"), "r"))
-        print(self.lens_info)
         self.cam_info = json.load(open(os.path.join(config_dir,"camera/camera.json"), "r"))
-        print(self.cam_info)
 
         self.capture_threads = [
             Thread(target=self.run_camera, args=(i,))
@@ -262,11 +253,9 @@ class CameraManager:
         cam_list = system.GetCameras()
 
         camPtr = cam_list.GetBySerial(serial_num)
-        print(self.cam_info)
-        print(f"Get camera {serial_num} {str(serial_num) in self.cam_info}")
-        lens_id = str(self.cam_info[str(serial_num)]["lens"])
-        print(f"Get Lens info for camera {serial_num}: {lens_id}")
-        logging.info(f"Get Lens info for camera {serial_num}: {lens_id}")
+
+        lens_id = str(self.cam_info[serial_num]["lens"])
+
         gain = self.lens_info[lens_id]["Gain"]
         exposure = self.lens_info[lens_id]["Exposure"]
         frame_rate = self.lens_info[lens_id]["fps"]
@@ -350,14 +339,12 @@ class CameraManager:
                     break
                 raw_frame = cam.get_image()
                 framenum = raw_frame.GetFrameID()
-                print(f"Camera {serial_num} capturing frame {framenum}", time.time())
+                print(f"Camera {serial_num} capturing frame {framenum}")
                 if raw_frame.IsIncomplete():
                     if self.mode == "stream":
-                        print("frame incomplete", serial_num)
                         with self.locks[index]:
                             np.copyto(self.image_array[index], np.zeros((self.height, self.width, 3), dtype=np.uint8))
                             self.frame_num[index] = framenum
-                    raw_frame.Release()
                     continue
                 
                 if self.mode == "video":
@@ -377,7 +364,6 @@ class CameraManager:
                 elif self.mode == "stream":
                     with self.locks[index]:
                         np.copyto(self.image_array[index], spin2cv(raw_frame, self.height, self.width))
-                        # print(f"copy to {serial_num}", time.time())
                         self.frame_num[index] = framenum
                 raw_frame.Release()
                 

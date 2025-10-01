@@ -19,7 +19,7 @@ from ultralytics import YOLO
 import sys
 from pathlib import Path
 sys.path.append(str(Path(__file__).absolute().parent))
-from paradex.model.sam import load, inference_with_boxes
+from paradex.model.efficient_sam_module import load, inference_with_boxes
 from paradex.object_detection.default_config import yolo_pretrained_path
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

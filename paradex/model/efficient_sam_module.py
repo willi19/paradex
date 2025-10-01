@@ -1,11 +1,14 @@
 import torch
 import numpy as np
 from torchvision.transforms import ToTensor
+import os
 from pathlib import Path
-Path(__file__).parent
+HOME_PATH = Path.home()
 
-GPU_EFFICIENT_SAM_CHECKPOINT = Path(__file__).parent/"efficient_sam_s_gpu.jit"
-CPU_EFFICIENT_SAM_CHECKPOINT = Path(__file__).parent/"efficient_sam_s_cpu.jit"
+from paradex.utils.file_io import model_dir, shared_dir
+
+GPU_EFFICIENT_SAM_CHECKPOINT = os.path.join(shared_dir,"object_6d","data","checkpoint","efficient_sam_s_gpu.jit")
+CPU_EFFICIENT_SAM_CHECKPOINT = os.path.join(shared_dir,"object_6d","data","checkpoint","efficient_sam_s_cpu.jit")
 
 
 def load(device: torch.device) -> torch.jit.ScriptModule:

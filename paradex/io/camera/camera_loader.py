@@ -257,7 +257,7 @@ class CameraManager:
         camPtr = cam_list.GetBySerial(serial_num)
 
         lens_id = str(self.cam_info[serial_num]["lens"])
-
+        print(f"Get Lens info for camera {serial_num}: {lens_id}")
         gain = self.lens_info[lens_id]["Gain"]
         exposure = self.lens_info[lens_id]["Exposure"]
         frame_rate = self.lens_info[lens_id]["fps"]

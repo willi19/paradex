@@ -130,7 +130,7 @@ class Scene:
 
         # make mask if the mask does not exist 
         if mask_module == 'yolo':
-            from paradex.object_detection.obj_utils.yolo_world_module import YOLO_MODULE
+            from paradex.model.yolo_world_module import YOLO_MODULE
             self.mask_detector = YOLO_MODULE(categories=self.obj_nm if dino_obj_nm is None else dino_obj_nm, use_sam=use_sam)
             self.sam_module = self.mask_detector.EFFICIENT_SAM_MODEL
             # NOTE: inference time

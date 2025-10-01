@@ -12,7 +12,7 @@ sys.path.insert(0, str(PROJECT_DIR))
 
 from paradex.object_detection.obj_utils.io import get_binary_mask
 from paradex.object_detection.obj_utils.scene import Scene
-from paradex.object_detection.obj_utils.yolo_world_module import check_mask
+from paradex.model.yolo_world_module import check_mask
 from paradex.object_detection.obj_utils.vis_utils import make_grid_image_np, putText, crop_and_resize_by_mask
 
 # TODO: 저장해둔 object 이름들

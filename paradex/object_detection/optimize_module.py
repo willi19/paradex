@@ -20,7 +20,7 @@ from paradex.object_detection.obj_utils.io import makevideo, get_binary_mask
 from paradex.object_detection.obj_utils.vis_utils import make_grid_image, make_grid_image_np, putText, crop_and_resize_by_mask, pick_corners, overlay_mask
 from paradex.object_detection.obj_utils.geometry import rotation_6d_to_matrix, matrix_to_rotation_6d, rigid_transform_3D, triangulate_ransac_batched
 from paradex.object_detection.obj_utils.scene import Scene
-from paradex.object_detection.obj_utils.yolo_world_module import check_mask
+from paradex.model.yolo_world_module import check_mask
 from paradex.object_detection.object_optim_config import hide_list
  
 

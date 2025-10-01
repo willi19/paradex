@@ -32,3 +32,4 @@ template
 paradex/model/*.pt
 obj_output
 template_mesh
+.vscode

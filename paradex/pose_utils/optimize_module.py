@@ -21,7 +21,7 @@ from paradex.pose_utils.vis_utils import make_grid_image, make_grid_image_np, pu
 from paradex.pose_utils.geometry import rotation_6d_to_matrix, matrix_to_rotation_6d, rigid_transform_3D, triangulate_ransac_batched
 from paradex.pose_utils.scene import Scene
 from paradex.model.yolo_world_module import check_mask
-from paradex.pose_utils.object_optim_config import hide_list
+from paradex.object_detection.object_optim_config import hide_list
  
 
 def silhouette_iou_loss(pred_silhouette, target_silhouette):

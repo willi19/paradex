@@ -19,3 +19,4 @@ name2prompt = {
 prompt2name = {value:key for key, value in name2prompt.items()}
 
 yolo_pretrained_path = nas_path/'checkpoint'/'best_v4.pt'
+ELOFTR_CKPT_PATH = nas_path/'checkpoint'/'eloftr_outdoor.ckpt'

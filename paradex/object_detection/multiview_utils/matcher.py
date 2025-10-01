@@ -11,7 +11,7 @@ from PIL import Image, ImageDraw
 from paradex.object_detection.obj_utils.vis_utils import make_grid_image_np
 from paradex.object_detection.multiview_utils.template import Template
 from paradex.object_detection.multiview_utils.img_processing import crop_with_mask
-from paradex.object_detection.object_optim_config import ELOFTR_CKPT_PATH
+from paradex.object_detection.default_config import ELOFTR_CKPT_PATH
 # from utils.geometry import project_3d_to_2d_tensor, project_3d_to_2d
 # TODO should check lofter
 from thirdparty.EfficientLoFTR.src.loftr import LoFTR, full_default_cfg, reparameter

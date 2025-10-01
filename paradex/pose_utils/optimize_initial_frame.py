@@ -23,7 +23,6 @@ from paradex.pose_utils.io import get_binary_mask
 from paradex.pose_utils.vis_utils import crop_and_resize_by_mask, make_grid_image_np, parse_objectmesh_objdict, putText
 from paradex.model.yolo_world_module import YOLO_MODULE, check_mask
 from paradex.pose_utils.pre_render_obj import get_rendered_obj
-from paradex.pose_utils.object_optim_config import parse_args
 from paradex.pose_utils.geometry import cluster_rotations, matrix_to_rotation_6d
 import time
 

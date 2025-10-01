@@ -52,6 +52,15 @@ See [`config/README.md`](config/README.md) for detailed configuration guide.
 - **Image Processing:** [`paradex/image/readme.md`](paradex/image/readme.md)
 - **Video Processing:** [`paradex/video/readme.md`](paradex/video/readme.md)
 
+**Additional Configuration**
+
+See [`config/README.md`](config/README.md) for detailed configuration guide.
+
+Quick reference:
+- **Camera:** `config/camera/`
+- **Environment:** `config/environment/`
+- **Robot URDFs:** `rsc/robot/`
+
 ---
 
 ## Frequently Asked Questions
@@ -74,17 +83,6 @@ See examples in `src/register_object/` (e.g., `pringles.py`)
 **Q: How do I perform calibration?**
 
 See [`src/calibration/calibration_readme.md`](src/calibration/calibration_readme.md)
-
----
-
-## Configuration
-
-See [`config/README.md`](config/README.md) for detailed configuration guide.
-
-Quick reference:
-- **Camera:** `config/camera/`
-- **Environment:** `config/environment/`
-- **Robot URDFs:** `rsc/robot/`
 
 ---
 

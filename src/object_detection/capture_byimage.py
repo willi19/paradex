@@ -143,12 +143,11 @@ try:
         while not os.path.exists(cur_save_abspath) or len(os.listdir(cur_save_abspath)) > len(cur_state) or len(cur_state)<10:
             time.sleep(0.5)
             
-        if args.debug or args.vis_final:
-            img_bucket = {}
-            for i, serial_num in enumerate(serial_list):
-                img_bucket[serial_num]=cv2.resize(cv2.imread(os.path.join(cur_save_abspath, f'{serial_num}.png')), dsize=(1024,768))
-                if save_first_image:
-                    cv2.imwrite(str(image_root_dir/f'{serial_num}.png'), img_bucket[serial_num])
+        img_bucket = {}
+        for i, serial_num in enumerate(serial_list):
+            img_bucket[serial_num]=cv2.resize(cv2.imread(os.path.join(cur_save_abspath, f'{serial_num}.png')), dsize=(1024,768))
+            if save_first_image:
+                cv2.imwrite(str(image_root_dir/f'{serial_num}.png'), img_bucket[serial_num])
             # if save_first_image:
             #     save_first_image = False
 

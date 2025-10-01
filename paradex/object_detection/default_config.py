@@ -1,5 +1,6 @@
 from pathlib import Path
 
+project_path = Path(__file__).absolute().parent.parent
 nas_path = Path.home()/'shared_data'/'object_6d'/'data'
 
 default_template = {
@@ -19,4 +20,4 @@ name2prompt = {
 prompt2name = {value:key for key, value in name2prompt.items()}
 
 yolo_pretrained_path = nas_path/'checkpoint'/'best_v4.pt'
-ELOFTR_CKPT_PATH = nas_path/'checkpoint'/'eloftr_outdoor.ckpt'
+ELOFTR_CKPT_PATH = project_path/'thirdparty'/'EfficientLoFTR'/'ckpts'/'eloftr_outdoor.ckpt'

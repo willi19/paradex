@@ -35,3 +35,4 @@ template_mesh
 .vscode
 trash
 thirdparty/EfficientLoFTR/ckpts/*.ckpt
+thirdparty/EfficientLoFTR/ckpts/*.ckpt

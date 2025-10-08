@@ -9,6 +9,8 @@ Welcome to paradex's documentation!
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+   modules/image
+
 
 
 

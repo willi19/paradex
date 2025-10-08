@@ -3,19 +3,12 @@ import os
 import json
 import yaml
 from itertools import chain
-from multiprocessing import Pool
-from glob import glob
+from multiprocessing import Pool, mp
 import pycolmap
-import cv2
-import multiprocessing as mp
-from scipy.spatial.transform import Rotation as R
-import matplotlib.pyplot as plt
-import contextlib
 
 from paradex.utils.file_io import find_latest_directory, shared_dir, load_intrinsic, config_dir
 from paradex.colmap.database import *
 from paradex.colmap.colmap import get_two_view_geometries, load_colmap_camparam
-from paradex.image.aruco import draw_charuco
 from paradex.image.undistort import undistort_points
 from paradex.image.projection import get_cammtx
 from paradex.geometry.triangulate import ransac_triangulation
@@ -159,12 +152,8 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, help="Name of the directory to detect keypoint.")
     
     args = parser.parse_args()
+    name = find_latest_directory(extrinsic_dir) if args.name is None else args.name
     
-    if args.name is None:
-        name = find_latest_directory(extrinsic_dir)
-    else:
-        name = args.name
-
     root_dir = os.path.join(extrinsic_dir, name)
     index_list = os.listdir(root_dir)
     keypoint_dict_distort = load_keypoint(root_dir)

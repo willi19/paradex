@@ -34,3 +34,4 @@ obj_output
 template_mesh
 .vscode
 trash
+thirdparty/EfficientLoFTR/ckpts/*.ckpt

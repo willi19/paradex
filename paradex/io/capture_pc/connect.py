@@ -5,7 +5,8 @@ from paradex.utils.file_io import home_path
 
 ssh_port = 77
 repo_path = os.path.join("~", "paradex")
-
+cache_path = os.path.join("~", "shared_data", "cache")
+paradex_cache_path = os.path.join("~", "paradex","paradex","cache")
 
 def load_pc_info(pc_list):
     pc_info_path = os.path.join(home_path, "paradex", "config", "environment", "pc.json")
@@ -27,6 +28,7 @@ def git_pull(branch, pc_list=None):
         ip = pc_info[pc_name]["ip"]
         remote_cmd = (
             f"cd {repo_path} && "
+            f"cp -r {cache_path} {paradex_cache_path} &&"
             f"git fetch origin && "
             f"git reset --hard origin/{branch} --quiet && "
             f"git clean -fd"

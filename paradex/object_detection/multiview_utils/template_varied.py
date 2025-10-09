@@ -17,7 +17,7 @@ from paradex.object_detection.obj_utils.vis_utils import (
     overlay_mask,
     make_square_img
 )
-from paradex.object_detection.default_config import default_template
+from paradex.object_detection.default_config import default_template, template2camids
 
 
 # from utils.geometry import project_3d_to_2d_tensor, project_3d_to_2d
@@ -250,18 +250,10 @@ class Template_Varied:
 
 
 if __name__ == "__main__":
-    obj_name = "brown_ramen_von_2"
+    obj_name = "yellow_ramen_von"
     tmp_template = Template_Varied(
         str(default_template[obj_name]),
         obj_name=obj_name,
-        tg_cams=[
-            "22640993",
-            "22641005",
-            "22641023",
-            "22645021",
-            "22645029",
-            "22684210",
-            "22684253",
-            "22684737",
-        ],
+        tg_cams=template2camids[obj_name],
+        render_template=True
     )

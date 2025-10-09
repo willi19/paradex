@@ -660,6 +660,21 @@ def get_ray(point, T_cam2world, intrinsic_matrix, L=1):
     return ray_center_world, ray_point_world
 
 
+def make_square_img(image:np.ndarray):
+    h, w = image.shape[:2]
+    L = max(h,w)
+    if image.ndim==2:
+        new_image = np.zeros((L,L))
+    else:
+        new_image = np.zeros((L,L,3))
+    
+    h_offset = 0 if L==h else int((L-h)/2)
+    w_offset = 0 if L==w else int((L-w)/2)
+    
+    new_image[h_offset:h_offset+h, w_offset:w_offset+w] = image
+    return new_image
+
+
 def crop_and_resize_by_mask(image: np.ndarray,
                             mask: np.ndarray,
                             output_size: int) -> np.ndarray:

@@ -339,12 +339,14 @@ class CameraManager:
                     break
                 raw_frame = cam.get_image()
                 framenum = raw_frame.GetFrameID()
-                print(f"Camera {serial_num} capturing frame {framenum}")
+                print(f"Camera {serial_num} capturing frame {framenum}", time.time())
                 if raw_frame.IsIncomplete():
                     if self.mode == "stream":
+                        print("frame incomplete", serial_num)
                         with self.locks[index]:
                             np.copyto(self.image_array[index], np.zeros((self.height, self.width, 3), dtype=np.uint8))
                             self.frame_num[index] = framenum
+                    raw_frame.Release()
                     continue
                 
                 if self.mode == "video":
@@ -364,6 +366,7 @@ class CameraManager:
                 elif self.mode == "stream":
                     with self.locks[index]:
                         np.copyto(self.image_array[index], spin2cv(raw_frame, self.height, self.width))
+                        # print(f"copy to {serial_num}", time.time())
                         self.frame_num[index] = framenum
                 raw_frame.Release()
                 

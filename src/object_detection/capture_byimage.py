@@ -107,7 +107,7 @@ def listen_socket(pc_name, socket):
             print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
 
 pc_list = list(pc_info.keys())
-# git_pull("paradex2", pc_list)
+git_pull("paradex2", pc_list)
 
 # if args.debug:
 #     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)

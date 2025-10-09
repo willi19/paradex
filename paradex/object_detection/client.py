@@ -31,7 +31,7 @@ obj_names = args.obj_names
 from paradex.object_detection.multiview_utils.template_varied import Template_Varied as Template
 # from paradex.object_detection.object_optim_config import template_path
 from paradex.object_detection.multiview_utils.matcher import MatcherTo3D
-from paradex.object_detection.default_config import default_template, name2prompt, prompt2name
+from paradex.object_detection.default_config import default_template, name2prompt, prompt2name, template2camids
 from paradex.model.yolo_world_module import YOLO_MODULE
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -40,7 +40,7 @@ DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 template_dict = {}
 combined_yoloprompts = []
 for obj_name in args.obj_names:
-    tmp_template = Template(str(default_template[obj_name]), obj_name=obj_name) # template has mask and rgb image. 
+    tmp_template = Template(str(default_template[obj_name]), obj_name=obj_name, tg_cams=template2camids[obj_name]) # template has mask and rgb image. 
     template_dict[obj_name] = tmp_template
     combined_yoloprompts.append(name2prompt[obj_name])
 combined_yoloprompts = ','.join(combined_yoloprompts)

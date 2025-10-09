@@ -15,7 +15,8 @@ from paradex.object_detection.obj_utils.vis_utils import (
     parse_objectmesh_objdict,
     make_grid_image_np,
     overlay_mask,
-    make_square_img
+    make_square_img,
+    putText
 )
 from paradex.object_detection.default_config import default_template, template2camids
 
@@ -25,7 +26,7 @@ from paradex.object_detection.default_config import default_template, template2c
 
 """
     TODO:
-    1. select view > Done
+    1. select view > Done > Reduce number
     2. diversify (by rotate or flip) > Done
     3. pre-cropped 
 """
@@ -103,13 +104,16 @@ class Template_Varied:
                     if torch.is_tensor(obj_optim_output[key]):
                         obj_optim_output[key] = obj_optim_output[key].to(device)
 
-            self.render_template(self.obj_dict, obj_optim_output, render_template_path)
-
             obj_T = np.eye(4)
             obj_T[:3, :3] = obj_optim_output["R"].detach().cpu().numpy()
             obj_T[:3, 3] = obj_optim_output["t"].detach().cpu().numpy()
             self.obj_initial_T = obj_T
             print(f"Initial object R:{obj_T[:3,:3]}, obj_t {obj_T[:3,3]}")
+
+            if render_template:
+                self.render_template(
+                    self.obj_dict, obj_optim_output, render_template_path
+                )
 
             self.init_objtemplate(deepcopy(obj_dict), obj_optim_output, template_path)
             debug = True
@@ -140,10 +144,6 @@ class Template_Varied:
                     make_grid_image_np(np.stack(imgs), 4, int(len(imgs) / 4 )),
                 )
 
-            if render_template:
-                self.render_template(
-                    self.obj_dict, obj_optim_output, render_template_path
-                )
 
         for serial_num in self.img_template:
             self.dsize = self.img_template[serial_num].shape[:2][::-1]
@@ -170,9 +170,9 @@ class Template_Varied:
         # visualize on image
         for cidx, cam_id in enumerate(self.tg_cams):
             bgr_img = self.scene.get_image(cam_id, fidx=0)
-
             mask = rendered_sil[cidx].detach().cpu().numpy()
             overlaid = overlay_mask(bgr_img, mask=(mask > 0))
+            overlaid = putText(overlaid, cam_id)
             imgs.append(overlaid)
 
         cv2.imwrite(
@@ -255,5 +255,6 @@ if __name__ == "__main__":
         str(default_template[obj_name]),
         obj_name=obj_name,
         tg_cams=template2camids[obj_name],
-        render_template=True
+        render_template=True,
+        render_template_path=f"./check_template_{obj_name}.jpeg",
     )

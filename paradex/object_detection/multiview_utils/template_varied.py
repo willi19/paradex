@@ -25,8 +25,8 @@ from paradex.object_detection.default_config import default_template, template2c
 
 """
     TODO:
-    1. select view
-    2. diversify (by rotate or flip)
+    1. select view > Done
+    2. diversify (by rotate or flip) > Done
     3. pre-cropped 
 """
 

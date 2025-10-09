@@ -303,7 +303,7 @@ class MatcherTo3D:
         print("after finding matches")
         if draw and len(matches)>0:
             print("Saved Img to ", image_name)
-            cv2.imwrite(image_name, make_grid_image_np(np.array(matches), 4,6))
+            cv2.imwrite(image_name, make_grid_image_np(np.array(matches), 4, np.ceil(len(matches)/4).astype(int)))
 
         return src_3d_dict, tg_2d_dict, org_2d_dict
     

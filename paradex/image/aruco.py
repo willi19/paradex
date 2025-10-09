@@ -141,19 +141,20 @@ def detect_charuco(img, boardinfo):
     
     Args:
         img (np.ndarray): Input image containing CharUco boards. Shape (H, W, 3) or (H, W).
-        boardinfo (Dict[int, Dict]): Dictionary of board configurations.
-            Each board must contain:
-                - 'dict_type' (str): ArUco dictionary type (e.g., '6X6_1000')
-                - 'numX' (int): Number of squares in X direction
-                - 'numY' (int): Number of squares in Y direction
-                - 'checkerLength' (float): Checker square side length (meters)
-                - 'markerLength' (float): ArUco marker side length (meters)
-                - 'markerIDs' (List[int]): List of marker IDs used in the board
+        boardinfo (Dict[int, Dict]): Dictionary of board configurations. Each board must contain:
+            
+            * 'dict_type' (str): ArUco dictionary type (e.g., '6X6_1000')
+            * 'numX' (int): Number of squares in X direction
+            * 'numY' (int): Number of squares in Y direction
+            * 'checkerLength' (float): Checker square side length (meters)
+            * 'markerLength' (float): ArUco marker side length (meters)
+            * 'markerIDs' (List[int]): List of marker IDs used in the board
     
     Returns:
         Dict[int, Dict]: Detection results per board ID containing:
-            - 'checkerCorner' (np.ndarray): Detected corner positions. Shape (M, 1, 2).
-            - 'checkerIDs' (np.ndarray): Detected corner IDs. Shape (M, 1).
+        
+            * 'checkerCorner' (np.ndarray): Detected corner positions. Shape (M, 1, 2).
+            * 'checkerIDs' (np.ndarray): Detected corner IDs. Shape (M, 1).
     
     Example:
         >>> boardinfo = {

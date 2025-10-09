@@ -1,5 +1,11 @@
 import os
 import sys
+sys.path.insert(0, os.path.abspath('..')) 
+
+autodoc_mock_imports = [
+    'transforms3d', 'cv2', 'torch', 'pyrender', 
+    'trimesh', 'open3d', 'numpy'
+]
 
 project = 'paradex'
 copyright = '2025, Mingi Choi'

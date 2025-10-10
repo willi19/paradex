@@ -1,4 +1,25 @@
 import PySpin as ps
+from typing import Literal, Optional
+from enum import Enum
+
+class CameraMode(Enum):
+    IMAGE = "image"
+    VIDEO = "video"
+    STREAM = "stream"
+
+class CameraConfig:
+    """Camera configuration constants"""
+    # Buffer settings
+    VIDEO_BUFFER_COUNT = 10
+    IMAGE_BUFFER_COUNT = 1
+    
+    # Network settings
+    PACKET_SIZE = 9000
+    PACKET_DELAY_MULTIPLIER = 2
+    THROUGHPUT_ALIGNMENT = 16000
+    
+    # Acquisition settings
+    IMAGE_TIMEOUT_MS = 100
 
 class Camera():
     def __init__(
@@ -55,9 +76,7 @@ class Camera():
             ret &= self.configureTrigger(self.nodeMap)
             
         self.syncMode = syncMode
-        
-        
-        
+                
     def get_serialnum(self):
         device_nodemap = self.cam.GetTLDeviceNodeMap()
         serialnum_entry = device_nodemap.GetNode(

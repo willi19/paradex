@@ -3,12 +3,19 @@ import os
 import json
 import yaml
 from itertools import chain
-from multiprocessing import Pool, mp
+from multiprocessing import Pool
+from glob import glob
 import pycolmap
+import cv2
+import multiprocessing as mp
+from scipy.spatial.transform import Rotation as R
+import matplotlib.pyplot as plt
+import contextlib
 
 from paradex.utils.file_io import find_latest_directory, shared_dir, load_intrinsic, config_dir
 from paradex.colmap.database import *
 from paradex.colmap.colmap import get_two_view_geometries, load_colmap_camparam
+from paradex.image.aruco import draw_charuco
 from paradex.image.undistort import undistort_points
 from paradex.image.projection import get_cammtx
 from paradex.geometry.triangulate import ransac_triangulation
@@ -94,7 +101,8 @@ def get_total_keypoint(keypoint_dict, serial_list):
     kypt_offset = {serial_num:0 for serial_num in serial_list}
     
     for index, kypt_data in keypoint_dict.items():
-        kypt_serial_list = list(kypt_data.keys())
+        kypt_serial_list = list(kypt_data.keys()
+                                )
         for i in range(len(kypt_serial_list)):
             for j in range(i+1, len(kypt_serial_list)):
                 serial_1 = kypt_serial_list[i]
@@ -152,8 +160,12 @@ if __name__ == "__main__":
     parser.add_argument("--name", type=str, help="Name of the directory to detect keypoint.")
     
     args = parser.parse_args()
-    name = find_latest_directory(extrinsic_dir) if args.name is None else args.name
     
+    if args.name is None:
+        name = find_latest_directory(extrinsic_dir)
+    else:
+        name = args.name
+
     root_dir = os.path.join(extrinsic_dir, name)
     index_list = os.listdir(root_dir)
     keypoint_dict_distort = load_keypoint(root_dir)
@@ -233,9 +245,8 @@ if __name__ == "__main__":
 
         idx_list = list(kypt_3d.keys())
         idx_list.sort()
-
         for i in idx_list:
-            if i-1 in list(kypt_3d.keys()) and (i-idx_list[0]) % 10 != 0:
+            if i-1 in list(kypt_3d.keys()) and i % 10 != 0:
                 length.append(np.linalg.norm(kypt_3d[i] - kypt_3d[i-1]))
             if i+10 in list(kypt_3d.keys()):
                 length.append(np.linalg.norm(kypt_3d[i] - kypt_3d[i+10]))
@@ -250,13 +261,15 @@ if __name__ == "__main__":
                 proj = proj[:2] / proj[2]
 
                 err = np.linalg.norm(proj - cor)
+                if err > 10:
+                    print(f"index {index}, serial {serial_num}, id {id[0]}, err {err}")
                 proj_err[serial_num].append(err)
                     
     print(np.std(length))
     print(np.mean(length))
     
-    for serial_num, proj in proj_err.items():
-        print(serial_num, np.mean(proj), np.max(proj))
+    for serial_num, err in proj_err.items():
+        print(serial_num, np.mean(err), np.max(err))
 
     with open(os.path.join(root_dir, '0', 'colmap', 'result.txt'), 'w') as f:
         for serial_num, proj in proj_err.items():

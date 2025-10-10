@@ -166,7 +166,8 @@ class Camera():
         return
 
     @staticmethod
-    def _get_node(nodemap, name, node_type, readable=True, writable=True):
+    def _get_node(nodemap, name, node_type, readable=True, writable=True) -> ps.BasePtr:
+        """Retrieve a camera node by name and type."""
         node = nodemap.GetNode(name)
         if node_type == "bool":
             node = ps.CBooleanPtr(node)
@@ -186,7 +187,8 @@ class Camera():
         return node
 
     @staticmethod
-    def _set_node_value(self, node, node_type, value):
+    def _set_node_value(self, node, node_type, value)-> None:
+        """Set the value of a camera node."""
         if node_type == "enum":
             enum_entry = ps.CEnumEntryPtr(node.GetEntryByName(value))
             if not ps.IsReadable(enum_entry):

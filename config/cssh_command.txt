@@ -1,0 +1,2 @@
+clusters = capture_pc
+capture_pc capture1@147.46.219.205:77 capture2@147.46.219.105:77 capture3@147.46.219.102:77 capture4@147.46.219.136:77 capture5@147.46.219.158:77 capture6@147.46.219.162:77

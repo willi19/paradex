@@ -1,8 +1,69 @@
+"""
+PySpin Camera Control Module
+============================
+
+This module provides a high-level interface for controlling a single FLIR camera.
+
+Key Features:
+    - **Configuration**: Configure camera parameters including gain, exposure time, 
+      frame rate, trigger mode, buffer settings, and network parameters
+    - **Image Acquisition**: Capture single frames or continuous video streams
+
+This module wraps the PySpin SDK to abstract the complex nodemap structure of 
+FLIR cameras into a simple Python interface.
+
+Classes:
+    CameraMode: Enumeration of camera operation modes
+    CameraConfig: Configuration constants for camera settings
+    Camera: Main camera control class for a single camera instance
+    CameraConfigurationError: Exception for configuration failures
+    
+Typical Workflow:
+    1. Initialize camera with desired parameters
+    2. Configure settings (done automatically during initialization)
+    3. Start acquisition
+    4. Get images
+    5. Stop acquisition
+    6. Release camera resources
+
+Example:
+    >>> import PySpin as ps
+    >>> from camera import Camera
+    >>> 
+    >>> system = ps.System.GetInstance()
+    >>> cam_list = system.GetCameras()
+    >>> cam_ptr = cam_list[0]
+    >>> camera = Camera(
+    ...     camPtr=cam_ptr,
+    ...     gain=10.0,
+    ...     exposure_time=10000.0,
+    ...     frame_rate=30.0,
+    ...     mode='image',
+    ...     syncMode=True
+    ... )
+    >>> 
+    >>> camera.start()
+    >>> image = camera.get_image()
+    >>> camera.stop()
+    >>> camera.release()
+"""
+
+
 import PySpin as ps
 from typing import Literal, Optional
 from enum import Enum
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CameraMode(Enum):
+    """Enumeration of camera operation modes.
+    
+    Attributes:
+        IMAGE: Single frame capture mode with retry logic
+        VIDEO: Continuous video capture with 10-buffer queue
+        STREAM: Streaming mode (similar to video)
+    """
     IMAGE = "image"
     VIDEO = "video"
     STREAM = "stream"
@@ -20,6 +81,14 @@ class CameraConfig:
     
     # Acquisition settings
     IMAGE_TIMEOUT_MS = 100
+
+class CameraConfigurationError(Exception):
+    """Exception raised when camera configuration fails.
+    
+    This exception is raised during camera initialization or mode changes
+    when configuration of camera parameters fails.
+    """
+    pass
 
 class Camera():
     def __init__(
@@ -41,50 +110,35 @@ class Camera():
         
         camPtr.Init()  # initialize camera
         self.cam = camPtr
-        self.serialnum = self.get_serialnum()
+        self.serialnum = self._serialnum()
 
         self.stream_nodemap = camPtr.GetTLStreamNodeMap() 
         self.nodeMap = camPtr.GetNodeMap() 
         
         self.configure()
-        # return ret
-    
-    def configure(self):
-        ret = True
-        ret &= self.configureNodeSettings(self.nodeMap)
-        ret &= self.configureBuffer(self.stream_nodemap)
-        if not ret:
-            raise RuntimeError("Failed to configure camera settings")
-    
-    def change_mode(self, mode, syncMode):
-        self.mode = mode
-        
-        buffer_count = ps.CIntegerPtr(self.nodeMap.GetNode('StreamBufferCountManual'))
-        if not ps.IsAvailable(buffer_count) or not ps.IsWritable(buffer_count):
-            return False
-        
-        if self.mode == "video":
-            buffer_count.SetValue(10)
-
-        else:
-            buffer_count.SetValue(1)
-        self.configureAcquisition(self.nodeMap)
-        
-        if not syncMode and self.syncMode:
-            ret &= self.configureFrameRate(self.nodeMap)  # we use trigger anyway
-        elif not self.syncMode and syncMode:
-            ret &= self.configureTrigger(self.nodeMap)
-            
-        self.syncMode = syncMode
-                
-    def get_serialnum(self):
+                    
+    def _serialnum(self):
         device_nodemap = self.cam.GetTLDeviceNodeMap()
         serialnum_entry = device_nodemap.GetNode(
             "DeviceSerialNumber"
-        )  # .GetValue()
+        )  
         serialnum = ps.CStringPtr(serialnum_entry).GetValue()
         return serialnum
+        
+    def set_mode(self, mode, syncMode):
+        assert mode == "image" or mode == "video" or mode == "stream", "mode must be image or video"
+        
+        self.mode = mode
+        self.syncMode = syncMode
 
+        # Reconfigure camera for new mode
+        self.configureBuffer()
+        self.configureAcquisition()
+        if not self.syncMode:
+            self.configureFrameRate()
+        else:
+            self.configureTrigger()
+        
     def get_image(self):
         if self.mode == "image":
             while True:
@@ -92,8 +146,8 @@ class Camera():
                     pImageRaw = self.cam.GetNextImage(100)
                     return pImageRaw
                 except:
-                    self.cam.EndAcquisition()
-                    self.cam.BeginAcquisition()
+                    self.stop()
+                    self.start()
         else:
             pImageRaw = self.cam.GetNextImage()
             return pImageRaw
@@ -111,284 +165,233 @@ class Camera():
         del self.cam
         return
 
-    def configureNodeSettings(self, nodeMap):
-        ret = True
-        ret &= self.configureGain(nodeMap)
-        ret &= self.configureThroughPut(nodeMap)
-        # configureTrigger(nodeMap)
+    @staticmethod
+    def _get_node(nodemap, name, node_type, readable=True, writable=True):
+        node = nodemap.GetNode(name)
+        if node_type == "bool":
+            node = ps.CBooleanPtr(node)
+        elif node_type == "int":
+            node = ps.CIntegerPtr(node)
+        elif node_type == "float":
+            node = ps.CFloatPtr(node)
+        elif node_type == "enum":
+            node = ps.CEnumerationPtr(node)
+        elif node_type == "string":
+            node = ps.CStringPtr(node)
+        else:
+            raise ValueError(f"Unsupported node type: {node_type}")
+
+        if not ps.IsAvailable(node) or (readable and not ps.IsReadable(node)) or (writable and not ps.IsWritable(node)):
+            raise CameraConfigurationError(f"Unable to get or set {name} (node retrieval). Aborting...")
+        return node
+
+    @staticmethod
+    def _set_node_value(self, node, node_type, value):
+        if node_type == "enum":
+            enum_entry = ps.CEnumEntryPtr(node.GetEntryByName(value))
+            if not ps.IsReadable(enum_entry):
+                raise CameraConfigurationError(f"Unable to get {value} (enum entry retrieval). Aborting...")
+            node.SetIntValue(enum_entry.GetValue())
+        
+        if node_type == "float":
+            node.SetValue(value)
+
+    def configure(self) -> None:
+        """Configure camera settings based on initialization parameters."""
+        self.configureGain()
+        self.configureThroughPut()
+
         if not self.syncMode:
-            ret &= self.configureFrameRate(nodeMap)  # we use trigger anyway
+            self.configureFrameRate()  # we use trigger anyway
         else:
-            ret &= self.configureTrigger(nodeMap)
+            self.configureTrigger()
         
-        # if self.mode == "video":
-        #     ret &= self.configurePacketDelay(nodeMap)
-            
-        ret &= self.configureExposure(nodeMap)
-        ret &= self.configureAcquisition(nodeMap)
-        # Set Exposure time, Gain, Throughput limit, Trigger mode,
-        ret &= self.configureChunk(nodeMap)  # getting timestamp
-        # self.configureBuffer(nodeMap)
-        ret &= self.configurePacketSize(self.nodeMap)
-        return ret
+        self.configurePacketSize(self.nodeMap)
+        self.configurePacketDelay(self.nodeMap)
+        self.configureExposure(self.nodeMap)
+        self.configureAcquisition(self.nodeMap)
+        self.configureChunk(self.nodeMap)
+        self.configureBuffer(self.stream_nodemap)
 
-    def configureGain(self, nodeMap):
-        ptrValAuto = ps.CEnumerationPtr(nodeMap.GetNode("GainAuto"))
-        if  not ps.IsReadable(ptrValAuto) or not ps.IsWritable(ptrValAuto):
-            # print("Unable to disable automatic gain (node retrieval). Aborting...")
-            return False            
-        ptrValAutoOff = ps.CEnumEntryPtr(ptrValAuto.GetEntryByName("Off"))
-        if not ps.IsReadable(ptrValAutoOff):
-            # print("Unable to disable automatic gain (enum entry retrieval). Aborting...")
-            return False
+    def configureGain(self) -> None:
+        """Configure camera gain settings."""
+
+        # Disable automatic gain
+        ptrGainAuto = self._get_node(self.nodeMap, "GainAuto", "enum", readable=True, writable=True)
+        self._set_node_value(ptrGainAuto, "enum", "Off")
         
-        ptrValAuto.SetIntValue(ptrValAutoOff.GetValue())
-        ptrVal = ps.CFloatPtr(nodeMap.GetNode("Gain"))
-        if not ps.IsReadable(ptrVal) or not ps.IsWritable(ptrVal):
-            # print("Unable to get or set gain. Aborting...")
-            return False
+        Gainval = self._get_node(self.nodeMap, "Gain", "float", readable=True, writable=True)
+
         # Ensure desired exposure time does not exceed the maximum
-        ValMax = ptrVal.GetMax()
-        if self.gain > ValMax: 
-            self.gain = ValMax
-        ptrVal.SetValue(self.gain)
-        # print("Gain set to ", self.gain)
-        return True
+        self.gain = min(self.gain, Gainval.GetMax())
+        
+        # Set gain value
+        self._set_node_value(Gainval, "float", self.gain)
+        
+    def configureThroughPut(self) -> None:
+        """Configure camera throughput settings."""
+        
+        ThroughputLimit = self._get_node(self.nodeMap, "DeviceLinkThroughputLimit", "int", readable=True, writable=True)
 
-    def configureThroughPut(self, nodeMap):
+        # Align to nearest multiple of THROUGHPUT_ALIGNMENT (value must be multiple of 16000)
+        ValMax = ThroughputLimit.GetMax()
+        ValMin = ThroughputLimit.GetMin()
+        posValMax = ((ValMax - ValMin) // CameraConfig.THROUGHPUT_ALIGNMENT) * CameraConfig.THROUGHPUT_ALIGNMENT + ValMin 
+        
         # Set throughput limit 
-        ptrVal = ps.CIntegerPtr(nodeMap.GetNode("DeviceLinkThroughputLimit"))
-        if not ps.IsReadable(ptrVal) or not ps.IsWritable(ptrVal):
-            # print("Unable to get or set throughput. Aborting...")
-            return False
+        ThroughputLimit.SetValue(posValMax)
         
-        ValMax = ptrVal.GetMax()
-        ValMin = ptrVal.GetMin()
+    def configureFrameRate(self) -> None:
+        """Configure camera frame rate settings."""
 
-        posValMax = ((ValMax - ValMin) // 16000) * 16000 + ValMin
-        ptrVal.SetValue(posValMax)
-        # print("Throughput limit set to ", posValMax)
+        # Disable trigger mode
+        triggermode = self._get_node(self.nodeMap, "TriggerMode", "enum", readable=True, writable=True)
+        self._set_node_value(triggermode, "enum", "Off")
+
+        # Disable automatic frame rate
+        try:
+            autoframerate = self._get_node(self.nodeMap, "AcquisitionFrameRateAuto", "enum", readable=True, writable=True)
+            self._set_node_value(autoframerate, "enum", "Off")
+        except:
+            # New spinnaker version 
+            autoframerate = self._get_node(self.nodeMap, "AcquisitionFrameRateEnable", "bool", readable=True, writable=True)
+            self._set_node_value(autoframerate, "bool", False)
+
+        # Set frame rate value
+        framerate = self._get_node(self.nodeMap, "AcquisitionFrameRate", "float", readable=True, writable=True)
+        self._set_node_value(framerate, "float", self.frame_rate)
+
+    def configureTrigger(self) -> None:
+        """Configure camera trigger settings for hardware synchronization."""
+        triggerMode = self._get_node(self.nodeMap, "TriggerMode", "enum", readable=True, writable=True)
+        self._set_node_value(triggerMode, "enum", "On")
+
+        # What line to use as trigger (Black)
+        triggerSource = self._get_node(self.nodeMap, "TriggerSource", "enum", readable=True, writable=True)
+        self._set_node_value(triggerSource, "enum", "Line0")
+
+        triggerSelector = self._get_node(self.nodeMap, "TriggerSelector", "enum", readable=True, writable=True)
+        self._set_node_value(triggerSelector, "enum", "FrameStart")
+
+        triggerActivation = self._get_node(self.nodeMap, "TriggerActivation", "enum", readable=True, writable=True)
+        self._set_node_value(triggerActivation, "enum", "RisingEdge")
+        
+        # This is not from official doc but from claude AI
+        # Off
+        # Trigger1 -> [Exposure] -> [Readout] -> Trigger2 available
+        
+        # Readout
+        #  Trigger1 -> [Exposure] -> [Readout]
+        #                           Trigger2 available ->  [Exposure]
+        
+        # PreviousFrame : 
+        # Trigger1 -> [Exposure] -> [Readout]
+        #             Trigger2 available ->  [Exposure] -> [Readout]
+
+        triggerOverlap = self._get_node(self.nodeMap, "TriggerOverlap", "enum", readable=True, writable=True)
+        self._set_node_value(triggerOverlap, "enum", "ReadOut")
+
+    def configurePacketDelay(self) -> None:
+        """Configure GigE Vision packet delay.
+        
+        Sets inter-packet delay to prevent network congestion. This is particularly
+        useful in multi-camera setups or when experiencing packet loss.
+        
+        The delay is calculated as: PACKET_SIZE * PACKET_DELAY_MULTIPLIER
+        Default: 9000 * 2 = 18000 nanoseconds = 18 microseconds
+        
+        Args:
+            nodeMap: Camera node map
+            
+        Raises:
+            CameraConfigurationError: If configuration fails
+            
+        Note:
+            Only relevant for GigE cameras. This setting is optional and disabled
+            by default as throughput limit usually provides sufficient control.
+        """
+        # GevSCPD (GigE Vision Stream Channel Packet Delay) controls the inter-packet
+        # delay in nanoseconds. This delay prevents overwhelming the network switch/NIC
+        # when transmitting high-bandwidth image data split across multiple packets.
+        #
+        # Why is this needed?
+        # - GigE cameras split image data into many small packets (typically 9000 bytes each)
+        # - Sending packets too rapidly can cause:
+        #   * Network switch buffer overflow → packet drops
+        #   * Collisions with other cameras in multi-camera setups
+        #   * PC network card buffer overflow
+        #
+        # The delay adds a small pause between packets:
+        # Packet1 → [Delay] → Packet2 → [Delay] → Packet3 → ...
+        #
+        # Calculation: PACKET_SIZE * MULTIPLIER = 9000 * 2 = 18000 ns = 18 µs
+        # This means each packet waits 18 microseconds before sending the next one.
+        packetDelay = self._get_node(self.nodeMap, "GevSCPD", "int", readable=True, writable=True)
+        packetDelay.SetValue(CameraConfig.PACKET_DELAY_MULTIPLIER * CameraConfig.PACKET_SIZE)
+
+    def configureExposure(self) -> None:
+        """Configure camera exposure settings."""
+
+        # Disable automatic exposure
+        exposureAuto = self._get_node(self.nodeMap, "ExposureAuto", "enum", readable=True, writable=True)
+        self._set_node_value(exposureAuto, "enum", "Off")
+
+        exposureTime = self._get_node(self.nodeMap, "ExposureTime", "float", readable=True, writable=True)
+        self.exposure_time = min(self.exposure_time, exposureTime.GetMax())
+        self._set_node_value(exposureTime, "float", self.exposure_time)
+
+    def configureAcquisition(self) -> None:
+        """Configure camera acquisition settings based on operation mode."""
+        # SingleFrame for image mode, Continuous for video or stream mode
+        acq_mode = "SingleFrame" if self.mode == "image" else "Continuous"
+        
+        # Set acquisition mode
+        acquisitionMode = self._get_node(self.nodeMap, "AcquisitionMode", "enum", readable=True, writable=True)
+        self._set_node_value(acquisitionMode, "enum", acq_mode)
         return True
 
-    # if free-run mode
-    def configureFrameRate(self, nodeMap):
-        # If trigger mode is on, should turn this off
-        ptrTriggerMode = ps.CEnumerationPtr(nodeMap.GetNode("TriggerMode"))
-        if not ps.IsReadable(ptrTriggerMode):
-            # print("Unable to disable trigger mode (node retrieval). Aborting...")
-            return False
+    def configurePacketSize(self) -> None:
+        """Configure GigE Vision packet size for optimal network performance."""
+        ptrPayloadSize = self._get_node(self.nodeMap, "GevSCPSPacketSize", "int", readable=True, writable=True)
+        ptrPayloadSize.SetValue(CameraConfig.PACKET_SIZE)
+
+    def configureChunk(self) -> None:
+        """Enable chunk data to include timestamps in image metadata."""
+        # Chunk Data allows you the ability to send additional information with the image data. This can be helpful when debugging issues or looking at what settings have been applied to the acquired image.
+        # Use ChunkModeActive to enable chunk data for images.
+        # The following information is available as chunk data:
+        # Image - enabled by default and cannot be disabled.
+        # Image CRC - enabled by default and cannot be disabled.
+        # FrameID
+        # OffsetX
+        # OffsetY
+        # Width
+        # Height
+        # Exposure Time
+        # Gain
+        # Black Level
+        # Pixel Format
+        # ImageTimestamp
         
-        ptrTriggerModeOff = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("Off"))
-        if not ps.IsReadable(ptrTriggerModeOff):
-            # print("Unable to disable trigger mode (enum entry retrieval). Aborting...")
-            return False
+        chunkModeActive = self._get_node(self.nodeMap, "ChunkModeActive", "bool", readable=True, writable=True)
+        chunkModeActive.SetValue(True)
+
+        chunkSelector = self._get_node(self.nodeMap, "ChunkSelector", "enum", readable=True, writable=True)
+        self._set_node_value(chunkSelector, "enum", "Timestamp")
+
+        chunkEnable = self._get_node(self.nodeMap, "ChunkEnable", "bool", readable=True, writable=True)
+        chunkEnable.SetValue(True)
         
-        ptrTriggerMode.SetIntValue(ptrTriggerModeOff.GetValue())
-        ptrValAuto = ps.CEnumerationPtr(nodeMap.GetNode("AcquisitionFrameRateAuto"))
-        if not ps.IsReadable(ptrValAuto) or not ps.IsWritable(ptrValAuto):
-            # print("Unable to disable automatic framerate (node retrieval). Aborting...")
-            return False
+    def configureBuffer(self) -> None:
+        """Configure camera buffer settings based on operation mode."""
         
-        ptrValAutoOff = ps.CEnumEntryPtr(ptrValAuto.GetEntryByName("Off"))
-        if not ps.IsReadable(ptrValAutoOff):
-            # print("Unable to disable automatic framerate (enum entry retrieval). Aborting...")
-            return False
-        ptrValAuto.SetIntValue(ptrValAutoOff.GetValue())
-        ptrVal = ps.CFloatPtr(nodeMap.GetNode("AcquisitionFrameRate"))
-        if not ps.IsReadable(ptrVal) or not ps.IsWritable(ptrVal):
-            # print("Unable to get or set framerate. Aborting...")
-            return False
-        
-        # Ensure desired exposure time does not exceed the maximum
-        # const double ValMax = ptrVal->GetMax();
-        # if (gain > ValMax) gain = ValMax;
-        ptrVal.SetValue(self.frame_rate)
-        # print("Framerate set to ",self.frame_rate)
-        return True
-
-    # if Triggered mode
-    def configureTrigger(self, nodeMap):
-        ptrTriggerMode = ps.CEnumerationPtr(nodeMap.GetNode("TriggerMode"))
-        if not ps.IsReadable(ptrTriggerMode):
-            # print("Unable to disable trigger mode (node retrieval). Aborting...")
-            return False
-        ptrTriggerModeOff = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("Off"))
-        if not ps.IsReadable(ptrTriggerModeOff):
-            # print("Unable to disable trigger mode (enum entry retrieval). Aborting...")
-            return False
-        ptrTriggerMode.SetIntValue(ptrTriggerModeOff.GetValue())
-        ptrTriggerSelector = ps.CEnumerationPtr(nodeMap.GetNode("TriggerSelector"))
-        if not ps.IsReadable(ptrTriggerSelector) or not ps.IsWritable(ptrTriggerSelector):
-            # print("Unable to get or set trigger selector (node retrieval). Aborting...")
-            return False
-        ptrTriggerSelectorFrameStart = ps.CEnumEntryPtr(ptrTriggerSelector.GetEntryByName("FrameStart"))
-        if not ps.IsReadable(ptrTriggerSelectorFrameStart):
-            # print("Unable to get trigger selector FrameStart (enum entry retrieval). Aborting...")
-            return False
-        
-        # Set Frame start
-        ptrTriggerSelector.SetIntValue(ptrTriggerSelectorFrameStart.GetValue())
-        ptrTriggerSource = ps.CEnumerationPtr(nodeMap.GetNode("TriggerSource"))
-        if not ps.IsReadable(ptrTriggerSource) or not ps.IsWritable(ptrTriggerSource):
-            print("Unable to get or set trigger mode (node retrieval). Aborting...")
-            return False
-        # Set Rising-edge trigger
-        ptrTriggerActivation = ps.CEnumerationPtr(nodeMap.GetNode("TriggerActivation"))
-        if not ps.IsReadable(ptrTriggerActivation) or not ps.IsWritable(ptrTriggerActivation):
-            print("Unable to get or set trigger activation (node retrieval). Aborting...")
-            return False
-        
-        ptrRisingEdge = ps.CEnumEntryPtr(ptrTriggerActivation.GetEntryByName("RisingEdge"))
-        if not ps.IsReadable(ptrRisingEdge):
-            print("Unable to enable trigger mode RisingEdge (enum entry retrieval). Aborting...")
-            return False
-        ptrTriggerActivation.SetIntValue(ptrRisingEdge.GetValue())
-
-        # Set trigger mode to hardware ('Line0')
-        ptrTriggerSourceHardware = ps.CEnumEntryPtr(ptrTriggerSource.GetEntryByName("Line0"))
-        if not ps.IsReadable(ptrTriggerSourceHardware):
-            print("Unable to set trigger mode Line0. Aborting...")
-            return False
-        ptrTriggerSource.SetIntValue(ptrTriggerSourceHardware.GetValue())
-
-        # Turn trigger mode on
-        ptrTriggerModeOn = ps.CEnumEntryPtr(ptrTriggerMode.GetEntryByName("On"))
-        if not ps.IsReadable(ptrTriggerModeOn):
-            print("Unable to enable trigger On (enum entry retrieval). Aborting...")
-            return False
-        ptrTriggerMode.SetIntValue(ptrTriggerModeOn.GetValue())
-
-        # Set Trigger Overlap mode
-        ptrTriggerOverlap = ps.CEnumerationPtr(nodeMap.GetNode("TriggerOverlap"))
-        if not ps.IsReadable(ptrTriggerOverlap) or not ps.IsWritable(ptrTriggerOverlap):
-            print("Unable to get or set trigger overlap (node retrieval). Aborting...")
-            return False        
-        ptrReadOut = ps.CEnumEntryPtr(ptrTriggerOverlap.GetEntryByName("ReadOut"))
-        if not ps.IsReadable(ptrReadOut):
-            print("Unable to enable trigger Overlap readout(enum entry retrieval). Aborting...")
-            return False
-        ptrTriggerOverlap.SetIntValue(ptrReadOut.GetValue())
-        # NOTE: Blackfly and Flea3 GEV cameras need 1 second delay after trigger mode is turned on
-        return True
-    
-    def configurePacketDelay(self, nodeMap):
-        ptrPacketDelay = ps.CIntegerPtr(nodeMap.GetNode("GevSCPD"))
-        if not ps.IsAvailable(ptrPacketDelay) or not ps.IsWritable(ptrPacketDelay):
-            # print("Unable to set packet delay (node retrieval). Aborting...")
-            return False
-        ptrPacketDelay.SetValue(9000 * 2)
-        return True
-    
-    def configureExposure(self, nodeMap):
-        ptrExposureAuto = ps.CEnumerationPtr(nodeMap.GetNode("ExposureAuto"))
-        if not ps.IsReadable(ptrExposureAuto) or not ps.IsWritable(ptrExposureAuto):
-            print("Unable to disable automatic exposure (node retrieval). Aborting...")
-            return False
-        ptrExposureAutoOff = ps.CEnumEntryPtr(ptrExposureAuto.GetEntryByName("Off"))
-        if not ps.IsReadable(ptrExposureAutoOff):
-            print("Unable to disable automatic exposure (enum entry retrieval). Aborting...")
-            return False
-        ptrExposureAuto.SetIntValue(ptrExposureAutoOff.GetValue())
-        ptrExposureTime = ps.CFloatPtr(nodeMap.GetNode("ExposureTime"))
-        if not ps.IsReadable(ptrExposureTime) or not ps.IsWritable(ptrExposureTime):
-            print("Unable to get or set exposure time. Aborting...")
-            return False
-        # Ensure desired exposure time does not exceed the maximum
-        exposureTimeMax = ptrExposureTime.GetMax()
-        if self.exposure_time > exposureTimeMax: self.exposure_time = exposureTimeMax
-        ptrExposureTime.SetValue(self.exposure_time)
-        # print("Exposure time set to ", self.exposure_time,  " us...")
-        return True
-
-    def configureAcquisition(self, nodeMap):
-        ptrAcquisitionMode = ps.CEnumerationPtr(nodeMap.GetNode("AcquisitionMode"))
-        if not ps.IsReadable(ptrAcquisitionMode) or not ps.IsWritable(ptrAcquisitionMode):
-            #print("Unable to set acquisition mode to continuous (enum retrieval). Aborting...")
-            return False
-        # Retrieve entry node from enumeration node
-        acquisitionmode = "SingleFrame" if self.mode == "image" else "Continuous"
-        ptrAcquisitionModeVal = ps.CEnumEntryPtr(ptrAcquisitionMode.GetEntryByName(acquisitionmode))
-
-        if not ps.IsReadable(ptrAcquisitionModeVal): 
-            print("Unable to get or set acquisition mode to continuous (entry retrieval). Aborting...")
-            return False
-        
-        # Retrieve integer value from entry node
-        acquisitionModeContinuous = ptrAcquisitionModeVal.GetValue()
-        # Set integer value from entry node as new value of enumeration node
-        ptrAcquisitionMode.SetIntValue(acquisitionModeContinuous)
-        return True
-
-    def configureBuffer(self, nodeMap):
-        handling_mode = ps.CEnumerationPtr(nodeMap.GetNode('StreamBufferHandlingMode'))
-        if not ps.IsAvailable(handling_mode) or not ps.IsWritable(handling_mode):
-            # print('Unable to set Buffer Handling mode (node retrieval). Aborting...\n')
-            return False
-
-        handling_mode_entry = ps.CEnumEntryPtr(handling_mode.GetCurrentEntry())
-        if not ps.IsAvailable(handling_mode_entry) or not ps.IsReadable(handling_mode_entry):
-            # print('Unable to set Buffer Handling mode (Entry retrieval). Aborting...\n')
-            return False
-
-
         # Set stream buffer Count Mode to manual
-        stream_buffer_count_mode = ps.CEnumerationPtr(nodeMap.GetNode('StreamBufferCountMode'))
-        if not ps.IsAvailable(stream_buffer_count_mode) or not ps.IsWritable(stream_buffer_count_mode):
-            # print('Unable to set Buffer Count Mode (node retrieval). Aborting...\n')
-            return False
-
-        stream_buffer_count_mode_manual = ps.CEnumEntryPtr(stream_buffer_count_mode.GetEntryByName('Manual'))
-        if not ps.IsAvailable(stream_buffer_count_mode_manual) or not ps.IsReadable(stream_buffer_count_mode_manual):
-            # print('Unable to set Buffer Count Mode entry (Entry retrieval). Aborting...\n')
-            return False
-
-        stream_buffer_count_mode.SetIntValue(stream_buffer_count_mode_manual.GetValue())
-        # print('Stream Buffer Count Mode set to manual...')
-
-        # Retrieve and modify Stream Buffer Count
-        buffer_count = ps.CIntegerPtr(nodeMap.GetNode('StreamBufferCountManual'))
-        if not ps.IsAvailable(buffer_count) or not ps.IsWritable(buffer_count):
-            # print('Unable to set Buffer Count (Integer node retrieval). Aborting...\n')
-            return False
+        BuferCountMode = self._get_node(self.stream_nodemap, "StreamBufferCountMode", "enum", readable=True, writable=True)
+        self._set_node_value(BuferCountMode, "enum", "Manual")
         
+        # Set stream buffer Count
+        bufferCount = self._get_node(self.stream_nodemap, "StreamBufferCountManual", "int", readable=True, writable=True)
         if self.mode == "video":
-            buffer_count.SetValue(10)
-
+            bufferCount.SetValue(CameraConfig.VIDEO_BUFFER_COUNT)
         else:
-            buffer_count.SetValue(1)
-        return True
-
-    def configurePacketSize(self, nodeMap):
-        ptrPayloadSize = ps.CIntegerPtr(nodeMap.GetNode("GevSCPSPacketSize"))
-        if not ps.IsAvailable(ptrPayloadSize) or not ps.IsWritable(ptrPayloadSize):
-            return False
-
-        ptrPayloadSize.SetValue(9000)        
-        return True
-    
-    def configureChunk(self, nodeMap):
-        ptrChunkModeActive = ps.CBooleanPtr(nodeMap.GetNode("ChunkModeActive"))
-        if not ps.IsAvailable(ptrChunkModeActive) or not ps.IsWritable(ptrChunkModeActive):
-            return False
-        
-        ptrChunkModeActive.SetValue(True)
-        ptrChunkSelector = ps.CEnumerationPtr(nodeMap.GetNode("ChunkSelector"))
-        if not ps.IsAvailable(ptrChunkSelector) or not ps.IsWritable(ptrChunkSelector):
-            return False
-
-        # Select Timestamp for Chunk data
-        ptrChunkSelectorTimestamp = ps.CEnumEntryPtr(ptrChunkSelector.GetEntryByName("Timestamp"))
-        if not ps.IsAvailable(ptrChunkSelectorTimestamp) or not ps.IsReadable(ptrChunkSelectorTimestamp):
-            return False
-        
-        ptrChunkSelector.SetIntValue(ptrChunkSelectorTimestamp.GetValue())
-        ptrChunkEnable = ps.CBooleanPtr(nodeMap.GetNode("ChunkEnable"))
-        
-        if not ps.IsAvailable(ptrChunkEnable) or not ps.IsWritable(ptrChunkEnable): 
-            # print("Camera chunk not available")
-            return False
-        
-        ptrChunkEnable.SetValue(True)
-        # print("Camera chunk enabled")
-        
-        return True
+            bufferCount.SetValue(CameraConfig.IMAGE_BUFFER_COUNT)

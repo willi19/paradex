@@ -245,9 +245,8 @@ if __name__ == "__main__":
 
         idx_list = list(kypt_3d.keys())
         idx_list.sort()
-
         for i in idx_list:
-            if i-1 in list(kypt_3d.keys()) and (i-idx_list[0]) % 10 != 0:
+            if i-1 in list(kypt_3d.keys()) and i % 10 != 0:
                 length.append(np.linalg.norm(kypt_3d[i] - kypt_3d[i-1]))
             if i+10 in list(kypt_3d.keys()):
                 length.append(np.linalg.norm(kypt_3d[i] - kypt_3d[i+10]))
@@ -262,13 +261,15 @@ if __name__ == "__main__":
                 proj = proj[:2] / proj[2]
 
                 err = np.linalg.norm(proj - cor)
+                if err > 10:
+                    print(f"index {index}, serial {serial_num}, id {id[0]}, err {err}")
                 proj_err[serial_num].append(err)
                     
     print(np.std(length))
     print(np.mean(length))
     
-    for serial_num, proj in proj_err.items():
-        print(serial_num, np.mean(proj), np.max(proj))
+    for serial_num, err in proj_err.items():
+        print(serial_num, np.mean(err), np.max(err))
 
     with open(os.path.join(root_dir, '0', 'colmap', 'result.txt'), 'w') as f:
         for serial_num, proj in proj_err.items():

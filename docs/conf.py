@@ -12,15 +12,41 @@ copyright = '2025, Mingi Choi'
 author = 'Mingi Choi'
 release = '0.0.0'
 
-# 자동 문서화 확장 추가
+# -- General configuration
 extensions = [
-    'sphinx.ext.autodoc',      # 자동 문서화
-    'sphinx.ext.napoleon',     # Google/NumPy 스타일 docstring 지원
-    'sphinx.ext.viewcode',     # 소스코드 링크
+    'sphinx.ext.autodoc',       # 자동 문서화
+    'sphinx.ext.autosummary',   # ← 추가! 자동 요약 생성
+    'sphinx.ext.napoleon',      # Google/NumPy docstring
+    'sphinx.ext.viewcode',      # 소스코드 링크
+    'sphinx.ext.intersphinx',   # ← 추가! 다른 문서 링크
 ]
 
-templates_path = ['_templates']
-exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+autosummary_generate = True  
+autodoc_default_options = {
+    'members': True,
+    'undoc-members': True,
+    'private-members': False,
+    'show-inheritance': True,
+}
 
-html_theme = 'alabaster'  # 'sphinx_rtd_theme' 추천!
+napoleon_google_docstring = True
+napoleon_numpy_docstring = True
+napoleon_include_init_with_doc = True
+
+templates_path = ['_templates']
+exclude_patterns = [
+    '_build',           # 빌드 출력 디렉토리
+    'Thumbs.db',
+    '.DS_Store',
+    '**.ipynb_checkpoints',
+    'docs-html',        # ← 추가
+]
+
+html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static'] 
+
+html_theme_options = {
+    'navigation_depth': 4,
+    'collapse_navigation': False,
+    'display_version': True,
+}

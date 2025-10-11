@@ -112,7 +112,7 @@ class Template_Varied:
 
             if render_template:
                 self.render_template(
-                    self.obj_dict, obj_optim_output, render_template_path
+                    self.obj_dict, obj_optim_output, render_template_path, render_all=True
                 )
 
             self.init_objtemplate(deepcopy(obj_dict), obj_optim_output, template_path)
@@ -149,8 +149,12 @@ class Template_Varied:
             self.dsize = self.img_template[serial_num].shape[:2][::-1]
             break
 
-    def render_template(self, obj_dict, obj_optim_output, render_template_path):
-        self.scene.get_batched_renderer(self.tg_cams)
+    def render_template(self, obj_dict, obj_optim_output, render_template_path, render_all=False):
+        if render_all:
+            tg_cams = self.scene.cam_ids
+        else:
+            tg_cams = self.tg_cams
+        self.scene.get_batched_renderer(tg_cams)
         # Transform object
         transformed_obj = deepcopy(obj_dict)
         org_scaled_verts = transformed_obj["verts"].detach()
@@ -168,16 +172,20 @@ class Template_Varied:
 
         imgs = []
         # visualize on image
-        for cidx, cam_id in enumerate(self.tg_cams):
+        for cidx, cam_id in enumerate(tg_cams):
             bgr_img = self.scene.get_image(cam_id, fidx=0)
             mask = rendered_sil[cidx].detach().cpu().numpy()
             overlaid = overlay_mask(bgr_img, mask=(mask > 0))
             overlaid = putText(overlaid, cam_id)
+            if render_all:
+                if cam_id in self.tg_cams:
+                    overlaid = cv2.rectangle(overlaid, (0, 0), (overlaid.shape[1]-1, overlaid.shape[0]-1), (0,255,0), 10)
             imgs.append(overlaid)
+            
 
         cv2.imwrite(
             render_template_path,
-            cv2.cvtColor(make_grid_image_np(np.stack(imgs), 4, 6), cv2.COLOR_BGR2RGB),
+            make_grid_image_np(np.stack(imgs), 4, 6),
         )
 
     def init_objtemplate(self, obj_dict, obj_optim_output, template_path):
@@ -250,11 +258,13 @@ class Template_Varied:
 
 
 if __name__ == "__main__":
-    obj_name = "yellow_ramen_von"
-    tmp_template = Template_Varied(
-        str(default_template[obj_name]),
-        obj_name=obj_name,
-        tg_cams=template2camids[obj_name],
-        render_template=True,
-        render_template_path=f"./check_template_{obj_name}.jpeg",
-    )
+    colors = ['brown','red','yellow']
+    for color in colors:
+        obj_name = f"{color}_ramen_von"
+        tmp_template = Template_Varied(
+            str(default_template[obj_name]),
+            obj_name=obj_name,
+            tg_cams=template2camids[obj_name],
+            render_template=True,
+            render_template_path=f"./check_template_{obj_name}.jpeg",
+        )

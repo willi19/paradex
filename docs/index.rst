@@ -1,85 +1,85 @@
 Welcome to paradex's documentation!
 ===================================
 
-**Paradex** is a comprehensive robotic data collection and control system for manipulation research.
+.. image:: _static/paradex_demo.gif
+   :align: center
+   :width: 80%
 
-.. note::
-   This documentation is under active development.
+Paradex is a comprehensive robotic data collection and control system for manipulation research. 
+It fully supports **Linux** and is distributed under MIT license.
 
-Quick Start
------------
+Examples
+--------
 
-Install paradex:
-
-.. code-block:: bash
-
-   pip install -e .
-
-Basic usage example:
+.. figure:: _static/xarm_demo.png
+   :align: center
+   :width: 600px
+   
+   paradex example: XArm manipulation
 
 .. code-block:: python
 
    from paradex.io.robot_controller import XArmController
    
-   # Initialize robot
    robot = XArmController()
    robot.home_robot(home_pose)
-   
-   # Start recording
    robot.start(save_path="./data/demo")
+
+.. figure:: _static/camera_demo.png
+   :align: center
+   :width: 600px
    
-   # Control loop
-   for step in range(100):
-       robot.set_action(target_pose)
+   paradex example: Multi-camera capture
+
+.. code-block:: python
+
+   from paradex.io.camera.camera_loader import CameraManager
    
-   # Save and cleanup
-   robot.end()
-   robot.quit()
+   cameras = CameraManager(mode="video", syncMode=True)
+   cameras.start(save_dir="./captures")
 
-Features
---------
-
-🤖 **Robot Control**
-   Multi-threaded controllers for various robot arms and hands
-   (XArm, Franka, Allegro, Inspire)
-
-📹 **Multi-Camera Capture**
-   Hardware-synchronized multi-camera recording system
-
-🎮 **Teleoperation**
-   VR and motion capture integration (Oculus, Xsens)
-
-📊 **Data Collection**
-   Automatic synchronized recording of robot states and visual data
+.. toctree::
+   :maxdepth: 1
+   :caption: GET STARTED
+   
+   installation
+   quickstart
+   license
 
 .. toctree::
    :maxdepth: 2
-   :caption: User Guide
-   :hidden:
-
-   getting_started
-   examples
-
-.. toctree::
-   :maxdepth: 2
-   :caption: API Reference
-   :hidden:
-
+   :caption: PARADEX CORE
+   
    modules/io
+   modules/camera
    modules/image
+   modules/robot
+   modules/utils
+
+.. toctree::
+   :maxdepth: 1
+   :caption: RELATED SOFTWARE
+   
+   related/isaac_sim
+   related/mujoco
+   related/ros
+
+.. toctree::
+   :maxdepth: 1
+   :caption: 🚀 GET STARTED
+   
+   installation
+   quickstart
+
+.. toctree::
+   :maxdepth: 2
+   :caption: 📚 API REFERENCE
+   
+   modules/io
    modules/camera
 
 .. toctree::
    :maxdepth: 1
-   :caption: Development
-   :hidden:
-
-   contributing
-   changelog
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+   :caption: 🔗 RELATED SOFTWARE
+   
+   related/isaac_sim

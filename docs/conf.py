@@ -1,47 +1,52 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..')) 
+sys.path.insert(0, os.path.abspath('..'))
 
-autodoc_mock_imports = [
-    'transforms3d', 'cv2', 'torch', 'pyrender', 
-    'trimesh', 'open3d', 'numpy'
-]
-
+# Project information
 project = 'paradex'
 copyright = '2025, Mingi Choi'
 author = 'Mingi Choi'
 release = '0.0.0'
 
-# -- General configuration
+# Extensions
 extensions = [
-    'sphinx.ext.autodoc',       # 자동 문서화
-    'sphinx.ext.autosummary',   # ← 추가! 자동 요약 생성
-    'sphinx.ext.napoleon',      # Google/NumPy docstring
-    'sphinx.ext.viewcode',      # 소스코드 링크
-    'sphinx.ext.intersphinx',   # ← 추가! 다른 문서 링크
+    'sphinx.ext.autodoc',
+    'sphinx.ext.autosummary',
+    'sphinx.ext.napoleon',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.intersphinx',
 ]
 
-autosummary_generate = True  
-autodoc_default_options = {
-    'members': True,
-    'undoc-members': True,
-    'private-members': False,
-    'show-inheritance': True,
+# Mock imports
+autodoc_mock_imports = [
+    'transforms3d', 'cv2', 'torch', 'pyrender',
+    'trimesh', 'open3d', 'numpy', 'PySpin',
+    'xarm', 'serial', 'rospy', 'sensor_msgs', 'scipy',
+]
+
+# Autosummary
+autosummary_generate = True
+
+# Templates and static files
+templates_path = ['_templates']
+html_static_path = ['_static']
+html_css_files = ['custom.css']
+
+exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+
+# HTML theme
+html_theme = 'furo'
+html_logo = "_static/logo.png"
+
+html_theme_options = {
+    "light_css_variables": {
+        "color-brand-primary": "#7C4DFF",
+        "color-brand-content": "#7C4DFF",
+    },
 }
 
-napoleon_google_docstring = True
-napoleon_numpy_docstring = True
-napoleon_include_init_with_doc = True
-
-templates_path = ['_templates']
-exclude_patterns = [
-    '_build',           # 빌드 출력 디렉토리
-    'Thumbs.db',
-    '.DS_Store',
-    '**.ipynb_checkpoints',
-    'docs-html',        # ← 추가
-]
-
-html_theme = 'sphinx_rtd_theme'
-html_static_path = ['_static'] 
-html_theme_options = {}
+# Intersphinx
+intersphinx_mapping = {
+    'python': ('https://docs.python.org/3', None),
+    'numpy': ('https://numpy.org/doc/stable/', None),
+}

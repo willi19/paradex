@@ -8,6 +8,16 @@ from typing import List, Tuple
 
 from paradex.visualization.robot import RobotModule  
 
+class ViserViewer():
+    def __init__():
+        pass
+
+    def add_robot():
+        pass
+
+    def add_object():
+        pass
+
 class ViserRobotModule():
     def __init__(self, target,#: viser.ViserServer | viser.ClientHandle,
                  urdf_path, 

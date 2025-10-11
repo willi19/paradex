@@ -36,3 +36,4 @@ template_mesh
 trash
 thirdparty/EfficientLoFTR/ckpts/*.ckpt
 thirdparty/EfficientLoFTR/ckpts/*.ckpt
+*.jpeg

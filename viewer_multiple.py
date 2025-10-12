@@ -635,6 +635,7 @@ class ViserViewer:
         key_list = [img.split(".")[0] for img in os.listdir("obj_output/image") if ".png" in img]
         for key in key_list:
             image_cam_id = cv2.imread(f"obj_output/image/{key}.png")
+            image_cam_id = cv2.cvtColor(image_cam_id, cv2.COLOR_BGR2RGB)
             viewer.add_camera_with_image(
                 cam2intr[key],
                 cam2extr[key],

@@ -25,3 +25,12 @@ autodoc_mock_imports = [
 exclude_patterns = ['_build']
 
 html_theme = 'furo'
+
+# 로고/파비콘 없음
+html_logo = None
+html_favicon = None
+
+# 깔끔한 설정
+html_theme_options = {
+    "sidebar_hide_name": False,
+}

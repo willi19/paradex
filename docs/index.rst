@@ -1,85 +1,47 @@
-Welcome to paradex's documentation!
-===================================
+Paradex Documentation
+=====================
 
-.. image:: _static/paradex_demo.gif
-   :align: center
-   :width: 80%
-
-Paradex is a comprehensive robotic data collection and control system for manipulation research. 
-It fully supports **Linux** and is distributed under MIT license.
-
-Examples
---------
-
-.. figure:: _static/xarm_demo.png
-   :align: center
-   :width: 600px
-   
-   paradex example: XArm manipulation
-
-.. code-block:: python
-
-   from paradex.io.robot_controller import XArmController
-   
-   robot = XArmController()
-   robot.home_robot(home_pose)
-   robot.start(save_path="./data/demo")
-
-.. figure:: _static/camera_demo.png
-   :align: center
-   :width: 600px
-   
-   paradex example: Multi-camera capture
-
-.. code-block:: python
-
-   from paradex.io.camera.camera_loader import CameraManager
-   
-   cameras = CameraManager(mode="video", syncMode=True)
-   cameras.start(save_dir="./captures")
+Paradex is a comprehensive robotic data collection and control system.
 
 .. toctree::
    :maxdepth: 1
-   :caption: GET STARTED
+   :caption: I/O Module
    
-   installation
-   quickstart
-   license
-
-.. toctree::
-   :maxdepth: 2
-   :caption: PARADEX CORE
-   
-   modules/io
-   modules/camera
-   modules/image
-   modules/robot
-   modules/utils
+   io/robot_controller
+   io/camera
+   io/teleop
 
 .. toctree::
    :maxdepth: 1
-   :caption: RELATED SOFTWARE
+   :caption: Computer Vision
    
-   related/isaac_sim
-   related/mujoco
-   related/ros
+   vision/image
+   vision/geometry
+   vision/colmap
 
 .. toctree::
    :maxdepth: 1
-   :caption: 🚀 GET STARTED
+   :caption: Robot
    
-   installation
-   quickstart
-
-.. toctree::
-   :maxdepth: 2
-   :caption: 📚 API REFERENCE
-   
-   modules/io
-   modules/camera
+   robot/robot_wrapper
+   robot/curobo
 
 .. toctree::
    :maxdepth: 1
-   :caption: 🔗 RELATED SOFTWARE
+   :caption: Visualization
    
-   related/isaac_sim
+   visualization/viewer
+   visualization/renderer
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Utilities
+   
+   utils/file_io
+   utils/video
+
+Indices
+=======
+
+* :ref:`genindex`
+* :ref:`modindex`

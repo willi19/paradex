@@ -14,9 +14,37 @@ default_template = {
 }
 
 template2camids = {
-    "brown_ramen_von" : ['24122734','25305461','25305463','25322644','25322651'],
-    "red_ramen_von" : ['25305461','25305462','25305464','25322644','25322646','25322651'],
-    "yellow_ramen_von" : ['25305460','25305462','25305465','25322644','25322651']
+    "brown_ramen_von" : [
+        '24122734','25305463','25322644','25322651'
+    ],
+    "red_ramen_von" : [
+        '25322651','25322644','25305463','25322638'
+    ],
+    "yellow_ramen_von" : [
+        '24122734','25305463','25305467','25322638','25322644','25322651'
+    ]
+}
+
+default_template_combined = {
+    # "pringles": nas_path/"capture/marker_object/pringles/0",
+    "brown_ramen_von" : nas_path/"template/brown_ramen_von",
+    "red_ramen_von" : nas_path/"template/red_ramen_von",
+    "yellow_ramen_von" : nas_path/"template/yellow_ramen_von"
+}
+
+template2camids_combined = {
+    "brown_ramen_von" : {
+        '0':['24122734','25322651','25305460','25305463'],
+        '1':['25305465','25305467','25305463']
+    },
+    "red_ramen_von" : {
+        '0':['25305465','25305460','25322646'],
+        '1':['25322651','25305460','25322646'] 
+    },
+    "yellow_ramen_von" : {
+        '0':['25322651','24122734','25322646'],
+        '1':['25322651','25305460','25322646'] 
+    }
 }
 
 name2prompt = {

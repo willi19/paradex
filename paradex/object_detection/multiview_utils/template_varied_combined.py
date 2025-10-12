@@ -10,7 +10,7 @@ from copy import deepcopy
 
 import torch
 from paradex.object_detection.obj_utils.scene import Scene
-from paradex.object_detection.obj_utils.io import get_optimal_T
+from paradex.object_detection.obj_utils.io import get_optimal_T, get_tracking_result
 from paradex.object_detection.obj_utils.vis_utils import (
     parse_objectmesh_objdict,
     make_grid_image_np,
@@ -18,7 +18,10 @@ from paradex.object_detection.obj_utils.vis_utils import (
     make_square_img,
     putText
 )
-from paradex.object_detection.default_config import default_template, template2camids
+from paradex.object_detection.default_config import (
+    default_template_combined,
+    template2camids_combined
+)
 
 
 # from utils.geometry import project_3d_to_2d_tensor, project_3d_to_2d
@@ -34,7 +37,7 @@ from paradex.object_detection.default_config import default_template, template2c
 device = "cuda"
 
 
-class Template_Varied:
+class Template_Varied_Combined:
     """
     Template is a set of images and matched 6D pose of object
     """
@@ -45,21 +48,17 @@ class Template_Varied:
         obj_name=None,
         render_template_path="./check_template.jpeg",
         render_template=False,
-        tg_cams: list = [],
     ):
         assert root_dir is not None and os.path.exists(
             root_dir
         ), f"Should check directory: {root_dir}"
 
-        assert len(tg_cams) >= 4, "You should specify view cams more than 4"
-        self.tg_cams = tg_cams
-
         if obj_name is None:
             obj_name = root_dir.split("/")[-2]
 
-        template_path = str(Path(root_dir) / "initial_template.pkl")
+        template_path = str(Path(root_dir) / "template_varied_rots_combined.pkl")
 
-        # pickle.dump({'img2face':self.img2face, 'img2point3d':self.img2point3d}, open(template_path, 'wb'))
+        # Load Object Mesh
         obj_dict = parse_objectmesh_objdict(
             obj_name,
             min_vertex_num=1000,
@@ -67,7 +66,6 @@ class Template_Varied:
             renderer_type="nvdiffrast",
             device=device,
         )
-        # scale mesh
         if not obj_dict["canonicalized"]:
             obj_scale = obj_optim_output["scale"].detach().cpu().numpy().item(0)
             obj_dict["verts"] *= obj_scale
@@ -84,65 +82,99 @@ class Template_Varied:
             self.mask_template = tmp_dict["mask_template"]
 
         else:
-            self.scene = Scene(
-                scene_path=Path(root_dir),
-                rescale_factor=0.5,
-                mask_dir_nm=f"mask_hq/{obj_name}",
-            )
-            # self.mask_template = {cam_id : self.scene.get_mask(cam_id, 0, fill_value=255.0) for cam_id in self.tg_cams} # In mask checking
-            # cv2.imwrite('test.png', make_grid_image_np(np.array([self.mask_template[cam_id]*255 for cam_id in self.mask_template]), 4,6))
-            # self.cam2extr = self.scene.cam2extr
-            # self.cam2intr = self.scene.cam2intr
 
-            obj_initial_status = get_optimal_T(
-                root_dir
-            )  # find optimal T in first frame.
-            self.obj_initial_T = None
-            if obj_initial_status is not None:
-                obj_optim_output = pickle.load(open(obj_initial_status, "rb"))
-                for key in obj_optim_output:
-                    if torch.is_tensor(obj_optim_output[key]):
-                        obj_optim_output[key] = obj_optim_output[key].to(device)
+            self.img2face = {}
+            self.img2point3d = {}
+            self.mask_template = {}
+            self.img_template = {}
 
-            obj_T = np.eye(4)
-            obj_T[:3, :3] = obj_optim_output["R"].detach().cpu().numpy()
-            obj_T[:3, 3] = obj_optim_output["t"].detach().cpu().numpy()
-            self.obj_initial_T = obj_T
-            print(f"Initial object R:{obj_T[:3,:3]}, obj_t {obj_T[:3,3]}")
+            for sub_dir in sorted(os.listdir(root_dir)):
+                if sub_dir=='0':
+                    main_dir = True
+                else:
+                    main_dir = False
 
-            if render_template:
-                self.render_template(
-                    self.obj_dict, obj_optim_output, render_template_path, render_all=True
+                sub_dir_path = Path(root_dir)/sub_dir
+
+                self.scene = Scene(
+                    scene_path=sub_dir_path,
+                    rescale_factor=0.5,
+                    mask_dir_nm=f"mask_hq/{obj_name}",
                 )
+                if main_dir:
+                    obj_initial_status = get_optimal_T(
+                        str(sub_dir_path)
+                    )  # find optimal T in first frame.
+                    self.obj_initial_T = None
+                    if obj_initial_status is not None:
+                        obj_optim_output = pickle.load(open(obj_initial_status, "rb"))
+                        for key in obj_optim_output:
+                            if torch.is_tensor(obj_optim_output[key]):
+                                obj_optim_output[key] = obj_optim_output[key].to(device)
 
-            self.init_objtemplate(deepcopy(obj_dict), obj_optim_output, template_path)
-            debug = True
-            if debug:
-                import matplotlib.cm as cm
-                from matplotlib.colors import Normalize
+                    obj_T = np.eye(4)
+                    obj_T[:3, :3] = obj_optim_output["R"].detach().cpu().numpy()
+                    obj_T[:3, 3] = obj_optim_output["t"].detach().cpu().numpy()
+                    self.obj_initial_T = obj_T
+                    print(f"Object R:{obj_T[:3,:3]}, obj_t {obj_T[:3,3]}")
+                else:
+                    obj_tracking_output = get_tracking_result(sub_dir_path)
+                    self.obj_initial_T = obj_tracking_output[obj_name][0]
+                    obj_optim_output = {'R':torch.tensor(self.obj_initial_T[:3,:3], device=device).float(),
+                                        't':torch.tensor(self.obj_initial_T[:3,3], device=device).float().unsqueeze(0),
+                                        'scale':torch.tensor(1.0, device=device).float().unsqueeze(0)}
+                    print(f"Object R:{self.obj_initial_T [:3,:3]}, obj_t {self.obj_initial_T [:3,3]}")
 
-                cmap = cm.get_cmap("viridis")
-                imgs = []
-                for cam_id in self.img2face:
-                    canvas = np.zeros(
-                        (
-                            self.img2face[cam_id].shape[0],
-                            self.img2face[cam_id].shape[1],
-                            3,
-                        )
+                if obj_name in template2camids_combined and sub_dir in template2camids_combined[obj_name]:
+                    self.tg_cams = template2camids_combined[obj_name][sub_dir]
+                else:
+                    self.tg_cams = []
+                render_template_path =  f"./template_rendered/{obj_name}_template_render_{sub_dir}.png"
+                if render_template:
+                    self.render_template(
+                        self.obj_dict, obj_optim_output, render_template_path, render_all=True
                     )
-                    for r in range(self.img2face[cam_id].shape[0]):
-                        for c in range(self.img2face[cam_id].shape[1]):
-                            if self.img2face[cam_id][r][c] >= 0:
-                                face_float = self.img2face[cam_id][r][c] / len(
-                                    self.obj_dict["faces"]
-                                )
-                                canvas[r][c] = cmap(face_float)[:3]
-                    imgs.append(make_square_img(canvas * 255))
-                cv2.imwrite(
-                    self.scene.scene_path / "template_faces.png",
-                    make_grid_image_np(np.stack(imgs), 4, int(len(imgs) / 4 )),
-                )
+
+                self.init_obj_template(sub_dir, deepcopy(obj_dict), obj_optim_output, template_path)
+                debug = True
+                if debug:
+                    import matplotlib.cm as cm
+                    from matplotlib.colors import Normalize
+
+                    cmap = cm.get_cmap("viridis")
+                    imgs = []
+                    for cam_id in self.img2face:
+                        canvas = np.zeros(
+                            (
+                                self.img2face[cam_id].shape[0],
+                                self.img2face[cam_id].shape[1],
+                                3,
+                            )
+                        )
+                        for r in range(self.img2face[cam_id].shape[0]):
+                            for c in range(self.img2face[cam_id].shape[1]):
+                                if self.img2face[cam_id][r][c] >= 0:
+                                    face_float = self.img2face[cam_id][r][c] / len(
+                                        self.obj_dict["faces"]
+                                    )
+                                    canvas[r][c] = cmap(face_float)[:3]
+                        imgs.append(make_square_img(canvas * 255))
+                    cv2.imwrite(
+                        self.scene.scene_path / "template_faces.png",
+                        make_grid_image_np(np.stack(imgs), int(len(imgs) / 4 ), 4),
+                    )
+                
+                    # obj_optim_output, img_template, mask_template
+            pickle.dump(
+                {
+                    "img2face": self.img2face,
+                    "img2point3d": self.img2point3d,
+                    "obj_optim_output": obj_optim_output,
+                    "img_template": self.img_template,
+                    "mask_template": self.mask_template,
+                },
+                open(template_path, "wb"),
+            )
 
 
         for serial_num in self.img_template:
@@ -188,7 +220,7 @@ class Template_Varied:
             make_grid_image_np(np.stack(imgs), 4, 6),
         )
 
-    def init_objtemplate(self, obj_dict, obj_optim_output, template_path):
+    def init_obj_template(self, sub_dir, obj_dict, obj_optim_output, template_path):
         self.scene.get_batched_renderer(self.tg_cams)
         # Transform object
         transformed_obj = deepcopy(obj_dict)
@@ -204,11 +236,6 @@ class Template_Varied:
             self.scene.batch_rasterize(transformed_obj).cpu().numpy()
         )  # CAM_NUMB, HEIGHT, WIDTH, 1 (-1 if not rendered, number of face index)
 
-        # make 2d to 3d coorespondence from template to 3d points
-        self.img2face = {}
-        self.img2point3d = {}
-        self.mask_template = {}
-        self.img_template = {}
 
         for cidx, cam_id in enumerate(self.tg_cams):
             # TODO in here, diversify
@@ -220,7 +247,7 @@ class Template_Varied:
                 else:
                     tg_pix2face = pix2face[cidx]
                     tg_img = org_img
-                view_id = f'{cam_id}_{ridx}'
+                view_id = f'{sub_dir}_{cam_id}_{ridx}'
                 self.img_template[view_id] = tg_img
 
                 self.img2face[view_id] = tg_pix2face
@@ -242,29 +269,16 @@ class Template_Varied:
                     # for vidx in vertice_numbs:
                     self.img2point3d[view_id][y, x] = pos3d.detach().cpu().numpy()
 
-        # obj_optim_output, img_template, mask_template
-        pickle.dump(
-            {
-                "img2face": self.img2face,
-                "img2point3d": self.img2point3d,
-                "obj_optim_output": obj_optim_output,
-                "img_template": self.img_template,
-                "mask_template": self.mask_template,
-            },
-            open(template_path, "wb"),
-        )
-
         # cv2.imwrite('test.png', make_grid_image_np(np.array([self.mask_template[cam_id] for cam_id in self.mask_template]), 4,6))
 
 
 if __name__ == "__main__":
-    colors = ['brown','red','yellow']
+    colors = ['yellow']# ,'red','yellow'
     for color in colors:
         obj_name = f"{color}_ramen_von"
-        tmp_template = Template_Varied(
-            str(default_template[obj_name]),
+        tmp_template = Template_Varied_Combined(
+            str(default_template_combined[obj_name]),
             obj_name=obj_name,
-            tg_cams=template2camids[obj_name],
             render_template=True,
             render_template_path=f"./check_template_{obj_name}.jpeg",
         )

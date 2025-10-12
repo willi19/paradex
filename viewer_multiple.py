@@ -31,6 +31,7 @@ from glob import glob
 from scipy.spatial.transform import Rotation as R
 
 from paradex.utils.file_io import load_current_camparam
+from paradex.object_detection.default_config import nas_path
 
 DEFAULT_DEVICE = (
     "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
@@ -783,9 +784,9 @@ if __name__ == "__main__":
             #    obj_mesh, scaled = get_initial_mesh(obj_name, return_type='trimesh', simplify=True, device=DEFAULT_DEVICE)
             #obj_mesh, scaled = get_initial_mesh(obj_name, return_type='trimesh', simplify=False, device=DEFAULT_DEVICE)
             if obj_name == "pringles":
-                obj_mesh = trimesh.load(f"template_mesh/{obj_name}.ply")
+                obj_mesh = trimesh.load(nas_path/f"mesh/{obj_name}.ply")
             else:
-                obj_mesh = trimesh.load(f"template_mesh/{obj_name}/{obj_name}.obj")
+                obj_mesh = trimesh.load(nas_path/f"mesh/{obj_name}/{obj_name}.obj")
                 
             if obj_mesh.visual.kind=='texture':
                 tex = obj_mesh.visual.material.image

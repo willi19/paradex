@@ -20,7 +20,7 @@ args = parser.parse_args()
 if args.save_path is not None:
     os.makedirs(args.save_path, exist_ok=True)
      
-ip = "192.168.1.221"
+ip = "192.168.1.196"
 arm = XArmAPI(ip, is_radian=True)
 if arm.has_err_warn:
     arm.clean_error()
@@ -43,7 +43,7 @@ try:
             
             pos_aa = np.array(pos_aa)
             wrist_pos = aa2mtx(pos_aa)
-            
+            print(wrist_pos)
             np.save(os.path.join(args.save_path, f'{idx}_qpos.npy'), qpos)
             np.save(os.path.join(args.save_path, f'{idx}_aa.npy'), wrist_pos)
             

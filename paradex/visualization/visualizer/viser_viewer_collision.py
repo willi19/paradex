@@ -239,7 +239,7 @@ class ViserViewer:
         initial_obj_mesh = copy.deepcopy(self.mesh).apply_transform(self.obj_T[0])
         self.server.scene.add_mesh_trimesh(
             name=self.object_nm,
-            mesh=initial_obj_mesh
+            mesh=initial_obj_mesh,
             position=(0.0, 0.0, 0.0),
         )
         

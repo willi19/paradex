@@ -23,6 +23,3 @@ def point_in_convex_hull(points, mesh_vertices):
     except Exception as e:
         print(f"ConvexHull failed: {e}")
         return np.zeros(len(points), dtype=bool)
-
-def check_overlap(mesh_vertex1, mesh_vertex2):
-    for points in 

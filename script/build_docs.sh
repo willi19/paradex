@@ -10,10 +10,7 @@ rm -rf _sources _modules
 
 echo "Copying files to docs root..."
 cp -r _build/html/* .
+touch .nojekyll
 
 echo "Removing _build directory..."
 rm -rf _build
-
-echo "Done! Documentation is now at docs/index.html"
-
-chmod +x docs/build_docs.sh

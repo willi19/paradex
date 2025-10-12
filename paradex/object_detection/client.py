@@ -28,7 +28,7 @@ parser.add_argument('--paircount', type=int, default=30)
 args = parser.parse_args()
 obj_names = args.obj_names
 
-from paradex.object_detection.multiview_utils.template_varied import Template_Varied as Template
+from paradex.object_detection.multiview_utils.template_varied_combined import Template_Varied_Combined as Template
 # from paradex.object_detection.object_optim_config import template_path
 from paradex.object_detection.multiview_utils.matcher import MatcherTo3D
 from paradex.object_detection.default_config import default_template, name2prompt, prompt2name, template2camids

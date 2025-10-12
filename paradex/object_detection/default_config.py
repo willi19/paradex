@@ -25,6 +25,28 @@ template2camids = {
     ]
 }
 
+default_template_combined = {
+    # "pringles": nas_path/"capture/marker_object/pringles/0",
+    "brown_ramen_von" : nas_path/"template/brown_ramen_von",
+    "red_ramen_von" : nas_path/"template/red_ramen_von",
+    "yellow_ramen_von" : nas_path/"template/yellow_ramen_von"
+}
+
+template2camids_combined = {
+    "brown_ramen_von" : {
+        '0':['24122734','25322651','25305460','25305463'],
+        '1':['25305465','25305467','25305463']
+    },
+    "red_ramen_von" : {
+        '0':['25305465','25305460','25322646'],
+        '1':['25322651','25305460','25322646'] 
+    },
+    "yellow_ramen_von" : {
+        '0':['25322651','24122734','25322646'],
+        '1':['25322651','25305460','25322646'] 
+    }
+}
+
 name2prompt = {
     "pringles": "pringles",
     "brown_ramen_von_2": "brownramen",

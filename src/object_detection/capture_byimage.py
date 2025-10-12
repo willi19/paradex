@@ -23,6 +23,7 @@ from paradex.object_detection.obj_utils.geometry import project_3d_to_2d
 from paradex.object_detection.multiview_utils.img_processing import rendersil_obj2allview, SRC_COLOR
 from paradex.object_detection.multiview_utils.optimizer import combined_visualizer
 from paradex.object_detection.multiview_utils.matchingset import MatchItem, MatchingSet, group_optimization
+from paradex.object_detection.default_config import nas_path
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--obj_names', type=str, required=True, nargs='+')
@@ -72,15 +73,15 @@ DEBUG_VIS = Path('./debug')
 os.makedirs(DEBUG_VIS, exist_ok=True)
 
 # timestamp = time.strftime("%Y%m%d-%H%M%S")
-objoutput_path = './obj_output'
+objoutput_path = nas_path/'obj_output'
 os.makedirs(objoutput_path, exist_ok=True)
-oneview_dir = Path(objoutput_path+'/one_view')
+oneview_dir = objoutput_path/'one_view'
 os.makedirs(oneview_dir, exist_ok=True)
-optimization_dir = Path(objoutput_path+'/optim')
+optimization_dir = objoutput_path/'optim'
 os.makedirs(optimization_dir, exist_ok=True)
-set_root_dir = Path(objoutput_path+'/set')
+set_root_dir = objoutput_path/'set'
 os.makedirs(set_root_dir, exist_ok=True)
-image_root_dir = Path(objoutput_path+'/image')
+image_root_dir = objoutput_path/'image'
 os.makedirs(image_root_dir, exist_ok=True)    
 save_first_image = True
 

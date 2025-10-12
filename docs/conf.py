@@ -16,7 +16,10 @@ extensions = [
 autodoc_mock_imports = [
     'PySpin', 'xarm', 'serial', 'rospy', 'sensor_msgs',
     'cv2', 'torch', 'numpy', 'transforms3d', 'scipy',
-    'trimesh', 'open3d', 'pyrender', 'curobo'
+    'trimesh', 'open3d', 'pyrender', 'curobo',
+    # 추가
+    'pinocchio', 'zmq', 'pycolmap', 'plotly', 
+    'nvdiffrast', 'tqdm',
 ]
 
 exclude_patterns = ['_build']

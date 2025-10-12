@@ -4,6 +4,15 @@ from pathlib import Path
 import pickle
 import json
 
+
+def get_tracking_result(directory_path:Path):
+    result_path = directory_path/'obj_output'/'obj_T.pkl'
+    if os.path.exists(result_path):
+        return pickle.load(open(result_path,'rb'))
+    else:
+        return None
+    
+
 def get_optimal_T(directory_path, obj_name=None):
     if obj_name is None:
         obj_name = directory_path.split("/")[-2]

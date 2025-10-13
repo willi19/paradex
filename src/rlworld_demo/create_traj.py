@@ -8,7 +8,7 @@ from curobo.types.base import TensorDeviceType
 import trimesh
 # Pick Target 
 
-from paradex.utils.file_io import find_latest_directory, shared_dir, home_path, load_yaml, load_latest_C2R, get_robot_urdf_path
+from paradex.utils.file_io import find_latest_directory, shared_dir, home_path, load_yaml, load_latest_C2R, get_robot_urdf_path, rsc_path
 from paradex.robot.curobo import CuroboPlanner
 from paradex.visualization.visualizer.viser import ViserViewer
 from paradex.inference.util import get_linear_path
@@ -66,8 +66,7 @@ def load_pick_position():
     for obj_type, obj_list in obj_output.items():
         obj_type = obj_type.split('_')[0]  # brown_ramen_1 -> brown
         for obj_name, obj_se3 in obj_list.items():
-            obj_T[f"ramen_{obj_idx}"] = {"se3":np.linalg.inv(C2R) @ obj_se3, "offset":ramen_offset[obj_type]}
-            obj_T[f"ramen_{obj_idx}"]["se3"][1, 3] -= 0.2
+            obj_T[f"{obj_type}_{obj_idx}"] = np.linalg.inv(C2R) @ obj_se3 @ ramen_offset[obj_type]
             obj_idx += 1
 
     return obj_T
@@ -107,14 +106,21 @@ def load_visualizer(pick_position):
 
     visualizer.add_floor()
     visualizer.add_robot("xarm", get_robot_urdf_path(arm_name="xarm", hand_name="inspire"))
-    mesh_path = os.path.join(shared_dir, "object_6d/data/mesh", "ramen", "ramen.obj")
-    mesh = trimesh.load(mesh_path)
-    
+
+    mesh_dict = {}
+    for color in ["brown", "red", "yellow"]:
+        mesh_path = os.path.join(rsc_path, "object", f"{color}_ramen_von", f"{color}_ramen_von.obj")
+        mesh = trimesh.load(mesh_path)
+        mesh_dict[color] = mesh
+
     for obj_name, obj_pose in pick_position.items():
-        visualizer.add_object(obj_name, mesh, obj_pose["se3"])
+        visualizer.add_object(obj_name, mesh_dict[obj_name.split('_')[0]], obj_pose)
     return visualizer
 
 def get_grasp_pose():
+    pass
+
+def get_linear_start_position(theta, object_position, ):
     pass
 
 pick_position = load_pick_position()
@@ -128,11 +134,10 @@ robot = RobotWrapper(get_robot_urdf_path(arm_name="xarm", hand_name=None))
 robot.compute_forward_kinematics(xarm_init_pose)
 init_xarm_se3 = robot.get_link_pose(robot.get_link_index("link6"))
 
-for step in range(len(pick_position)):
-    obj_name = f"ramen_{step}"
+for obj_name in pick_position.keys():
     # approach
     pick_start_pose = init_xarm_se3
-    target_obj_pose = pick_position[obj_name]["se3"] @ pick_position[obj_name]["offset"]
+    target_obj_pose = pick_position[obj_name]
     target_obj_pose[:3, :3] = np.eye(3) # Special normalization for ramen
     
     pick_end_pose = target_obj_pose @ grasp_policy["7"][0]
@@ -150,27 +155,33 @@ for step in range(len(pick_position)):
     pick_traj = np.concatenate([pick_xarm_qpos, pick_inspire_traj], axis=1)
     visualizer.add_traj(f"pick_{obj_name}", {"xarm":pick_traj})
     # grasp
-    inspire_traj = parse_inspire(grasp_policy["7"][1], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])
+    inspire_traj = parse_inspire(grasp_policy["7"][1], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])[::3]
     xarm_traj = np.repeat(pick_xarm_qpos[-1][None, :], repeats=inspire_traj.shape[0], axis=0)
     grasp_traj = np.concatenate([xarm_traj, inspire_traj], axis=1)
     visualizer.add_traj(f"grasp_{obj_name}", {"xarm":grasp_traj})
+
     # lift
     target_pose = pick_end_pose.copy()
-    target_pose[2, 3] += 0.15
+    target_pose[2, 3] += 0.2
+    
     lift_xarm_traj, _ = get_linear_path(pick_end_pose, target_pose, np.zeros(6), np.zeros(6), length=50)
     lift_xarm_qpos = [pick_xarm_qpos[-1]]
+    lift_obj_pose = []
+
     for lift_xarm in lift_xarm_traj:
         qpos, succ = robot.solve_ik(lift_xarm, "link6", lift_xarm_qpos[-1])
-        print(succ)
-        if False:# not succ:
-            qpos = lift_xarm_qpos[-1]
         lift_xarm_qpos.append(qpos)
+        lift_obj_pose.append(lift_xarm @ np.linalg.inv(grasp_policy["7"][0]))
+
     lift_xarm_qpos = np.array(lift_xarm_qpos)[1:]
     lift_inspire_traj = np.repeat(inspire_traj[-1][None, :], repeats=lift_xarm_qpos.shape[0], axis=0)
     lift_traj = np.concatenate([lift_xarm_qpos, lift_inspire_traj], axis=1)
-    visualizer.add_traj(f"lift_{obj_name}", {"xarm":lift_traj})
-    # move to linear path initial
 
+    visualizer.add_traj(f"lift_{obj_name}", {"xarm":lift_traj}, {obj_name:np.array(lift_obj_pose)})
+
+    # move to linear path initial
+    wrist_direction = lift_obj_pose[-1][:3, 2]
+    
     # move to place position linearly
     
     # lay down

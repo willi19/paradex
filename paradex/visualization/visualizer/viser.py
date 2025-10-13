@@ -13,7 +13,8 @@ from paradex.visualization.robot import RobotModule
 
 class ViserViewer():
     def __init__(self, up_direction=np.array([0,0,1])):
-        print("Starting Viser Viewer...")
+        self.frame_nodes: dict[str, viser.FrameHandle] = {}
+
         self.up_direction = up_direction
         self.robot_dict = {}
         self.obj_dict = {}
@@ -22,7 +23,6 @@ class ViserViewer():
         self.num_frames = 0
 
         self.load_server()
-        self.add_frames()
         self.add_player()
 
     def load_server(self):
@@ -70,43 +70,56 @@ class ViserViewer():
             obj: trimesh.Trimesh object
             obj_T: 4x4 transformation matrix for the object pose
         """
-        # Apply transformation to the mesh
-        obj_transformed = obj.copy()
-        obj_transformed.apply_transform(obj_T)
+        # Create a frame for the object
+        frame_handle = self.server.scene.add_frame(
+            f"/objects/{name}_frame",
+            position=obj_T[:3, 3],
+            wxyz=R.from_matrix(obj_T[:3, :3]).as_quat()[[3, 0, 1, 2]],
+            show_axes=False
+        )
         
-        # Add mesh to viser scene
+        # Add mesh to the frame (at origin relative to frame)
         mesh_handle = self.server.scene.add_mesh_trimesh(
-            name=f"/objects/{name}",
-            mesh=obj_transformed
+            name=f"/objects/{name}_frame/{name}",
+            mesh=obj
         )
         
         # Store in object dictionary
         self.obj_dict[name] = {
             'mesh': obj,
             'transform': obj_T,
+            'frame': frame_handle,
             'handle': mesh_handle
         }
+        
+        self.frame_nodes[name] = frame_handle
         
         print(f"Added object '{name}' to scene")
 
 
-    def add_traj(self, name, traj: Dict):
-        if len(traj) == 0:
+    def add_traj(self, name, robot_traj: Dict, obj_traj: Dict = {}):
+        if len(robot_traj) == 0:
             return
-        traj_len = traj[list(traj.keys())[0]].shape[0]
-        new_traj_dict = {}
+        traj_len = robot_traj[list(robot_traj.keys())[0]].shape[0]
+        new_traj_dict = {"robot":{}, "object":{}}
         for robot_name in list(self.robot_dict.keys()):
-            if robot_name in traj:
-                new_traj_dict[robot_name] = traj[robot_name]
+            if robot_name in robot_traj:
+                new_traj_dict["robot"][robot_name] = robot_traj[robot_name]
             else:
-                new_traj_dict[robot_name] = np.tile(self.robot_dict[robot_name].urdf.get_cfg(), (traj_len, 1))
+                new_traj_dict["robot"][robot_name] = np.tile(self.robot_dict[robot_name].urdf.get_cfg(), (traj_len, 1))
 
-        self.traj_list.append((name, traj))
+        for obj_name in list(self.obj_dict.keys()):
+            if obj_name in obj_traj:
+                new_traj_dict["object"][obj_name] = obj_traj[obj_name]
+            else:
+                new_traj_dict["object"][obj_name] = np.tile(self.obj_dict[obj_name]["transform"][None, :, :], (traj_len, 1, 1))
+
+        self.traj_list.append((name, new_traj_dict, traj_len))
         self.num_frames += traj_len
         self.gui_timestep.max = self.num_frames - 1
 
-        print(f"Added trajectory '{name}' with {len(traj)} frames. Total frames: {self.num_frames}")
-
+        print(f"Added trajectory '{name}' with {len(robot_traj)} frames. Total frames: {self.num_frames}")
+    
     def add_grid_lines(self, size=5.0):
         """Add grid lines separately using line segments"""
         grid_spacing = 0.5  # 0.5m grid spacing
@@ -206,9 +219,7 @@ class ViserViewer():
         current_traj = None
         local_timestep = timestep
         
-        for traj_name, traj_data in self.traj_list:
-            traj_len = traj_data[list(traj_data.keys())[0]].shape[0]
-            
+        for traj_name, traj_data, traj_len in self.traj_list:
             if timestep < cumulative_frames + traj_len:
                 # 이 trajectory에 속함
                 current_traj = traj_data
@@ -225,9 +236,21 @@ class ViserViewer():
         # 해당 trajectory의 local timestep으로 로봇 업데이트
         with self.server.atomic():
             for robot_name, robot in self.robot_dict.items():
-                if robot_name in current_traj:
-                    robot.update_cfg(current_traj[robot_name][local_timestep])
-        
+                if robot_name in current_traj["robot"]:
+                    robot.update_cfg(current_traj["robot"][robot_name][local_timestep])
+
+            for obj_name, obj in self.obj_dict.items():
+                if obj_name in current_traj["object"]:
+                    obj_transform = current_traj["object"][obj_name][local_timestep]
+                    frame_handle = obj['frame']
+                    
+                    # Frame의 position과 rotation 업데이트
+                    xyzw = R.from_matrix(obj_transform[:3, :3]).as_quat()
+                    frame_handle.wxyz = xyzw[[3, 0, 1, 2]]
+                    frame_handle.position = obj_transform[:3, 3]
+                    
+                    obj['transform'] = obj_transform
+
         self.prev_timestep = timestep
         self.server.flush()
         
@@ -330,14 +353,15 @@ class ViserViewer():
         def _(_) -> None:
             self.render_full_video()
 
-    def add_frames(self):
-        self.server.scene.add_frame(
-            "/frames",
-            position=(0, 0, 0),
-            show_axes=False,
+    def add_frame(self, name):
+        self.frame_nodes[name] = self.server.scene.add_frame(
+            name=f"/{name}/frame",
+            show_axes=True,
+            axis_length=0.1,
+            axis_radius=0.002,
         )
+        
 
-        self.frame_nodes: list[viser.FrameHandle] = []
 
 class ViserRobotModule():
     def __init__(self, target,#: viser.ViserServer | viser.ClientHandle,
@@ -354,7 +378,6 @@ class ViserRobotModule():
         self._joint_frames: List[viser.FrameHandle] = []
         self._meshes: List[viser.MeshHandle] = []
         num_joints_to_repeat = 0
-        print(list(self._urdf.joint_map.keys()))
 
         if load_meshes:
             if self.urdf.scene is not None:

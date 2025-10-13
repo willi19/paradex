@@ -72,20 +72,21 @@ scene.get_batched_renderer(tg_cam_list=scene.cam_ids)
 DEBUG_VIS = Path('./debug')
 os.makedirs(DEBUG_VIS, exist_ok=True)
 
-# timestamp = time.strftime("%Y%m%d-%H%M%S")
-objoutput_path = nas_path/'obj_output'
-os.makedirs(objoutput_path, exist_ok=True)
-oneview_dir = objoutput_path/'one_view'
-os.makedirs(oneview_dir, exist_ok=True)
-optimization_dir = objoutput_path/'optim'
-os.makedirs(optimization_dir, exist_ok=True)
-set_root_dir = objoutput_path/'set'
-os.makedirs(set_root_dir, exist_ok=True)
-image_root_dir = objoutput_path/'image'
-os.makedirs(image_root_dir, exist_ok=True)    
-save_first_image = True
+def make_save_dir():
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+    objoutput_path = nas_path/'obj_output'/timestamp
+    os.makedirs(objoutput_path, exist_ok=True)
+    oneview_dir = objoutput_path/'one_view'
+    os.makedirs(oneview_dir, exist_ok=True)
+    optimization_dir = objoutput_path/'optim'
+    os.makedirs(optimization_dir, exist_ok=True)
+    set_root_dir = objoutput_path/'set'
+    os.makedirs(set_root_dir, exist_ok=True)
+    image_root_dir = objoutput_path/'image'
+    os.makedirs(image_root_dir, exist_ok=True)    
+    save_first_image = True
+    return objoutput_path, oneview_dir, optimization_dir, set_root_dir, image_root_dir, save_first_image
 
-    
 def get_frameinfo(cur_state, serial_num):
     return cur_state[serial_num] if serial_num in cur_state else None
 
@@ -110,10 +111,10 @@ def listen_socket(pc_name, socket):
 pc_list = list(pc_info.keys())
 git_pull("paradex2", pc_list)
 
-# if args.debug:
-#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
-# else:
-#     run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
+if args.debug:
+    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)} --saveimg", pc_list, log=False)
+else:
+    run_script(f"python paradex/object_detection/client.py --obj_names {' '.join(args.obj_names)}", pc_list, log=False)
 
 save_path = './shared_data/tmp_images'
 if os.path.exists(Path.home()/save_path):
@@ -143,6 +144,8 @@ try:
         # cur_state = {}
         while not os.path.exists(cur_save_abspath) or len(os.listdir(cur_save_abspath)) > len(cur_state) or len(cur_state)<10:
             time.sleep(0.5)
+
+        objoutput_path, oneview_dir, optimization_dir, set_root_dir, image_root_dir, save_first_image = make_save_dir()
             
         img_bucket = {}
         for i, serial_num in enumerate(serial_list):

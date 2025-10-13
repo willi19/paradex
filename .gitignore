@@ -33,3 +33,4 @@ paradex/pose_utils/dex_retargeting
 *.jpeg
 *.pkl
 .vscode/settings.json
+thirdparty

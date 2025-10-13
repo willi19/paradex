@@ -50,6 +50,8 @@ def parse_inspire(inspire_traj, joint_order = ['right_index_1_joint', 'right_ind
         ret[:, index] = limit[joint_name] * (1 - inspire_traj[:, i] / 1000)
     
     for joint_name, mimic in mimic_joint.items():
+        if joint_name not in joint_order:
+            continue
         index = joint_order.index(joint_name)
         mj = mimic["joint"]
         ratio = mimic["ratio"]

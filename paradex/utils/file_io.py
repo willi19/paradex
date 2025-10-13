@@ -1,8 +1,10 @@
 import os
 import json
+from typing import Dict
 import numpy as np
 import cv2
 import shutil
+import yaml
 
 rsc_path = os.path.join(
     os.path.dirname(__file__),
@@ -253,3 +255,17 @@ def load_latest_C2R():
 def load_latest_eef():
     name = find_latest_directory(eef_calib_path)
     return load_eef(os.path.join(eef_calib_path, name, "0"))
+
+def load_yaml(file_path:str) -> Dict:
+    """Load yaml file and return as dictionary. If file_path is a dictionary, return as is.
+
+    Args:
+        file_path: File path to yaml file or dictionary.
+
+    Returns:
+        Dict: Dictionary containing yaml file content.
+    """
+    if isinstance(file_path, str):
+        with open(file_path) as file_p:
+            yaml_params = yaml.load(file_p, Loader=yaml.Loader)
+    return yaml_params

@@ -1,3 +1,4 @@
+from distro import name
 import numpy as np
 import yourdfpy
 from scipy.spatial.transform import Rotation as R
@@ -5,25 +6,107 @@ from trimesh import Scene
 import viser
 import trimesh
 from typing import List, Tuple, Dict
+import time
+import viser.transforms as tf
 
 from paradex.visualization.robot import RobotModule  
 
 class ViserViewer():
-    def __init__(self):
-        self.load_server()
+    def __init__(self, up_direction=np.array([0,0,1])):
+        print("Starting Viser Viewer...")
+        self.up_direction = up_direction
+        self.robot_dict = {}
+        self.obj_dict = {}
 
-    def add_robot(self, robot: RobotModule):
-        self.mesh_dict[robot.name] = robot
+        self.traj_list = []
+        self.num_frames = 0
+
+        self.load_server()
+        self.add_frames()
+        self.add_player()
+
+    def load_server(self):
+        self.server = viser.ViserServer()
+        self.server.gui.configure_theme(dark_mode=False)
+
+        self.server.scene.set_up_direction(self.up_direction)
+        self.server.scene.world_axes
+
+        @self.server.on_client_connect
+        def _(client: viser.ClientHandle) -> None:
+            near_slider = client.gui.add_slider(
+                "Near", min=0.01, max=10.0, step=0.001, initial_value=client.camera.near
+            )
+            far_slider = client.gui.add_slider(
+                "Far", min=1, max=20.0, step=0.001, initial_value=client.camera.far
+            )
+
+            @near_slider.on_update
+            def _(_) -> None:
+                client.camera.near = near_slider.value
+
+            @far_slider.on_update
+            def _(_) -> None:
+                client.camera.far = far_slider.value
+
+    def add_robot(self, name, urdf_path):
+        robot = ViserRobotModule(
+            target=self.server,
+            urdf_path=urdf_path,
+            scale=1.0,
+            root_node_name="/robot",
+            load_meshes=True,
+            load_collision_meshes=False,
+        )
+        
+        self.robot_dict[name] = robot
 
     def add_object(self, name, obj: trimesh.Trimesh, obj_T):
-        pass
-    
-    def load_server(self):
-        pass
+        """
+        Add an object mesh to the scene
+        
+        Args:
+            name: Unique name for the object
+            obj: trimesh.Trimesh object
+            obj_T: 4x4 transformation matrix for the object pose
+        """
+        # Apply transformation to the mesh
+        obj_transformed = obj.copy()
+        obj_transformed.apply_transform(obj_T)
+        
+        # Add mesh to viser scene
+        mesh_handle = self.server.scene.add_mesh_trimesh(
+            name=f"/objects/{name}",
+            mesh=obj_transformed
+        )
+        
+        # Store in object dictionary
+        self.obj_dict[name] = {
+            'mesh': obj,
+            'transform': obj_T,
+            'handle': mesh_handle
+        }
+        
+        print(f"Added object '{name}' to scene")
 
-    def add_traj(self, traj: Dict):
-        pass
-    
+
+    def add_traj(self, name, traj: Dict):
+        if len(traj) == 0:
+            return
+        traj_len = traj[list(traj.keys())[0]].shape[0]
+        new_traj_dict = {}
+        for robot_name in list(self.robot_dict.keys()):
+            if robot_name in traj:
+                new_traj_dict[robot_name] = traj[robot_name]
+            else:
+                new_traj_dict[robot_name] = np.tile(self.robot_dict[robot_name].urdf.get_cfg(), (traj_len, 1))
+
+        self.traj_list.append((name, traj))
+        self.num_frames += traj_len
+        self.gui_timestep.max = self.num_frames - 1
+
+        print(f"Added trajectory '{name}' with {len(traj)} frames. Total frames: {self.num_frames}")
+
     def add_grid_lines(self, size=5.0):
         """Add grid lines separately using line segments"""
         grid_spacing = 0.5  # 0.5m grid spacing
@@ -48,8 +131,9 @@ class ViserViewer():
             )
             lines_added += 1
     
-    def update_floor(self):
+    def add_floor(self):
         """Update floor visibility and appearance"""
+        self.floor_size = 0.2
         try:
             # Remove existing floor and grid elements
             try:
@@ -64,9 +148,10 @@ class ViserViewer():
                     self.server.scene.remove_by_name(f"grid_y_{i}")
                 except:
                     pass
-            
-            if self.floor_visible.value:
-                size = self.floor_size.value
+
+            if True:  # self.floor_visible.value:
+                # size = self.floor_size.value
+                size = self.floor_size
                 
                 # Create a simple box as floor (very thin)
                 self.server.scene.add_box(
@@ -79,7 +164,7 @@ class ViserViewer():
                 print(f"✅ Floor box added: size={size*2}x{size*2}x0.02 at (0,0,-0.01)")
                 
                 # Add grid lines if enabled
-                if self.grid_visible.value:
+                if True: #self.grid_visible.value:
                     try:
                         self.add_grid_lines(size=size)
                         print(f"✅ Grid lines added")
@@ -115,6 +200,145 @@ class ViserViewer():
         
         return floor_mesh
     
+    def update_scene(self, timestep):
+        # 현재 timestep이 속한 trajectory 찾기
+        cumulative_frames = 0
+        current_traj = None
+        local_timestep = timestep
+        
+        for traj_name, traj_data in self.traj_list:
+            traj_len = traj_data[list(traj_data.keys())[0]].shape[0]
+            
+            if timestep < cumulative_frames + traj_len:
+                # 이 trajectory에 속함
+                current_traj = traj_data
+                local_timestep = timestep - cumulative_frames
+                print(f"Updating scene to timestep {timestep} (trajectory '{traj_name}', local frame {local_timestep})")
+                break
+            
+            cumulative_frames += traj_len
+        
+        if current_traj is None:
+            print(f"Warning: timestep {timestep} out of range")
+            return
+        
+        # 해당 trajectory의 local timestep으로 로봇 업데이트
+        with self.server.atomic():
+            for robot_name, robot in self.robot_dict.items():
+                if robot_name in current_traj:
+                    robot.update_cfg(current_traj[robot_name][local_timestep])
+        
+        self.prev_timestep = timestep
+        self.server.flush()
+        
+        if self.render_png.value:
+            self.render_current_frame(timestep)
+
+    def update(self):
+        if self.gui_playing.value and len(self.traj_list) > 0:
+            next_timestep = (self.gui_timestep.value + 1) % self.num_frames
+            self.gui_timestep.value = next_timestep
+            
+        time.sleep(1.0 / self.gui_framerate.value)
+    
+    def start_viewer(self):
+        try:
+            while True:
+                self.update()
+        except KeyboardInterrupt:
+            pass
+    
+    def add_player(self):
+        with self.server.gui.add_folder("Playback"):
+            self.gui_timestep = self.server.gui.add_slider(
+                "Timestep",
+                min=0,
+                max=0,
+                step=1,
+                initial_value=0,
+                disabled=True,
+            )
+            self.gui_next_frame = self.server.gui.add_button("Next Frame", disabled=True)
+            self.gui_prev_frame = self.server.gui.add_button("Prev Frame", disabled=True)
+            self.gui_playing = self.server.gui.add_checkbox("Playing", True)
+            self.render_png = self.server.gui.add_checkbox("Render to PNG", False)
+            self.gui_framerate = self.server.gui.add_slider(
+                "FPS", min=1, max=60, step=0.1, initial_value=10
+            )
+            gui_framerate_options = self.server.gui.add_button_group(
+                "FPS options", ("10", "20", "30", "60")
+            )
+
+            gui_up = self.server.gui.add_vector3(
+                "Up Direction",
+                initial_value=(0.0, -1.0, 1.0),
+                step=0.01,
+            )
+            
+        with self.server.gui.add_folder("Scene"):
+            self.floor_visible = self.server.gui.add_checkbox("Show Floor", True)
+            self.floor_size = self.server.gui.add_slider(
+                "Floor Size", min=0.2, max=1.0, step=0.5, initial_value=0.5
+            )
+            self.grid_visible = self.server.gui.add_checkbox("Show Grid", True)
+            
+        with self.server.gui.add_folder("Video Rendering"):
+            self.video_width = self.server.gui.add_number("Video Width", initial_value=1280, min=640, max=3840)
+            self.video_height = self.server.gui.add_number("Video Height", initial_value=720, min=480, max=2160)
+            self.video_fps = self.server.gui.add_slider("Video FPS", min=10, max=60, step=1, initial_value=30)
+            self.render_video_btn = self.server.gui.add_button("Render Full Video")
+            
+        @gui_up.on_update
+        def _(_) -> None:
+            self.server.scene.set_up_direction(gui_up.value)
+            
+        @self.floor_visible.on_update
+        def _(_) -> None:
+            self.update_floor()
+            
+        @self.floor_size.on_update
+        def _(_) -> None:
+            self.update_floor()
+            
+        @self.grid_visible.on_update
+        def _(_) -> None:
+            self.update_floor()
+
+        @self.gui_timestep.on_update
+        def _(_) -> None:
+            self.update_scene(self.gui_timestep.value)
+            
+        @gui_framerate_options.on_click
+        def _(_) -> None:
+            self.gui_framerate.value = int(gui_framerate_options.value)
+
+        @self.gui_next_frame.on_click
+        def _(_) -> None:
+            self.gui_timestep.value = (self.gui_timestep.value + 1) % self.num_frames
+
+        @self.gui_prev_frame.on_click
+        def _(_) -> None:
+            self.gui_timestep.value = (self.gui_timestep.value - 1) % self.num_frames
+
+        @self.gui_playing.on_update
+        def _(_) -> None:
+            self.gui_timestep.disabled = self.gui_playing.value
+            self.gui_next_frame.disabled = self.gui_playing.value
+            self.gui_prev_frame.disabled = self.gui_playing.value
+            
+        @self.render_video_btn.on_click
+        def _(_) -> None:
+            self.render_full_video()
+
+    def add_frames(self):
+        self.server.scene.add_frame(
+            "/frames",
+            position=(0, 0, 0),
+            show_axes=False,
+        )
+
+        self.frame_nodes: list[viser.FrameHandle] = []
+
 class ViserRobotModule():
     def __init__(self, target,#: viser.ViserServer | viser.ClientHandle,
                  urdf_path, 
@@ -130,6 +354,8 @@ class ViserRobotModule():
         self._joint_frames: List[viser.FrameHandle] = []
         self._meshes: List[viser.MeshHandle] = []
         num_joints_to_repeat = 0
+        print(list(self._urdf.joint_map.keys()))
+
         if load_meshes:
             if self.urdf.scene is not None:
                 num_joints_to_repeat += 1
@@ -148,7 +374,8 @@ class ViserRobotModule():
                     collision_geometry=True
                 )
         self._joint_map_values = [*self._urdf.joint_map.values()] * num_joints_to_repeat
-                
+        self.update_cfg(np.zeros(len(self._urdf.joint_map)))    
+
     def change_color(self, name_list, color: Tuple[float, float, float]) -> None:
         """Change the color of the visualized URDF."""
         for name in name_list:

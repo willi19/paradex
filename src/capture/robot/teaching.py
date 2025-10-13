@@ -45,8 +45,9 @@ try:
             wrist_pos = aa2mtx(pos_aa)
             
             np.save(os.path.join(args.save_path, f'{idx}_qpos.npy'), qpos)
+            print(qpos)
             np.save(os.path.join(args.save_path, f'{idx}_aa.npy'), wrist_pos)
-            
+            print(wrist_pos)            
             print(f"Saved pose {idx}: {wrist_pos}")
             idx += 1
             save_event.clear()

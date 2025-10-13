@@ -309,7 +309,7 @@ def triangulate_marker(img_dict, intrinsic, extrinsic, dict_type='6X6_1000'):
         
         undist_img = undistort_img(img.copy(), intrinsic[serial_num])
         undist_kypt, ids = detect_aruco(undist_img, dict_type)
-        
+
         if ids is None:
             continue
         

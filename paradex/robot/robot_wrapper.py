@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 
 import numpy as np
 import numpy.typing as npt
@@ -124,7 +124,7 @@ class RobotWrapper:
         tol: float = 1e-8,
         alpha: float = 5e-2,
         try_num : int = 30
-    ) -> npt.NDArray:
+    ) -> Tuple[npt.NDArray, bool]:
         
         target_pose = target_pose.copy()
         q_min = self.model.lowerPositionLimit

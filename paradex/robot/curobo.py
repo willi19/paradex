@@ -32,11 +32,16 @@ def to_quat(obj_pose):
 def load_world_config(obj_dict):
     world_config_dict = {'mesh':{}, 'cuboid':{}}
     world_config_dict["cuboid"]["table"] = {
-            "pose": [0.0, 0.0, -0.141, 0.0, 0.0, 0.0, 1.0],
+            "pose": [0.0, 0.0, -0.12, 0.0, 0.0, 0.0, 1.0],
             "dims": [2.0, 2.0, 0.2],
             "color": [0.8, 0.6, 0.4, 1.0]
         }
-    
+    world_config_dict["cuboid"]["basetop"] = {
+            "pose": [0, 0, 1.0, 0, 0, 0, 1],
+            "dims": [5.0, 5.0, 0.2],
+            "color": [0.8, 0.6, 0.4,1.0]
+        }
+
     for obj_name, obj_info in obj_dict.items():
         world_config_dict["mesh"][str(obj_name)] = {
                 "pose": to_quat(obj_info["pose"]).tolist(),
@@ -47,16 +52,17 @@ def load_world_config(obj_dict):
 
 class CuroboPlanner:
     def __init__(self,
-                 world_cfg,
+                 obj_dict,
                  robot_cfg,
                  tensor_args,):
         
         n_obstacle_cuboids = 30
         n_obstacle_mesh = 100
-
+        self.world_cfg = WorldConfig().from_dict(load_world_config(obj_dict))
+        
         motion_gen_config = MotionGenConfig.load_from_robot_config(
             robot_cfg,
-            world_cfg,
+            self.world_cfg,
             tensor_args,
             collision_checker_type=CollisionCheckerType.MESH,
             num_ik_seeds=64, #128, 
@@ -69,7 +75,8 @@ class CuroboPlanner:
             collision_activation_distance=0.006,
             optimize_dt=True,
             trajopt_dt=0.05, #0.1, #0.1, #0.1,
-            trajopt_tsteps=40# 40, #30, #70, #30, # 50 #70, (demo : 70, robothome : 30)
+            trajopt_tsteps=80# 40, #30, #70, #30, # 50 #70, (demo : 70, robothome : 30)
+            
         )
         self.motion_gen = MotionGen(motion_gen_config)
         self.motion_gen.warmup(enable_graph=True, warmup_js_trajopt=False)
@@ -89,7 +96,7 @@ class CuroboPlanner:
 
         ik_config = IKSolverConfig.load_from_robot_config(
             robot_cfg,
-            world_cfg,
+            self.world_cfg,
             rotation_threshold=0.05,
             position_threshold=0.005,
             num_seeds=20,
@@ -102,6 +109,37 @@ class CuroboPlanner:
             # use_fixed_samples=True,
         )
         self.ik_solver = IKSolver(ik_config)      
+    
+    def get_robot_mesh(self, joint_state):
+        js = JointState.from_position(torch.tensor(joint_state, device=self.motion_gen.tensor_args.device).float()).unsqueeze(0)
+        return self.motion_gen.kinematics.get_visual_meshes(js)
+    
+
+    def update_world(self, obj_dict):
+        world_cfg_dict = load_world_config(obj_dict)
+        world_cfg = WorldConfig().from_dict(world_cfg_dict)
+
+        self.motion_gen.update_world_config(world_cfg)
+        self.ik_solver.update_world_config(world_cfg)
+
+    def plan_goalset(self, init_state, goal_pose):
+        init_js_state = JointState.from_position(torch.tensor(init_state, device=self.motion_gen.tensor_args.device).float()).unsqueeze(0)
+
+        position = torch.tensor(goal_pose[:, :3, 3].astype(np.float32), device=self.motion_gen.tensor_args.device).unsqueeze(0)
+        xyzw = R.from_matrix(goal_pose[:, :3, :3]).as_quat()  # xyzw
+        wxyz = torch.tensor(xyzw[:, [3, 0, 1, 2]].astype(np.float32), device=self.motion_gen.tensor_args.device).unsqueeze(0)  # wxyz
+        goal_pose = Pose(
+            position=position,
+            quaternion=wxyz,
+        )
+        
+        result = self.motion_gen.plan_goalset(
+            start_state=init_js_state,
+            goal_pose=goal_pose,
+            plan_config=self.plan_config,
+        )
+        import pdb; pdb.set_trace()
+        return result.goalset_index, result.get_interpolated_plan().position.cpu().numpy()
 
     def plan_full_step(self, 
                         current_state : JointState, 

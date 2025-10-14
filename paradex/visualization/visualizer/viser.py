@@ -38,7 +38,7 @@ class ViserViewer():
                 "Near", min=0.01, max=10.0, step=0.001, initial_value=client.camera.near
             )
             far_slider = client.gui.add_slider(
-                "Far", min=1, max=20.0, step=0.001, initial_value=client.camera.far
+                "Far", min=1, max=1000.0, step=0.001, initial_value=client.camera.far
             )
 
             @near_slider.on_update
@@ -93,8 +93,6 @@ class ViserViewer():
         }
         
         self.frame_nodes[name] = frame_handle
-        
-        print(f"Added object '{name}' to scene")
 
 
     def add_traj(self, name, robot_traj: Dict, obj_traj: Dict = {}):
@@ -111,14 +109,14 @@ class ViserViewer():
         for obj_name in list(self.obj_dict.keys()):
             if obj_name in obj_traj:
                 new_traj_dict["object"][obj_name] = obj_traj[obj_name]
+                self.obj_dict[obj_name]['transform'] = obj_traj[obj_name][-1]
             else:
-                new_traj_dict["object"][obj_name] = np.tile(self.obj_dict[obj_name]["transform"][None, :, :], (traj_len, 1, 1))
+                obj_T = self.obj_dict[obj_name]['transform']
+                new_traj_dict["object"][obj_name] = np.tile(obj_T[None, :, :], (traj_len, 1, 1))
 
         self.traj_list.append((name, new_traj_dict, traj_len))
         self.num_frames += traj_len
         self.gui_timestep.max = self.num_frames - 1
-
-        print(f"Added trajectory '{name}' with {len(robot_traj)} frames. Total frames: {self.num_frames}")
     
     def add_grid_lines(self, size=5.0):
         """Add grid lines separately using line segments"""
@@ -174,13 +172,10 @@ class ViserViewer():
                     color=(0.7, 0.7, 0.7)
                 )
                 
-                print(f"✅ Floor box added: size={size*2}x{size*2}x0.02 at (0,0,-0.01)")
-                
                 # Add grid lines if enabled
                 if True: #self.grid_visible.value:
                     try:
                         self.add_grid_lines(size=size)
-                        print(f"✅ Grid lines added")
                     except Exception as e:
                         print(f"❌ Grid lines failed: {e}")
             else:
@@ -224,7 +219,7 @@ class ViserViewer():
                 # 이 trajectory에 속함
                 current_traj = traj_data
                 local_timestep = timestep - cumulative_frames
-                print(f"Updating scene to timestep {timestep} (trajectory '{traj_name}', local frame {local_timestep})")
+                # print(f"Updating scene to timestep {timestep} (trajectory '{traj_name}', local frame {local_timestep})")
                 break
             
             cumulative_frames += traj_len
@@ -248,8 +243,6 @@ class ViserViewer():
                     xyzw = R.from_matrix(obj_transform[:3, :3]).as_quat()
                     frame_handle.wxyz = xyzw[[3, 0, 1, 2]]
                     frame_handle.position = obj_transform[:3, 3]
-                    
-                    obj['transform'] = obj_transform
 
         self.prev_timestep = timestep
         self.server.flush()
@@ -276,8 +269,8 @@ class ViserViewer():
             self.gui_timestep = self.server.gui.add_slider(
                 "Timestep",
                 min=0,
-                max=0,
-                step=1,
+                max=1,
+                step=0,
                 initial_value=0,
                 disabled=True,
             )

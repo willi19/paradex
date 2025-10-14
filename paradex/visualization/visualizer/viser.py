@@ -20,7 +20,7 @@ class ViserViewer():
         self.obj_dict = {}
 
         self.traj_list = []
-        self.num_frames = 0
+        self.num_frames = 5000
 
         self.load_server()
         self.add_player()
@@ -269,8 +269,8 @@ class ViserViewer():
             self.gui_timestep = self.server.gui.add_slider(
                 "Timestep",
                 min=0,
-                max=1,
-                step=0,
+                max=self.num_frames-1,
+                step=1,
                 initial_value=0,
                 disabled=True,
             )

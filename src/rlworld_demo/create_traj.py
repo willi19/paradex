@@ -53,8 +53,7 @@ OBSTACLE = {'cuboid':
 # TODO:
 # [X] make floor
 # [X] add object to OBSTACLE
-# [] change linear path planning to planning
-# [] make grid output pose
+# [X] change linear path planning to planning
 # [] make order of pick
 
 # We use object coordinate as it's center is in the bottom, middle of the object, with z-axis pointing up
@@ -173,6 +172,7 @@ def get_linear_start_position(theta, object_position, ):
 def get_pick_traj(init_qpos, pick_position, grasp_se3):
     grasp_pose_dict = load_pick_pose(pick_position, grasp_se3)
     goal_pose = np.concatenate([grasp_pose_dict[obj_name] for obj_name in pick_position.keys()], axis=0)
+
     goal_idx, qpos_traj = planner.plan_goalset(init_qpos, goal_pose) # goal_pose NX4X4
     obj_name = list(pick_position.keys())[goal_idx // NUM_GRASP]
     return obj_name, qpos_traj
@@ -187,7 +187,7 @@ def merge_qpos(xarm, inspire_qpos):
 
 robot = RobotWrapper(get_robot_urdf_path(arm_name="xarm", hand_name=None))
 def linear_trajectory(init_qpos, target_se3, length=50):
-    print(init_qpos)
+
     robot.compute_forward_kinematics(init_qpos)
     init_xarm_se3 = robot.get_link_pose(robot.get_link_index("link6"))
     
@@ -208,7 +208,7 @@ def get_lift_traj(init_qpos, height, length=50, linear=True):
     if linear:
         xarm_qpos_traj = linear_trajectory(init_qpos, target_se3, length=length)
     else:
-        goal_idx, qpos_traj = planner.plan_single(init_qpos, target_se3)
+        goal_idx, xarm_qpos_traj = planner.plan_goalset(init_qpos, target_se3[np.newaxis, :])
     return xarm_qpos_traj
 
 def get_obj_traj(qpos_traj, grasp_se3):
@@ -281,13 +281,12 @@ for step in range(len(pick_position)):
     pick_tot_traj.append(merge_qpos(pick_xarm_traj[-1], orig_inspire_traj))
     # visualizer.add_traj(f"grasp_{obj_name}", {"xarm":grasp_traj})
 
-    # # lift TODO CHANGE
-    # print(obj_dict)
-    # obj_dict.pop(obj_name)
-    # planner.motion_gen.world_model.remove_obstacle(obj_name)
-    # planner.update_world(obj_dict)
+    # Delete lifted object from mesh DB    
+    obj_dict.pop(obj_name)
+    planner.update_world(obj_dict)
+    planner.motion_gen.world_model.save_world_as_mesh(os.path.join(demo_data, f"obstacle_mesh_{step}.obj"))
 
-    lift_xarm_traj = get_lift_traj(pick_xarm_traj[-1], height=0.2, length=50)
+    lift_xarm_traj = get_lift_traj(pick_xarm_traj[-1], height=0.2, length=50, linear=False)
     lift_obj_pose = get_obj_traj(lift_xarm_traj[:, :6], grasp_se3)
 
     lift_traj = merge_qpos(lift_xarm_traj, np.repeat(inspire_traj[-1][None, :], repeats=lift_xarm_traj.shape[0], axis=0))

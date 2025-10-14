@@ -108,19 +108,18 @@ class CuroboPlanner:
         )
         self.ik_solver = IKSolver(ik_config)      
     
+    
     def get_robot_mesh(self, joint_state):
         js = JointState.from_position(torch.tensor(joint_state, device=self.motion_gen.tensor_args.device).float()).unsqueeze(0)
         return self.motion_gen.kinematics.get_visual_meshes(js)
     
+
     def update_world(self, obj_dict):
-        world_cfg_dict = load_world_config(self.obstacle_dict, obj_dict)
-        world_cfg = WorldConfig().from_dict(world_cfg_dict)
-
-        # self.motion_gen.update_world_config(world_cfg)
-        # self.ik_solver.update_world_config(world_cfg)
-
-       
-        
+        # update
+        self.world_cfg = WorldConfig().from_dict(load_world_config(self.obstacle_dict, obj_dict))
+        self.motion_gen.clear_world_cache()
+        self.motion_gen.update_world(self.world_cfg)
+            
 
     def plan_goalset(self, init_state, goal_pose):
         init_js_state = JointState.from_position(torch.tensor(init_state, device=self.motion_gen.tensor_args.device).float()).unsqueeze(0)

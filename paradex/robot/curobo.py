@@ -29,18 +29,14 @@ def to_quat(obj_pose):
     ret[:3] = obj_pose[:3, 3]
     return ret
 
-def load_world_config(obj_dict):
+def load_world_config(obstacle_dict, obj_dict):
     world_config_dict = {'mesh':{}, 'cuboid':{}}
-    world_config_dict["cuboid"]["table"] = {
-            "pose": [0.0, 0.0, -0.12, 0.0, 0.0, 0.0, 1.0],
-            "dims": [2.0, 2.0, 0.2],
-            "color": [0.8, 0.6, 0.4, 1.0]
-        }
-    world_config_dict["cuboid"]["basetop"] = {
-            "pose": [0, 0, 1.0, 0, 0, 0, 1],
-            "dims": [5.0, 5.0, 0.2],
-            "color": [0.8, 0.6, 0.4,1.0]
-        }
+    for obstacle_name, obstacle_info in obstacle_dict['cuboid'].items():
+        world_config_dict["cuboid"][str(obstacle_name)] = {
+                "pose": obstacle_info["pose"],
+                "dims": obstacle_info["dims"],
+                "color": obstacle_info.get("color", [0.5, 0.5, 0.5, 1.0])
+            }
 
     for obj_name, obj_info in obj_dict.items():
         world_config_dict["mesh"][str(obj_name)] = {
@@ -52,13 +48,15 @@ def load_world_config(obj_dict):
 
 class CuroboPlanner:
     def __init__(self,
-                 obj_dict,
-                 robot_cfg,
-                 tensor_args,):
+                obstacle_dict,
+                obj_dict,
+                robot_cfg,
+                tensor_args,):
         
         n_obstacle_cuboids = 30
         n_obstacle_mesh = 100
-        self.world_cfg = WorldConfig().from_dict(load_world_config(obj_dict))
+        self.obstacle_dict = obstacle_dict
+        self.world_cfg = WorldConfig().from_dict(load_world_config(obstacle_dict, obj_dict))
         
         motion_gen_config = MotionGenConfig.load_from_robot_config(
             robot_cfg,
@@ -115,11 +113,14 @@ class CuroboPlanner:
         return self.motion_gen.kinematics.get_visual_meshes(js)
     
     def update_world(self, obj_dict):
-        world_cfg_dict = load_world_config(obj_dict)
+        world_cfg_dict = load_world_config(self.obstacle_dict, obj_dict)
         world_cfg = WorldConfig().from_dict(world_cfg_dict)
 
-        self.motion_gen.update_world_config(world_cfg)
-        self.ik_solver.update_world_config(world_cfg)
+        # self.motion_gen.update_world_config(world_cfg)
+        # self.ik_solver.update_world_config(world_cfg)
+
+       
+        
 
     def plan_goalset(self, init_state, goal_pose):
         init_js_state = JointState.from_position(torch.tensor(init_state, device=self.motion_gen.tensor_args.device).float()).unsqueeze(0)

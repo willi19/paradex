@@ -37,9 +37,11 @@ LINEAR_DIRECTION = np.array([0.0, -1.0, 0.0])
 
 demo_data = os.path.join(shared_dir, "object_6d", "demo_data")
 C2R = load_latest_C2R()
+
 OBSTACLE = {'cuboid': 
-                {
-                 'base': {'dims': [0.6, 0.6, 2.07], 'pose': [-0.12577951395665932, -0.0055037614535835555, -1.041670779638955, 0.7082079218969054, -0.00040869377511796283, -0.006448498134229638, 0.7059743544943244]}, 
+                { # xyz, quaternion
+                 'table': {'dims': [2, 2, 0.2], 'pose': [0,0,-0.12, \
+                                           0,0,0,1]}, 
                  # 'baseback': {'dims': [2.0, 0.5, 2.0], 'pose': [-1.0857807924568896, -0.011288158965621076, -0.015956839973832793, 0.7082079218969054, -0.00040869377511796283, -0.006448498134229638, 0.7059743544943244]}, 
                  'basetop': {'dims': [5.0, 5.0, 0.2], 'pose': [0, 0, 1.0, 0, 0, 0, 1]}, 
                  'shelf0': {'dims': [0.8, 0.33, 2.02], 'pose': [-0.68+0.33/2, -0.6+0.8/2, -0.76, 0.70710678, 0, 0, 0.70710678]}, 
@@ -49,6 +51,13 @@ OBSTACLE = {'cuboid':
                  # 'table': {'dims': [5.0, 5.0, 5.0], 'pose': [-0.07808975157119691, -0.5062144110803565, -2.584682669305668, 0.6999402146008835, 0.004682160214565101, -0.0007793753508808123, -0.7141856662901159]}}
                  }
             }
+
+# TODO:
+# [X] make floor
+# [X] add object to OBSTACLE
+# [] change linear path planning to planning
+# [] make grid output pose
+# [] make order of pick
 
 # We use object coordinate as it's center is in the bottom, middle of the object, with z-axis pointing up
 # However center of ramen mesh is not as it is so we need to adjust it
@@ -110,9 +119,8 @@ def load_pick_pose(pick_pose, grasp_se3):
 
     return grasp_pose_dict
 
-
+obj_dict = {}
 def load_planner(pick_position):
-    obj_dict = {}
     for obj_name, obj_se3 in pick_position.items():
         obj_type = obj_name.split('_')[0]
         mesh_path = os.path.join(rsc_path, "object", obj_type+"_ramen_von", obj_type+"_ramen_von.obj")
@@ -120,7 +128,7 @@ def load_planner(pick_position):
 
     robot_cfg = load_yaml(os.path.join(demo_data, "myrobot/xarm_inspire.yml"))["robot_cfg"]
     tensor_args = TensorDeviceType()
-    return CuroboPlanner(obj_dict, robot_cfg, tensor_args)
+    return CuroboPlanner(OBSTACLE, obj_dict, robot_cfg, tensor_args)
 
 
 def load_visualizer(pick_position):
@@ -167,7 +175,7 @@ def get_linear_start_position(theta, object_position, ):
 def get_pick_traj(init_qpos, pick_position, grasp_se3):
     grasp_pose_dict = load_pick_pose(pick_position, grasp_se3)
     goal_pose = np.concatenate([grasp_pose_dict[obj_name] for obj_name in pick_position.keys()], axis=0)
-    goal_idx, qpos_traj = planner.plan_goalset(init_qpos, goal_pose)
+    goal_idx, qpos_traj = planner.plan_goalset(init_qpos, goal_pose) # goal_pose NX4X4
     obj_name = list(pick_position.keys())[goal_idx // NUM_GRASP]
     return obj_name, qpos_traj
 
@@ -194,13 +202,15 @@ def linear_trajectory(init_qpos, target_se3, length=50):
         xarm_qpos_traj.append(qpos)
     return np.array(xarm_qpos_traj)[1:]
 
-def get_lift_traj(init_qpos, height, length=50):
+def get_lift_traj(init_qpos, height, length=50, linear=True):
     robot.compute_forward_kinematics(init_qpos)
     init_xarm_se3 = robot.get_link_pose(robot.get_link_index("link6"))
     target_se3 = init_xarm_se3.copy()
     target_se3[2, 3] += height
-
-    xarm_qpos_traj = linear_trajectory(init_qpos, target_se3, length=length)
+    if linear:
+        xarm_qpos_traj = linear_trajectory(init_qpos, target_se3, length=length)
+    else:
+        goal_idx, qpos_traj = planner.plan_single(init_qpos, target_se3)
     return xarm_qpos_traj
 
 def get_obj_traj(qpos_traj, grasp_se3):
@@ -265,7 +275,12 @@ for step in range(len(pick_position)):
     grasp_traj = merge_qpos(pick_xarm_traj[-1], inspire_traj)
     # visualizer.add_traj(f"grasp_{obj_name}", {"xarm":grasp_traj})
 
-    # # lift
+    # # lift TODO CHANGE
+    print(obj_dict)
+    obj_dict.pop(obj_name)
+    planner.motion_gen.world_model.remove_obstacle(obj_name)
+    # planner.update_world(obj_dict)
+    planner.world_cfg.save_world_as_mesh(os.path.join(demo_data, f"obstacle_mesh_{step}.obj"))
     lift_xarm_traj = get_lift_traj(pick_xarm_traj[-1], height=0.2, length=50)
     lift_obj_pose = get_obj_traj(lift_xarm_traj[:, :6], grasp_se3)
 
@@ -273,7 +288,7 @@ for step in range(len(pick_position)):
     visualizer.add_traj(f"lift_{obj_name}", {"xarm":lift_traj}, {obj_name:np.array(lift_obj_pose)})
 
     # move to initial of put trajectory
-    release_traj = np.load(os.path.join("data", "place_traj", f"{step}.npy"))
+    release_traj = np.load(os.path.join(demo_data, "place_traj", f"{step}.npy"))
     robot.compute_forward_kinematics(release_traj[0, :6])
     put_xarm_init_se3 = robot.get_link_pose(robot.get_link_index("link6"))
 

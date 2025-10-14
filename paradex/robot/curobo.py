@@ -114,7 +114,6 @@ class CuroboPlanner:
         js = JointState.from_position(torch.tensor(joint_state, device=self.motion_gen.tensor_args.device).float()).unsqueeze(0)
         return self.motion_gen.kinematics.get_visual_meshes(js)
     
-
     def update_world(self, obj_dict):
         world_cfg_dict = load_world_config(obj_dict)
         world_cfg = WorldConfig().from_dict(world_cfg_dict)

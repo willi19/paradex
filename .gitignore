@@ -41,3 +41,5 @@ docs/_static
 docs/_modules
 docs/modules
 docs/_sources
+build/lib/paradex
+.vscode/settings.json

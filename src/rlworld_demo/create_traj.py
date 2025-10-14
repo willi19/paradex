@@ -34,16 +34,18 @@ LINEAR_DIRECTION = np.array([0.0, -1.0, 0.0])
 # [[ 0.04099059 -0.99915576 -0.00274577]
 #  [-0.99902283 -0.04103029  0.01642854]
 #  [-0.01652733  0.00206967 -0.99986127]]
+
+demo_data = os.path.join(shared_dir, "object_6d", "demo_data")
 C2R = load_latest_C2R()
 OBSTACLE = {'cuboid': 
-                {# 'base': {'dims': [0.6, 0.6, 2.07], 'pose': [-0.12577951395665932, -0.0055037614535835555, -1.041670779638955, 0.7082079218969054, -0.00040869377511796283, -0.006448498134229638, 0.7059743544943244]}, 
+                {
+                 'base': {'dims': [0.6, 0.6, 2.07], 'pose': [-0.12577951395665932, -0.0055037614535835555, -1.041670779638955, 0.7082079218969054, -0.00040869377511796283, -0.006448498134229638, 0.7059743544943244]}, 
                  # 'baseback': {'dims': [2.0, 0.5, 2.0], 'pose': [-1.0857807924568896, -0.011288158965621076, -0.015956839973832793, 0.7082079218969054, -0.00040869377511796283, -0.006448498134229638, 0.7059743544943244]}, 
                  'basetop': {'dims': [5.0, 5.0, 0.2], 'pose': [0, 0, 1.0, 0, 0, 0, 1]}, 
                  'shelf0': {'dims': [0.8, 0.33, 2.02], 'pose': [-0.68+0.33/2, -0.6+0.8/2, -0.76, 0.70710678, 0, 0, 0.70710678]}, 
                  'shelf1': {'dims': [0.8, 0.03, 2.06], 'pose': [-0.68+0.03/2+0.33, -0.6+0.8/2, -0.75, 0.70710678, 0, 0, 0.70710678]}, # + 0.1
                  'shelf2': {'dims': [0.8, 0.1, 1.0], 'pose': [-0.68-0.1/2, -0.6+0.8/2, 0.2541, 0.70710678, 0, 0, 0.70710678]},  # + 1.0141
                  'shelf3': {'dims': [0.8, 0.33, 0.05], 'pose': [-0.68+0.33/2, -0.6+0.8/2, 0.574, 0.70710678, 0, 0, 0.70710678]},  #+ 1.334
-
                  # 'table': {'dims': [5.0, 5.0, 5.0], 'pose': [-0.07808975157119691, -0.5062144110803565, -2.584682669305668, 0.6999402146008835, 0.004682160214565101, -0.0007793753508808123, -0.7141856662901159]}}
                  }
             }
@@ -84,14 +86,16 @@ def load_pick_position():
 
     return obj_T
 
+# shared_data/object_6d/demo_data/myrobot
 def load_pick_traj():
-    demo_path = os.path.join("data", "ramen")
+    demo_path = os.path.join(demo_data, "ramen")
     demo_dict = {}
     for idx in os.listdir(demo_path):
         wristSe3 = np.load(os.path.join(demo_path, idx, "grasp", "obj_wristSe3.npy"))
         hand_traj = np.load(os.path.join(demo_path, idx, "grasp", "inspire", "position.npy"))
         demo_dict[idx] = (wristSe3, hand_traj)
     return demo_dict
+
 
 NUM_GRASP = 9
 def load_pick_pose(pick_pose, grasp_se3):
@@ -106,6 +110,7 @@ def load_pick_pose(pick_pose, grasp_se3):
 
     return grasp_pose_dict
 
+
 def load_planner(pick_position):
     obj_dict = {}
     for obj_name, obj_se3 in pick_position.items():
@@ -113,9 +118,10 @@ def load_planner(pick_position):
         mesh_path = os.path.join(rsc_path, "object", obj_type+"_ramen_von", obj_type+"_ramen_von.obj")
         obj_dict[obj_name] = {'pose':obj_se3, 'file_path':mesh_path}
 
-    robot_cfg = load_yaml(os.path.join("data", "myrobot/xarm_inspire.yml"))["robot_cfg"]
+    robot_cfg = load_yaml(os.path.join(demo_data, "myrobot/xarm_inspire.yml"))["robot_cfg"]
     tensor_args = TensorDeviceType()
     return CuroboPlanner(obj_dict, robot_cfg, tensor_args)
+
 
 def load_visualizer(pick_position):
     visualizer = ViserViewer(up_direction=np.array([0,0,1]))
@@ -132,6 +138,7 @@ def load_visualizer(pick_position):
     for obj_name, obj_pose in pick_position.items():
         visualizer.add_object(obj_name, mesh_dict[obj_name.split('_')[0]], obj_pose)
     
+    # make trimesh objects
     for obj_type, obstacles in OBSTACLE.items():
         if obj_type == 'cuboid':
             for obs_name, obs_data in obstacles.items():
@@ -170,6 +177,7 @@ def merge_qpos(xarm, inspire_qpos):
     if len(inspire_qpos.shape) == 1:
         inspire_qpos = np.repeat(inspire_qpos[None, :], repeats=xarm.shape[0], axis=0)
     return np.concatenate([xarm, inspire_qpos], axis=1)
+
 
 robot = RobotWrapper(get_robot_urdf_path(arm_name="xarm", hand_name=None))
 def linear_trajectory(init_qpos, target_se3, length=50):
@@ -240,7 +248,7 @@ planner = load_planner(pick_position)
 visualizer = load_visualizer(pick_position)
 
 # robot_mesh = planner.get_robot_mesh(xarm_init_pose)
-planner.world_cfg.save_world_as_mesh("data/obstacle_mesh.obj")
+planner.world_cfg.save_world_as_mesh(os.path.join(demo_data, "obstacle_mesh.obj"))
 
 # robot_scene = trimesh.Scene()
 # for obj in robot_mesh:

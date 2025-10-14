@@ -258,3 +258,38 @@ class CuroboPlanner:
             return True, torch.cat(plan_tensor_ids).detach().cpu().numpy()
         else:
             return False, None
+        
+    def plan_to_joint_target(self, init_state, goal_joint_state):
+        """
+        Plan trajectory to reach a target joint configuration
+        
+        Args:
+            init_state: Initial joint positions (numpy array or list)
+            goal_joint_state: Target joint positions (numpy array or list)
+        
+        Returns:
+            success: bool
+            trajectory: numpy array of joint positions
+        """
+        # Convert to JointState
+        init_js_state = JointState.from_position(
+            torch.tensor(init_state, device=self.motion_gen.tensor_args.device).float()
+        ).unsqueeze(0)
+        
+        goal_js_state = JointState.from_position(
+            torch.tensor(goal_joint_state, device=self.motion_gen.tensor_args.device).float()
+        ).unsqueeze(0)
+        
+        # Plan using trajopt (joint space planning)
+        result = self.motion_gen.plan_single_js(
+            start_state=init_js_state,
+            goal_state=goal_js_state,
+            plan_config=self.plan_config,
+        )
+        
+        if result.success:
+            trajectory = result.get_interpolated_plan().position.cpu().numpy()
+            return True, trajectory
+        else:
+            print(f"Joint target planning failed: {result.status}")
+            return False, None

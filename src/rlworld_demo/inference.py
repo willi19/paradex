@@ -102,14 +102,14 @@ def load_visualizer(pick_position):
 pick_position = load_pick_position()
 visualizer = load_visualizer(pick_position)
 
-arm_controller = get_arm("xarm")
-hand_controller = get_hand("inspire")
+# arm_controller = get_arm("xarm")
+# hand_controller = get_hand("inspire")
 
 quit_event = Event()
 start_event = Event()
 listen_keyboard({"q": quit_event, "y": start_event})
 
-for step in range(len(pick_position)):
+for step in range(15):#len(pick_position)):
     pick_traj = np.load(os.path.join("data", "pick_traj", f"{step}.npy"))
 
     vis_pick_traj = pick_traj.copy()
@@ -151,6 +151,6 @@ for step in range(len(pick_position)):
     # if quit_event.is_set():
     #     break
 
-arm_controller.quit()
-hand_controller.quit()
+# arm_controller.quit()
+# hand_controller.quit()
 visualizer.start_viewer()

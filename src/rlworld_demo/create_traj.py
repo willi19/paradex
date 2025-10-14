@@ -36,10 +36,12 @@ LINEAR_DIRECTION = np.array([0.0, -1.0, 0.0])
 demo_data = os.path.join(shared_dir, "object_6d", "demo_data")
 C2R = load_latest_C2R()
 
+# PICK_ORDER = ['brown_1', 'red_12', 'red_13', 'red_16', 'yellow_6', 'red_18', 'yellow_10', 'red_19', 'yellow_9', 'yellow_11', 'brown_4', 'yellow_8', 'brown_2', 'red_15', 'brown_3', 'yellow_5', 'red_14']
+PICK_ORDER = ['brown_1', 'red_12', 'red_13', 'red_14', 'brown_0', 'yellow_6', 'red_16', 'yellow_5', 'yellow_8', ]
+
 OBSTACLE = {'cuboid': 
                 { # xyz, quaternion
-                 'table': {'dims': [2, 2, 0.2], 'pose': [0,0,-0.12, \
-                                           0,0,0,1]}, 
+                 'table': {'dims': [2, 2, 0.2], 'pose': [0,0,-0.12,0,0,0,1]}, 
                  # 'baseback': {'dims': [2.0, 0.5, 2.0], 'pose': [-1.0857807924568896, -0.011288158965621076, -0.015956839973832793, 0.7082079218969054, -0.00040869377511796283, -0.006448498134229638, 0.7059743544943244]}, 
                  'basetop': {'dims': [5.0, 5.0, 0.2], 'pose': [0, 0, 1.0, 0, 0, 0, 1]}, 
                  'shelf0': {'dims': [0.8, 0.33, 2.02], 'pose': [-0.68+0.33/2, -0.6+0.8/2, -0.76, 0.70710678, 0, 0, 0.70710678]}, 
@@ -163,12 +165,6 @@ def load_visualizer(pick_position):
 
     return visualizer
 
-def get_grasp_pose():
-    pass
-
-def get_linear_start_position(theta, object_position, ):
-    pass
-
 def get_pick_traj(init_qpos, pick_position, grasp_se3):
     grasp_pose_dict = load_pick_pose(pick_position, grasp_se3)
     goal_pose = np.concatenate([grasp_pose_dict[obj_name] for obj_name in pick_position.keys()], axis=0)
@@ -176,6 +172,13 @@ def get_pick_traj(init_qpos, pick_position, grasp_se3):
     goal_idx, qpos_traj = planner.plan_goalset(init_qpos, goal_pose) # goal_pose NX4X4
     obj_name = list(pick_position.keys())[goal_idx // NUM_GRASP]
     return obj_name, qpos_traj
+
+def get_pick_obj_traj(init_qpos, obj_se3, grasp_se3):
+    pick_position = {"tmp":obj_se3}
+    goal_pose = load_pick_pose(pick_position, grasp_se3)["tmp"]
+    goal_idx, qpos_traj = planner.plan_goalset(init_qpos, goal_pose) # goal_pose NX4X4
+
+    return qpos_traj
 
 def merge_qpos(xarm, inspire_qpos):
     if len(xarm.shape) == 1:
@@ -221,26 +224,42 @@ def get_obj_traj(qpos_traj, grasp_se3):
 
     return obj_pose
 
-def get_move_traj(init_qpos, target_se3, length=50):
-    desired_j1_degree = np.pi / 2
-    cur_j1_degree = init_qpos[0]
+# def get_move_traj(init_qpos, target_se3, length=50):
+#     desired_j1_degree = np.pi / 2
+#     cur_j1_degree = init_qpos[0]
 
-    num_step = int(abs(desired_j1_degree - cur_j1_degree) / np.pi * 180) + 1
-    num_step = max(num_step, 1)
-    xarm_qpos_traj_pre = []
-    for i in range(num_step):
-        ratio = (i+1) / num_step
-        j1 = cur_j1_degree * (1-ratio) + desired_j1_degree * ratio
-        qpos = init_qpos.copy()
-        qpos[0] = j1
-        xarm_qpos_traj_pre.append(qpos)
+#     num_step = int(abs(desired_j1_degree - cur_j1_degree) / np.pi * 180) + 1
+#     num_step = max(num_step, 1)
+#     xarm_qpos_traj_pre = []
+#     for i in range(num_step):
+#         ratio = (i+1) / num_step
+#         j1 = cur_j1_degree * (1-ratio) + desired_j1_degree * ratio
+#         qpos = init_qpos.copy()
+#         qpos[0] = j1
+#         xarm_qpos_traj_pre.append(qpos)
     
-    xarm_qpos_traj = linear_trajectory(xarm_qpos_traj_pre[-1], target_se3, length=length)
-    xarm_qpos_traj = np.concatenate([np.array(xarm_qpos_traj_pre), xarm_qpos_traj], axis=0)
+#     xarm_qpos_traj = linear_trajectory(xarm_qpos_traj_pre[-1], target_se3, length=length)
+#     xarm_qpos_traj = np.concatenate([np.array(xarm_qpos_traj_pre), xarm_qpos_traj], axis=0)
     
-    return xarm_qpos_traj
+#     return xarm_qpos_traj
+
+def get_move_traj(init_qpos, target_qpos, length=50):
+    qpos_traj = []
+    for i in range(length):
+        ratio = (i+1) / length
+        qpos = init_qpos * (1-ratio) + target_qpos * ratio
+        qpos_traj.append(qpos)
+    qpos_traj = np.array(qpos_traj)
+    return qpos_traj
 
 pick_position = load_pick_position()
+offset = 0
+for i in range(len(PICK_ORDER)):
+    if os.path.exists(os.path.join("data", "pick_traj", f"{i}.npy")):
+        obj_name = PICK_ORDER[i]
+        pick_position.pop(obj_name)
+        offset += 1
+
 grasp_policy_dict = load_pick_traj()
 
 grasp_idx = "7"
@@ -254,7 +273,10 @@ for i in range(15):
 inspire_traj = np.concatenate([np.array(inspire_traj_pre), inspire_traj], axis=0)
 grasp_se3 = grasp_policy_dict[grasp_idx][0]
 
+print("initializing planner")
 planner = load_planner(pick_position)
+print("planner initialized")
+
 visualizer = load_visualizer(pick_position)
 
 # robot_mesh = planner.get_robot_mesh(xarm_init_pose)
@@ -264,18 +286,31 @@ planner.world_cfg.save_world_as_mesh(os.path.join(demo_data, "obstacle_mesh.obj"
 # for obj in robot_mesh:
 #     robot_scene.add_geometry(obj)
 # robot_scene.export("data/robot_mesh.obj")
-
-for step in range(len(pick_position)):
+print(offset)
+for step in range(offset, len(pick_position)+offset):
     os.makedirs(os.path.join(demo_data, "obstacle"), exist_ok=True)
     planner.world_cfg.save_world_as_mesh(os.path.join(demo_data, f"obstacle", f"{step}.obj"))
 
     # approach
     pick_tot_traj = []
-
-    obj_name, pick_xarm_traj = get_pick_traj(xarm_init_pose, pick_position, grasp_se3)
+    
+    if step < len(PICK_ORDER):
+        if os.path.exists(os.path.join("data", "pick_traj", f"{step}.npy")):
+            obj_dict.pop(PICK_ORDER[step])
+            pick_position.pop(PICK_ORDER[step])
+            planner.update_world(obj_dict)
+            pick_traj = np.load(os.path.join("data", "pick_traj", f"{step}.npy"))
+            visualizer.add_traj(f"pick_{PICK_ORDER[step]}", {"xarm":pick_traj})
+            continue
+        obj_name = PICK_ORDER[step]
+        pick_xarm_traj = get_pick_obj_traj(xarm_init_pose, pick_position[obj_name], grasp_se3)
+    else:
+        obj_name, pick_xarm_traj = get_pick_traj(xarm_init_pose, pick_position, grasp_se3)
     pick_traj = merge_qpos(pick_xarm_traj[:,:6], inspire_traj[0])
     visualizer.add_traj(f"pick_{obj_name}", {"xarm":pick_traj})
     pick_tot_traj.append(merge_qpos(pick_xarm_traj[:,:6], orig_inspire_traj[0]))
+    os.makedirs(os.path.join("data", "tmp_pick_traj"), exist_ok=True)
+    np.save(os.path.join("data", "tmp_pick_traj", f"{step}_{obj_name}.npy"), np.concatenate(pick_tot_traj, axis=0))
     # grasp
     grasp_traj = merge_qpos(pick_xarm_traj[-1], inspire_traj)
     pick_tot_traj.append(merge_qpos(pick_xarm_traj[-1], orig_inspire_traj))
@@ -283,6 +318,7 @@ for step in range(len(pick_position)):
 
     # Delete lifted object from mesh DB    
     obj_dict.pop(obj_name)
+    pick_position.pop(obj_name)
     planner.update_world(obj_dict)
     planner.motion_gen.world_model.save_world_as_mesh(os.path.join(demo_data, f"obstacle_mesh_{step}.obj"))
 
@@ -298,7 +334,7 @@ for step in range(len(pick_position)):
     robot.compute_forward_kinematics(release_traj[0, :6])
     put_xarm_init_se3 = robot.get_link_pose(robot.get_link_index("link6"))
 
-    move_xarm_traj = get_move_traj(lift_xarm_traj[-1], put_xarm_init_se3)# linear_trajectory(lift_xarm_traj[-1], put_xarm_init_se3, length=50)
+    move_xarm_traj = get_move_traj(lift_xarm_traj[-1], release_traj[0, :6])# linear_trajectory(lift_xarm_traj[-1], put_xarm_init_se3, length=50)
     move_traj = merge_qpos(move_xarm_traj, np.repeat(inspire_traj[-1][None, :], repeats=move_xarm_traj.shape[0], axis=0))
 
     move_obj_pose = get_obj_traj(move_xarm_traj, grasp_se3)
@@ -309,5 +345,6 @@ for step in range(len(pick_position)):
 
     os.makedirs(os.path.join("data", "pick_traj"), exist_ok=True)
     np.save(os.path.join("data", "pick_traj", f"{step}.npy"), np.concatenate(pick_tot_traj, axis=0))
+    print(f"Save pick traj {step}, {obj_name}, length: {np.concatenate(pick_tot_traj, axis=0).shape[0]}")
 
 visualizer.start_viewer()

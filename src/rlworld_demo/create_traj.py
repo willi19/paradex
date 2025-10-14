@@ -55,7 +55,7 @@ OBSTACLE = {'cuboid':
 # TODO:
 # [X] make floor
 # [X] add object to OBSTACLE
-# [] change linear path planning to planning
+# [X] change linear path planning to planning
 # [] make order of pick
 
 # We use object coordinate as it's center is in the bottom, middle of the object, with z-axis pointing up
@@ -278,8 +278,8 @@ for step in range(len(pick_position)):
     # # lift TODO CHANGE
     print(obj_dict)
     obj_dict.pop(obj_name)
-    planner.motion_gen.world_model.remove_obstacle(obj_name)
-    # planner.update_world(obj_dict)
+    # planner.motion_gen.world_model.remove_obstacle(obj_name)
+    planner.update_world(obj_dict)
     planner.motion_gen.world_model.save_world_as_mesh(os.path.join(demo_data, f"obstacle_mesh_{step}.obj"))
     lift_xarm_traj = get_lift_traj(pick_xarm_traj[-1], height=0.2, length=50, linear=False)
     lift_obj_pose = get_obj_traj(lift_xarm_traj[:, :6], grasp_se3)

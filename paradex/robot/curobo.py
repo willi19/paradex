@@ -73,7 +73,7 @@ class CuroboPlanner:
             collision_activation_distance=0.006,
             optimize_dt=True,
             trajopt_dt=0.05, #0.1, #0.1, #0.1,
-            trajopt_tsteps=60# 40, #30, #70, #30, # 50 #70, (demo : 70, robothome : 30)
+            trajopt_tsteps=80# 40, #30, #70, #30, # 50 #70, (demo : 70, robothome : 30)
             
         )
         self.motion_gen = MotionGen(motion_gen_config)
@@ -137,6 +137,7 @@ class CuroboPlanner:
             goal_pose=goal_pose,
             plan_config=self.plan_config,
         )
+        import pdb; pdb.set_trace()
         return result.goalset_index, result.get_interpolated_plan().position.cpu().numpy()
 
     def plan_full_step(self, 

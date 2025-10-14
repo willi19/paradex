@@ -37,7 +37,7 @@ demo_data = os.path.join(shared_dir, "object_6d", "demo_data")
 C2R = load_latest_C2R()
 
 # PICK_ORDER = ['brown_1', 'red_12', 'red_13', 'red_16', 'yellow_6', 'red_18', 'yellow_10', 'red_19', 'yellow_9', 'yellow_11', 'brown_4', 'yellow_8', 'brown_2', 'red_15', 'brown_3', 'yellow_5', 'red_14']
-PICK_ORDER = ['brown_1', 'red_12', 'red_13', 'red_14', 'brown_0', 'yellow_6', 'red_16', 'yellow_5', 'yellow_8', ]
+PICK_ORDER = ['brown_1', 'red_12', 'red_13', 'red_14', 'brown_0', 'yellow_6', 'red_16', 'yellow_5', 'yellow_8', 'yellow_9', 'red_18', 'yellow_10', 'yellow_11', 'brown_2', 'yellow_7', 'red_19', 'brown_3']
 
 OBSTACLE = {'cuboid': 
                 { # xyz, quaternion
@@ -105,7 +105,7 @@ def load_pick_traj():
     return demo_dict
 
 
-NUM_GRASP = 9
+NUM_GRASP = 15
 def load_pick_pose(pick_pose, grasp_se3):
     theta_list = np.linspace(0, np.pi*2, NUM_GRASP)
     rot_list = [np.eye(4) for _ in range(NUM_GRASP)]

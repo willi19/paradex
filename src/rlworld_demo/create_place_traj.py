@@ -21,9 +21,9 @@ robot = RobotWrapper(get_robot_urdf_path(arm_name="xarm", hand_name=None))
 robot.compute_forward_kinematics(xarm_init_pose)
 xarm_init_se3 = robot.get_link_pose(robot.get_link_index("link6"))
     
-place_origin = np.array([-0.55, -0.45, 0.25+0.02]) # 25cm : floor + safety margin, 10cm: ramen height
+place_origin = np.array([-0.55, -0.45, 0.24]) # 25cm : floor + safety margin, 10cm: ramen height
 
-Z_OFFSET = np.array([0.0, 0.0, 0.125])
+Z_OFFSET = np.array([0.0, 0.0, 0.12])
 Z_NUM = 2
 
 X_OFFSET = np.array([0.13, 0.0, 0.0])
@@ -91,7 +91,7 @@ def precalculate_put_traj(desired_theta, grasp_se3):
 def precalculate_return_traj(put_traj_dict):
     return_traj_dict = {}
     j1_degree = -np.pi / 3 * 2 # 120 degree
-    rot_step = 60
+    rot_step = 180
 
     for key, put_qpos in put_traj_dict.items():
         init_qpos = put_qpos[0]
@@ -239,6 +239,7 @@ grasp_policy_dict = load_pick_traj()
 
 grasp_idx = "7"
 inspire_traj = parse_inspire(grasp_policy_dict[grasp_idx][1], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])[::9]
+orig_inspire_traj = grasp_policy_dict[grasp_idx][1].copy()
 grasp_se3 = grasp_policy_dict[grasp_idx][0]
 
 visualizer = load_visualizer(pick_position)
@@ -260,35 +261,36 @@ for step in range(20):
     # put 
 
     visualizer.add_traj(f"put_{step}", {"xarm":merge_qpos(put_xarm_traj, inspire_traj[-1])}, {"brown_0":np.array(get_obj_traj(put_xarm_traj, grasp_se3))})
-    tot_traj.append(merge_qpos(put_xarm_traj, np.repeat(inspire_traj[-1][None, :], repeats=put_xarm_traj.shape[0], axis=0)))
+    tot_traj.append(merge_qpos(put_xarm_traj, orig_inspire_traj[-1]))
     # down
     down_xarm_traj = get_lift_traj(put_xarm_traj[-1], height=-0.02, length=30)
     down_obj_pose = get_obj_traj(down_xarm_traj[:, :6], grasp_se3)
     down_traj = merge_qpos(down_xarm_traj, np.repeat(inspire_traj[-1][None, :], repeats=down_xarm_traj.shape[0], axis=0))
     visualizer.add_traj(f"down_{step}", {"xarm":down_traj}, {"brown_0":np.array(down_obj_pose)})
-    tot_traj.append(down_traj)
+    tot_traj.append(merge_qpos(down_xarm_traj, orig_inspire_traj[-1]))
     # release
     release_inspire_traj = inspire_traj[::-1]
     release_traj = merge_qpos(down_xarm_traj[-1], release_inspire_traj)
     visualizer.add_traj(f"release_{step}", {"xarm":release_traj})
-    tot_traj.append(release_traj)
+    tot_traj.append(merge_qpos(down_xarm_traj[-1], orig_inspire_traj[::-1]))
     # up
     up_xarm_traj = get_lift_traj(down_xarm_traj[-1, :6], height=0.02, length=30)
     up_traj = merge_qpos(up_xarm_traj, np.repeat(inspire_traj[0][None, :], repeats=up_xarm_traj.shape[0], axis=0))
     visualizer.add_traj(f"up_{step}", {"xarm":up_traj})
-    tot_traj.append(up_traj)
+    tot_traj.append(merge_qpos(up_xarm_traj, orig_inspire_traj[0]))
     # out of shelf
     out_xarm_traj = put_xarm_traj[::-1]
     out_traj = merge_qpos(out_xarm_traj, np.repeat(inspire_traj[0][None, :], repeats=out_xarm_traj.shape[0], axis=0))
     visualizer.add_traj(f"out_{step}", {"xarm":out_traj})
-    tot_traj.append(out_traj)
+    tot_traj.append(merge_qpos(out_xarm_traj, orig_inspire_traj[0]))
     # back to init
     ret_xarm_traj = ret_traj_dict[((step // Z_NUM) % X_NUM, step % Z_NUM)].copy()
     ret_traj = merge_qpos(ret_xarm_traj, np.repeat(inspire_traj[0][None, :], repeats=ret_xarm_traj.shape[0], axis=0))
     visualizer.add_traj(f"init_{step}", {"xarm":ret_traj})
-    tot_traj.append(ret_traj)
+    tot_traj.append(merge_qpos(ret_xarm_traj, orig_inspire_traj[0]))
     
     os.makedirs(os.path.join("data", "place_traj"), exist_ok=True)
     np.save(os.path.join("data", "place_traj", f"{step}.npy"), np.concatenate(tot_traj, axis=0))
 
+print("Done")
 visualizer.start_viewer()

@@ -29,7 +29,7 @@ Note:
 action_dof = 6
 
 class XArmController:
-    def __init__(self):
+    def __init__(self, fps=100):
         network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
         self.xarm_ip_address = network_config["xarm"]
         self.save_path = None
@@ -49,10 +49,12 @@ class XArmController:
                                 [0, 0, 0, 1]]
                                 )
         
+        self.qpos = np.zeros(6)
+        
         self.homing = False
         
         self.init = False
-        self.fps = 100
+        self.fps = fps
         self.robot_model = RobotWrapper(os.path.join(rsc_path, "robot", "xarm.urdf"))
         self.last_link_id = self.robot_model.get_link_index("link6")
         
@@ -98,15 +100,21 @@ class XArmController:
             self.target_action = homepose.copy()
     
     def set_action(self, action):
-        assert action.shape == (4,4) or action.shape == (6,)
+        assert action.shape in [(4,4), (6, )]
         
-        # if action.shape == (6,):
-        #     self.robot_model.compute_forward_kinematics(action.copy())
-        #     action = self.robot_model.get_link_pose(self.last_link_id)
+        qpos = np.zeros(6)
+        if action.shape == (6,):
+            qpos = action.copy()
+            self.robot_model.compute_forward_kinematics(action.copy())
+            action = self.robot_model.get_link_pose(self.last_link_id)
+            
             
         with self.lock:
             self.init = True
             self.target_action = action.copy()
+
+            # debug qpos action
+            self.qpos = qpos
             
     def homo2cart(self, h):
         t = h[:3, 3] * 1000
@@ -174,25 +182,23 @@ class XArmController:
                     continue
                     
                 action = self.target_action.copy()
+                cart = self.homo2cart(action.copy())
+                aa = self.homo2aa(action.copy())
                 
-                if action.shape == (4,4):
-                    cart = self.homo2cart(action.copy())
-                    aa = self.homo2aa(action.copy())
-                
+                qpos = self.qpos.copy()
                 if self.homing:
                     self.arm.set_mode(0)  # 0: position control, 1: servo control
                     self.arm.set_state(state=0)
                     
                     self.arm.set_position(x = cart[0],
-                                            y = cart[1],
-                                            z = cart[2],
-                                            roll = cart[3],
-                                            pitch = cart[4],
-                                            yaw = cart[5],
-                                            speed=100, 
-                                            is_radian=True, 
-                                            wait=True) # motion_type=1 if necessary to go home but this is too dangerous
-                    
+                                          y = cart[1],
+                                          z = cart[2],
+                                          roll = cart[3],
+                                          pitch = cart[4],
+                                          yaw = cart[5],
+                                          speed=100, 
+                                          is_radian=True, 
+                                          wait=True) # motion_type=1 if necessary to go home but this is too dangerous
                     self.arm.set_mode(1)
                     self.arm.set_state(state=0)
                     time.sleep(0.1)
@@ -201,6 +207,7 @@ class XArmController:
                 
                 else:
                     _, state = self.arm.get_joint_states(is_radian=True)
+                    
                     if self.save_path is not None:
                         self.data["position"].append(np.array(state[0])[:6])
                         self.data["velocity"].append(np.array(state[1])[:6])
@@ -217,18 +224,15 @@ class XArmController:
                     
                     # print(self.arm.get_position(is_radian=True)[1], cart, "asdf")
                     #self.arm.set_servo_cartesian(cart.copy(), is_radian=True)
-                    # self.arm.set_servo_angle(angle=ik)
-                    if action.shape == (6,):
-                        self.arm.set_mode(0)  # 0: position control, 1: servo control
-                        self.arm.set_state(state=0)
-                        self.arm.set_servo_angle(angle=action.copy().tolist(), is_radian=True)
-                    else:
-                        self.arm.set_servo_cartesian_aa(aa, is_radian=True)
+                    self.arm.set_mode(0)  # 0: position control, 1: servo control
+                    self.arm.set_state(state=0)
+                    self.arm.set_servo_angle(angle=list(qpos), is_radian=True)
+                    # self.arm.set_servo_cartesian_aa(aa, is_radian=True, speed=500, mvacc=4000) #, speed=500, mvacc=4000)#, wait=True)
                     
             end_time = time.time()
             time.sleep(max(0, 1 / self.fps - (end_time - start_time)))
 
-            
+    
 
     def save(self):
         with self.lock:
@@ -239,13 +243,11 @@ class XArmController:
                     self.data[name] = []
             self.save_path = None
                     
-    def quit(self, set_break=True):
+    def quit(self):
         self.save()
         self.exit.set()
         self.thread.join()
-        if set_break:
-            self.arm.motion_enable(enable=False)
+        self.arm.motion_enable(enable=False)
         self.arm.disconnect()
         print("robot terminate")
         
-    

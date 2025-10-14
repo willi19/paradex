@@ -18,9 +18,7 @@ from paradex.robot.mimic_joint import parse_inspire
 
 xarm_init_pose = np.array([-0.8048279285430908, 0.2773207128047943, -1.4464116096496582, 2.0092501640319824, 0.7059974074363708, -2.361839532852173]) # Initial xarm pose for every grasp 
 
-place_origin = np.array([-0.55, -0.45, 0.25+0.02]) # 25cm : floor + safety margin, 10cm: ramen height
-
-Z_OFFSET = np.array([0.0, 0.0, 0.125])
+Z_OFFSET = np.array([0.0, 0.0, 0.12])
 Z_NUM = 2
 
 X_OFFSET = np.array([0.13, 0.0, 0.0])
@@ -236,7 +234,7 @@ def get_move_traj(init_qpos, target_se3, length=50):
         qpos = init_qpos.copy()
         qpos[0] = j1
         xarm_qpos_traj_pre.append(qpos)
-    import pdb; pdb.set_trace()
+    
     xarm_qpos_traj = linear_trajectory(xarm_qpos_traj_pre[-1], target_se3, length=length)
     xarm_qpos_traj = np.concatenate([np.array(xarm_qpos_traj_pre), xarm_qpos_traj], axis=0)
     
@@ -247,6 +245,8 @@ grasp_policy_dict = load_pick_traj()
 
 grasp_idx = "7"
 inspire_traj = parse_inspire(grasp_policy_dict[grasp_idx][1], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])[::9]
+orig_inspire_traj = grasp_policy_dict[grasp_idx][1].copy()
+
 # start from zero state
 inspire_traj_pre = []
 for i in range(15):
@@ -266,26 +266,33 @@ planner.world_cfg.save_world_as_mesh(os.path.join(demo_data, "obstacle_mesh.obj"
 # robot_scene.export("data/robot_mesh.obj")
 
 for step in range(len(pick_position)):
+    os.makedirs(os.path.join(demo_data, "obstacle"), exist_ok=True)
+    planner.world_cfg.save_world_as_mesh(os.path.join(demo_data, f"obstacle", f"{step}.obj"))
+
     # approach
+    pick_tot_traj = []
+
     obj_name, pick_xarm_traj = get_pick_traj(xarm_init_pose, pick_position, grasp_se3)
     pick_traj = merge_qpos(pick_xarm_traj[:,:6], inspire_traj[0])
     visualizer.add_traj(f"pick_{obj_name}", {"xarm":pick_traj})
-
+    pick_tot_traj.append(merge_qpos(pick_xarm_traj[:,:6], orig_inspire_traj[0]))
     # grasp
     grasp_traj = merge_qpos(pick_xarm_traj[-1], inspire_traj)
+    pick_tot_traj.append(merge_qpos(pick_xarm_traj[-1], orig_inspire_traj))
     # visualizer.add_traj(f"grasp_{obj_name}", {"xarm":grasp_traj})
 
     # # lift TODO CHANGE
-    print(obj_dict)
-    obj_dict.pop(obj_name)
-    planner.motion_gen.world_model.remove_obstacle(obj_name)
+    # print(obj_dict)
+    # obj_dict.pop(obj_name)
+    # planner.motion_gen.world_model.remove_obstacle(obj_name)
     # planner.update_world(obj_dict)
-    planner.world_cfg.save_world_as_mesh(os.path.join(demo_data, f"obstacle_mesh_{step}.obj"))
+
     lift_xarm_traj = get_lift_traj(pick_xarm_traj[-1], height=0.2, length=50)
     lift_obj_pose = get_obj_traj(lift_xarm_traj[:, :6], grasp_se3)
 
     lift_traj = merge_qpos(lift_xarm_traj, np.repeat(inspire_traj[-1][None, :], repeats=lift_xarm_traj.shape[0], axis=0))
     visualizer.add_traj(f"lift_{obj_name}", {"xarm":lift_traj}, {obj_name:np.array(lift_obj_pose)})
+    pick_tot_traj.append(merge_qpos(lift_xarm_traj, orig_inspire_traj[-1]))
 
     # move to initial of put trajectory
     release_traj = np.load(os.path.join(demo_data, "place_traj", f"{step}.npy"))
@@ -297,7 +304,11 @@ for step in range(len(pick_position)):
 
     move_obj_pose = get_obj_traj(move_xarm_traj, grasp_se3)
     visualizer.add_traj(f"move_{obj_name}", {"xarm":move_traj}, {obj_name:np.array(move_obj_pose)})
+    pick_tot_traj.append(merge_qpos(move_xarm_traj, orig_inspire_traj[-1]))
     # put 
     visualizer.add_traj(f"put_{obj_name}", {"xarm":release_traj})#, {obj_name:np.array(get_obj_traj(put_xarm_traj, grasp_se3))})
-    
+
+    os.makedirs(os.path.join("data", "pick_traj"), exist_ok=True)
+    np.save(os.path.join("data", "pick_traj", f"{step}.npy"), np.concatenate(pick_tot_traj, axis=0))
+
 visualizer.start_viewer()

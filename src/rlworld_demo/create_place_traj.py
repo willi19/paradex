@@ -262,6 +262,8 @@ for step in range(20):
 
     visualizer.add_traj(f"put_{step}", {"xarm":merge_qpos(put_xarm_traj, inspire_traj[-1])}, {"brown_0":np.array(get_obj_traj(put_xarm_traj, grasp_se3))})
     tot_traj.append(merge_qpos(put_xarm_traj, orig_inspire_traj[-1]))
+    if step == 1:
+        import pdb; pdb.set_trace()
     # down
     down_xarm_traj = get_lift_traj(put_xarm_traj[-1], height=-0.02, length=30)
     down_obj_pose = get_obj_traj(down_xarm_traj[:, :6], grasp_se3)

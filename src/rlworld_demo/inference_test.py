@@ -76,8 +76,8 @@ def load_visualizer(pick_position):
         mesh = trimesh.load(mesh_path)
         mesh_dict[color] = mesh
 
-    for obj_name, obj_pose in pick_position.items():
-        visualizer.add_object(obj_name, mesh_dict[obj_name.split('_')[0]], obj_pose)
+    # for obj_name, obj_pose in pick_position.items():
+    #     visualizer.add_object(obj_name, mesh_dict[obj_name.split('_')[0]], obj_pose)
     
     # make trimesh objects
     for obj_type, obstacles in OBSTACLE.items():
@@ -95,54 +95,52 @@ def load_visualizer(pick_position):
                 wxyz = [pose[6], pose[3], pose[4], pose[5]]  # Convert to wxyz format
                 obs_T[:3, :3] = R.from_quat(wxyz).as_matrix()
                 # 그냥 add_object 호출!
-                visualizer.add_object(f"obstacle_{obs_name}", box, obs_T)
+                # visualizer.add_object(f"obstacle_{obs_name}", box, obs_T)
 
     return visualizer
 
 pick_position = load_pick_position()
-# visualizer = load_visualizer(pick_position)
+visualizer = load_visualizer(pick_position)
 
-arm_controller = get_arm("xarm")
-hand_controller = get_hand("inspire")
+# arm_controller = get_arm("xarm")
+# hand_controller = get_hand("inspire")
 
 quit_event = Event()
 start_event = Event()
 listen_keyboard({"q": quit_event, "y": start_event})
 
-for step in range(19, len(pick_position)):
+for step in range(0, 20):#len(pick_position)):
     pick_traj = np.load(os.path.join("data", "pick_traj", f"{step}.npy"))
-    # vis_pick_traj = pick_traj.copy()
-    # vis_pick_traj[:, 6:] = parse_inspire(vis_pick_traj[:,6:], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])
-    # visualizer.add_traj(f"pick_{step}", {"xarm":vis_pick_traj})
+    vis_pick_traj = pick_traj.copy()
+    vis_pick_traj[:, 6:] = parse_inspire(vis_pick_traj[:,6:], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])
+    visualizer.add_traj(f"pick_{step}", {"xarm":vis_pick_traj})
 
     place_traj = np.load(os.path.join("data", "place_traj", f"{step}.npy"))
-    # vis_place_traj = place_traj.copy()
-    # vis_place_traj[:, 6:] = parse_inspire(vis_place_traj[:,6:], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])
-    # visualizer.add_traj(f"place_{step}", {"xarm":vis_place_traj})
-
-    # arm_controller.home_robot(xarm_init_pose)
-    hand_controller.home_robot(pick_traj[0, 6:])
+    vis_place_traj = place_traj.copy()
+    vis_place_traj[:, 6:] = parse_inspire(vis_place_traj[:,6:], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])
+    visualizer.add_traj(f"place_{step}", {"xarm":vis_place_traj})
 
     tot_traj = np.concatenate([pick_traj, place_traj], axis=0)
-    print(tot_traj.shape)
-    print(f"Press 'y' to start step {step}")
-    while not start_event.is_set() and not quit_event.is_set():
-        time.sleep(0.01)
-    if quit_event.is_set():
-        break
-    start_event.clear()
+    # arm_controller.home_robot(xarm_init_pose)
+    # hand_controller.home_robot(pick_traj[0, 6:])
 
-    for idx, qpos in enumerate(tot_traj):
-        if quit_event.is_set():
-            break
-        arm_controller.set_action(qpos[:6])
-        hand_controller.set_target_action(qpos[6:])
-        print(qpos[6:], idx, pick_traj.shape[0], place_traj.shape[0], tot_traj.shape[0])
-        time.sleep(0.05)
+    # print(f"Press 'y' to start step {step}")
+    # while not start_event.is_set() and not quit_event.is_set():
+    #     time.sleep(0.01)
+    # if quit_event.is_set():
+    #     break
+    # start_event.clear()
+
+    # for qpos in tot_traj:
+    #     if quit_event.is_set():
+    #         break
+    #     arm_controller.set_action(qpos[:6])
+    #     hand_controller.set_target_action(qpos[6:])
+    #     time.sleep(0.02)
         
-    if quit_event.is_set():
-        break
+    # if quit_event.is_set():
+    #     break
 
-arm_controller.quit()
-hand_controller.quit()
-# visualizer.start_viewer()
+# arm_controller.quit()
+# hand_controller.quit()
+visualizer.start_viewer()

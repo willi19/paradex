@@ -124,22 +124,28 @@ for step in range(19, len(pick_position)):
     hand_controller.home_robot(pick_traj[0, 6:])
 
     tot_traj = np.concatenate([pick_traj, place_traj], axis=0)
-    print(tot_traj.shape)
-    print(f"Press 'y' to start step {step}")
-    while not start_event.is_set() and not quit_event.is_set():
-        time.sleep(0.01)
-    if quit_event.is_set():
-        break
-    start_event.clear()
 
-    for idx, qpos in enumerate(tot_traj):
+    idx = 0
+    num_inc = 5
+    while idx < len(tot_traj):
+        print(f"Press 'y' to start step {step}")
+        while not start_event.is_set() and not quit_event.is_set():
+            time.sleep(0.01)
         if quit_event.is_set():
             break
-        arm_controller.set_action(qpos[:6])
-        hand_controller.set_target_action(qpos[6:])
-        print(qpos[6:], idx, pick_traj.shape[0], place_traj.shape[0], tot_traj.shape[0])
-        time.sleep(0.05)
-        
+        start_event.clear()
+
+        for qpos in tot_traj[idx:idx+num_inc]:
+            if quit_event.is_set():
+                break
+            arm_controller.set_action(qpos[:6])
+            hand_controller.set_target_action(qpos[6:])
+            time.sleep(0.02)
+            
+        if quit_event.is_set():
+            break
+        idx += num_inc
+
     if quit_event.is_set():
         break
 

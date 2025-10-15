@@ -153,7 +153,7 @@ class InspireController:
         
 
         self.write6('setspeed', [1000, 1000, 1000, 1000, 1000, 1000])
-        self.write6('setpower', [200, 200, 200, 200, 200, 200])
+        self.write6('setpower', [400, 400, 400, 400, 400, 400])
         self.write6('setangle', [1000, 1000, 1000, 1000, 1000, 1000])
         
         while not self.exit.is_set():

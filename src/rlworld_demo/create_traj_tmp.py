@@ -105,7 +105,7 @@ def load_pick_traj():
     return demo_dict
 
 
-NUM_GRASP = 60
+NUM_GRASP = 15
 def load_pick_pose(pick_pose, grasp_se3):
     theta_list = np.linspace(0, np.pi*2, NUM_GRASP)
     rot_list = [np.eye(4) for _ in range(NUM_GRASP)]
@@ -169,16 +169,34 @@ def get_pick_traj(init_qpos, pick_position, grasp_se3):
     grasp_pose_dict = load_pick_pose(pick_position, grasp_se3)
     goal_pose = np.concatenate([grasp_pose_dict[obj_name] for obj_name in pick_position.keys()], axis=0)
 
-    goal_idx, qpos_traj = planner.plan_goalset(init_qpos, goal_pose) # goal_pose NX4X4
     obj_name = list(pick_position.keys())[goal_idx // NUM_GRASP]
     return obj_name, qpos_traj
 
-def get_pick_obj_traj(init_qpos, obj_se3, grasp_se3):
-    pick_position = {"tmp":obj_se3}
-    goal_pose = load_pick_pose(pick_position, grasp_se3)["tmp"]
-    goal_idx, qpos_traj = planner.plan_goalset(init_qpos, goal_pose) # goal_pose NX4X4
+# def get_pick_obj_traj(init_qpos, obj_se3, grasp_se3, step=100):
+#     pick_position = {"tmp":obj_se3}
+#     goal_pose = load_pick_pose(pick_position, grasp_se3)["tmp"]
 
-    return qpos_traj
+#     goal_ik = None
+#     for gp in goal_pose:
+#         goal_ik, succ = robot.solve_ik(gp, "link6", init_qpos)
+#         print(succ, gp)
+#         if succ:
+#             break
+
+#     grasp_qpos = []
+#     if goal_ik is not None:
+#         for i in range(step):
+#             ratio = (i+1) / step
+#             qpos = init_qpos * (1-ratio) + goal_ik * ratio
+#             grasp_qpos.append(qpos)
+#         grasp_qpos = np.array(grasp_qpos)
+#     return grasp_qpos
+
+def get_pick_obj_traj(init_qpos, obj_se3, grasp_se3, step=100):
+    obj_se3[:3, :3] = np.eye(3)
+    grasp_pose = obj_se3 @ grasp_se3
+
+    return linear_trajectory(init_qpos, grasp_pose, length=step)
 
 def merge_qpos(xarm, inspire_qpos):
     if len(xarm.shape) == 1:
@@ -203,15 +221,12 @@ def linear_trajectory(init_qpos, target_se3, length=50):
         xarm_qpos_traj.append(qpos)
     return np.array(xarm_qpos_traj)[1:]
 
-def get_lift_traj(init_qpos, height, length=50, linear=True):
+def get_lift_traj(init_qpos, height, length=50):
     robot.compute_forward_kinematics(init_qpos)
     init_xarm_se3 = robot.get_link_pose(robot.get_link_index("link6"))
     target_se3 = init_xarm_se3.copy()
     target_se3[2, 3] += height
-    if linear:
-        xarm_qpos_traj = linear_trajectory(init_qpos, target_se3, length=length)
-    else:
-        goal_idx, xarm_qpos_traj = planner.plan_goalset(init_qpos, target_se3[np.newaxis, :])
+    xarm_qpos_traj = linear_trajectory(init_qpos, target_se3, length=length)
     return xarm_qpos_traj
 
 def get_obj_traj(qpos_traj, grasp_se3):
@@ -259,7 +274,7 @@ for i in range(len(PICK_ORDER)):
         obj_name = PICK_ORDER[i]
         pick_position.pop(obj_name)
         offset += 1
-        print(offset, obj_name)
+
 grasp_policy_dict = load_pick_traj()
 
 grasp_idx = "7"
@@ -278,14 +293,7 @@ for i in range(15):
     orig_inspire_traj_pre.append(orig_inspire_traj[0] * i / 15 + np.array([1000, 1000, 1000, 1000, 1000 ,1000]) * (1 - i / 15))
 orig_inspire_traj = np.concatenate([np.array(orig_inspire_traj_pre), orig_inspire_traj], axis=0)
 
-print("initializing planner")
-planner = load_planner(pick_position)
-print("planner initialized")
-
 visualizer = load_visualizer(pick_position)
-
-# robot_mesh = planner.get_robot_mesh(xarm_init_pose)
-planner.world_cfg.save_world_as_mesh(os.path.join(demo_data, "obstacle_mesh.obj"))
 
 # robot_scene = trimesh.Scene()
 # for obj in robot_mesh:
@@ -293,21 +301,21 @@ planner.world_cfg.save_world_as_mesh(os.path.join(demo_data, "obstacle_mesh.obj"
 # robot_scene.export("data/robot_mesh.obj")
 print(offset)
 for step in range(offset, len(pick_position)+offset):
+    print(f"Step {step}")
     os.makedirs(os.path.join(demo_data, "obstacle"), exist_ok=True)
-    planner.world_cfg.save_world_as_mesh(os.path.join(demo_data, f"obstacle", f"{step}.obj"))
 
     # approach
     pick_tot_traj = []
     
     if step < len(PICK_ORDER):
         if os.path.exists(os.path.join("data", "pick_traj", f"{step}.npy")):
-            obj_dict.pop(PICK_ORDER[step])
+            # obj_dict.pop(PICK_ORDER[step])
             pick_position.pop(PICK_ORDER[step])
-            planner.update_world(obj_dict)
             pick_traj = np.load(os.path.join("data", "pick_traj", f"{step}.npy"))
             visualizer.add_traj(f"pick_{PICK_ORDER[step]}", {"xarm":pick_traj})
             continue
         obj_name = PICK_ORDER[step]
+        print(obj_name)
         pick_xarm_traj = get_pick_obj_traj(xarm_init_pose, pick_position[obj_name], grasp_se3)
     else:
         obj_name, pick_xarm_traj = get_pick_traj(xarm_init_pose, pick_position, grasp_se3)
@@ -322,12 +330,9 @@ for step in range(offset, len(pick_position)+offset):
     # visualizer.add_traj(f"grasp_{obj_name}", {"xarm":grasp_traj})
 
     # Delete lifted object from mesh DB    
-    obj_dict.pop(obj_name)
     pick_position.pop(obj_name)
-    planner.update_world(obj_dict)
-    planner.motion_gen.world_model.save_world_as_mesh(os.path.join(demo_data, f"obstacle_mesh_{step}.obj"))
-
-    lift_xarm_traj = get_lift_traj(pick_xarm_traj[-1], height=0.2, length=50, linear=False)
+    
+    lift_xarm_traj = get_lift_traj(pick_xarm_traj[-1], height=0.2, length=50)
     lift_obj_pose = get_obj_traj(lift_xarm_traj[:, :6], grasp_se3)
 
     lift_traj = merge_qpos(lift_xarm_traj, np.repeat(inspire_traj[-1][None, :], repeats=lift_xarm_traj.shape[0], axis=0))
@@ -335,7 +340,7 @@ for step in range(offset, len(pick_position)+offset):
     pick_tot_traj.append(merge_qpos(lift_xarm_traj, orig_inspire_traj[-1]))
 
     # move to initial of put trajectory
-    release_traj = np.load(os.path.join(demo_data, "place_traj", f"{step}.npy"))
+    release_traj = np.load(os.path.join("data", "place_traj", f"{step}.npy"))
     robot.compute_forward_kinematics(release_traj[0, :6])
     put_xarm_init_se3 = robot.get_link_pose(robot.get_link_index("link6"))
 

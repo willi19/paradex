@@ -137,7 +137,6 @@ class CuroboPlanner:
             goal_pose=goal_pose,
             plan_config=self.plan_config,
         )
-        import pdb; pdb.set_trace()
         return result.goalset_index, result.get_interpolated_plan().position.cpu().numpy()
 
     def plan_full_step(self, 

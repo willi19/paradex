@@ -4,6 +4,7 @@ cam_param/*
 *.mp4
 *.png
 *.jpg
+*.mov
 data/*
 state/*
 video/*

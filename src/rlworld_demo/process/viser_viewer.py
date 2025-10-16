@@ -107,6 +107,9 @@ def load_pick_position():
         for obj_name, obj_se3 in obj_list.items():
             if f"{obj_type}_{obj_idx}" in PICK_ORDER[10:]:
                 obj_se3 = np.linalg.inv(C2R) @ obj_se3 @ ramen_offset[obj_type]
+                if obj_se3[2, 2] > 0.7:
+                    obj_se3[:3, :3] = np.eye(3)
+                # print(np.linalg.inv(C2R) @ obj_se3 @ ramen_offset[obj_type], obj_type, obj_idx)
                 obj_T[f"{obj_type}_{obj_idx}"] = obj_se3
             obj_idx += 1
 
@@ -136,8 +139,9 @@ def load_visualizer(pick_position):
     for oi, (obj_name, obj_pose) in enumerate(pick_position.items()):
         pick_index = PICK_ORDER[10:].index(obj_name)
         color = obj_color[pick_index]
-        print(color, obj_name)
-        visualizer.add_object(obj_name, mesh_dict[color], obj_pose)
+        
+        visualizer.add_object(obj_name, mesh_dict[obj_name.split("_")[0]], obj_pose)
+        print(obj_pose, color, obj_name)
 
     for obj_type, obstacles in OBSTACLE.items():
         if obj_type == 'cuboid':

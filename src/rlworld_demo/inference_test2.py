@@ -110,7 +110,7 @@ quit_event = Event()
 start_event = Event()
 listen_keyboard({"q": quit_event, "y": start_event})
 
-for step in range(4, len(pick_position)):
+for step in range(1, 2):#len(pick_position)):
     pick_traj = np.load(os.path.join("data", "refine_pick_traj", f"{step}.npy"))
     # vis_pick_traj = pick_traj.copy()
     # vis_pick_traj[:, 6:] = parse_inspire(vis_pick_traj[:,6:], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])

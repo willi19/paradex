@@ -788,6 +788,7 @@ if __name__ == "__main__":
                 obj_mesh = trimesh.load(nas_path/f"mesh/{obj_name}.ply")
             else:
                 obj_mesh = trimesh.load(nas_path/f"mesh/{obj_name}/{obj_name}.obj")
+                print(obj_mesh)
                 
             if obj_mesh.visual.kind=='texture':
                 tex = obj_mesh.visual.material.image

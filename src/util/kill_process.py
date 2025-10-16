@@ -8,5 +8,7 @@ pc_info = get_pcinfo()
 pc_list = list(pc_info.keys())
 
 run_script("pkill -f src/capture/camera/image_client.py", pc_list)
+run_script("pkill -f video_client.py", pc_list)
 run_script("pkill -f src/calibration/handeyecalibration/client.py", pc_list)
 run_script("pkill -f paradex/object_detection/client.py", pc_list)
+run_script("pkill -f python", pc_list)

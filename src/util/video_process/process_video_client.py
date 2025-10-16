@@ -15,7 +15,6 @@ def process_frame(frame, info, fid):
     # intrinsic = info
     # frame = undistort_img(frame.copy(), intrinsic)
     data = {}
-    print(fid)
     return frame, data
 
 def process_result(video_path, data_list, frame_ids):

@@ -41,14 +41,14 @@ class RawVideoProcessor():
             timestamp_path = get_timestamp_path(video_path)
             if not os.path.exists(timestamp_path):
                 self.log.append(f"{video_path} stream terminated unexpectedly")
-                os.remove(video_path)
+                # os.remove(video_path)
                 continue
             try:
                 timestamp = json.load(open(timestamp_path))
             except:
                 self.log.append(f"{video_path} : timestamp file not avaiable")
-                os.remove(video_path)
-                os.remove(timestamp_path)            
+                # os.remove(video_path)
+                # os.remove(timestamp_path)            
                 continue
             
             if not check_valid(timestamp):

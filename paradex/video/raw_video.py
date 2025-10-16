@@ -177,11 +177,11 @@ def fill_dropped_frames(video_path, load_info, process_frame, process_result, pr
             return f"{video_path}:{str(e)} during processing result"
             
     if not preserve:
-        os.remove(video_path)
-        os.remove(timestamp_path)
-        
+        # os.remove(video_path)
+        # os.remove(timestamp_path)
+        pass
     # upload video and remove previous one if preserve is False
     copy_file(out_path, nas_path)
-    os.remove(out_path)
+    # os.remove(out_path)
     return f"{video_path}:success"
     

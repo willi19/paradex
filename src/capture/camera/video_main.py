@@ -19,10 +19,10 @@ parser.add_argument('--save_path', required=True)
 args = parser.parse_args()
 
 pc_list = list(pc_info.keys())
-git_pull("paradex2", pc_list)
-# run_script(f"python src/capture/camera/video_client.py", pc_list)
+# git_pull("paradex2", pc_list)
+# run_script(f"python src/capture/camera/video_client.py --save_path {args.save_path}", pc_list)
 
-camera_loader = RemoteCameraController("video", None, sync=False, debug=True)
+camera_loader = RemoteCameraController("video", None, sync=True, debug=True)
 
 stop_event = Event()
 start_capture = Event()

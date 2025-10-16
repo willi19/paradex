@@ -25,8 +25,9 @@ from paradex.video.convert_codec import change_to_h264
 def process_video(video_path, save_path, start=0, end=-1):
     cap = cv2.VideoCapture(video_path)
 
-    if "multiview" in video_path:
+    if "multiview" in save_path:
         out = cv2.VideoWriter(save_path, cv2.VideoWriter_fourcc(*'mp4v'), 10, (2048, 1536))
+        print(video_path)
     else:
         fps = cap.get(cv2.CAP_PROP_FPS)
         width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -69,7 +70,7 @@ for index in range(1):
     # multiview
     save_dir = os.path.join("RLWRLD_DEMO_FINAL", str(index))
     
-    multi_video_dir = os.path.join(shared_dir, "capture", f"final_final_simulate",f"{index}")
+    multi_video_dir = os.path.join("RLWRLD_DEMO", f"{index}",  f"multiview")
     for video_name in os.listdir(multi_video_dir):
         if video_name == "cam_param":
             continue
@@ -81,14 +82,14 @@ for index in range(1):
         tasks.append((video_path, save_path, start, end))
         
     # cam1
-    vid_name_list = ["iphone2.mov"]#, "iphone2.mov"]
-    for vid_name in vid_name_list:
-        video_path = os.path.join("RLWRLD_DEMO", str(index), vid_name)
-        save_path = os.path.join(save_dir, f"{vid_name[:-4]}_tmp.mp4")
-        start = vid_range[vid_name][0]
-        end = vid_range[vid_name][1]
-        tasks.append((video_path, save_path, start, end))
-        # process_video(video_path, save_path, start, end)
+    # vid_name_list = ["iphone2.mov"]#, "iphone2.mov"]
+    # for vid_name in vid_name_list:
+    #     video_path = os.path.join("RLWRLD_DEMO", str(index), vid_name)
+    #     save_path = os.path.join(save_dir, f"{vid_name[:-4]}_tmp.mp4")
+    #     start = vid_range[vid_name][0]
+    #     end = vid_range[vid_name][1]
+    #     tasks.append((video_path, save_path, start, end))
+    #     # process_video(video_path, save_path, start, end)
         
     num_process = cpu_count() - 2
     with Pool(num_process) as p:

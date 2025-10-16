@@ -27,7 +27,7 @@ Z_OFFSET = np.array([0.0, 0.0, 0.11])
 Z_NUM = 2
 
 X_OFFSET = np.array([0.13, 0.0, 0.0])
-X_NUM = 1
+X_NUM = 2
 
 Y_OFFSET = np.array([0.0, 0.13, 0.0])
 Y_NUM = 5
@@ -126,16 +126,24 @@ ramen_offset = {
                       [0, 0, 0, 1]])
 }
 
-def load_place_position():
+def load_pick_position():
+    obj_6d_path = os.path.join(shared_dir, 'object_6d', 'data', 'obj_output')
+    latest_dir = find_latest_directory(obj_6d_path)
     obj_T = {}
-    idx = 0
-    for i in range(X_NUM):
-        for j in range(Y_NUM):
-            for k in range(Z_NUM):
-                place_position = place_origin + i * X_OFFSET + j * Y_OFFSET + k * Z_OFFSET
-                obj_T[f"ramen_{idx}"] = np.eye(4)
-                obj_T[f"ramen_{idx}"][:3, 3] = place_position
-                idx += 1
+
+    with open(os.path.join(obj_6d_path, latest_dir, 'obj_T.pkl'), 'rb') as f:
+        obj_output = pickle.load(f)
+    
+    obj_idx = 0
+    for obj_type, obj_list in obj_output.items():
+        obj_type = obj_type.split('_')[0]  # brown_ramen_1 -> brown
+        for obj_name, obj_se3 in obj_list.items():
+            obj_se3 = np.linalg.inv(C2R) @ obj_se3 @ ramen_offset[obj_type]
+            if obj_se3[2, 2] < 0.7:
+                continue
+
+            obj_T[f"{obj_type}_{obj_idx}"] = obj_se3
+            obj_idx += 1
 
     return obj_T
 
@@ -160,8 +168,8 @@ def load_visualizer(pick_position):
         mesh = trimesh.load(mesh_path)
         mesh_dict[color] = mesh
 
-    for obj_name, obj_pose in pick_position.items():
-        visualizer.add_object(obj_name, mesh_dict["brown"], obj_pose)
+    # for obj_name, obj_pose in pick_position.items():
+    #     visualizer.add_object(obj_name, mesh_dict[obj_name.split('_')[0]], obj_pose)
     
     for obj_type, obstacles in OBSTACLE.items():
         if obj_type == 'cuboid':
@@ -226,7 +234,7 @@ def merge_qpos(xarm, inspire_qpos):
     return np.concatenate([xarm, inspire_qpos], axis=1)
 #########################################################################################################################
 
-place_position = load_place_position()
+pick_position = load_pick_position()
 grasp_policy_dict = load_pick_traj()
 
 grasp_idx = "7"
@@ -241,8 +249,8 @@ orig_inspire_traj = np.concatenate([np.array(orig_inspire_traj_pre), orig_inspir
 
 grasp_se3 = grasp_policy_dict[grasp_idx][0]
 
-visualizer = load_visualizer(place_position)
-print(place_position)
+visualizer = load_visualizer(pick_position)
+
 desired_theta = np.pi * (1) # degree between x-axis and z-axis of wrist np.pi ~ np.pi * 3 / 2
 put_traj_dict = precalculate_put_traj(desired_theta, grasp_se3)
 ret_traj_dict = precalculate_return_traj(put_traj_dict)
@@ -250,7 +258,7 @@ ret_traj_dict = precalculate_return_traj(put_traj_dict)
 robot.compute_forward_kinematics(xarm_init_pose)
 init_xarm_se3 = robot.get_link_pose(robot.get_link_index("link6"))
 
-for step in range(X_NUM * Y_NUM * Z_NUM):
+for step in range(20):
     tot_traj = []
     # move to initial of put trajectory
     put_xarm_traj = put_traj_dict[((step // Z_NUM) % X_NUM, step % Z_NUM)].copy()
@@ -260,9 +268,6 @@ for step in range(X_NUM * Y_NUM * Z_NUM):
     # put 
 
     visualizer.add_traj(f"put_{step}", {"xarm":merge_qpos(put_xarm_traj, inspire_traj[-1])}, {"brown_0":np.array(get_obj_traj(put_xarm_traj, grasp_se3))})
-    os.makedirs(os.path.join("data", "put_traj"), exist_ok=True)
-    np.save(os.path.join("data", "put_traj", f"{step}.npy"), put_xarm_traj)
-
     tot_traj.append(merge_qpos(put_xarm_traj, orig_inspire_traj[-1]))
     # down
     down_xarm_traj = get_lift_traj(put_xarm_traj[-1], height=-0.02, length=30)

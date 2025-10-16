@@ -16,14 +16,7 @@ from paradex.inference.util import get_linear_path
 from paradex.robot.robot_wrapper import RobotWrapper
 from paradex.robot.mimic_joint import parse_inspire
 
-xarm_init_pose = np.array([
-    -0.8048279285430908, 
-    0.2773207128047943, 
-    -1.4464116096496582, 
-    2.0092501640319824, 
-    0.7059974074363708, 
-    -2.361839532852173
-]) # Initial xarm pose for every grasp 
+xarm_init_pose = np.array([-0.8048279285430908, 0.2773207128047943, -1.4464116096496582, 2.0092501640319824, 0.7059974074363708, -2.361839532852173]) # Initial xarm pose for every grasp 
 
 Z_OFFSET = np.array([0.0, 0.0, 0.12])
 Z_NUM = 2
@@ -44,28 +37,7 @@ demo_data = os.path.join(shared_dir, "object_6d", "demo_data")
 C2R = load_latest_C2R()
 
 # PICK_ORDER = ['brown_1', 'red_12', 'red_13', 'red_16', 'yellow_6', 'red_18', 'yellow_10', 'red_19', 'yellow_9', 'yellow_11', 'brown_4', 'yellow_8', 'brown_2', 'red_15', 'brown_3', 'yellow_5', 'red_14']
-PICK_ORDER = [
-    'brown_1', 
-    'red_12', 
-    'red_13', 
-    'red_14', 
-    'brown_0', 
-    'yellow_6', 
-    'red_16', 
-    'yellow_5', 
-    'yellow_8', 
-    'yellow_9', 
-    'red_18', 
-    'yellow_10', 
-    'yellow_11', 
-    'brown_2', 
-    'yellow_7', 
-    'red_19', 
-    'brown_3', 
-    "red_15", 
-    "red_17", 
-    "brown_4"
-]
+PICK_ORDER = ['brown_1', 'red_12', 'red_13', 'red_14', 'brown_0', 'yellow_6', 'red_16', 'yellow_5', 'yellow_8', 'yellow_9', 'red_18', 'yellow_10', 'yellow_11', 'brown_2', 'yellow_7', 'red_19', 'brown_3', "red_15", "red_17", "brown_4"]
 
 OBSTACLE = {'cuboid': 
                 { # xyz, quaternion

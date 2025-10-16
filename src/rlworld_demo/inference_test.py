@@ -13,6 +13,11 @@ from paradex.robot.mimic_joint import parse_inspire
 from paradex.io.robot_controller import get_arm, get_hand
 from paradex.utils.keyboard_listener import listen_keyboard
 
+import argparse
+argparser = argparse.ArgumentParser()
+argparser.add_argument("--use_simplemesh", action='store_true', help="use simple mesh for visualization")
+args = argparser.parse_args()
+
 xarm_init_pose = np.array([-0.8048279285430908, 0.2773207128047943, -1.4464116096496582, 2.0092501640319824, 0.7059974074363708, -2.361839532852173]) # Initial xarm pose for every grasp 
 C2R = load_latest_C2R()
 
@@ -44,27 +49,51 @@ ramen_offset = {
                       [0, -1, 0, 0], 
                       [0, 0, 0, 1]])
 }
+PICK_ORDER = [
+    'brown_1', 
+    'red_12', 
+    'red_13', 
+    'red_14', 
+    'brown_0', 
+    'yellow_6', 
+    'red_16', 
+    'yellow_5', 
+    'yellow_8', 
+    'yellow_9', 
+    'red_18', 
+    'yellow_10', 
+    'yellow_11', 
+    'brown_2', 
+    'yellow_7', 
+    'red_19', 
+    'brown_3', 
+    "red_15", 
+    "red_17", 
+    "brown_4"
+]
 
 def load_pick_position():
     obj_6d_path = os.path.join(shared_dir, 'object_6d', 'data', 'obj_output')
     latest_dir = find_latest_directory(obj_6d_path)
+    print(f"Loading pick position from {os.path.join(obj_6d_path, latest_dir)}")
     obj_T = {}
 
     with open(os.path.join(obj_6d_path, latest_dir, 'obj_T.pkl'), 'rb') as f:
         obj_output = pickle.load(f)
-    
     obj_idx = 0
     for obj_type, obj_list in obj_output.items():
         obj_type = obj_type.split('_')[0]  # brown_ramen_1 -> brown
         for obj_name, obj_se3 in obj_list.items():
-            obj_se3 = np.linalg.inv(C2R) @ obj_se3 @ ramen_offset[obj_type]
+            if f"{obj_type}_{obj_idx}" in PICK_ORDER[10:]:
+                obj_se3 = np.linalg.inv(C2R) @ obj_se3 @ ramen_offset[obj_type]
 
-            obj_T[f"{obj_type}_{obj_idx}"] = obj_se3
+                obj_T[f"{obj_type}_{obj_idx}"] = obj_se3
             obj_idx += 1
 
     return obj_T
 
 def load_visualizer(pick_position):
+    print(pick_position)
     visualizer = ViserViewer(up_direction=np.array([0,0,1]))
 
     visualizer.add_floor()
@@ -72,12 +101,15 @@ def load_visualizer(pick_position):
 
     mesh_dict = {}
     for color in ["brown", "red", "yellow"]:
-        mesh_path = os.path.join(rsc_path, "object", f"{color}_ramen_von", f"{color}_ramen_von.obj")
+        if args.use_simplemesh:
+            mesh_path = os.path.join(shared_dir, "object_6d", "data", "mesh", f"{color}_ramen_von", f"{color}_ramen_von_transformed_remesh.obj")
+        else:
+            mesh_path = os.path.join(rsc_path, "object", f"{color}_ramen_von", f"{color}_ramen_von.obj")
         mesh = trimesh.load(mesh_path)
         mesh_dict[color] = mesh
 
-    # for obj_name, obj_pose in pick_position.items():
-    #     visualizer.add_object(obj_name, mesh_dict[obj_name.split('_')[0]], obj_pose)
+    for obj_name, obj_pose in pick_position.items():
+        visualizer.add_object(obj_name, mesh_dict[obj_name.split('_')[0]], obj_pose)
     
     # make trimesh objects
     for obj_type, obstacles in OBSTACLE.items():
@@ -109,8 +141,8 @@ quit_event = Event()
 start_event = Event()
 listen_keyboard({"q": quit_event, "y": start_event})
 
-for step in range(0, 20):#len(pick_position)):
-    pick_traj = np.load(os.path.join("data", "pick_traj", f"{step}.npy"))
+for step in range(4,5):#len(pick_position)):
+    pick_traj = np.load(os.path.join("data", "refine_pick_traj", f"{step}.npy"))
     vis_pick_traj = pick_traj.copy()
     vis_pick_traj[:, 6:] = parse_inspire(vis_pick_traj[:,6:], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])
     visualizer.add_traj(f"pick_{step}", {"xarm":vis_pick_traj})

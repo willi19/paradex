@@ -80,9 +80,9 @@ class ViserViewer():
         
         # Add mesh to the frame (at origin relative to frame)
         mesh_handle = self.server.scene.add_mesh_trimesh(
-            name=f"/objects/{name}_frame/{name}",
-            mesh=obj
-        )
+                name=f"/objects/{name}_frame/{name}",
+                mesh=obj
+            )
         
         # Store in object dictionary
         self.obj_dict[name] = {
@@ -117,16 +117,16 @@ class ViserViewer():
         self.traj_list.append((name, new_traj_dict, traj_len))
         self.num_frames += traj_len
         self.gui_timestep.max = self.num_frames - 1
-    
-    def add_grid_lines(self, size=5.0):
+
+    def add_grid_lines(self, height=0.0, size=5.0):
         """Add grid lines separately using line segments"""
-        grid_spacing = 0.5  # 0.5m grid spacing
+        grid_spacing = 0.1  # 0.5m grid spacing
         lines_added = 0
         # X direction lines (parallel to X axis)
         for y in np.arange(-size, size + grid_spacing, grid_spacing):
             self.server.scene.add_spline_catmull_rom(
                 f"grid_x_{lines_added}",
-                positions=np.array([[-size, y, 0.001], [size, y, 0.001]]),
+                positions=np.array([[-size, y, height], [size, y, height]]),
                 color=(0.4, 0.4, 0.4),
                 line_width=1.0
             )
@@ -136,15 +136,15 @@ class ViserViewer():
         for x in np.arange(-size, size + grid_spacing, grid_spacing):
             self.server.scene.add_spline_catmull_rom(
                 f"grid_y_{lines_added}",
-                positions=np.array([[x, -size, 0.001], [x, size, 0.001]]),
+                positions=np.array([[x, -size, height], [x, size, height]]),
                 color=(0.4, 0.4, 0.4),
                 line_width=1.0
             )
             lines_added += 1
     
-    def add_floor(self):
+    def add_floor(self, height=0.0):
         """Update floor visibility and appearance"""
-        self.floor_size = 0.2
+        self.floor_size = 1.0
         try:
             # Remove existing floor and grid elements
             try:
@@ -168,14 +168,14 @@ class ViserViewer():
                 self.server.scene.add_box(
                     name="floor",
                     dimensions=(size * 2, size * 2, 0.02),  # width, height, thickness
-                    position=(0.0, 0.0, -0.041),  # Position slightly below z=0
+                    position=(0.0, 0.0, height-0.01),  # Position slightly below z=0
                     color=(0.7, 0.7, 0.7)
                 )
                 
                 # Add grid lines if enabled
                 if True: #self.grid_visible.value:
                     try:
-                        self.add_grid_lines(size=size)
+                        self.add_grid_lines(height, size=size)
                     except Exception as e:
                         print(f"❌ Grid lines failed: {e}")
             else:
@@ -279,10 +279,10 @@ class ViserViewer():
             self.gui_playing = self.server.gui.add_checkbox("Playing", True)
             self.render_png = self.server.gui.add_checkbox("Render to PNG", False)
             self.gui_framerate = self.server.gui.add_slider(
-                "FPS", min=1, max=60, step=0.1, initial_value=10
+                "FPS", min=1, max=120, step=0.1, initial_value=10
             )
             gui_framerate_options = self.server.gui.add_button_group(
-                "FPS options", ("10", "20", "30", "60")
+                "FPS options", ("10", "20", "30", "60", "120")
             )
 
             gui_up = self.server.gui.add_vector3(

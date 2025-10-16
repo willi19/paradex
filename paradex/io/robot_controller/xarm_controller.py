@@ -101,9 +101,9 @@ class XArmController:
     def set_action(self, action):
         assert action.shape == (4,4) or action.shape == (6,)
         
-        if action.shape == (6,):
-            self.robot_model.compute_forward_kinematics(action.copy())
-            action = self.robot_model.get_link_pose(self.last_link_id)
+        # if action.shape == (6,):
+        #     self.robot_model.compute_forward_kinematics(action.copy())
+        #     action = self.robot_model.get_link_pose(self.last_link_id)
             
         with self.lock:
             self.init = True
@@ -221,11 +221,11 @@ class XArmController:
                     # self.arm.set_servo_angle(angle=ik)
                     if action.shape == (6,):
                         if not self.mode_change:
-                            self.arm.set_mode(0)  # 0: position control, 1: servo control
-                            self.arm.set_state(state=0)
+                            # self.arm.set_mode(1)  # 0: position control, 1: servo control
+                            # self.arm.set_state(state=0)
                             self.mode_change = True
                             
-                        self.arm.set_servo_angle(angle=action.copy().tolist(), is_radian=True)
+                        self.arm.set_servo_angle_j(angles=action.copy().tolist(), is_radian=True)
                     else:
                         self.arm.set_servo_cartesian_aa(aa, is_radian=True)
                     

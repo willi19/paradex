@@ -48,6 +48,7 @@ ramen_offset = {
 def load_pick_position():
     obj_6d_path = os.path.join(shared_dir, 'object_6d', 'data', 'obj_output')
     latest_dir = find_latest_directory(obj_6d_path)
+    print(f"Loading pick position from {os.path.join(obj_6d_path, latest_dir)}")
     obj_T = {}
 
     with open(os.path.join(obj_6d_path, latest_dir, 'obj_T.pkl'), 'rb') as f:
@@ -109,8 +110,8 @@ quit_event = Event()
 start_event = Event()
 listen_keyboard({"q": quit_event, "y": start_event})
 
-for step in range(19, len(pick_position)):
-    pick_traj = np.load(os.path.join("data", "pick_traj", f"{step}.npy"))
+for step in range(4, len(pick_position)):
+    pick_traj = np.load(os.path.join("data", "refine_pick_traj", f"{step}.npy"))
     # vis_pick_traj = pick_traj.copy()
     # vis_pick_traj[:, 6:] = parse_inspire(vis_pick_traj[:,6:], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])
     # visualizer.add_traj(f"pick_{step}", {"xarm":vis_pick_traj})

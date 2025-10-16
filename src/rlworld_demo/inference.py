@@ -109,8 +109,8 @@ quit_event = Event()
 start_event = Event()
 listen_keyboard({"q": quit_event, "y": start_event})
 
-for step in range(19, len(pick_position)):
-    pick_traj = np.load(os.path.join("data", "pick_traj", f"{step}.npy"))
+for step in range(0, len(pick_position)):
+    pick_traj = np.load(os.path.join("data", "refine_pick_traj", f"{step}.npy"))
     # vis_pick_traj = pick_traj.copy()
     # vis_pick_traj[:, 6:] = parse_inspire(vis_pick_traj[:,6:], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])
     # visualizer.add_traj(f"pick_{step}", {"xarm":vis_pick_traj})
@@ -124,10 +124,10 @@ for step in range(19, len(pick_position)):
     hand_controller.home_robot(pick_traj[0, 6:])
 
     tot_traj = np.concatenate([pick_traj, place_traj], axis=0)
-    print(tot_traj.shape)
+    # print(tot_traj.shape)
     print(f"Press 'y' to start step {step}")
-    while not start_event.is_set() and not quit_event.is_set():
-        time.sleep(0.01)
+    # while not start_event.is_set() and not quit_event.is_set():
+    #     time.sleep(0.01)
     if quit_event.is_set():
         break
     start_event.clear()
@@ -137,7 +137,6 @@ for step in range(19, len(pick_position)):
             break
         arm_controller.set_action(qpos[:6])
         hand_controller.set_target_action(qpos[6:])
-        print(qpos[6:], idx, pick_traj.shape[0], place_traj.shape[0], tot_traj.shape[0])
         time.sleep(0.05)
         
     if quit_event.is_set():

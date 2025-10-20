@@ -16,6 +16,6 @@ def change_to_h264(temp_video_path, output_video_path):
     # FFmpeg 실행
     try:
         subprocess.run(ffmpeg_cmd, check=True)
-        os.remove(temp_video_path)  # 변환 후 임시 파일 삭제
+        # os.remove(temp_video_path)  # 변환 후 임시 파일 삭제
     except subprocess.CalledProcessError as e:
         print(f"FFmpeg encoding failed: {e}")

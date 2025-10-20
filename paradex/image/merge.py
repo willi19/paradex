@@ -8,7 +8,7 @@ def merge_image(image_dict):
     
     grid_cols = math.ceil(math.sqrt(num_images))
     grid_rows = math.ceil(num_images / grid_cols)
-    border_px = 20
+    border_px = 10
     
     new_W = 2048 // grid_rows
     new_H = 1536 // grid_rows
@@ -17,7 +17,7 @@ def merge_image(image_dict):
 
     for idx, img_name in enumerate(name_list):
         img = image_dict[img_name].copy()
-        cv2.putText(img, img_name, (20, 30), 1, 3, (255, 255, 0), 3)
+        # cv2.putText(img, img_name, (20, 30), 1, 3, (255, 255, 0), 3)
         resized_img = cv2.resize(img, (new_W, new_H))
         
         r_idx = idx // grid_cols

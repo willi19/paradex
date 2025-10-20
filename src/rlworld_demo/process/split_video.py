@@ -12,7 +12,8 @@ def process_video(video_path, save_path):
     
     for i in tqdm.tqdm(range(num_frame), desc=f"Processing {os.path.basename(video_path)}"):
         ret, frame = cap.read()
-        
+        if i < 37000:
+            continue
         if not ret:
             error = True
             break
@@ -21,14 +22,14 @@ def process_video(video_path, save_path):
 
 for index in range(1, 2):
     # multiview
-    video_path = os.path.join(shared_dir, "capture", f"final_final_simulate",f"{index}", "25305466.avi")
-    save_dir = os.path.join("image", str(index), "multiview")
-    process_video(video_path, save_dir)
+    # video_path = os.path.join("RLWRLD_DEMO",f"{index}", "multiview", "25305466.avi")
+    # save_dir = os.path.join("image", str(index), "multiview")
+    # process_video(video_path, save_dir)
 
     # cam1
     vid_name = None
     for name in os.listdir(os.path.join("RLWRLD_DEMO", str(index))):
-        if name != "multiview":
+        if name != "multiview" and name != "iphone2.mov":
             vid_name = name
             video_path = os.path.join("RLWRLD_DEMO", str(index), vid_name)
             save_dir = os.path.join("image", str(index), vid_name)

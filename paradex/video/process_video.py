@@ -48,7 +48,6 @@ def process_video_list(video_dir, out_path, data, process_frame):
         w = int(cap_dict[name].get(cv2.CAP_PROP_FRAME_WIDTH))
         h = int(cap_dict[name].get(cv2.CAP_PROP_FRAME_HEIGHT))
         
-    print(tmp_path, fps)
     out = cv2.VideoWriter(tmp_path, fourcc, fps, (w, h))
     fid = 0
     
@@ -73,11 +72,11 @@ def process_video_list(video_dir, out_path, data, process_frame):
             break
         
         frame = process_frame(img_dict, video_dir, fid, data)
+        frame = cv2.resize(frame, (w, h))
     
         out.write(frame)
         fid += 1
         print(fid)
-        
     for _, cap in cap_dict.items():
         cap.release()
         

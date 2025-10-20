@@ -33,4 +33,4 @@ if __name__ == '__main__':
             args.out_path, 
             None, 
             process_frame)
-    change_to_h264(f"{args.out_path.split('.')[0]}_tmp.avi", args.out_path)
+    # change_to_h264(f"{args.out_path.split('.')[0]}_tmp.avi", args.out_path)

@@ -61,3 +61,12 @@ Two config files must be placed under `config/camera/` (or adjust `config_dir`):
 | `connect_flag[i]` | Set by thread *i* once connection attempt finished. |
 | `connect_success[i]` | Set by thread *i* only on successful camera init. |
 | `capture_end_flag[i]` | Cleared when a new capture session begins; set again once the thread finishes flushing data. |
+
+
+                capture PC                               |           MAIN PC
+
+camera1 --->                                             |
+camera2 ---> camera loader ---> remote_camera_loader   --->  Remote_camera_controller     
+camera3 --->                                             |
+camera4 --->                                             |
+

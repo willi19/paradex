@@ -1,0 +1,218 @@
+from threading import Event, Thread
+import time
+import copy
+import cv2
+from multiprocessing import shared_memory
+import numpy as np
+import os
+
+class Camera():
+    def __init__(self, cam_type, name, frame_shape=(1536, 2048, 3)):
+        self.event = {
+            "start": Event(),
+            "exit": Event(),
+            
+            "connection": Event(),
+            "acquisition": Event(),
+            "release": Event(),
+            "stop": Event()
+        }
+        
+        self.type = cam_type
+        self.name = name
+        
+        self.frame_shape = frame_shape  
+        self.load_shared_memory()
+        
+        self.capture_thread = Thread(target=self.run) 
+        self.capture_thread.start()  
+        
+        self.event["connection"].wait()
+    
+    def load_shared_memory(self):
+        frame_size = np.prod(self.frame_shape)
+        
+        # Buffer 2개
+        self.image_shm_a = shared_memory.SharedMemory(
+            create=True, 
+            size=frame_size, 
+            name=self.name + "_image_a"
+        )
+        
+        self.image_shm_b = shared_memory.SharedMemory(
+            create=True, 
+            size=frame_size, 
+            name=self.name + "_image_b"
+        )
+        
+        # Frame ID 2개
+        self.fid_shm_a = shared_memory.SharedMemory(
+            create=True, 
+            size=8, 
+            name=self.name + "_fid_a"
+        )
+        self.fid_shm_b = shared_memory.SharedMemory(
+            create=True, 
+            size=8, 
+            name=self.name + "_fid_b"
+        )
+        
+        # Write buffer flag (0 or 1)
+        self.write_flag_shm = shared_memory.SharedMemory(
+            create=True, 
+            size=1, 
+            name=self.name + "_flag"
+        )
+        
+        # Arrays
+        self.image_array_a = np.ndarray(
+            self.frame_shape, dtype=np.uint8, buffer=self.image_shm_a.buf
+        )
+        self.image_array_b = np.ndarray(
+            self.frame_shape, dtype=np.uint8, buffer=self.image_shm_b.buf
+        )
+        self.fid_array_a = np.ndarray(
+            (1,), dtype=np.int64, buffer=self.fid_shm_a.buf
+        )
+        self.fid_array_b = np.ndarray(
+            (1,), dtype=np.int64, buffer=self.fid_shm_b.buf
+        )
+        self.write_flag = np.ndarray(
+            (1,), dtype=np.uint8, buffer=self.write_flag_shm.buf
+        )
+        self.write_flag[0] = 0
+    
+    def release_shared_memory(self):
+        self.image_shm_a.close()
+        self.image_shm_a.unlink()
+        
+        self.image_shm_b.close()
+        self.image_shm_b.unlink()
+        
+        self.fid_shm_a.close()
+        self.fid_shm_a.unlink()
+        
+        self.fid_shm_b.close()
+        self.fid_shm_b.unlink()
+        
+        self.write_flag_shm.close()
+        self.write_flag_shm.unlink()
+        
+    def start(self, mode, syncMode, save_path=None, fps=30):
+        if fps < 0 and mode in ["video", "full"] and syncMode is False:
+            raise ValueError("FPS must be specified for video recording.")
+        
+        if mode in ["video", "full", "image"] and save_path is None:
+            raise ValueError("Save path must be specified for video or image saving.")
+        if self.event["start"].is_set():
+            raise RuntimeError("Acquisition is already running.")
+        
+        self.mode = mode
+        self.syncMode = syncMode
+        self.fps = fps
+        
+        if save_path is not None:
+            _, ext = os.path.splitext(save_path)
+            if not ext: 
+                default_ext = ".avi" if mode in ["video", "full"] else ".png"
+                self.save_path = os.path.join(save_path, f"{self.name}{default_ext}")
+            else:  
+                self.save_path = save_path
+            
+            save_dir = os.path.dirname(self.save_path)
+            if save_dir:
+                os.makedirs(save_dir, exist_ok=True)
+            
+        self.event["stop"].clear()
+        self.event["start"].set()  
+        self.event["acquisition"].wait()   
+               
+    def stop(self):
+        self.event["start"].clear()
+        self.event["stop"].wait()
+        
+        
+    def end(self):
+        if self.event["start"].is_set():
+            self.stop()
+        
+        self.event["exit"].set()
+        self.capture_thread.join()
+    
+    def continuous_acquire(self):
+        save_video = (self.mode in ["video", "full"] and self.save_path is not None)
+        stream = (self.mode in ["stream", "full"])
+        
+        if save_video:
+            fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+            video_writer = cv2.VideoWriter(self.save_path, fourcc, fps=self.fps, frameSize=(self.frame_shape[1], self.frame_shape[0]))        
+                        
+        self.camera.start("continuous", self.syncMode, self.fps)
+        self.event["acquisition"].set()
+                
+        while self.event["start"].is_set() and not self.event["exit"].is_set():
+            frame, frame_data = self.camera.get_image()
+            
+            if save_video:
+                video_writer.write(frame)
+            
+            if stream:
+                # Write to shared memory
+                if self.write_flag[0] == 0:
+                    np.copyto(self.image_array_a, frame)
+                    self.fid_array_a[0] = frame_data["frameID"]
+                    self.write_flag[0] = 1
+                else:
+                    np.copyto(self.image_array_b, frame)
+                    self.fid_array_b[0] = frame_data["frameID"]
+                    self.write_flag[0] = 0
+    
+        self.camera.stop()
+        self.event["acquisition"].clear()
+        
+        if save_video:
+            video_writer.release()
+        
+        self.event["stop"].set()
+    
+    def single_acquire(self):
+        self.camera.start("single", self.syncMode)
+        self.event["acquisition"].set()
+        
+        frame, _ = self.camera.get_image()
+        cv2.imwrite(self.save_path, frame)
+        
+        self.event["acquisition"].clear()
+        self.event["start"].clear()
+        
+        self.camera.stop()
+        self.event["stop"].set()       
+    
+    def connect_camera(self):
+        # Establish connection
+        if self.type == "pyspin":
+            from paradex.io.camera_system.pyspin import load_camera
+        else:
+            raise NotImmplementedError(f"Camera type {self.type} is not implemented.")
+        
+        self.camera = load_camera(self.name)
+        self.event["connection"].set()
+    
+    def release(self):
+        self.camera.release()
+        self.release_shared_memory()
+        self.event["release"].set()
+        
+    def run(self):
+        self.connect_camera()
+        
+        while not self.event["exit"].is_set(): # we should maintain the connection until exit
+            if self.event["start"].is_set(): # Start data acquisition
+                if self.mode in ["full", "video", "stream"]:
+                    self.continuous_acquire()
+                else:
+                    self.single_acquire()
+                
+            time.sleep(0.001)
+                    
+        self.release()

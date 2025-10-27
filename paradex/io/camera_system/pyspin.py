@@ -4,6 +4,7 @@ import numpy as np
 import cv2
 import json
 import os
+import time
 
 from paradex.utils.file_io import config_dir
 
@@ -15,8 +16,9 @@ else:
     lens_info = {}
     cam_info = {}
     
+system = ps.System.GetInstance()
+
 def get_serial_list():
-    system = ps.System.GetInstance()
     cam_list = system.GetCameras()
     serial_list = []
 
@@ -30,12 +32,9 @@ def get_serial_list():
         del cam
 
     cam_list.Clear()
-    system.ReleaseInstance()
-
     return serial_list 
 
 def load_camera(serialnum):
-    system = ps.System.GetInstance()
     cam_list = system.GetCameras()
 
     try:
@@ -43,16 +42,20 @@ def load_camera(serialnum):
     except:
         raise ValueError(f"Camera with serial number {serialnum} not found.")
     
-    if serialnum in cam_info and cam_info[serialnum]["lens_id"] in lens_info:
-        lens_params = lens_info[cam_info[serialnum]["lens_id"]]
+    if serialnum in cam_info and cam_info[serialnum]["lens"] in lens_info:
+        lens_params = lens_info[cam_info[serialnum]["lens"]]
         gain = lens_params["gain"]
         exposure = lens_params["exposure_time"]
     
     else:
         gain = 10.0
-        exposure = 10000.0
+        exposure = 60.0
+    
+    cam = PyspinCamera(camPtr, gain, exposure)
+    
+    cam_list.Clear()
         
-    return PyspinCamera(camPtr, gain, exposure)
+    return cam
 
 class PyspinCameraConfig:
     """Camera configuration constants"""
@@ -100,11 +103,10 @@ class PyspinCamera():
         
         camPtr.Init()  # initialize camera
         self.cam = camPtr
-        self.serialnum = self._serialnum()
+        self.serial_num = self._serialnum()
 
         self.stream_nodemap = camPtr.GetTLStreamNodeMap() 
         self.nodeMap = camPtr.GetNodeMap() 
-        
         self._init_configure()
                     
     def _serialnum(self)-> str:
@@ -129,30 +131,33 @@ class PyspinCamera():
         :return: Raw image pointer (call Release() after use)
         :rtype: PySpin.ImagePtr
         """
-        if self.mode == "single":
-            while True:
-                try:
-                    pImageRaw = self.cam.GetNextImage(100)
-                    return self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
+        # if self.mode == "single":
+        #     while True:
+        #         try:
+        #             pImageRaw = self.cam.GetNextImage()
+        #             return self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
                     
-                except:
-                    self.stop()
-                    self.start()
-        else:
-            pImageRaw = self.cam.GetNextImage()
-            return self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
+        #         except:
+        #             self.stop()
+        #             self.start()
+        # else:
+        pImageRaw = self.cam.GetNextImage()
+        frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
+        return self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth()), frame_data
 
     def start(self, mode, syncMode, frame_rate=None, gain=None, exposure_time=None):
         """
         Start image acquisition.
         """
+        assert mode in ["single", "continuous"]
         if mode != self.mode:
-            self._configureAcquisition()
             self.mode = mode
+            self._configureAcquisition()
         
         if syncMode != self.syncMode and syncMode:
             self._configureTrigger()
-        if (not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate):
+            
+        if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)) and (self.mode != "single"):
             self.frame_rate = frame_rate
             self._configureFrameRate()
         
@@ -201,7 +206,7 @@ class PyspinCamera():
         return cvImg
 
     @staticmethod
-    def _get_node(nodemap, name, node_type, readable=True, writable=True) -> ps.BasePtr:
+    def _get_node(nodemap, name, node_type, readable=True, writable=True):
         """Retrieve a camera node by name and type."""
         node = nodemap.GetNode(name)
         if node_type == "bool":
@@ -238,11 +243,11 @@ class PyspinCamera():
         self._configureGain()
         self._configureThroughPut()
 
-        self._configurePacketSize(self.nodeMap)
-        self._configurePacketDelay(self.nodeMap)
-        self._configureExposure(self.nodeMap)
-        self._configureChunk(self.nodeMap)
-        self._configureBuffer(self.stream_nodemap)
+        self._configurePacketSize()
+        # self._configurePacketDelay()
+        self._configureExposure()
+        self._configureChunk()
+        self._configureBuffer()
 
     def _configureGain(self) -> None:
         """configure camera gain settings."""
@@ -268,7 +273,6 @@ class PyspinCamera():
         ValMax = ThroughputLimit.GetMax()
         ValMin = ThroughputLimit.GetMin()
         posValMax = ((ValMax - ValMin) // PyspinCameraConfig.THROUGHPUT_ALIGNMENT) * PyspinCameraConfig.THROUGHPUT_ALIGNMENT + ValMin 
-        
         # Set throughput limit 
         ThroughputLimit.SetValue(posValMax)
         
@@ -374,7 +378,7 @@ class PyspinCamera():
     def _configureAcquisition(self) -> None:
         """configure camera acquisition settings based on operation mode."""
         # SingleFrame for image mode, Continuous for video or stream mode
-        acq_mode = "SingleFrame" if self.mode == "single" else "single"
+        acq_mode = "SingleFrame" if self.mode == "single" else "Continuous"
         
         # Set acquisition mode
         acquisitionMode = self._get_node(self.nodeMap, "AcquisitionMode", "enum", readable=True, writable=True)

@@ -131,8 +131,7 @@ class Camera():
     def stop(self):
         self.event["start"].clear()
         self.event["stop"].wait()
-        
-        
+           
     def end(self):
         if self.event["start"].is_set():
             self.stop()

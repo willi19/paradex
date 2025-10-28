@@ -1,2 +1,2 @@
 sudo chmod 666 /dev/usbtmc1
-rmmod usbtmc
+rmmod usbtmcs

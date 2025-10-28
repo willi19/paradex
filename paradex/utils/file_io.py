@@ -25,6 +25,7 @@ config_dir = os.path.join(os.path.dirname(__file__), "..", "..", "config")
 model_dir = os.path.join(os.path.dirname(__file__), "..", "..", "model")
 eef_calib_path = os.path.join(shared_dir, "eef")
 pc_name = os.path.basename(home_path)
+log_path = os.path.join(home_path, "paradex_log")
 
 def get_video_list(video_dir):
     """

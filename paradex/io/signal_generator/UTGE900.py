@@ -1,73 +1,83 @@
 import os
-from datetime import datetime
-from absl import app, flags, logging
-from absl.flags import FLAGS
-
-import pyvisa
-import re
-from time import sleep
-
+import time
+from absl import logging
 from paradex.utils.env import get_network_info
 
 class UTGE900:
     """
-    Unit-T UTG900 signal generator PYVISA control wrapper.
+    Unit-T UTG900 signal generator - Direct USBTMC control
     """
-    _rm = pyvisa.ResourceManager()
-    @staticmethod
-    def list_resources():
-        return UTGE900._rm.list_resources()
-             
+    
     def __init__(self):
-        print(self.list_resources())
+        # Get device path from network info
         addr = get_network_info()["signal_generator"]
-        self.sgen = UTGE900._rm.open_resource(addr)
-        # "USB0::0x6656::0x0834::770595938::INSTR"
-        self.ch = [ False, False ]
+        self.device = addr
+        
+        # Check device exists and has permissions
+        if not os.path.exists(addr):
+            raise FileNotFoundError(f"Device {addr} not found")
+
+        if not os.access(addr, os.R_OK | os.W_OK):
+            raise PermissionError(f"No permission for {addr}. Run: sudo chmod 666 {addr}")
+        
+        self.ch = [False, False]
         self.llOpen()
         self.generate()
 
-    def quit(self ):
-        self.sgen.close()
-        UTGE900._rm.close()
-        UTGE900._rm = None
+    def quit(self):
+        """Close device"""
+        pass  # Nothing to close for file I/O
 
-    # Low level commuincation 
+    # Low level communication
     def write(self, cmd):
-        self.sgen.write(cmd)
+        """Send command to device"""
+        with open(self.device, 'wb') as f:
+            f.write((cmd + '\n').encode('ascii'))
+            f.flush()
+    
+    def query(self, cmd, strip=False):
+        """Send command and read response"""
+        with open(self.device, 'w+b', buffering=0) as f:
+            f.write((cmd + '\n').encode('ascii'))
+            time.sleep(0.05)
+            ret = f.read(4096).decode('ascii').strip()
         
-    def query(self, cmd, strip=False ):
-        ret = self.sgen.query(cmd)
-        if strip: ret = ret.rstrip()
-        return( ret )
+        if strip:
+            ret = ret.rstrip()
+        return ret
 
     def llOpen(self):
-        self.write( "System:LOCK off")
-        
+        self.write("System:LOCK off")
+    
     def llCh(self, ch):
-        self.write( "KEY:CH{}".format(ch))
-        
+        self.write(f"KEY:CH{ch}")
+    
     def llWave(self):
-        self.write( "KEY:Wave")
-        
+        self.write("KEY:Wave")
+    
     def llUtility(self):
-        self.write( "KEY:Utility")
-        
-    def llF(self, digit ):
-        self.write( "KEY:F{}".format(digit))
+        self.write("KEY:Utility")
+    
+    def llF(self, digit):
+        self.write(f"KEY:F{digit}")
+    
     def llKey(self, keyStr):
-           self.write( "KEY:{}".format(keyStr))
+        self.write(f"KEY:{keyStr}")
+    
     def llUp(self):
         self.llKey("Up")
+    
     def llDown(self):
         self.llKey("Down")
+    
     def llLeft(self):
         self.llKey("Left")
+    
     def llRight(self):
         self.llKey("Right")
-           
+    
     def llNum(self, numStr):
-        def ch2cmd( ch ):
+        def ch2cmd(ch):
             chMap = {
                 "0": "NUM0",
                 "1": "NUM1",
@@ -85,132 +95,127 @@ class UTGE900:
             }
             try:
                 keyName = chMap[ch]
-                return  keyName
+                return keyName
             except KeyError:
-                    logging.fatal( "Could not extract keyName for ch {} numStr {}".format( ch, numStr ))
-                    raise 
+                logging.fatal(f"Could not extract keyName for ch {ch} numStr {numStr}")
+                raise
+        
         for ch in str(numStr):
-            self.write( "KEY:{}".format(ch2cmd(ch)))
-            
-    def llFKey( self, val, keyMap):
+            self.write(f"KEY:{ch2cmd(ch)}")
+    
+    def llFKey(self, val, keyMap):
         try:
             self.llF(keyMap[val])
         except KeyError as err:
-            logging.error( "Invalid key: '{}', valid keys: {}".format( val, keyMap.keys()))
-            logging.error( str(err) )
+            logging.error(f"Invalid key: '{val}', valid keys: {keyMap.keys()}")
+            logging.error(str(err))
             raise
 
     # IL intermediate (=action in a given mode)
-    def ilFreq( self, freq, unit ):
-        self.llNum( str(freq))
-        self.ilFreqUnit( unit )
-        
-    def ilAmp( self, amp, unit ):
-        self.llNum( str(amp))
-        self.ilAmpUnit( unit )
+    def ilFreq(self, freq, unit):
+        self.llNum(str(freq))
+        self.ilFreqUnit(unit)
+    
+    def ilAmp(self, amp, unit):
+        self.llNum(str(amp))
+        self.ilAmpUnit(unit)
 
-    def ilWave1( self, wave ):
-        """Selec wave type"""
-        waveMap  = {
-        "sine": "1",
-        "square": "2",
-        "pulse":  "3",
-        "ramp": "4",
-        "arb": "5",
-        "MHz": "6",
+    def ilWave1(self, wave):
+        """Select wave type"""
+        waveMap = {
+            "sine": "1",
+            "square": "2",
+            "pulse": "3",
+            "ramp": "4",
+            "arb": "5",
+            "MHz": "6",
         }
-        self.llFKey( val=wave, keyMap = waveMap )
+        self.llFKey(val=wave, keyMap=waveMap)
 
-    def ilWave1Props( self, wave ):
+    def ilWave1Props(self, wave):
         """Wave properties, page1"""
-        waveMap  = {
-        "Freq": "1",
-        "Amp": "2",
-        "Offset":  "3",
-        "Phase": "4",
-        "Duty": "5",
-        "Page Down": "6",
+        waveMap = {
+            "Freq": "1",
+            "Amp": "2",
+            "Offset": "3",
+            "Phase": "4",
+            "Duty": "5",
+            "Page Down": "6",
         }
-        self.llFKey( val=wave, keyMap = waveMap )
+        self.llFKey(val=wave, keyMap=waveMap)
 
     # Units
-    def ilChooseChannel( self, ch ):
-        """Key sequence to to bring UTG962 to display to a known state. 
-        
-        Here, invoke Utility option, use function key F1 or F2 to
-        choose channel. Do it twice (and visit Wave menu in between)
-
-        """
+    def ilChooseChannel(self, ch):
+        """Key sequence to bring UTG962 to display to a known state."""
         ch = int(ch)
         self.llUtility()
-        self.ilUtilityCh( ch )
+        self.ilUtilityCh(ch)
         self.llWave()
         self.llUtility()
-        self.ilUtilityCh( ch )
+        self.ilUtilityCh(ch)
         self.llWave()
-        sleep( 0.1)
-        
-    def ilFreqUnit( self, unit):
-        freqUnit  = {
-        "uHz": "1",
-        "mHz": "2",
-        "Hz":  "3",
-        "kHz": "4",
-        "MHz": "5",
+        time.sleep(0.1)
+    
+    def ilFreqUnit(self, unit):
+        freqUnit = {
+            "uHz": "1",
+            "mHz": "2",
+            "Hz": "3",
+            "kHz": "4",
+            "MHz": "5",
         }
-        self.llFKey( val=unit, keyMap = freqUnit)
-        
-    def ilAmpUnit( self, unit ):
-        ampUnit  = {
-        "mVpp": "1",
-        "Vpp": "2",
-        "mVrms":  "3",
-        "Vrms": "4",
-        "Cancel": "6",
+        self.llFKey(val=unit, keyMap=freqUnit)
+    
+    def ilAmpUnit(self, unit):
+        ampUnit = {
+            "mVpp": "1",
+            "Vpp": "2",
+            "mVrms": "3",
+            "Vrms": "4",
+            "Cancel": "6",
         }
-        self.llFKey(val=unit, keyMap = ampUnit)
-        
-    def ilUtilityCh( self, ch ):
-        chSelect  = {
-        1: "1",
-        2: "2",
+        self.llFKey(val=unit, keyMap=ampUnit)
+    
+    def ilUtilityCh(self, ch):
+        chSelect = {
+            1: "1",
+            2: "2",
         }
-        self.llFKey( val=ch, keyMap = chSelect )
+        self.llFKey(val=ch, keyMap=chSelect)
 
-    def on(self,ch):
+    def on(self, ch):
         ch = int(ch)
-        if self.ch[ch-1]: 
+        if self.ch[ch-1]:
             return
         
-        self.ilChooseChannel( ch )
+        self.ilChooseChannel(ch)
         self.llCh(ch)
         self.ch[ch-1] = True
         self.llOpen()
-        sleep( 0.1)
+        time.sleep(0.1)
 
-    def off(self,ch):
+    def off(self, ch):
         ch = int(ch)
-        if not self.ch[ch-1]: 
+        if not self.ch[ch-1]:
             return
         
-        self.ilChooseChannel( ch )
+        self.ilChooseChannel(ch)
         self.llCh(ch)
         self.ch[ch-1] = False
         self.llOpen()
-        sleep( 0.1)
+        time.sleep(0.1)
         self.generate()
         self.llOpen()
 
-    def generate( self, ch=1, wave="square", freq=30, amp=10):
-        """sine, square, pulse generation
-        """
+    def generate(self, ch=1, wave="square", freq=30, amp=10):
+        """sine, square, pulse generation"""
         # Deactivate
         self.off(ch)
         # Start config
-        self.ilChooseChannel( ch )
+        self.ilChooseChannel(ch)
         # At this point correct channel selected
-        self.ilWave1( wave )
-        # Frequencey (sine, square, pulse,arb)
+        self.ilWave1(wave)
+        # Frequency (sine, square, pulse, arb)
         
         self.llDown()
         self.ilWave1Props("Freq")
@@ -218,6 +223,6 @@ class UTGE900:
         
         self.ilWave1Props("Amp")
         self.ilAmp(amp, "Vpp")
-            
+    
     def getName(self):
-        return( self.query( "*IDN?"))
+        return self.query("*IDN?")

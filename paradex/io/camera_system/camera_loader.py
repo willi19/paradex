@@ -1,12 +1,8 @@
-import json
-from threading import Event, Lock, Thread
-import time
-import numpy as np
-import cv2
+from threading import Thread
 import os
 
 from paradex.io.camera_system.camera import Camera
-from paradex.utils.file_io import home_path, config_dir, shared_dir
+from paradex.utils.file_io import home_path, shared_dir
 
 class CameraLoader:
     def __init__(self):

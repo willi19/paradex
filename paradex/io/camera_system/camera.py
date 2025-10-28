@@ -110,6 +110,7 @@ class Camera():
         self.mode = mode
         self.syncMode = syncMode
         self.fps = fps
+        self.last_frame_id = 0
         
         if save_path is not None:
             _, ext = os.path.splitext(save_path)
@@ -142,6 +143,7 @@ class Camera():
     def continuous_acquire(self):
         save_video = (self.mode in ["video", "full"] and self.save_path is not None)
         stream = (self.mode in ["stream", "full"])
+        blank_frame = np.zeros(self.frame_shape, dtype=np.uint8)
         
         if save_video:
             fourcc = cv2.VideoWriter_fourcc(*'MJPG')
@@ -152,8 +154,11 @@ class Camera():
                 
         while self.event["start"].is_set() and not self.event["exit"].is_set():
             frame, frame_data = self.camera.get_image()
-            
+            current_frame_id = frame_data["frameID"]
+
             if save_video:
+                for _ in range(current_frame_id - self.last_frame_id-1):
+                    video_writer.write(blank_frame)
                 video_writer.write(frame)
             
             if stream:
@@ -166,6 +171,8 @@ class Camera():
                     np.copyto(self.image_array_b, frame)
                     self.fid_array_b[0] = frame_data["frameID"]
                     self.write_flag[0] = 0
+
+            self.last_frame_id = current_frame_id
     
         self.camera.stop()
         self.event["acquisition"].clear()
@@ -193,7 +200,7 @@ class Camera():
         if self.type == "pyspin":
             from paradex.io.camera_system.pyspin import load_camera
         else:
-            raise NotImmplementedError(f"Camera type {self.type} is not implemented.")
+            raise NotImplementedError(f"Camera type {self.type} is not implemented.")
         
         self.camera = load_camera(self.name)
         self.event["connection"].set()

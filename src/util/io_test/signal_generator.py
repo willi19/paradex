@@ -15,6 +15,7 @@ if __name__ == "__main__":
     
     gSgen.off(1)
     sleep(5)
+    print("off")
     gSgen.quit()
     
     

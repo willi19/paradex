@@ -3,4 +3,4 @@ from paradex.utils.env import get_pcinfo
 
 pc_info = get_pcinfo()
 pc_list = list(pc_info.keys())
-git_pull("merging", pc_list)
+git_pull("main", pc_list)

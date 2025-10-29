@@ -48,8 +48,8 @@ def load_camera(serialnum):
         exposure = lens_params["exposure_time"]
     
     else:
-        gain = 10.0
-        exposure = 60.0
+        gain = 3.0
+        exposure = 2500.0
     
     cam = PyspinCamera(camPtr, gain, exposure)
     

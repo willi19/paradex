@@ -36,7 +36,7 @@ class camera_server_daemon:
         
         while True:
             status = {
-                'cameras': self.camera_loader.get_status(),
+                'cameras': self.camera_loader.get_status_list(),
                 'controller': self.camera_loader.current_controller
             }
             monitor_socket.send_json(status)

@@ -1,4 +1,4 @@
-from paradex.io.camera.camera_loader import CameraManager
+from paradex.io.camera_system.camera_loader import CameraLoader
 from paradex.utils.file_io import find_latest_directory, shared_dir
 from paradex.utils.keyboard_listener import listen_keyboard
 from threading import Event
@@ -6,8 +6,7 @@ import argparse
 import os
 import time
 
-camera = CameraManager("image") # video, image, stream
-num_cam = camera.num_cameras
+camera = CameraLoader("image", False, save_path="test_20251029") # video, image, stream
 
 stop_event = Event()
 save_event = Event()
@@ -27,10 +26,8 @@ while not stop_event.is_set():
         time.sleep(0.01)
         continue
     last_idx += 1
-    save_path = f"{save_dir}/{last_idx}/image"
+    save_path = f"{save_dir}/{last_idx}"
     
     camera.start(save_path)
-    camera.wait_for_capture_end()
-    save_event.clear()
-
-camera.quit()
+    camera.stop()
+camera.end()

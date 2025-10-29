@@ -14,6 +14,8 @@ class camera_server_daemon:
 
         self.ctx = zmq.Context()
 
+        self.current_controller = None
+
         threading.Thread(target=self.pingpong_thread, daemon=True).start()
         threading.Thread(target=self.monitor_thread, daemon=True).start()
         threading.Thread(target=self.command_thread, daemon=True).start()
@@ -45,8 +47,6 @@ class camera_server_daemon:
     def command_thread(self):
         self.command_socket = self.ctx.socket(zmq.REP)
         self.command_socket.bind(f"tcp://*:{self.command_port}")
-        
-        self.current_controller = None
         
         while True:
             try:

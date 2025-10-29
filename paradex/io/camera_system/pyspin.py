@@ -115,20 +115,19 @@ class PyspinCamera():
         # Read current mode
         acqModeNode = self._get_node(self.nodeMap, "AcquisitionMode", "enum", readable=True, writable=False)
         acqModeValue = acqModeNode.GetCurrentEntry()
-        acqModeStr = ps.CStringPtr(acqModeValue).GetValue()
+        acqModeStr = acqModeValue.GetSymbolic()
         self.mode = "single" if acqModeStr == "SingleFrame" else "continuous"
         
         # Read current sync mode
         triggerModeNode = self._get_node(self.nodeMap, "TriggerMode", "enum", readable=True, writable=False)
         triggerModeValue = triggerModeNode.GetCurrentEntry()
-        triggerModeStr = ps.CStringPtr(triggerModeValue).GetValue()
+        triggerModeStr = triggerModeValue.GetSymbolic()
         self.syncMode = True if triggerModeStr == "On" else False
         
         # Read current frame rate if not in sync mode
         if not self.syncMode:
             framerateNode = self._get_node(self.nodeMap, "AcquisitionFrameRate", "float", readable=True, writable=False)
             self.frame_rate = framerateNode.GetValue()
-        
         
     def _serialnum(self)-> str:
         """Retrieve camera serial number.
@@ -171,6 +170,7 @@ class PyspinCamera():
         Start image acquisition.
         """
         assert mode in ["single", "continuous"]
+        
         if mode != self.mode:
             self.mode = mode
             self._configureAcquisition()
@@ -178,7 +178,7 @@ class PyspinCamera():
         if syncMode != self.syncMode and syncMode:
             self._configureTrigger()
             
-        if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)) and (self.mode != "single"):
+        if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)):
             self.frame_rate = frame_rate
             self._configureFrameRate()
         
@@ -314,11 +314,13 @@ class PyspinCamera():
             self._set_node_value(autoframerate, "bool", False)
 
         # Set frame rate value
-        framerate = self._get_node(self.nodeMap, "AcquisitionFrameRate", "float", readable=True, writable=True)
-        self._set_node_value(framerate, "float", self.frame_rate)
+        if self.frame_rate is not None:
+            framerate = self._get_node(self.nodeMap, "AcquisitionFrameRate", "float", readable=True, writable=True)
+            self._set_node_value(framerate, "float", self.frame_rate)
 
     def _configureTrigger(self) -> None:
         """configure camera trigger settings for hardware synchronization."""
+        
         triggerMode = self._get_node(self.nodeMap, "TriggerMode", "enum", readable=True, writable=True)
         self._set_node_value(triggerMode, "enum", "On")
 

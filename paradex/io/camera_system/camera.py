@@ -1,6 +1,5 @@
 from threading import Event, Thread
 import time
-import copy
 import cv2
 from multiprocessing import shared_memory
 import numpy as np
@@ -208,7 +207,38 @@ class Camera():
         self.camera.release()
         self.release_shared_memory()
         self.event["release"].set()
-        
+    
+    def get_state(self):
+        if self.event["exit"].is_set():
+            return "STOPPED"
+        elif self.event["start"].is_set():
+            if self.event["acquisition"].is_set():
+                return "CAPTURING"
+            else:
+                return "STARTING"
+        elif self.event["connection"].is_set():
+            return "READY"
+        else:
+            return "CONNECTING"
+
+    def get_frame_id(self):
+        if self.write_flag[0] == 0:
+            return int(self.fid_array_b[0])
+        else:
+            return int(self.fid_array_a[0])
+
+    def get_status(self):
+        return {
+            'state': self.get_state(),
+            'frame_id': self.get_frame_id(),
+            'name': self.name,
+            'mode': getattr(self, 'mode', None),
+            'fps': getattr(self, 'fps', None),
+            'syncMode': getattr(self, 'syncMode', None),
+            'save_path': getattr(self, 'save_path', None),
+            'time': time.time()
+        }  
+
     def run(self):
         self.connect_camera()
         

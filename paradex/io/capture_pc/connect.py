@@ -58,7 +58,7 @@ def run_script(script: str, pc_list = None, log=False):
             f"cd {repo_path} && "    
             f"nohup bash -i -c '"
             f"source ~/anaconda3/etc/profile.d/conda.sh && "
-            f"conda activate flir_python && "
+            f"conda activate flir_env && "
             f"{script} &' </dev/null > {logoutput} 2>&1 & "
         )
 

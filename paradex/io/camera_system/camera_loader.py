@@ -57,3 +57,9 @@ class CameraLoader:
         
         for t in threads:
             t.join()
+
+    def get_status_list(self):
+        status_list = []
+        for camera in self.cameralist:
+            status_list.append(camera.get_status())
+        return status_list

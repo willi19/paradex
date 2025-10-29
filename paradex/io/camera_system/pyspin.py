@@ -108,6 +108,8 @@ class PyspinCamera():
         self.stream_nodemap = camPtr.GetTLStreamNodeMap() 
         self.nodeMap = camPtr.GetNodeMap() 
         self._init_configure()
+
+        self.first_init = True
                     
     def _serialnum(self)-> str:
         """Retrieve camera serial number.
@@ -150,17 +152,21 @@ class PyspinCamera():
         Start image acquisition.
         """
         assert mode in ["single", "continuous"]
-        if mode != self.mode:
+        if mode != self.mode or self.first_init:
             self.mode = mode
             self._configureAcquisition()
         
-        if syncMode != self.syncMode and syncMode:
-            self._configureTrigger()
-            
-        if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)) and (self.mode != "single"):
-            self.frame_rate = frame_rate
-            self._configureFrameRate()
-        
+        if syncMode:
+            if syncMode != self.syncMode or self.first_init:
+                self.syncMode = syncMode
+                self._configureTrigger()
+
+        else:
+            if (syncMode != self.syncMode or (frame_rate is not None and frame_rate != self.frame_rate) or self.first_init) and (self.mode != "single"):
+                self.syncMode = syncMode
+                self.frame_rate = frame_rate
+                self._configureFrameRate()  
+
         if gain is not None and gain != self.gain:
             self.gain = gain
             self._configureGain()

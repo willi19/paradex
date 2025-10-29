@@ -11,7 +11,7 @@ for serial_num in serial_list:
     camera.stop()
     
     camera.start("full", False, f"test1_{serial_num}.avi",fps=30)
-    time.sleep(5)
+    time.sleep(2)
     camera.stop()
     
     time.sleep(1)
@@ -19,7 +19,7 @@ for serial_num in serial_list:
     camera.stop()
     
     camera.start("video", False, f"test2_{serial_num}.avi",fps=5)
-    time.sleep(5)
+    time.sleep(2)
     
     camera.end()
     

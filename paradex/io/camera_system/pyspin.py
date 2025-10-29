@@ -162,6 +162,9 @@ class PyspinCamera():
         #             self.start()
         # else:
         pImageRaw = self.cam.GetNextImage()
+        if pImageRaw.IsIncomplete():
+            return None, None
+        
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
         return self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth()), frame_data
 

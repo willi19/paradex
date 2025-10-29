@@ -163,7 +163,7 @@ def load_visualizer(pick_position):
 
     visualizer.add_floor()
     visualizer.add_robot("xarm", get_robot_urdf_path(arm_name="xarm", hand_name="inspire"))
-
+    
     mesh_dict = {}
     for color in ["brown", "red", "yellow"]:
         mesh_path = os.path.join(rsc_path, "object", f"{color}_ramen_von", f"{color}_ramen_von.obj")

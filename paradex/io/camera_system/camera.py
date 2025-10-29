@@ -28,9 +28,26 @@ class Camera():
         
         self.event["connection"].wait()
     
+    def _cleanup_existing_shm(self):
+        shm_names = [
+            self.name + "_image_a",
+            self.name + "_image_b",
+            self.name + "_fid_a",
+            self.name + "_fid_b",
+            self.name + "_flag"
+        ]
+        
+        for shm_name in shm_names:
+            try:
+                shm = shared_memory.SharedMemory(name=shm_name)
+                shm.close()
+                shm.unlink()
+            except FileNotFoundError:
+                pass  # 없으면 패스
+    
     def load_shared_memory(self):
         frame_size = np.prod(self.frame_shape)
-        
+        self._cleanup_existing_shm()
         # Buffer 2개
         self.image_shm_a = shared_memory.SharedMemory(
             create=True, 

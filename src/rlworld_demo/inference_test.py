@@ -96,7 +96,7 @@ def load_visualizer(pick_position):
     print(pick_position)
     visualizer = ViserViewer(up_direction=np.array([0,0,1]))
 
-    visualizer.add_floor()
+    # visualizer.add_floor()
     visualizer.add_robot("xarm", get_robot_urdf_path(arm_name="xarm", hand_name="inspire"))
 
     mesh_dict = {}
@@ -127,7 +127,7 @@ def load_visualizer(pick_position):
                 wxyz = [pose[6], pose[3], pose[4], pose[5]]  # Convert to wxyz format
                 obs_T[:3, :3] = R.from_quat(wxyz).as_matrix()
                 # 그냥 add_object 호출!
-                # visualizer.add_object(f"obstacle_{obs_name}", box, obs_T)
+                visualizer.add_object(f"obstacle_{obs_name}", box, obs_T)
 
     return visualizer
 
@@ -141,7 +141,7 @@ quit_event = Event()
 start_event = Event()
 listen_keyboard({"q": quit_event, "y": start_event})
 
-for step in range(4,5):#len(pick_position)):
+for step in range(len(pick_position)):#len(pick_position)):
     pick_traj = np.load(os.path.join("data", "refine_pick_traj", f"{step}.npy"))
     vis_pick_traj = pick_traj.copy()
     vis_pick_traj[:, 6:] = parse_inspire(vis_pick_traj[:,6:], joint_order = ['right_thumb_1_joint', 'right_thumb_2_joint', 'right_index_1_joint', 'right_middle_1_joint', 'right_ring_1_joint', 'right_little_1_joint', ])

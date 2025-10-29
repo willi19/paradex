@@ -20,10 +20,12 @@ class ViserViewer():
         self.obj_dict = {}
 
         self.traj_list = []
-        self.num_frames = 5000
+        self.num_frames = 0
 
         self.load_server()
+        self.add_lights()
         self.add_player()
+        # self.add_lights()
 
     def load_server(self):
         self.server = viser.ViserServer()
@@ -54,10 +56,14 @@ class ViserViewer():
             target=self.server,
             urdf_path=urdf_path,
             scale=1.0,
-            root_node_name="/robot",
+            root_node_name=f"/robot/{name}",
             load_meshes=True,
             load_collision_meshes=False,
         )
+        # if "0" in name:
+        #     robot.change_color(
+        #         [f"/robot/{name}/visual/base_link"], (0.8, 0.2, 0.2)
+        #     )
         
         self.robot_dict[name] = robot
 
@@ -75,7 +81,9 @@ class ViserViewer():
             f"/objects/{name}_frame",
             position=obj_T[:3, 3],
             wxyz=R.from_matrix(obj_T[:3, :3]).as_quat()[[3, 0, 1, 2]],
-            show_axes=False
+            show_axes=True,
+            axes_length=0.05,
+            axes_radius=0.002,
         )
         
         # Add mesh to the frame (at origin relative to frame)
@@ -117,6 +125,7 @@ class ViserViewer():
         self.traj_list.append((name, new_traj_dict, traj_len))
         self.num_frames += traj_len
         self.gui_timestep.max = self.num_frames - 1
+        print(traj_len, self.num_frames)
 
     def add_grid_lines(self, height=0.0, size=5.0):
         """Add grid lines separately using line segments"""
@@ -269,10 +278,9 @@ class ViserViewer():
             self.gui_timestep = self.server.gui.add_slider(
                 "Timestep",
                 min=0,
-                max=self.num_frames-1,
+                max=self.num_frames -1 if self.num_frames >0 else 1,
                 step=1,
-                initial_value=0,
-                disabled=True,
+                initial_value=0
             )
             self.gui_next_frame = self.server.gui.add_button("Next Frame", disabled=True)
             self.gui_prev_frame = self.server.gui.add_button("Prev Frame", disabled=True)
@@ -330,11 +338,11 @@ class ViserViewer():
 
         @self.gui_next_frame.on_click
         def _(_) -> None:
-            self.gui_timestep.value = (self.gui_timestep.value + 10) % self.num_frames
+            self.gui_timestep.value = (self.gui_timestep.value + 1) % self.num_frames
 
         @self.gui_prev_frame.on_click
         def _(_) -> None:
-            self.gui_timestep.value = (self.gui_timestep.value - 10) % self.num_frames
+            self.gui_timestep.value = (self.gui_timestep.value - 1) % self.num_frames
 
         @self.gui_playing.on_update
         def _(_) -> None:
@@ -353,6 +361,30 @@ class ViserViewer():
             axis_length=0.1,
             axis_radius=0.002,
         )
+
+    def add_lights(self):
+        self.server.scene.add_transform_controls(
+            "/system/control_light0", position=(5, 1.0, 0.5), scale=0.5
+        )
+        self.server.scene.add_label("/system/control_light0/label", "Point")
+        point_light = self.server.scene.add_light_point(
+            name="/system/control_light0/point_light",
+            color=(255, 255, 255),
+            intensity=100.0,
+            visible=True
+        )
+
+        self.server.scene.add_transform_controls(
+            "/system/control_light1", position=(5, -1.0, 0.5), scale=0.5
+        )
+        self.server.scene.add_label("/system/control_light1/label", "Point")
+        point_light = self.server.scene.add_light_point(
+            name="/system/control_light1/point_light",
+            color=(255, 255, 255),
+            intensity=100.0,
+            visible=True
+        )
+        self.server.scene.enable_default_lights(True)
         
 
 
@@ -369,7 +401,7 @@ class ViserRobotModule():
         self._load_meshes = load_meshes
         self._load_collision_meshes = load_collision_meshes
         self._joint_frames: List[viser.FrameHandle] = []
-        self._meshes: List[viser.MeshHandle] = []
+        self._meshes: Dict[str, viser.MeshHandle] = {}
         num_joints_to_repeat = 0
 
         if load_meshes:
@@ -394,8 +426,10 @@ class ViserRobotModule():
 
     def change_color(self, name_list, color: Tuple[float, float, float]) -> None:
         """Change the color of the visualized URDF."""
+        name_list = list(self._meshes.keys())
+        color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
         for name in name_list:
-            self._target.scene.set_mesh_color(name, color)
+            self._meshes[name].color = color
     
     @property
     def show_visual(self) -> bool:
@@ -495,7 +529,10 @@ class ViserRobotModule():
             mesh.apply_scale(self._scale)
             mesh.apply_transform(T_parent_child)
 
-            self._meshes.append(self._target.scene.add_mesh_trimesh(name, mesh))
+            vertices = mesh.vertices
+            faces = mesh.faces
+            color = np.array(mesh.visual.vertex_colors[0, :3])
+            self._meshes[name] = (self._target.scene.add_mesh_simple(name, vertices, faces, color=color))
 
         return root_frame
     # def apply_mesh_color_override(mesh_color_override):

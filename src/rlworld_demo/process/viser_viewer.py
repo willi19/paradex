@@ -113,7 +113,7 @@ def load_pick_position():
         obj_type = obj_type.split('_')[0]  # brown_ramen_1 -> brown
         for obj_name, obj_se3 in obj_list.items():
             if f"{obj_type}_{obj_idx}" in PICK_ORDER[10:]:
-                obj_se3 = np.linalg.inv(C2R) @ obj_se3 @ offset
+                obj_se3 = np.linalg.inv(C2R) @ obj_se3 @ ramen_offset[obj_type]
                 if obj_se3[2, 2] > 0.7:
                     obj_se3[:3, :3] = np.eye(3)
                 # print(np.linalg.inv(C2R) @ obj_se3 @ ramen_offset[obj_type], obj_type, obj_idx)

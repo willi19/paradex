@@ -108,9 +108,28 @@ class PyspinCamera():
         self.stream_nodemap = camPtr.GetTLStreamNodeMap() 
         self.nodeMap = camPtr.GetNodeMap() 
         self._init_configure()
-
-        self.first_init = True
-                    
+        self._read_current_state()
+    
+    def _read_current_state(self)-> None:
+        """Read current camera state for parameters."""
+        # Read current mode
+        acqModeNode = self._get_node(self.nodeMap, "AcquisitionMode", "enum", readable=True, writable=False)
+        acqModeValue = acqModeNode.GetCurrentEntry()
+        acqModeStr = ps.CStringPtr(acqModeValue).GetValue()
+        self.mode = "single" if acqModeStr == "SingleFrame" else "continuous"
+        
+        # Read current sync mode
+        triggerModeNode = self._get_node(self.nodeMap, "TriggerMode", "enum", readable=True, writable=False)
+        triggerModeValue = triggerModeNode.GetCurrentEntry()
+        triggerModeStr = ps.CStringPtr(triggerModeValue).GetValue()
+        self.syncMode = True if triggerModeStr == "On" else False
+        
+        # Read current frame rate if not in sync mode
+        if not self.syncMode:
+            framerateNode = self._get_node(self.nodeMap, "AcquisitionFrameRate", "float", readable=True, writable=False)
+            self.frame_rate = framerateNode.GetValue()
+        
+        
     def _serialnum(self)-> str:
         """Retrieve camera serial number.
         
@@ -152,21 +171,17 @@ class PyspinCamera():
         Start image acquisition.
         """
         assert mode in ["single", "continuous"]
-        if mode != self.mode or self.first_init:
+        if mode != self.mode:
             self.mode = mode
             self._configureAcquisition()
         
-        if syncMode:
-            if syncMode != self.syncMode or self.first_init:
-                self.syncMode = syncMode
-                self._configureTrigger()
-
-        else:
-            if (syncMode != self.syncMode or (frame_rate is not None and frame_rate != self.frame_rate) or self.first_init) and (self.mode != "single"):
-                self.syncMode = syncMode
-                self.frame_rate = frame_rate
-                self._configureFrameRate()  
-
+        if syncMode != self.syncMode and syncMode:
+            self._configureTrigger()
+            
+        if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)) and (self.mode != "single"):
+            self.frame_rate = frame_rate
+            self._configureFrameRate()
+        
         if gain is not None and gain != self.gain:
             self.gain = gain
             self._configureGain()

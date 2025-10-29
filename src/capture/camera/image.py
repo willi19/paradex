@@ -6,7 +6,7 @@ import argparse
 import os
 import time
 
-camera = CameraLoader("image", False, save_path="test_20251029") # video, image, stream
+camera = CameraLoader() # video, image, stream
 
 stop_event = Event()
 save_event = Event()
@@ -27,7 +27,7 @@ while not stop_event.is_set():
         continue
     last_idx += 1
     save_path = f"{save_dir}/{last_idx}"
-    
-    camera.start(save_path)
+
+    camera.start("image", False, save_path=save_path)
     camera.stop()
 camera.end()

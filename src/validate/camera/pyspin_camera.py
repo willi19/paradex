@@ -1,8 +1,6 @@
 import cv2
 import time
 
-from paradex.io.camera_system.camera import Camera
-from paradex.io.camera_system.camera_loader import CameraManager
 from paradex.io.camera_system.pyspin import get_serial_list, autoforce_ip, load_camera
 
 try:

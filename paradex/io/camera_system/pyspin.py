@@ -64,7 +64,7 @@ class PyspinCameraConfig:
     
     # Network settings
     PACKET_SIZE = 9000
-    PACKET_DELAY_MULTIPLIER = 2
+    PACKET_DELAY_MULTIPLIER = 3
     THROUGHPUT_ALIGNMENT = 16000
     
     # Acquisition settings
@@ -161,6 +161,7 @@ class PyspinCamera():
         #             self.stop()
         #             self.start()
         # else:
+        print("Getting image from camera", self.serial_num)
         pImageRaw = self.cam.GetNextImage()
         if pImageRaw.IsIncomplete():
             print(f"Image incomplete with image status {pImageRaw.GetImageStatus()}")

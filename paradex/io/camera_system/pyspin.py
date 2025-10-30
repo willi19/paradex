@@ -405,6 +405,9 @@ class PyspinCamera():
         packetDelay = self._get_node(self.nodeMap, "GevSCPD", "int", readable=True, writable=True)
         packetDelay.SetValue(PyspinCameraConfig.PACKET_DELAY_MULTIPLIER * PyspinCameraConfig.PACKET_SIZE)
 
+        streamPacketResend = self._get_node(self.stream_nodemap, "StreamPacketResendEnable", "bool", True, True)
+        self._set_node_value(streamPacketResend, "bool", True)
+
     def _configureExposure(self) -> None:
         """configure camera exposure settings."""
 

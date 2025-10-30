@@ -168,9 +168,9 @@ class PyspinCamera():
             return None, None
         
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
-        # frame = self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
+        frame = self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
         pImageRaw.Release()
-        return None, frame_data
+        return frame, frame_data
 
     def start(self, mode, syncMode, frame_rate=None, gain=None, exposure_time=None):
         """

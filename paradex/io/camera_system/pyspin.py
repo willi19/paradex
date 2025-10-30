@@ -233,10 +233,8 @@ class PyspinCamera():
             cvImg (np.ndarray): Converted OpenCV image
         """
         if pImg.GetPixelFormat() != ps.PixelFormat_BayerRG8:
-            converted = pImg.Convert(ps.PixelFormat_BayerRG8, ps.HQ_LINEAR)
-            pImg.Release()
-            pImg = converted
-            print(pImg.GetPixelFormatName(), "\n")
+            pImg = PyspinCamera.spin_to_bgr8(pImg)
+
         image_data = pImg.GetData()
         cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w)).copy()
         cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)
@@ -263,6 +261,15 @@ class PyspinCamera():
             raise PyspinCameraConfigurationError(f"Unable to get or set {name} (node retrieval). Aborting...")
         return node
 
+    @staticmethod
+    def spin_to_bgr8(pImg):
+        ip = ps.ImageProcessor()
+        ip.SetColorProcessing(ps.HQ_LINEAR)
+        conv_img = ip.Convert(pImg, ps.PixelFormat_BGR8)
+        pImg.Release()
+        return conv_img
+    
+            
     @staticmethod
     def _set_node_value(node, node_type, value):
         if node_type == "enum":

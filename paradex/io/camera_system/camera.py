@@ -173,7 +173,7 @@ class Camera():
                 continue
             
             current_frame_id = frame_data["frameID"]
-
+            print(current_frame_id)
             if save_video:
                 for _ in range(current_frame_id - self.last_frame_id-1):
                     video_writer.write(blank_frame)

@@ -19,7 +19,9 @@ class remote_camera_controller:
 
         for pc in self.pc_list:
             socket = self.ctx.socket(zmq.REQ)
-            socket.setsockopt(zmq.RCVTIMEO, self.command_port)
+            socket.setsockopt(zmq.LINGER, 0)
+            socket.setsockopt(zmq.RCVTIMEO, 60000) 
+            socket.setsockopt(zmq.SNDTIMEO, 60000) 
             socket.connect(f"tcp://{self.pc_info[pc]['ip']}:{self.command_port}")
             self.command_sockets[pc] = socket
     

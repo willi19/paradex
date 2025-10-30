@@ -297,7 +297,7 @@ class PyspinCamera():
         self._configureThroughPut()
 
         self._configurePacketSize()
-        self._configurePacketDelay()
+        # self._configurePacketDelay()
         self._configureExposure()
         self._configureChunk()
         self._configureBuffer()

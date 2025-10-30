@@ -99,6 +99,12 @@ class Camera():
         self.write_flag[0] = 0
     
     def release_shared_memory(self):
+        self.image_array_a = None
+        self.image_array_b = None
+        self.fid_array_a = None
+        self.fid_array_b = None
+        self.write_flag   = None
+
         self.image_shm_a.close()
         self.image_shm_a.unlink()
         
@@ -147,7 +153,6 @@ class Camera():
     def stop(self):
         self.event["start"].clear()
         self.event["stop"].wait()
-        print(self.name, "stopped acquisition")
            
     def end(self):
         if self.event["start"].is_set():
@@ -169,12 +174,10 @@ class Camera():
         self.event["acquisition"].set()
                 
         while self.event["start"].is_set() and not self.event["exit"].is_set():
-            print(self.last_frame_id, self.name, "waiting")
             frame, frame_data = self.camera.get_image()
             if frame is None:
                 continue
             current_frame_id = frame_data["frameID"]
-            print(current_frame_id, self.name)
             if save_video:
                 for _ in range(current_frame_id - self.last_frame_id-1):
                     video_writer.write(blank_frame)
@@ -192,9 +195,7 @@ class Camera():
                     self.write_flag[0] = 0
 
             self.last_frame_id = current_frame_id
-        print(self.name, "stopping")
         self.camera.stop()
-        print(self.name, "stopped")
         self.event["acquisition"].clear()
         
         if save_video:
@@ -206,16 +207,12 @@ class Camera():
         self.camera.start("single", self.syncMode)
         self.event["acquisition"].set()
         
-        print(self.name, "acquiring single frame")
         frame, _ = self.camera.get_image()
-        print(self.name, "acquired single frame")
         cv2.imwrite(self.save_path, frame)
         
         self.event["acquisition"].clear()
         self.event["start"].clear()
-        print(self.name, "stopping single acquisition")
         self.camera.stop()
-        print(self.name, "stopped single acquisition")
         self.event["stop"].set()       
     
     def connect_camera(self):

@@ -161,7 +161,6 @@ class PyspinCamera():
         #             self.stop()
         #             self.start()
         # else:
-        print("Getting image from camera", self.serial_num)
         pImageRaw = self.cam.GetNextImage()
         if pImageRaw.IsIncomplete():
             print(f"Image incomplete with image status {pImageRaw.GetImageStatus()}")
@@ -232,7 +231,7 @@ class PyspinCamera():
         Returns:
             cvImg (np.ndarray): Converted OpenCV image
         """
-        print(pImg.GetPixelFormatName())
+        print(pImg.GetPixelFormatName(), "\n")
         image_data = pImg.GetData()
         cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w)).copy()
         cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)

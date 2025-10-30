@@ -231,7 +231,8 @@ class PyspinCamera():
         Returns:
             cvImg (np.ndarray): Converted OpenCV image
         """
-        print(pImg.GetPixelFormatName(), "\n")
+        if pImg.GetPixelFormatName() != "BayerRG8":
+            pImg = pImg.Convert(ps.PixelFormat_BayerRG8, ps.HQ_LINEAR)
         image_data = pImg.GetData()
         cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w)).copy()
         cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)

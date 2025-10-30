@@ -60,7 +60,7 @@ def load_camera(serialnum):
 class PyspinCameraConfig:
     """Camera configuration constants"""
     # Buffer settings
-    BUFFER_COUNT = 10
+    BUFFER_COUNT = 1
     
     # Network settings
     PACKET_SIZE = 9000
@@ -449,10 +449,12 @@ class PyspinCamera():
         
     def _configureBuffer(self) -> None:
         """Configure camera buffer settings based on operation mode."""
-        
+        buf_mode =  self._get_node(self.stream_nodemap, "StreamBufferHandlingMode", "enum", readable=True, writable=True)
+        self._set_node_value(buf_mode, "enum", "OldestFirst")
+
         # Set stream buffer Count Mode to manual
-        BuferCountMode = self._get_node(self.stream_nodemap, "StreamBufferCountMode", "enum", readable=True, writable=True)
-        self._set_node_value(BuferCountMode, "enum", "Manual")
+        BufferCountMode = self._get_node(self.stream_nodemap, "StreamBufferCountMode", "enum", readable=True, writable=True)
+        self._set_node_value(BufferCountMode, "enum", "Manual")
         
         # Set stream buffer Count
         bufferCount = self._get_node(self.stream_nodemap, "StreamBufferCountManual", "int", readable=True, writable=True)

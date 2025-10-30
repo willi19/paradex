@@ -213,6 +213,7 @@ class Camera():
         self.event["start"].clear()
         
         self.camera.stop()
+        print(self.name, "stopped single acquisition")
         self.event["stop"].set()       
     
     def connect_camera(self):

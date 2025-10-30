@@ -171,7 +171,7 @@ class Camera():
             frame, frame_data = self.camera.get_image()
             if frame is None:
                 continue
-            
+            print(current_frame_id, self.name, "waiting")
             current_frame_id = frame_data["frameID"]
             print(current_frame_id, self.name)
             if save_video:

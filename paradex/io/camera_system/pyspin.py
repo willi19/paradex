@@ -256,16 +256,22 @@ class PyspinCamera():
         return node
 
     @staticmethod
-    def _set_node_value(node, node_type, value)-> None:
-        """Set the value of a camera node."""
+    def _set_node_value(node, node_type, value):
         if node_type == "enum":
-            enum_entry = ps.CEnumEntryPtr(node.GetEntryByName(value))
-            if not ps.IsReadable(enum_entry):
-                raise PyspinCameraConfigurationError(f"Unable to get {value} (enum entry retrieval). Aborting...")
-            node.SetIntValue(enum_entry.GetValue())
-        
-        if node_type == "float":
-            node.SetValue(value)
+            entry = ps.CEnumEntryPtr(node.GetEntryByName(value))
+            if not ps.IsReadable(entry):
+                raise PyspinCameraConfigurationError(f"Enum entry {value} not readable")
+            node.SetIntValue(entry.GetValue())
+        elif node_type == "float":
+            node.SetValue(float(value))
+        elif node_type == "int":
+            node.SetValue(int(value))
+        elif node_type == "bool":
+            node.SetValue(bool(value))
+        elif node_type == "command":
+            node.Execute()
+        else:
+            raise ValueError(f"Unsupported node type: {node_type}")
 
     def _init_configure(self) -> None:
         """configure camera settings based on initialization parameters."""
@@ -301,7 +307,7 @@ class PyspinCamera():
         # Align to nearest multiple of THROUGHPUT_ALIGNMENT (value must be multiple of 16000)
         ValMax = ThroughputLimit.GetMax()
         ValMin = ThroughputLimit.GetMin()
-        posValMax = (int((ValMax - ValMin)) // PyspinCameraConfig.THROUGHPUT_ALIGNMENT) * PyspinCameraConfig.THROUGHPUT_ALIGNMENT + ValMin
+        posValMax = (int((ValMax - ValMin) * 0.8) // PyspinCameraConfig.THROUGHPUT_ALIGNMENT) * PyspinCameraConfig.THROUGHPUT_ALIGNMENT + ValMin
         # Set throughput limit 
         ThroughputLimit.SetValue(posValMax)
         

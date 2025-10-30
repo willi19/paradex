@@ -90,7 +90,6 @@ class camera_server_daemon:
                         self.command_socket.send_json({'status': 'ok', 'msg': 'stopped'})
                     
                     elif action == 'exit':
-                        self.camera_loader.end()
                         print(f"[Controller] {controller_name} disconnected")
                         self.current_controller = None  # 제어권 해제
                         self.command_socket.send_json({'status': 'ok', 'msg': 'exited'})

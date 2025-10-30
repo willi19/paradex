@@ -231,7 +231,7 @@ class PyspinCamera():
         Returns:
             cvImg (np.ndarray): Converted OpenCV image
         """
-        if pImg.getPixelFormat() != ps.PixelFormat_BayerRG8:
+        if pImg.GetPixelFormat() != ps.PixelFormat_BayerRG8:
             converted = ps.Image()  # 새 이미지 버퍼 생성
             pImg.Convert(ps.PixelFormat_BayerRG8, ps.HQ_LINEAR, converted)
             pImg.Release()

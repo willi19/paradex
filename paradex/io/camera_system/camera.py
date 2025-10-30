@@ -191,8 +191,9 @@ class Camera():
                     self.write_flag[0] = 0
 
             self.last_frame_id = current_frame_id
-    
+        print(self.name, "stopping")
         self.camera.stop()
+        print(self.name, "stopped")
         self.event["acquisition"].clear()
         
         if save_video:

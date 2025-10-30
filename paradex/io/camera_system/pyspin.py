@@ -168,6 +168,12 @@ class PyspinCamera():
             return None, None
         
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
+
+        if pImageRaw.GetPixelFormatName() != "BayerRG8":
+            pImageTmp = pImageRaw.Convert(ps.PixelFormat_BayerRG8, ps.HQ_LINEAR)
+            pImageRaw.Release()
+            pImageRaw = pImageTmp
+
         frame = self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
         # image_copy = pImageRaw.GetNDArray().copy()
         # frame = cv2.cvtColor(image_copy, cv2.COLOR_BayerRG2RGB)
@@ -231,8 +237,6 @@ class PyspinCamera():
         Returns:
             cvImg (np.ndarray): Converted OpenCV image
         """
-        if pImg.GetPixelFormatName() != "BayerRG8":
-            pImg = pImg.Convert(ps.PixelFormat_BayerRG8, ps.HQ_LINEAR)
         image_data = pImg.GetData()
         cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w)).copy()
         cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)

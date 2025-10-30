@@ -211,7 +211,7 @@ class Camera():
         
         self.event["acquisition"].clear()
         self.event["start"].clear()
-        
+        print(self.name, "stopping single acquisition")
         self.camera.stop()
         print(self.name, "stopped single acquisition")
         self.event["stop"].set()       

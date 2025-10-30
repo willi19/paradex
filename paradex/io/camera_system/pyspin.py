@@ -61,7 +61,7 @@ def load_camera(serialnum):
 class PyspinCameraConfig:
     """Camera configuration constants"""
     # Buffer settings
-    BUFFER_COUNT = 1
+    BUFFER_COUNT = 10
     
     # Network settings
     PACKET_SIZE = 9000
@@ -176,7 +176,7 @@ class PyspinCamera():
             return None, frame_data
         
         frame = self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
-        print(f"Frame ID: {frame_data['frameID']}", self.serial_num, time.time() - self.init_time)
+        # print(f"Frame ID: {frame_data['frameID']}", self.serial_num, time.time() - self.init_time)
         # image_copy = pImageRaw.GetNDArray().copy()
         # frame = cv2.cvtColor(image_copy, cv2.COLOR_BayerRG2RGB)
 

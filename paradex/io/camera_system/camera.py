@@ -183,16 +183,16 @@ class Camera():
                     video_writer.write(blank_frame)
                 video_writer.write(frame)
             
-            # if stream:
-            #     # Write to shared memory
-            #     if self.write_flag[0] == 0:
-            #         np.copyto(self.image_array_a, frame)
-            #         self.fid_array_a[0] = frame_data["frameID"]
-            #         self.write_flag[0] = 1
-            #     else:
-            #         np.copyto(self.image_array_b, frame)
-            #         self.fid_array_b[0] = frame_data["frameID"]
-            #         self.write_flag[0] = 0
+            if stream:
+                # Write to shared memory
+                if self.write_flag[0] == 0:
+                    np.copyto(self.image_array_a, frame)
+                    self.fid_array_a[0] = frame_data["frameID"]
+                    self.write_flag[0] = 1
+                else:
+                    np.copyto(self.image_array_b, frame)
+                    self.fid_array_b[0] = frame_data["frameID"]
+                    self.write_flag[0] = 0
 
             self.last_frame_id = current_frame_id
         self.camera.stop()

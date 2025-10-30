@@ -264,7 +264,7 @@ class PyspinCamera():
     @staticmethod
     def spin_to_bgr8(pImg):
         ip = ps.ImageProcessor()
-        ip.SetColorProcessing(ps.HQ_LINEAR)
+        ip.SetColorProcessing(ps.SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR)
         conv_img = ip.Convert(pImg, ps.PixelFormat_BGR8)
         pImg.Release()
         return conv_img

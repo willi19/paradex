@@ -56,7 +56,7 @@ class camera_server_daemon:
                 cmd = self.command_socket.recv_json()
                 action = cmd.get('action')
                 controller_name = cmd.get('controller_name')  # controller가 보내야 함
-                
+                print(cmd)
                 # 첫 명령 또는 exit 후
                 if self.current_controller is None:
                     if action == 'start':

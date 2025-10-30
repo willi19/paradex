@@ -231,12 +231,7 @@ class PyspinCamera():
         Returns:
             cvImg (np.ndarray): Converted OpenCV image
         """
-        if pImg.GetPixelFormat() != ps.PixelFormat_BayerRG8:
-            converted = ps.Image()  # 새 이미지 버퍼 생성
-            pImg.Convert(ps.PixelFormat_BayerRG8, ps.HQ_LINEAR, converted)
-            pImg.Release()
-            pImg = converted
-            
+        print(pImg.GetPixelFormatName(), "\n")
         image_data = pImg.GetData()
         cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w)).copy()
         cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)

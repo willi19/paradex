@@ -206,7 +206,9 @@ class Camera():
         self.camera.start("single", self.syncMode)
         self.event["acquisition"].set()
         
+        print(self.name, "acquiring single frame")
         frame, _ = self.camera.get_image()
+        print(self.name, "acquired single frame")
         cv2.imwrite(self.save_path, frame)
         
         self.event["acquisition"].clear()

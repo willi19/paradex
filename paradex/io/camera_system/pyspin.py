@@ -231,7 +231,8 @@ class PyspinCamera():
         Returns:
             cvImg (np.ndarray): Converted OpenCV image
         """
-        print(pImg.GetPixelFormatName(), "\n")
+        if pImg.GetPixelFormat() != ps.PixelFormat_BayerRG8:
+            print(pImg.GetPixelFormatName(), "\n")
         image_data = pImg.GetData()
         cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w)).copy()
         cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)
@@ -479,9 +480,9 @@ class PyspinCamera():
         try:
             pixelFormat = self._get_node(self.nodeMap, "PixelFormat", "enum", readable=True, writable=True)
             self._set_node_value(pixelFormat, "enum", "BayerRG8")
-            print(f"Pixel format set to BayerRG8")
+            
         except Exception as e:
-            print(f"Failed to set pixel format: {e}")
+            pass
     
 def autoforce_ip():
     """

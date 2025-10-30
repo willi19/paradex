@@ -64,7 +64,7 @@ class PyspinCameraConfig:
     
     # Network settings
     PACKET_SIZE = 9000
-    PACKET_DELAY_MULTIPLIER = 2
+    PACKET_DELAY_MULTIPLIER = 1
     THROUGHPUT_ALIGNMENT = 16000
     
     # Acquisition settings
@@ -272,7 +272,7 @@ class PyspinCamera():
         self._configureThroughPut()
 
         self._configurePacketSize()
-        # self._configurePacketDelay()
+        self._configurePacketDelay()
         self._configureExposure()
         self._configureChunk()
         self._configureBuffer()
@@ -300,7 +300,7 @@ class PyspinCamera():
         # Align to nearest multiple of THROUGHPUT_ALIGNMENT (value must be multiple of 16000)
         ValMax = ThroughputLimit.GetMax()
         ValMin = ThroughputLimit.GetMin()
-        posValMax = (int((ValMax - ValMin)* 0.8) // PyspinCameraConfig.THROUGHPUT_ALIGNMENT) * PyspinCameraConfig.THROUGHPUT_ALIGNMENT + ValMin 
+        posValMax = ((ValMax - ValMin) // PyspinCameraConfig.THROUGHPUT_ALIGNMENT) * PyspinCameraConfig.THROUGHPUT_ALIGNMENT + ValMin 
         # Set throughput limit 
         ThroughputLimit.SetValue(posValMax)
         

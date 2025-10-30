@@ -180,6 +180,7 @@ class Camera():
             current_frame_id = frame_data["frameID"]
             if save_video:
                 for _ in range(current_frame_id - self.last_frame_id-1):
+                    print(f"frame drop {self.name}: missing frame id", current_frame_id-self.last_frame_id-1)
                     video_writer.write(blank_frame)
                 video_writer.write(frame)
             

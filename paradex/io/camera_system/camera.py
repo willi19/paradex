@@ -147,6 +147,7 @@ class Camera():
     def stop(self):
         self.event["start"].clear()
         self.event["stop"].wait()
+        print(self.name, "stopped acquisition")
            
     def end(self):
         if self.event["start"].is_set():

@@ -233,6 +233,9 @@ class PyspinCamera():
             cvImg (np.ndarray): Converted OpenCV image
         """
         if pImg.GetPixelFormat() != ps.PixelFormat_BayerRG8:
+            converted = pImg.Convert(ps.PixelFormat_BayerRG8, ps.HQ_LINEAR)
+            pImg.Release()
+            pImg = converted
             print(pImg.GetPixelFormatName(), "\n")
         image_data = pImg.GetData()
         cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w)).copy()

@@ -169,6 +169,7 @@ class PyspinCamera():
         
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
         frame = self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
+        print(f"Frame ID: {frame_data['frameID']}", self.serial_num )
         # image_copy = pImageRaw.GetNDArray().copy()
         # frame = cv2.cvtColor(image_copy, cv2.COLOR_BayerRG2RGB)
 

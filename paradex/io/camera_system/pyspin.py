@@ -161,6 +161,7 @@ class PyspinCamera():
         #             self.stop()
         #             self.start()
         # else:
+        print("waiting for image...", self.serial_num, self.syncMode)
         pImageRaw = self.cam.GetNextImage()
         if pImageRaw.IsIncomplete():
             pImageRaw.Release()

@@ -64,7 +64,7 @@ class PyspinCameraConfig:
     
     # Network settings
     PACKET_SIZE = 9000
-    PACKET_DELAY_MULTIPLIER = 1
+    PACKET_DELAY_MULTIPLIER = 2
     THROUGHPUT_ALIGNMENT = 16000
     
     # Acquisition settings

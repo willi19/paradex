@@ -61,7 +61,7 @@ def load_camera(serialnum):
 class PyspinCameraConfig:
     """Camera configuration constants"""
     # Buffer settings
-    BUFFER_COUNT = 1
+    BUFFER_COUNT = 10
     
     # Network settings
     PACKET_SIZE = 9000

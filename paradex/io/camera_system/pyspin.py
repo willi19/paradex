@@ -5,6 +5,7 @@ import cv2
 import json
 import os
 import time
+import random
 
 from paradex.utils.file_io import config_dir
 
@@ -417,7 +418,7 @@ class PyspinCamera():
         # Calculation: PACKET_SIZE * MULTIPLIER = 9000 * 2 = 18000 ns = 18 µs
         # This means each packet waits 18 microseconds before sending the next one.
         packetDelay = self._get_node(self.nodeMap, "GevSCPD", "int", readable=True, writable=True)
-        packetDelay.SetValue(PyspinCameraConfig.PACKET_DELAY_MULTIPLIER * PyspinCameraConfig.PACKET_SIZE)
+        packetDelay.SetValue(PyspinCameraConfig.PACKET_DELAY_MULTIPLIER * PyspinCameraConfig.PACKET_SIZE + random.randrange(-500, 500))
 
         streamPacketResend = self._get_node(self.stream_nodemap, "StreamPacketResendEnable", "bool", True, True)
         self._set_node_value(streamPacketResend, "bool", True)

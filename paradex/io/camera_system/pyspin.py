@@ -163,12 +163,16 @@ class PyspinCamera():
         #             self.start()
         # else:
         pImageRaw = self.cam.GetNextImage()
-        if pImageRaw.IsIncomplete():
-            print(f"Image incomplete with image status {pImageRaw.GetImageStatus()}")
-            pImageRaw.Release()
-            return None, None
-        
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
+        
+        if pImageRaw.IsIncomplete() or pImageRaw.GetWidth() == 0 or pImageRaw.GetHeight() == 0:
+            if pImageRaw.IsIncomplete():
+                print(f"Image incomplete with image status {pImageRaw.GetImageStatus()}")
+            else:
+                print("Image has zero width or height")
+            pImageRaw.Release()
+            return None, frame_data
+        
         frame = self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
         print(f"Frame ID: {frame_data['frameID']}", self.serial_num )
         # image_copy = pImageRaw.GetNDArray().copy()
@@ -233,9 +237,6 @@ class PyspinCamera():
         Returns:
             cvImg (np.ndarray): Converted OpenCV image
         """
-        if pImg.GetPixelFormat() != ps.PixelFormat_BayerRG8:
-            pImg = PyspinCamera.spin_to_bgr8(pImg)
-
         image_data = pImg.GetData()
         cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w)).copy()
         cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)
@@ -262,17 +263,6 @@ class PyspinCamera():
             raise PyspinCameraConfigurationError(f"Unable to get or set {name} (node retrieval). Aborting...")
         return node
 
-    @staticmethod
-    def spin_to_bgr8(pImg):
-        print("Converted image to BGR8 format1")
-        ip = ps.ImageProcessor()
-        ip.SetColorProcessing(ps.SPINNAKER_COLOR_PROCESSING_ALGORITHM_HQ_LINEAR)
-        conv_img = ip.Convert(pImg, ps.PixelFormat_BGR8)
-        pImg.Release()
-        print("Converted image to BGR8 format2")
-        return conv_img
-    
-            
     @staticmethod
     def _set_node_value(node, node_type, value):
         if node_type == "enum":

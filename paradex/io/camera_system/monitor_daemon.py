@@ -1,6 +1,8 @@
 import paramiko
 import time
 import zmq
+from flask import Flask, render_template, jsonify
+from threading import Thread
 
 from paradex.utils.env import get_pcinfo
 from paradex.io.capture_pc.connect import run_script
@@ -11,15 +13,42 @@ class pc_state:
     RUNNING = 2
 
 class CameraMonitor:
-    def __init__(self, port=5479):
+    def __init__(self, port=5479, web_port=8080):
         self.port = port
+        self.monitor_port = 5481    
         self.pc_info = get_pcinfo()
         self.pc_list = list(self.pc_info.keys())
+        self.web_port = web_port
 
-        self.pc_state = {pc: pc_state.CONNECTED for pc in self.pc_list}
+        self.pc_state = {pc: pc_state.RUNNING for pc in self.pc_list}
+        self.camera_states = {}
+
+        # Flask 앱 설정
+        self.app = Flask(__name__)
+        self.setup_routes()
 
         self.initialize()
-        self.run()
+        
+        # 백그라운드에서 모니터링 시작
+        monitor_thread = Thread(target=self.run_monitor, daemon=True)
+        monitor_thread.start()
+        
+        # 웹 서버 시작
+        print(f"Starting web dashboard at http://localhost:{self.web_port}")
+        self.app.run(host='0.0.0.0', port=self.web_port, debug=False)
+
+    def setup_routes(self):
+        @self.app.route('/')
+        def index():
+            return render_template('monitor.html')
+        
+        @self.app.route('/api/status')
+        def get_status():
+            return jsonify({
+                'timestamp': time.time(),
+                'pc_states': {pc: state for pc, state in self.pc_state.items()},
+                'camera_states': self.camera_states
+            })
 
     def initialize(self):
         for pc in self.pc_list:
@@ -51,7 +80,7 @@ class CameraMonitor:
         try:
             print(f"{pc}: Starting server daemon...")
             run_script("python src/camera/server_daemon.py", [pc])
-            time.sleep(2)  # 시작 대기
+            time.sleep(2)
             
             return self.check_server_open(pc)
             
@@ -59,28 +88,24 @@ class CameraMonitor:
             print(f"{pc}: Failed to start - {e}")
             return False
 
-    def run(self):
+    def run_monitor(self):
+        """백그라운드 모니터링"""
         self.setup_heartbeat()
         
-        try:
-            while True:
-                self.receive_heartbeat()
-                self.print_status()
-                time.sleep(1)
-        except KeyboardInterrupt:
-            print("\nMonitor stopped")
+        while True:
+            self.receive_heartbeat()
+            time.sleep(0.1)
 
     def setup_heartbeat(self):
         """Heartbeat 수신 소켓 설정"""
         self.ctx = zmq.Context()
         self.heartbeat_sockets = {}
-        self.camera_states = {}  # 각 PC의 카메라 상태 저장
         
         for pc in self.pc_list:
             if self.pc_state[pc] == pc_state.RUNNING:
                 try:
                     socket = self.ctx.socket(zmq.SUB)
-                    socket.connect(f"tcp://{self.pc_info[pc]['ip']}:5481")  # monitor_port
+                    socket.connect(f"tcp://{self.pc_info[pc]['ip']}:{self.monitor_port}")
                     socket.setsockopt_string(zmq.SUBSCRIBE, '')
                     socket.setsockopt(zmq.RCVTIMEO, 100)
                     
@@ -93,59 +118,7 @@ class CameraMonitor:
         for pc, socket in self.heartbeat_sockets.items():
             try:
                 status = socket.recv_json(flags=zmq.NOBLOCK)
+                print(pc)
                 self.camera_states[pc] = status.get('cameras', {})
             except zmq.Again:
-                pass  # No message
-
-    def print_status(self):
-        """상태 출력"""
-        print("\033[2J\033[H")  # 화면 클리어
-        print("=" * 80)
-        print(f"Camera Monitor - {time.strftime('%Y-%m-%d %H:%M:%S')}")
-        print("=" * 80)
-        print()
-        
-        # PC 상태
-        print("PC Status:")
-        print("-" * 80)
-        for pc in self.pc_list:
-            state = self.pc_state[pc]
-            if state == pc_state.RUNNING:
-                status = "✓ RUNNING"
-            elif state == pc_state.CONNECTED:
-                status = "○ CONNECTED"
-            else:
-                status = "✗ DISCONNECTED"
-            
-            print(f"  {pc:20s} : {status}")
-        
-        print()
-        
-        # 카메라 상태
-        print("Camera Status:")
-        print("-" * 80)
-        print(f"  {'Camera':20s} | {'PC':20s} | {'State':12s} | {'Frame ID':10s}")
-        print("-" * 80)
-        
-        for pc, cameras in self.camera_states.items():
-            for cam_name, cam_status in cameras.items():
-                state = cam_status.get('state', 'UNKNOWN')
-                frame_id = cam_status.get('frame_id', 0)
-                
-                # 상태별 색상
-                if state == "CAPTURING":
-                    color = "\033[94m"  # Blue
-                elif state == "READY":
-                    color = "\033[92m"  # Green
-                else:
-                    color = "\033[93m"  # Yellow
-                
-                print(f"  {cam_name:20s} | {pc:20s} | {color}{state:12s}\033[0m | {frame_id:10d}")
-        
-        if not self.camera_states:
-            print("  No camera data received yet...")
-        
-        print()
-        print("=" * 80)
-        print("Press Ctrl+C to exit")
-        print("=" * 80)
+                pass

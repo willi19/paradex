@@ -19,10 +19,14 @@ class CameraLoader:
     def start(self, mode, syncMode, save_path=None, fps=30):
         if mode == "image":
             save_paths = [os.path.join(save_path, "images") for _ in self.cameralist]
+            for path in save_paths:
+                os.makedirs(path, exist_ok=True)
 
         elif mode in ["video", "full"]:
             save_paths = [os.path.join(home_path, f"captures{ind % 2 + 1}", save_path, "videos") for ind, _ in enumerate(self.cameralist)]
-            
+            for path in save_paths:
+                os.makedirs(path, exist_ok=True)
+
         threads = []
         for camera, path in zip(self.cameralist, save_paths):
             t = Thread(target=camera.start, args=(mode, syncMode, path, fps))

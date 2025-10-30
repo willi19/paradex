@@ -19,7 +19,7 @@ class remote_camera_controller:
 
         for pc in self.pc_list:
             socket = self.ctx.socket(zmq.REQ)
-            socket.setsockopt(zmq.RCVTIMEO, 5000)
+            socket.setsockopt(zmq.RCVTIMEO, self.command_port)
             socket.connect(f"tcp://{self.pc_info[pc]['ip']}:{self.command_port}")
             self.command_sockets[pc] = socket
     
@@ -48,7 +48,7 @@ class remote_camera_controller:
         cmd = {'action': 'stop'}
         self.send_command(cmd)
 
-    def exit(self):
+    def end(self):
         cmd = {'action': 'exit'}
         self.send_command(cmd)
         

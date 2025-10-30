@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Camera Monitor</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1e1e1e;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #4CAF50;
+            border-bottom: 2px solid #4CAF50;
+            padding-bottom: 10px;
+        }
+        .timestamp {
+            color: #888;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+        .pc-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .pc-card {
+            background: #2d2d2d;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #888;
+        }
+        .pc-card.running { border-left-color: #4CAF50; }
+        .pc-card.disconnected { border-left-color: #f44336; }
+        .pc-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        .pc-status {
+            font-size: 12px;
+            opacity: 0.8;
+        }
+        .camera-table {
+            width: 100%;
+            background: #2d2d2d;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .camera-table th {
+            background: #3d3d3d;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        .camera-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #3d3d3d;
+        }
+        .camera-table tr:last-child td {
+            border-bottom: none;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .status-capturing {
+            background: #2196F3;
+            color: white;
+        }
+        .status-ready {
+            background: #4CAF50;
+            color: white;
+        }
+        .status-unknown {
+            background: #ff9800;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎥 Camera Monitor</h1>
+        <div class="timestamp" id="timestamp">Loading...</div>
+        
+        <h2>PC Status</h2>
+        <div class="pc-grid" id="pc-grid"></div>
+        
+        <h2>Camera Status</h2>
+        <table class="camera-table">
+            <thead>
+                <tr>
+                    <th>Camera</th>
+                    <th>PC</th>
+                    <th>State</th>
+                    <th>Frame ID</th>
+                </tr>
+            </thead>
+            <tbody id="camera-tbody">
+                <tr><td colspan="4" style="text-align: center; color: #888;">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        function updateStatus() {
+            fetch('/api/status')
+                .then(response => response.json())
+                .then(data => {
+                    // Update timestamp
+                    const date = new Date(data.timestamp * 1000);
+                    document.getElementById('timestamp').textContent = 
+                        `Last updated: ${date.toLocaleTimeString()}`;
+                    
+                    // Update PC cards
+                    const pcGrid = document.getElementById('pc-grid');
+                    pcGrid.innerHTML = '';
+                    for (const [pc, state] of Object.entries(data.pc_states)) {
+                        const card = document.createElement('div');
+                        const stateClass = state === 2 ? 'running' : 'disconnected';
+                        const stateText = state === 2 ? '✓ RUNNING' : '✗ DISCONNECTED';
+                        card.className = `pc-card ${stateClass}`;
+                        card.innerHTML = `
+                            <div class="pc-name">${pc}</div>
+                            <div class="pc-status">${stateText}</div>
+                        `;
+                        pcGrid.appendChild(card);
+                    }
+                    
+                    // Update camera table
+                    const tbody = document.getElementById('camera-tbody');
+                    tbody.innerHTML = '';
+                    
+                    let hasData = false;
+                    for (const [pc, cameras] of Object.entries(data.camera_states)) {
+                        if (cameras && cameras.length > 0) {
+                            hasData = true;
+                            cameras.forEach(cam => {
+                                const row = document.createElement('tr');
+                                const stateClass = cam.state === 'CAPTURING' ? 'status-capturing' : 
+                                                   cam.state === 'READY' ? 'status-ready' : 'status-unknown';
+                                row.innerHTML = `
+                                    <td>${cam.name || 'UNKNOWN'}</td>
+                                    <td>${pc}</td>
+                                    <td><span class="status-badge ${stateClass}">${cam.state || 'UNKNOWN'}</span></td>
+                                    <td>${cam.frame_id || 0}</td>
+                                `;
+                                tbody.appendChild(row);
+                            });
+                        }
+                    }
+                    
+                    if (!hasData) {
+                        tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: #888;">No camera data available</td></tr>';
+                    }
+                })
+                .catch(error => console.error('Error fetching status:', error));
+        }
+        
+        // Update every 100ms
+        setInterval(updateStatus, 100);
+        updateStatus();
+    </script>
+</body>
+</html>

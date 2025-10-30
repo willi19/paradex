@@ -1,6 +1,8 @@
 import threading
 import zmq
 import time
+import faulthandler
+faulthandler.enable()
 
 from paradex.io.camera_system.camera_loader import CameraLoader
 
@@ -42,7 +44,6 @@ class camera_server_daemon:
                 'cameras': self.camera_loader.get_status_list(),
                 'controller': self.current_controller
             }
-            print(status)
             monitor_socket.send_json(status)
             time.sleep(0.1)
 

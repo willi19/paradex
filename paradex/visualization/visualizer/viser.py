@@ -338,7 +338,7 @@ class ViserViewer():
 
         @self.gui_next_frame.on_click
         def _(_) -> None:
-            self.gui_timestep.value = (self.gui_timestep.value + 1) % self.num_frames
+            self.gui_timestep.value = (self.gui_timestep.value + 10) % self.num_frames
 
         @self.gui_prev_frame.on_click
         def _(_) -> None:

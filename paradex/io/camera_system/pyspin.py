@@ -301,7 +301,7 @@ class PyspinCamera():
         # Align to nearest multiple of THROUGHPUT_ALIGNMENT (value must be multiple of 16000)
         ValMax = ThroughputLimit.GetMax()
         ValMin = ThroughputLimit.GetMin()
-        posValMax = (int((ValMax - ValMin)) // PyspinCameraConfig.THROUGHPUT_ALIGNMENT) * PyspinCameraConfig.THROUGHPUT_ALIGNMENT + ValMin
+        posValMax = (int((ValMax - ValMin) / 4) // PyspinCameraConfig.THROUGHPUT_ALIGNMENT) * PyspinCameraConfig.THROUGHPUT_ALIGNMENT + ValMin
         # Set throughput limit 
         ThroughputLimit.SetValue(posValMax)
         

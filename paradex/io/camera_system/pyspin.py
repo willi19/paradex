@@ -169,7 +169,8 @@ class PyspinCamera():
             return None, None
         
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
-        frame = self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
+        # frame = self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
+        frame = pImageRaw.GetNDArray().copy()
         pImageRaw.Release()
         return frame, frame_data
 
@@ -230,7 +231,7 @@ class PyspinCamera():
             cvImg (np.ndarray): Converted OpenCV image
         """
         image_data = pImg.GetData()
-        cvImg = np.array(image_data, dtype=np.uint16).reshape((h, w)).copy()
+        cvImg = np.array(image_data, dtype=np.uint8).reshape((h, w)).copy()
         cvImg = cv2.cvtColor(cvImg, cv2.COLOR_BayerRG2RGB)
         return cvImg
 

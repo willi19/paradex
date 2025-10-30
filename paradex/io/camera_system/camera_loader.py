@@ -26,6 +26,9 @@ class CameraLoader:
             save_paths = [os.path.join(home_path, f"captures{ind % 2 + 1}", save_path, "videos") for ind, _ in enumerate(self.cameralist)]
             for path in save_paths:
                 os.makedirs(path, exist_ok=True)
+            
+        else:
+            save_paths = [None for _ in self.cameralist]
 
         threads = []
         for camera, path in zip(self.cameralist, save_paths):

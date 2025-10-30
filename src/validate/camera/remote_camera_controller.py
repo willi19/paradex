@@ -8,14 +8,14 @@ if __name__ == "__main__":
     rcc.start("image", False, "test1_1030")
     rcc.stop()
 
-    rcc.start("full", False, "test1_1030", fps=30)
+    rcc.start("stream", False, "test1_1030", fps=30)
     time.sleep(2)
     rcc.stop()
 
     rcc.start("image", False, "test2_1030", fps=30)
     rcc.stop()
 
-    rcc.start("video", False, "test2_1030", fps=5)
+    rcc.start("stream", False, "test2_1030", fps=5)
     time.sleep(2)
     rcc.stop()
     rcc.end()

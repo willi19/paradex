@@ -325,7 +325,7 @@ class PyspinCamera():
         except:
             # New spinnaker version 
             autoframerate = self._get_node(self.nodeMap, "AcquisitionFrameRateEnable", "bool", readable=True, writable=True)
-            self._set_node_value(autoframerate, "bool", False)
+            self._set_node_value(autoframerate, "bool", True)
 
         # Set frame rate value
         if self.frame_rate is not None:

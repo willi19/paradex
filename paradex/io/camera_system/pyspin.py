@@ -175,7 +175,7 @@ class PyspinCamera():
 
         pImageRaw.Release()
         return frame, frame_data
-
+    
     def start(self, mode, syncMode, frame_rate=None, gain=None, exposure_time=None):
         """
         Start image acquisition.
@@ -286,6 +286,7 @@ class PyspinCamera():
         self._configureExposure()
         self._configureChunk()
         self._configureBuffer()
+        self._configurePixelFormat()
 
     def _configureGain(self) -> None:
         """configure camera gain settings."""
@@ -469,6 +470,15 @@ class PyspinCamera():
         # Set stream buffer Count
         bufferCount = self._get_node(self.stream_nodemap, "StreamBufferCountManual", "int", readable=True, writable=True)
         bufferCount.SetValue(PyspinCameraConfig.BUFFER_COUNT)
+
+    def _configurePixelFormat(self) -> None:
+        """Configure pixel format to BayerRG8."""
+        try:
+            pixelFormat = self._get_node(self.nodeMap, "PixelFormat", "enum", readable=True, writable=True)
+            self._set_node_value(pixelFormat, "enum", "BayerRG8")
+            print(f"Pixel format set to BayerRG8")
+        except Exception as e:
+            print(f"Failed to set pixel format: {e}")
     
 def autoforce_ip():
     """

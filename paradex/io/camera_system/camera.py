@@ -168,10 +168,10 @@ class Camera():
         self.event["acquisition"].set()
                 
         while self.event["start"].is_set() and not self.event["exit"].is_set():
+            print(self.last_frame_id, self.name, "waiting")
             frame, frame_data = self.camera.get_image()
             if frame is None:
                 continue
-            print(self.last_frame_id, self.name, "waiting")
             current_frame_id = frame_data["frameID"]
             print(current_frame_id, self.name)
             if save_video:

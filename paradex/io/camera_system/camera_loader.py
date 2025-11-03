@@ -9,7 +9,9 @@ class CameraLoader:
         self.cameralist = []
     
     def load_pyspin_camera(self, serial_list=None):
-        from paradex.io.camera_system.pyspin import get_serial_list
+        from paradex.io.camera_system.pyspin import get_serial_list, autoforce_ip
+        
+        autoforce_ip()
         
         if serial_list is None:
             serial_list = get_serial_list()

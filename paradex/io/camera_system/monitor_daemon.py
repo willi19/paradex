@@ -1,4 +1,3 @@
-import paramiko
 import time
 import zmq
 from flask import Flask, render_template, jsonify
@@ -94,7 +93,7 @@ class CameraMonitor:
         
         while True:
             self.receive_heartbeat()
-            time.sleep(0.1)
+            time.sleep(0.01)
 
     def setup_heartbeat(self):
         """Heartbeat 수신 소켓 설정"""

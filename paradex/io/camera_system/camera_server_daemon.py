@@ -1,8 +1,7 @@
 import threading
 import zmq
 import time
-import faulthandler
-faulthandler.enable()
+import traceback
 
 from paradex.io.camera_system.camera_loader import CameraLoader
 
@@ -41,8 +40,8 @@ class camera_server_daemon:
         
         while True:
             status = {
-                'cameras': [], #self.camera_loader.get_status_list(),
-                'controller': self.current_controller
+                'cameras': self.camera_loader.get_status_list(),
+                'controller': self.current_controller if self.current_controller else 'None'
             }
             monitor_socket.send_json(status)
             time.sleep(0.1)
@@ -55,15 +54,14 @@ class camera_server_daemon:
             try:
                 cmd = self.command_socket.recv_json()
                 action = cmd.get('action')
-                controller_name = cmd.get('controller_name')  # controller가 보내야 함
-                print(cmd)
-                # 첫 명령 또는 exit 후
+                controller_name = cmd.get('controller_name')
+                
                 if self.current_controller is None:
                     if action == 'start':
                         self.current_controller = controller_name
                         print(f"[Controller] {controller_name} connected")
+                        print(f"[Current Controller] {self.current_controller}")
                         
-                        # start 명령 실행
                         self.camera_loader.start(
                             cmd.get('mode'),
                             cmd.get('syncMode'),
@@ -74,8 +72,9 @@ class camera_server_daemon:
                     else:
                         self.command_socket.send_json({'status': 'error', 'msg': 'no active controller'})
                 
-                # 현재 controller와 일치하는 경우만
                 elif controller_name == self.current_controller:
+                    print(f"[Command] {action} from {controller_name}")
+                    
                     if action == 'start':
                         self.camera_loader.start(
                             cmd.get('mode'),
@@ -91,19 +90,36 @@ class camera_server_daemon:
                     
                     elif action == 'exit':
                         print(f"[Controller] {controller_name} disconnected")
-                        self.current_controller = None  # 제어권 해제
+                        self.current_controller = None
+                        print(f"[Current Controller] None")
                         self.command_socket.send_json({'status': 'ok', 'msg': 'exited'})
                     
                     else:
                         self.command_socket.send_json({'status': 'error', 'msg': 'unknown action'})
                 
-                # 다른 controller가 명령 보낸 경우
                 else:
+                    print(f"[Warning] {controller_name} tried to access, but locked by {self.current_controller}")
                     self.command_socket.send_json({
                         'status': 'error', 
                         'msg': f'controller locked by {self.current_controller}'
                     })
-            
+
             except Exception as e:
-                print(f"Command thread error: {e}")
-                self.command_socket.send_json({'status': 'error', 'msg': str(e)})
+                print(f"="*60)
+                print(f"[ERROR] Command thread exception occurred:")
+                print(f"Exception Type: {type(e).__name__}")
+                print(f"Exception Message: {str(e)}")
+                print(f"-"*60)
+                print("Traceback:")
+                traceback.print_exc()
+                print(f"="*60)
+                
+                try:
+                    self.command_socket.send_json({
+                        'status': 'error', 
+                        'msg': f'{type(e).__name__}: {str(e)}'
+                    })
+                except:
+                    print("[ERROR] Failed to send error response to client")
+                
+                self.current_controller = None

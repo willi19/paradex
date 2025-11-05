@@ -2,7 +2,7 @@ from threading import Thread
 import os
 
 from paradex.io.camera_system.camera import Camera
-from paradex.utils.file_io import home_path, shared_dir
+from paradex.utils.file_io import home_path
 
 class CameraLoader:
     def __init__(self):
@@ -20,7 +20,8 @@ class CameraLoader:
     
     def start(self, mode, syncMode, save_path=None, fps=30):
         if mode == "image":
-            save_paths = [os.path.join(save_path, "images") for _ in self.cameralist]
+            save_paths = [os.path.join(home_path, save_path, "images") for _ in self.cameralist]
+            print(save_paths)   
             for path in save_paths:
                 os.makedirs(path, exist_ok=True)
 

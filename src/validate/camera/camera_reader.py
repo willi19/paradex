@@ -6,7 +6,7 @@ Camera Reader Quick Start Guide
 가장 빠르게 시작하는 방법
 """
 
-from camera_reader import discover_cameras, CameraReader, MultiCameraReader
+from paradex.io.camera_system.camera_reader import discover_cameras, CameraReader, MultiCameraReader
 import cv2
 
 

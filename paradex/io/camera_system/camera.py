@@ -197,8 +197,13 @@ class Camera():
                     self.write_flag[0] = 0
 
             self.last_frame_id = current_frame_id
+
         self.camera.stop()
         self.event["acquisition"].clear()
+
+        self.fid_array_a[0] = 0
+        self.fid_array_b[0] = 0
+        self.write_flag[0] = 0
         
         if save_video:
             video_writer.release()

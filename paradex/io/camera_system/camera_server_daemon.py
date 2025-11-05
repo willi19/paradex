@@ -56,8 +56,7 @@ class camera_server_daemon:
                 cmd = self.command_socket.recv_json()
                 action = cmd.get('action')
                 controller_name = cmd.get('controller_name')  # controller가 보내야 함
-                print(cmd)
-                # 첫 명령 또는 exit 후
+                
                 if self.current_controller is None:
                     if action == 'start':
                         self.current_controller = controller_name
@@ -74,7 +73,7 @@ class camera_server_daemon:
                     else:
                         self.command_socket.send_json({'status': 'error', 'msg': 'no active controller'})
                 
-                # 현재 controller와 일치하는 경우만
+                
                 elif controller_name == self.current_controller:
                     if action == 'start':
                         self.camera_loader.start(
@@ -97,7 +96,6 @@ class camera_server_daemon:
                     else:
                         self.command_socket.send_json({'status': 'error', 'msg': 'unknown action'})
                 
-                # 다른 controller가 명령 보낸 경우
                 else:
                     self.command_socket.send_json({
                         'status': 'error', 
@@ -107,3 +105,4 @@ class camera_server_daemon:
             except Exception as e:
                 print(f"Command thread error: {e}")
                 self.command_socket.send_json({'status': 'error', 'msg': str(e)})
+                self.current_controller = None  # 에러 시 제어권 해제

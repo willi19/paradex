@@ -117,7 +117,7 @@ class CameraMonitor:
         for pc, socket in self.heartbeat_sockets.items():
             try:
                 status = socket.recv_json(flags=zmq.NOBLOCK)
-                print(pc)
+                print(pc, status)
                 self.camera_states[pc] = status.get('cameras', {})
             except zmq.Again:
                 pass

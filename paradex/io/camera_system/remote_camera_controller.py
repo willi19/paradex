@@ -16,6 +16,7 @@ class remote_camera_controller:
     def initialize(self):
         self.ctx = zmq.Context()
         self.command_sockets = {}
+        failed_pcs = []
 
         for pc in self.pc_list:
             socket = self.ctx.socket(zmq.REQ)
@@ -24,6 +25,22 @@ class remote_camera_controller:
             socket.setsockopt(zmq.SNDTIMEO, 60000) 
             socket.connect(f"tcp://{self.pc_info[pc]['ip']}:{self.command_port}")
             self.command_sockets[pc] = socket
+
+            try:
+                socket.connect(f"tcp://{self.pc_info[pc]['ip']}:{self.command_port}")
+                # 연결 테스트
+                socket.send_string("PING")
+                response = socket.recv_string()
+                self.command_sockets[pc] = socket
+            except zmq.error.Again:
+                failed_pcs.append(pc)
+                socket.close()
+
+        if failed_pcs:
+            raise ConnectionError(
+                f"다음 PC들이 응답하지 않습니다: {failed_pcs}\n"
+                f"각 PC에서 'python src/camera/server_daemon.py'를 실행하세요."
+            )
     
     def send_command(self, cmd):
         """명령 전송 및 응답 수신"""

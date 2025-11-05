@@ -1,8 +1,7 @@
 import threading
 import zmq
 import time
-import faulthandler
-faulthandler.enable()
+import traceback
 
 from paradex.io.camera_system.camera_loader import CameraLoader
 
@@ -101,8 +100,23 @@ class camera_server_daemon:
                         'status': 'error', 
                         'msg': f'controller locked by {self.current_controller}'
                     })
-            
+
             except Exception as e:
-                print(f"Command thread error: {e}")
-                self.command_socket.send_json({'status': 'error', 'msg': str(e)})
+                print(f"="*60)
+                print(f"[ERROR] Command thread exception occurred:")
+                print(f"Exception Type: {type(e).__name__}")
+                print(f"Exception Message: {str(e)}")
+                print(f"-"*60)
+                print("Traceback:")
+                traceback.print_exc()
+                print(f"="*60)
+                
+                try:
+                    self.command_socket.send_json({
+                        'status': 'error', 
+                        'msg': f'{type(e).__name__}: {str(e)}'
+                    })
+                except:
+                    print("[ERROR] Failed to send error response to client")
+                
                 self.current_controller = None  # 에러 시 제어권 해제

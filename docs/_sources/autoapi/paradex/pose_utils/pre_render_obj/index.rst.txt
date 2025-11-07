@@ -1,0 +1,23 @@
+paradex.pose_utils.pre_render_obj
+=================================
+
+.. py:module:: paradex.pose_utils.pre_render_obj
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: PROJECT_DIR
+
+.. py:data:: device
+
+.. py:data:: nas_path
+
+.. py:data:: mesh_template_dir
+
+.. py:function:: get_rendered_obj(obj_nm, renderer_type='nvdiff', device='cuda')
+

@@ -1,0 +1,93 @@
+timecode_receiver
+=================
+
+.. py:module:: timecode_receiver
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: TimecodeReceiver
+
+   .. py:attribute:: timestamps
+
+
+   .. py:attribute:: exit
+
+
+   .. py:attribute:: start_capture
+
+
+   .. py:attribute:: cam_start
+
+
+   .. py:attribute:: connect_flag
+
+
+   .. py:attribute:: save_end
+
+
+   .. py:attribute:: save_path
+      :value: None
+
+
+
+   .. py:attribute:: lock
+
+
+   .. py:attribute:: thread
+
+
+   .. py:method:: autoforce_ip()
+
+
+   .. py:method:: wait_for_connection()
+
+
+   .. py:method:: wait_for_cam_start()
+
+
+   .. py:method:: wait_for_save()
+
+
+   .. py:method:: start(save_path=None)
+
+
+   .. py:method:: end()
+
+
+   .. py:method:: get_data()
+
+
+   .. py:method:: run()
+
+
+   .. py:method:: quit()
+
+      Stops the serial reader process.
+
+
+
+   .. py:method:: configureThroughPut(nodeMap)
+
+
+   .. py:method:: configureTrigger(nodeMap)
+
+
+   .. py:method:: configurePacketSize(nodeMap)
+
+
+   .. py:method:: configureAcquisition(nodeMap)
+
+
+   .. py:method:: configureChunk(nodeMap)
+
+
+   .. py:method:: configureBuffer(nodeMap)
+
+
+   .. py:method:: configureSettings(nodeMap)
+
+

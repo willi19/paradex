@@ -38,9 +38,5 @@ trash
 thirdparty/EfficientLoFTR/ckpts/*.ckpt
 thirdparty/EfficientLoFTR/ckpts/*.ckpt
 *.jpeg
-docs/_static
-docs/_modules
-docs/modules
-docs/_sources
 build/lib/paradex
 .vscode/settings.json

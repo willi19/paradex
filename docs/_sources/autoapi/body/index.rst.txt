@@ -1,0 +1,113 @@
+body
+====
+
+.. py:module:: body
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: BodyVisualizer(skeleton_info, head_idx=1, hand_range=(2, 53))
+
+   Bases: :py:obj:`object`
+
+
+   .. py:attribute:: width
+      :value: 2048
+
+
+
+   .. py:attribute:: height
+      :value: 1536
+
+
+
+   .. py:attribute:: hand_range
+      :value: (2, 53)
+
+
+
+   .. py:attribute:: head_idx
+      :value: 1
+
+
+
+   .. py:attribute:: main_vis
+
+
+   .. py:attribute:: num_sphere
+
+
+   .. py:attribute:: sphere
+      :value: []
+
+
+
+   .. py:attribute:: axes
+      :value: []
+
+
+
+   .. py:attribute:: prev_axis_inv_transforms
+
+
+   .. py:attribute:: skeleton_info
+
+
+   .. py:attribute:: bones
+      :value: []
+
+
+
+   .. py:attribute:: child_indices
+      :value: []
+
+
+
+   .. py:attribute:: parent_indices
+      :value: []
+
+
+
+   .. py:attribute:: prev_bone_inv_transforms
+
+
+   .. py:method:: update_bone_positions(joint_pos)
+
+      Update cylinder positions (bones) to connect joints.
+
+
+
+   .. py:method:: update_axes(joint_pos)
+
+      Move and orient the axis frame to match the given transformation matrix exactly.
+
+
+
+   .. py:method:: center_camera_on_objects()
+
+      Manually set the camera position.
+
+
+
+   .. py:method:: update_sphere_positions(joint_pos)
+
+      Update sphere positions in Open3D.
+      joint_pos: (N, 4, 4) NumPy array containing model matrices of joints.
+
+
+
+   .. py:method:: add_geometry(geometry: dict)
+
+
+   .. py:method:: remove_geometry(geom_name)
+
+
+   .. py:method:: run()
+
+
+   .. py:method:: stop()
+
+

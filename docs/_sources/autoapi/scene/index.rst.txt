@@ -1,0 +1,147 @@
+scene
+=====
+
+.. py:module:: scene
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: PROJECT_DIR
+
+.. py:class:: Scene(scene_path: pathlib.Path, rescale_factor=1.0, mask_dir_nm='mask_hq', image_dir_nm=None, mask_module=None, use_sam=False, dino_obj_nm=None, device='cuda')
+
+   .. py:attribute:: device
+      :value: 'cuda'
+
+
+
+   .. py:attribute:: scene_path
+
+
+   .. py:attribute:: obj_nm
+
+
+   .. py:attribute:: video_root_dir
+
+
+   .. py:attribute:: extracted_img_root_dir
+
+
+   .. py:attribute:: image_dir
+
+
+   .. py:attribute:: contact
+      :value: None
+
+
+
+   .. py:attribute:: rescale_factor
+      :value: 1.0
+
+
+
+   .. py:attribute:: proj_matrix
+
+
+   .. py:attribute:: cam_params
+
+
+   .. py:attribute:: cam2extr
+
+
+   .. py:attribute:: cam2intr
+
+
+   .. py:attribute:: cam2extr_t
+
+
+   .. py:attribute:: cam2intr_t
+
+
+   .. py:attribute:: camera_centers
+
+
+   .. py:attribute:: cam_ids
+
+
+   .. py:attribute:: ttl_frame_length
+      :value: 0
+
+
+
+   .. py:attribute:: renderer_dict
+      :value: None
+
+
+
+   .. py:attribute:: batched_renderer
+      :value: None
+
+
+
+   .. py:attribute:: stacked_extrinsic
+      :value: None
+
+
+
+   .. py:attribute:: stacked_intrinsic
+      :value: None
+
+
+
+   .. py:method:: inference_mask_with_bbox(cam_id, fidx, xyxy)
+
+
+   .. py:method:: get_renderer(renderer_type='nvdiffrast')
+
+
+   .. py:method:: get_batched_renderer(tg_cam_list, renderer_type='nvdiffrast')
+
+
+   .. py:method:: check_image(image_dir, cam_id)
+
+
+   .. py:method:: get_image(cam_id, fidx, rgb=False, initial=False)
+
+      It return images in bgr
+
+
+
+   .. py:method:: get_mask(cam_id, fidx=0, fill_value=0)
+
+
+   .. py:method:: get_multidetection(cam_id, fidx=0)
+
+
+   .. py:method:: get_images(fidx)
+
+
+   .. py:method:: render(cam_id, obj_dict, render_rgb=True)
+
+
+   .. py:method:: batch_render(obj_dict, render_rgb=True)
+
+
+   .. py:method:: get_batch_rendered_mask(obj_dict_list)
+
+
+   .. py:method:: rasterize(cam_id, obj_dict)
+
+
+   .. py:method:: batch_rasterize(obj_dict)
+
+
+   .. py:method:: project_rendered_to_img(cam_id, fidx, rendered_rgb, rendered_silhouette, alpha=0.5)
+
+
+   .. py:method:: get_projected_img(cam_id, fidx, mesh, alpha=0.5)
+
+
+   .. py:method:: batch_transform2camspace(vertices)
+
+

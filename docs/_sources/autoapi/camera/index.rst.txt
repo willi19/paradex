@@ -1,0 +1,281 @@
+camera
+======
+
+.. py:module:: camera
+
+.. autoapi-nested-parse::
+
+   PySpin Camera Control Module
+   ============================
+
+   This module provides a high-level interface for controlling a single FLIR camera.
+
+   Key Features:
+       - **Configuration**: Configure camera parameters including gain, exposure time,
+         frame rate, trigger mode, buffer settings, and network parameters
+       - **Image Acquisition**: Capture single frames or continuous video streams
+
+   This module wraps the PySpin SDK to abstract the complex nodemap structure of
+   FLIR cameras into a simple Python interface.
+
+   Classes:
+       CameraMode: Enumeration of camera operation modes
+       CameraConfig: Configuration constants for camera settings
+       Camera: Main camera control class for a single camera instance
+       CameraConfigurationError: Exception for configuration failures
+
+   Typical Workflow:
+       1. Initialize camera with desired parameters
+       2. Configure settings (done automatically during initialization)
+       3. Start acquisition
+       4. Get images
+       5. Stop acquisition
+       6. Release camera resources
+
+   .. rubric:: Example
+
+   >>> import PySpin as ps
+   >>> from camera import Camera
+   >>>
+   >>> system = ps.System.GetInstance()
+   >>> cam_list = system.GetCameras()
+   >>> cam_ptr = cam_list[0]
+   >>> camera = Camera(
+   ...     camPtr=cam_ptr,
+   ...     gain=10.0,
+   ...     exposure_time=10000.0,
+   ...     frame_rate=30.0,
+   ...     mode='image',
+   ...     syncMode=True
+   ... )
+   >>>
+   >>> camera.start()
+   >>> image = camera.get_image()
+   >>> camera.stop()
+   >>> camera.release()
+
+
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: logger
+
+.. py:class:: CameraMode
+
+   Bases: :py:obj:`enum.Enum`
+
+
+   Enumeration of camera operation modes.
+
+   .. attribute:: IMAGE
+
+      Single frame capture mode with retry logic
+
+   .. attribute:: VIDEO
+
+      Continuous video capture with 10-buffer queue
+
+   .. attribute:: STREAM
+
+      Streaming mode (similar to video)
+
+
+   .. py:attribute:: IMAGE
+      :value: 'image'
+
+
+
+   .. py:attribute:: VIDEO
+      :value: 'video'
+
+
+
+   .. py:attribute:: STREAM
+      :value: 'stream'
+
+
+
+.. py:class:: CameraConfig
+
+   Camera configuration constants
+
+
+   .. py:attribute:: VIDEO_BUFFER_COUNT
+      :value: 10
+
+
+
+   .. py:attribute:: IMAGE_BUFFER_COUNT
+      :value: 1
+
+
+
+   .. py:attribute:: PACKET_SIZE
+      :value: 9000
+
+
+
+   .. py:attribute:: PACKET_DELAY_MULTIPLIER
+      :value: 2
+
+
+
+   .. py:attribute:: THROUGHPUT_ALIGNMENT
+      :value: 16000
+
+
+
+   .. py:attribute:: IMAGE_TIMEOUT_MS
+      :value: 100
+
+
+
+.. py:exception:: CameraConfigurationError
+
+   Bases: :py:obj:`Exception`
+
+
+   Exception raised when camera configuration fails.
+
+   This exception is raised during camera initialization or mode changes
+   when configuration of camera parameters fails.
+
+
+.. py:class:: Camera(camPtr, gain, exposure_time, frame_rate=0.2, mode='video', syncMode=True)
+
+   .. py:attribute:: syncMode
+      :value: True
+
+
+
+   .. py:attribute:: mode
+      :value: 'video'
+
+
+
+   .. py:attribute:: gain
+
+
+   .. py:attribute:: exposure_time
+
+
+   .. py:attribute:: frame_rate
+      :value: 0.2
+
+
+
+   .. py:attribute:: cam
+
+
+   .. py:attribute:: serialnum
+
+
+   .. py:attribute:: stream_nodemap
+
+
+   .. py:attribute:: nodeMap
+
+
+   .. py:method:: set_mode(mode, syncMode)
+
+
+   .. py:method:: get_image()
+
+
+   .. py:method:: start()
+
+
+   .. py:method:: stop()
+
+
+   .. py:method:: release()
+
+
+   .. py:method:: configure() -> None
+
+      Configure camera settings based on initialization parameters.
+
+
+
+   .. py:method:: configureGain() -> None
+
+      Configure camera gain settings.
+
+
+
+   .. py:method:: configureThroughPut() -> None
+
+      Configure camera throughput settings.
+
+
+
+   .. py:method:: configureFrameRate() -> None
+
+      Configure camera frame rate settings.
+
+
+
+   .. py:method:: configureTrigger() -> None
+
+      Configure camera trigger settings for hardware synchronization.
+
+
+
+   .. py:method:: configurePacketDelay() -> None
+
+      Configure GigE Vision packet delay.
+
+      Sets inter-packet delay to prevent network congestion. This is particularly
+      useful in multi-camera setups or when experiencing packet loss.
+
+      The delay is calculated as: PACKET_SIZE * PACKET_DELAY_MULTIPLIER
+      Default: 9000 * 2 = 18000 nanoseconds = 18 microseconds
+
+      :param nodeMap: Camera node map
+
+      :raises CameraConfigurationError: If configuration fails
+
+      .. note::
+
+         Only relevant for GigE cameras. This setting is optional and disabled
+         by default as throughput limit usually provides sufficient control.
+
+
+
+   .. py:method:: configureExposure() -> None
+
+      Configure camera exposure settings.
+
+
+
+   .. py:method:: configureAcquisition() -> None
+
+      Configure camera acquisition settings based on operation mode.
+
+
+
+   .. py:method:: configurePacketSize() -> None
+
+      Configure GigE Vision packet size for optimal network performance.
+
+
+
+   .. py:method:: configureChunk() -> None
+
+      Enable chunk data to include timestamps in image metadata.
+
+
+
+   .. py:method:: configureBuffer() -> None
+
+      Configure camera buffer settings based on operation mode.
+
+
+

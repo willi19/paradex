@@ -1,0 +1,62 @@
+AdamGrasp
+=========
+
+.. py:module:: AdamGrasp
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: AdamGrasp(robot_name, writer, contact_map_goal=None, num_particles=32, init_rand_scale=0.5, max_iter=300, steps_per_iter=2, learning_rate=0.005, device='cuda', energy_func_name='align_dist')
+
+   .. py:attribute:: robot_name
+
+
+   .. py:attribute:: contact_map_goal
+      :value: None
+
+
+
+   .. py:attribute:: num_particles
+      :value: 32
+
+
+
+   .. py:attribute:: init_rand_scale
+      :value: 0.5
+
+
+
+   .. py:attribute:: learning_rate
+      :value: 0.005
+
+
+
+   .. py:attribute:: device
+      :value: 'cuda'
+
+
+
+   .. py:attribute:: max_iter
+      :value: 300
+
+
+
+   .. py:attribute:: steps_per_iter
+      :value: 2
+
+
+
+   .. py:attribute:: energy_func_name
+      :value: 'align_dist'
+
+
+
+   .. py:attribute:: opt_model
+
+
+   .. py:method:: run_adam(object_name, contact_map_goal, running_name)
+
+

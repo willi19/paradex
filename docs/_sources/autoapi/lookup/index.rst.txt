@@ -1,0 +1,31 @@
+lookup
+======
+
+.. py:module:: lookup
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: obj_type
+
+.. py:data:: RENDER_CONFIG
+
+.. py:function:: normalize_cylinder(obj_6D)
+
+.. py:function:: normalize_box(obj_6D)
+
+.. py:function:: normalize(obj_6D, obj_name)
+
+.. py:function:: get_robot_name(demo_path)
+
+.. py:function:: get_obj_name(demo_path)
+
+.. py:function:: visualize_lookup_table(demo_path, logger=[], overwrite=False)
+
+.. py:function:: generate_lookup_table(demo_path)
+

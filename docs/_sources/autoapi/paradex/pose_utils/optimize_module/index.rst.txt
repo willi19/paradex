@@ -1,0 +1,36 @@
+paradex.pose_utils.optimize_module
+==================================
+
+.. py:module:: paradex.pose_utils.optimize_module
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: PROJECT_DIR
+
+.. py:function:: silhouette_iou_loss(pred_silhouette, target_silhouette)
+
+.. py:function:: silhouette_tg_loss(pred_silhouette, target_silhouette)
+
+.. py:function:: get_transformed_obj(obj_dict, optim_scale, optim_R, optim_t, R_type='6d')
+
+   Dimension check
+
+
+.. py:function:: optimize_with_initial_sRt(input_data)
+
+.. py:function:: get_initial_T_by_picking(scene, tg_cam_ids, o3d_mesh)
+
+.. py:function:: get_gt_data(scene, mask_root, cam_ids, device, computed_mask: dict = None, fidx=0, image_dir=None)
+
+.. py:function:: load_obj_masks(org_scene: paradex.pose_utils.scene.Scene, reload_mask=False, debug=False, confidence=0.002, image_dir=None)
+
+.. py:function:: parse_and_crop(obj_mask_t_dict, obj_masked_rgb_t_dict)
+
+.. py:function:: render_and_compute_loss_all_cams(obj_dict, scene, rot_6d_t, initial_translate, default_scale, tg_rgbs, tg_sils, tg_rgbs_full, tg_sils_full, turn_on_filter=False, device='cuda')
+

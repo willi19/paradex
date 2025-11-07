@@ -1,0 +1,35 @@
+tracking_wloftr
+===============
+
+.. py:module:: tracking_wloftr
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: PROJECT_PATH
+
+.. py:data:: cmap
+
+.. py:data:: device
+   :value: 'cuda'
+
+
+.. py:data:: default_template_path
+
+.. py:data:: default_template
+
+.. py:data:: parser
+
+.. py:data:: args
+   :value: None
+
+
+.. py:data:: image_dir_nm
+   :value: 'undistorted_images'
+
+
+.. py:data:: obj_name
+

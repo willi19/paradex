@@ -1,0 +1,134 @@
+paradex.pose_utils.viser_visualizer
+===================================
+
+.. py:module:: paradex.pose_utils.viser_visualizer
+
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: get_initial_mesh
+   :value: None
+
+
+.. py:data:: MEDIA_EDGES
+   :value: [(0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8), (5, 9), (9, 10), (10, 11), (11,...
+
+
+.. py:data:: IDLE_TIMEOUT
+   :value: 10
+
+
+.. py:function:: make_checkerboard_plane_trimesh(center: numpy.ndarray, normal: numpy.ndarray, size: float = 10.0, step: float = 0.25, color_a=(255, 255, 255, 255), color_b=(170, 170, 170, 255)) -> trimesh.Trimesh
+
+   Build a colored checkerboard plane centered at `center` with normal `normal`.
+   Coordinates are already in world space; no extra transform needed on add.
+
+
+.. py:class:: KeypointObjectCameraVisualizer(port: int = 11375, allegro_urdf_path: str = '/home/temp_id/paradex/paradex/pose_utils/dex_retargeting/assets/robots/hands/allegro_hand/allegro_hand_right_free.urdf', up_direction: str = '+y', render_path: str = './render_keypoint_obj', dark_mode: bool = False)
+
+   Viser-based visualizer that shows:
+     - Multi-view cameras (frames + frustums)
+     - An object mesh following a per-frame SE(3) trajectory
+     - 3D hand keypoints + bone segments per frame
+
+   Expects:
+     cam_params: {cam_id: {"extrinsic": (3x4|4x4 world->cam), "intrinsic": (3x3)}}
+     hand_keypoint_dict: {frame_idx: (21, 3)} in WORLD coord
+     obj_trajectory_dict: {frame_idx: (4x4) or {"T": (4x4)}} in WORLD coord
+
+
+   .. py:attribute:: server
+
+
+   .. py:attribute:: render_path
+      :value: './render_keypoint_obj'
+
+
+
+   .. py:attribute:: gui_timestep
+      :value: None
+
+
+
+   .. py:attribute:: gui_playing
+      :value: None
+
+
+
+   .. py:attribute:: framerate
+      :value: 10
+
+
+
+   .. py:attribute:: num_frames
+      :value: 0
+
+
+
+   .. py:attribute:: frame_nodes
+      :type:  Dict[int, viser.FrameHandle]
+
+
+   .. py:attribute:: frustum_handles
+      :type:  Dict[str, viser.CameraFrustumHandle]
+
+
+   .. py:attribute:: allegro_urdf_path
+      :value: '/home/temp_id/paradex/paradex/pose_utils/dex_retargeting/assets/robots/hands/allegro_hand/allegr...
+
+
+
+   .. py:attribute:: allegro
+      :type:  viser.extras.ViserUrdf | None
+      :value: None
+
+
+
+   .. py:method:: add_frame_from_up_front(name: str, origin: numpy.ndarray, up_world: numpy.ndarray, front_world: numpy.ndarray, *, axes_length: float = 0.15, axes_radius: float = 0.006, right_handed: bool = True, show_axes: bool = True)
+
+      주어진 월드 좌표계 벡터들로 좌표 프레임을 추가합니다.
+      - 가정: +X = front, +Y = up, +Z = right (우손 좌표계)
+      - up_world 과 front_world 는 월드 기준 벡터입니다.
+      - 두 벡터가 거의 평행할 경우 수치적으로 안전하게 보정합니다.
+
+
+
+   .. py:method:: draw_cameras(cam_params: Dict[str, Dict[str, numpy.ndarray]], width: int, height: int, cam_imgs: Optional[Dict[str, List[numpy.ndarray]]] = None, downsample_factor: int = 4) -> None
+
+
+   .. py:method:: add_camera_plane_from_ids(cam_params: dict, target_ids: List[str], drop: float = 0.18, size: float = 10.0, step: float = 0.25, name: str = '/global/camera_fit_plane')
+
+      target_ids 카메라 센터들을 평면에 맞추고, 법선 방향으로 drop만큼 내린 위치에
+      체커보드 평면을 생성하여 씬에 추가합니다.
+
+
+
+   .. py:method:: add_hand_and_object(obj_name: Optional[str], wrist_6d: Dict[int, numpy.ndarray], hand_keypoint_dict: Dict[int, numpy.ndarray], obj_trajectory_dict: Optional[Dict[int, numpy.ndarray]] = None, q_pose_dict: Dict[int, numpy.ndarray] = None, edge_list: Optional[List[Tuple[int, int]]] = None) -> None
+
+
+   .. py:method:: spin() -> None
+
+
+.. py:function:: visualize_keypoint_object(obj_name: Optional[str], cam_params: Dict[str, Dict[str, numpy.ndarray]], wrist_6d: Dict[int, numpy.ndarray], hand_keypoint_dict: Dict[int, numpy.ndarray], obj_trajectory_dict: Dict[int, numpy.ndarray], q_pose_dict, *, cam_imgs: Optional[Dict[str, List[numpy.ndarray]]] = None, cam_size: Tuple[int, int] = (2048, 1536), target_ids_for_plane: Optional[List[str]] = ['22684737', '23022627', '22645029', '23173281', '22641023', '22641005'], port: int = 11375, up_direction: str = '+y', dark_mode: bool = False) -> None
+
+   Drop-in function compatible with your existing import path.
+
+   .. rubric:: Example
+
+   visualize_keypoint_object(
+       obj_name="pringles",
+       cam_params=cam_params,
+       hand_keypoint_dict=hand_kps,
+       obj_trajectory_dict=obj_traj,
+       cam_imgs=None,
+       target_ids_for_plane=["22684737","23022627",...],
+   )
+
+

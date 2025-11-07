@@ -1,0 +1,15 @@
+paradex.colmap.colmap
+=====================
+
+.. py:module:: paradex.colmap.colmap
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: get_two_view_geometries(cam1, cam2, pix1, pix2, indices, pair)
+
+.. py:function:: load_colmap_camparam(path)
+

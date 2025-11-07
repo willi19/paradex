@@ -1,0 +1,53 @@
+camera_local
+============
+
+.. py:module:: camera_local
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: CameraCommandReceiver
+
+   .. py:attribute:: ident
+      :value: None
+
+
+
+   .. py:attribute:: camera
+      :value: None
+
+
+
+   .. py:attribute:: exit
+      :value: False
+
+
+
+   .. py:attribute:: file_name
+      :value: None
+
+
+
+   .. py:attribute:: init
+      :value: False
+
+
+
+   .. py:attribute:: get_thread
+
+
+   .. py:method:: get_message()
+
+
+   .. py:method:: send_message(message)
+
+
+   .. py:method:: register()
+
+
+   .. py:method:: initialize_camera()
+
+

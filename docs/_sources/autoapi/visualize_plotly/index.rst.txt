@@ -1,0 +1,52 @@
+visualize_plotly
+================
+
+.. py:module:: visualize_plotly
+
+.. autoapi-nested-parse::
+
+   LastEditTime: 2022-05-23 19:24:38
+   Description: Your description
+   Date: 2021-11-04 04:54:29
+   Author: Aiden Li
+   LastEditors: Aiden Li (i@aidenli.net)
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: colors
+   :value: ['blue', 'red', 'yellow', 'pink', 'gray', 'orange']
+
+
+.. py:function:: plot_mesh(mesh, color='lightblue', opacity=1.0)
+
+.. py:function:: plot_hand(verts, faces, color='lightpink', opacity=1.0)
+
+.. py:function:: plot_contact_points(pts, grad, color='lightpink')
+
+.. py:function:: plot_point_cloud(pts, color='lightblue', mode='markers')
+
+.. py:data:: occ_cmap
+
+.. py:function:: plot_point_cloud_occ(pts, color_levels=None)
+
+.. py:data:: contact_cmap
+
+.. py:function:: plot_point_cloud_cmap(pts, color_levels=None)
+
+.. py:function:: plot_point_cloud_cmap_sharp(pts, color_levels=None)
+
+.. py:data:: normal_color_map
+
+.. py:function:: plot_normal_map(pts, normal)
+
+.. py:function:: plot_grasps(directory, tag, uuids, physics_guide, handcodes, contact_idx, ret_plots=False, save_html=True, include_contacts=True)
+
+.. py:function:: plot_mesh_from_name(dataset_object_name, color='lightblue', opacity=1.0)
+

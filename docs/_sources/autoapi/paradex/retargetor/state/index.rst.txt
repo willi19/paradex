@@ -1,0 +1,22 @@
+paradex.retargetor.state
+========================
+
+.. py:module:: paradex.retargetor.state
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: HandStateExtractor
+
+   .. py:attribute:: parent
+
+
+   .. py:method:: get_state(pose_data)
+
+
+   .. py:method:: check_straight(pose_data)
+
+

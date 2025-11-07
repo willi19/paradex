@@ -1,0 +1,25 @@
+paradex.video.video
+===================
+
+.. py:module:: paradex.video.video
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: split_video(video_path_tuple, image_dir, frame_interval=1)
+
+   Extract frames from a video using OpenCV with FFmpeg backend.
+
+   Parameters:
+   - video_path_tuple: Tuple (video_path, json_path) containing video file and corresponding JSON.
+   - image_dir: Directory to save extracted frames.
+   - frame_interval: Extract every 'n' frames (default is 1, meaning extract all frames).
+
+
+.. py:function:: convert_avi_to_mp4(input_path, output_path)
+
+.. py:function:: convert_avi_to_compressed_avi(input_path, output_path)
+

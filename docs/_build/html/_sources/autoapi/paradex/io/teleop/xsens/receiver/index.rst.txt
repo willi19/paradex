@@ -1,0 +1,61 @@
+paradex.io.teleop.xsens.receiver
+================================
+
+.. py:module:: paradex.io.teleop.xsens.receiver
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: xsens_joint_name
+   :value: ['wrist', 'thumb_metacarpal', 'thumb_proximal', 'thumb_distal', 'index_metacarpal',...
+
+
+.. py:data:: xsens_joint_parent_name
+   :value: [None, 'wrist', 'thumb_metacarpal', 'thumb_proximal', 'wrist', 'index_metacarpal',...
+
+
+.. py:data:: XSENS2WRIST_Left
+
+.. py:data:: XSENS2WRIST_Right
+
+.. py:data:: XSENS2GLOBAL
+
+.. py:class:: XSensReceiver
+
+   .. py:attribute:: hand_pose
+
+
+   .. py:attribute:: host_ip
+      :value: '0.0.0.0'
+
+
+
+   .. py:attribute:: port
+
+
+   .. py:attribute:: stop_event
+
+
+   .. py:attribute:: lock
+
+
+   .. py:attribute:: recv_thread
+
+
+   .. py:method:: get_data()
+
+
+   .. py:method:: parse(pose_bytearray)
+
+
+   .. py:method:: run()
+
+
+   .. py:method:: quit()
+
+

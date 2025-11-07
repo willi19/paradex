@@ -1,0 +1,89 @@
+vis_utils_o3d
+=============
+
+.. py:module:: vis_utils_o3d
+
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: boc
+
+.. py:function:: get_pointcloud(pts_arr, color_arr=None)
+
+.. py:function:: get_camLinesSet(cam_extr_mtrx, length=1)
+
+.. py:function:: create_grid_plane(size=1.0, step=0.1)
+
+.. py:class:: simpleViewer(width=None, height=None, intrinsics=None)
+
+   Bases: :py:obj:`object`
+
+
+   .. py:attribute:: main_vis
+
+
+   .. py:attribute:: plane
+      :value: None
+
+
+
+   .. py:attribute:: reset_flag
+      :value: True
+
+
+
+   .. py:attribute:: ctr
+
+
+   .. py:attribute:: width
+
+
+   .. py:attribute:: height
+
+
+   .. py:attribute:: mesh_dict
+
+
+   .. py:method:: setupcamera(extrinsic_matrix)
+
+
+   .. py:method:: tick()
+
+
+   .. py:method:: add_plane(size=1, step=0.1, transform=None)
+
+
+   .. py:method:: remove_plane()
+
+
+   .. py:method:: add_geometries_list(geometry_list: list)
+
+
+   .. py:method:: add_geometries_dict(geometry_dict: dict)
+
+
+   .. py:method:: remove_geometry(name)
+
+
+   .. py:method:: remove_geometries()
+
+
+   .. py:method:: render_image()
+
+
+   .. py:method:: transform(name, transform_mtx)
+
+
+   .. py:method:: set_background(image)
+
+
+   .. py:method:: run()
+
+

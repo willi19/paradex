@@ -1,0 +1,32 @@
+undistort
+=========
+
+.. py:module:: undistort
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: undistort_img(img, intrinsic)
+
+   Undistort image using intrinsic parameters.
+
+   :param img: Image to undistort
+   :type img: np.ndarray
+   :param intrinsic: Intrinsic parameters
+   :type intrinsic: dict
+
+   :returns: Undistorted image
+   :rtype: undistorted_img (np.ndarray)
+
+
+.. py:function:: undistort_points(pts, intrinsic)
+
+.. py:function:: remap_corners(corners, cammtx, dist_coef, sn, img=None)
+
+.. py:data:: images
+

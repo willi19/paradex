@@ -1,0 +1,17 @@
+paradex.io.contact.process
+==========================
+
+.. py:module:: paradex.io.contact.process
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: median_filtering(data, window_size=5)
+
+.. py:function:: savgol_filtering(data, window_size=51, polyorder=3)
+
+.. py:function:: process_contact(data, method='median', trim=100, **kwargs)
+

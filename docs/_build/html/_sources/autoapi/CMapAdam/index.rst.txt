@@ -1,0 +1,150 @@
+CMapAdam
+========
+
+.. py:module:: CMapAdam
+
+.. autoapi-nested-parse::
+
+   Implementation of Adam of Contact Map Guide Energy
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: CMapAdam(robot_name, contact_map_goal=None, num_particles=32, init_rand_scale=0.5, learning_rate=0.005, running_name=None, energy_func_name='align_dist', device='cuda' if torch.cuda.is_available() else 'cpu', verbose_energy=False)
+
+   .. py:attribute:: running_name
+      :value: None
+
+
+
+   .. py:attribute:: device
+      :value: 'cuda'
+
+
+
+   .. py:attribute:: robot_name
+
+
+   .. py:attribute:: num_particles
+      :value: 32
+
+
+
+   .. py:attribute:: init_random_scale
+      :value: 0.5
+
+
+
+   .. py:attribute:: learning_rate
+      :value: 0.005
+
+
+
+   .. py:attribute:: verbose_energy
+      :value: False
+
+
+
+   .. py:attribute:: global_step
+      :value: None
+
+
+
+   .. py:attribute:: contact_map_goal
+      :value: None
+
+
+
+   .. py:attribute:: q_current
+      :value: None
+
+
+
+   .. py:attribute:: energy
+      :value: None
+
+
+
+   .. py:attribute:: compute_energy
+      :value: None
+
+
+
+   .. py:attribute:: object_radius
+      :value: None
+
+
+
+   .. py:attribute:: contact_value_goal
+      :value: None
+
+
+
+   .. py:attribute:: object_point_cloud
+      :value: None
+
+
+
+   .. py:attribute:: object_normal_cloud
+      :value: None
+
+
+
+   .. py:attribute:: q_global
+      :value: None
+
+
+
+   .. py:attribute:: q_local
+      :value: None
+
+
+
+   .. py:attribute:: optimizer
+      :value: None
+
+
+
+   .. py:attribute:: handmodel
+
+
+   .. py:attribute:: q_joint_lower
+
+
+   .. py:attribute:: q_joint_upper
+
+
+   .. py:method:: reset(contact_map_goal, running_name, energy_func_name)
+
+
+   .. py:method:: compute_energy_euclidean_dist()
+
+
+   .. py:method:: compute_energy_align_dist()
+
+
+   .. py:method:: step()
+
+
+   .. py:method:: do_pruning()
+      :abstractmethod:
+
+
+
+   .. py:method:: get_opt_q()
+
+
+   .. py:method:: set_opt_q(opt_q)
+
+
+   .. py:method:: get_plotly_data(index=0, color='pink', opacity=0.7)
+
+
+.. py:data:: parser
+

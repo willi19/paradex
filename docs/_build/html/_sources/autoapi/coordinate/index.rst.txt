@@ -1,0 +1,15 @@
+coordinate
+==========
+
+.. py:module:: coordinate
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: DEVICE2WRIST
+
+.. py:data:: DEVICE2GLOBAL
+

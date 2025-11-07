@@ -1,0 +1,28 @@
+paradex.pose_utils.object_optim_config
+======================================
+
+.. py:module:: paradex.pose_utils.object_optim_config
+
+.. autoapi-nested-parse::
+
+   Config and args file for object optim
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: PROJECT_DIR
+
+.. py:data:: hide_list
+   :value: ['22641005', '22645021', '23280594', '23180202', '22641023', '23029839', '22640993']
+
+
+.. py:function:: parse_args()
+
+.. py:function:: load_obj_masks(org_scene: paradex.pose_utils.scene.Scene, reload_mask=False, debug=False, confidence=0.002)
+

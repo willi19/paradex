@@ -1,0 +1,17 @@
+paradex.io.contact.index
+========================
+
+.. py:module:: paradex.io.contact.index
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: sensor_name
+   :value: ['thumb_base', 'thumb_tip', 'thumb_middle', 'index_tip', 'index_middle', 'index_base',...
+
+
+.. py:data:: contact_sensor_idx
+

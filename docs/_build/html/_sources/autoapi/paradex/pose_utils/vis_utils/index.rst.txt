@@ -1,0 +1,98 @@
+paradex.pose_utils.vis_utils
+============================
+
+.. py:module:: paradex.pose_utils.vis_utils
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: colors
+   :value: [(0, 0, 255), (0, 165, 255), (0, 255, 255), (0, 255, 0), (255, 0, 0), (128, 0, 0), (128, 0, 128)]
+
+
+.. py:function:: make_grid_image(images, grid_rows, grid_cols)
+
+.. py:function:: make_grid_image_np(images, grid_rows, grid_cols)
+
+.. py:function:: repeat_pytorch3d_mesh(pytorch3d_mesh, batch_num)
+
+.. py:data:: MESH_DIR
+
+.. py:data:: MESH_DIR_BEFORE_PROCESSING
+
+.. py:function:: get_initial_mesh(obj_name, return_type='open3d', post_processing=False, simplify=False, centered=True, device='cuda')
+
+.. py:function:: read_mesh(mesh_path, return_type='open3d', post_processing=False, simplify=False, centered=True, device='cuda')
+
+.. py:function:: remesh(verts, faces)
+
+   verts: NX3,
+   faces: NX3
+
+
+.. py:function:: parse_trimesh_objdict(mesh: trimesh.Trimesh, device='cuda:0')
+
+.. py:function:: parse_objectmesh_objdict(obj_name, min_vertex_num=None, remove_uv=False, renderer_type='pytorch3d', device='cuda', simplify=True)
+
+.. py:function:: load_ply_as_pytorch3d_mesh(ply_path, device='cuda', centered=True, simplify=False)
+
+.. py:function:: show_res(masks, scores, input_point, input_label, input_box, filename, image)
+
+.. py:function:: get_axisLinesSet(length=1, rotmat=np.eye(3), trans=np.zeros(3), mesh=False, radius=0.003)
+
+.. py:function:: image_grid(images, rows=None, cols=None, fill: bool = True, show_axes: bool = False, rgb: bool = True)
+
+   A util function for plotting a grid of images.
+
+   :param images: (N, H, W, 4) array of RGBA images
+   :param rows: number of rows in the grid
+   :param cols: number of columns in the grid
+   :param fill: boolean indicating if the space between images should be filled
+   :param show_axes: boolean indicating if the axes of the plots should be visible
+   :param rgb: boolean, If True, only RGB channels are plotted.
+               If False, only the alpha channel is plotted.
+
+   :returns: None
+
+
+.. py:function:: read_frame(video_path, frame_number=0)
+
+   read or extract img as BGR format
+
+
+.. py:function:: get_frame_number(video_path)
+
+.. py:function:: read_video_to_numpy(path)
+
+.. py:function:: pick_corners(img_info, numCorners, window_name='Detected Window', ratio=1)
+
+.. py:function:: get_ray(point, T_cam2world, intrinsic_matrix, L=1)
+
+.. py:function:: crop_and_resize_by_mask(image: numpy.ndarray, mask: numpy.ndarray, output_size: int) -> numpy.ndarray
+
+   이미지와 이진 마스크를 받아,
+   - 마스크 영역의 바운딩 박스를 구하고
+   - 그 영역을 포함하는 정사각형으로 확장한 뒤
+   - output_size x output_size 로 리사이즈
+
+   :param image: 원본 RGB 이미지
+   :type image: H x W x 3 np.uint8
+   :param mask: 0/1 또는 False/True 마스크
+   :type mask: H x W      np.uint8 or bool
+   :param output_size: 최종 출력 (h = w = output_size)
+   :type output_size: int
+
+   :returns: cropped_resized (output_size x output_size x 3 np.uint8)
+
+
+.. py:data:: cmap
+
+.. py:function:: get_colored_mesh(o3d_mesh, vertex_values, save_path=None, cmap_nm='magma_r')
+
+.. py:function:: putText(img, text, font=cv2.FONT_HERSHEY_SIMPLEX, font_scale=4, thickness=2, color=(1, 0, 0))
+

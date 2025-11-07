@@ -1,0 +1,27 @@
+pre_render_obj
+==============
+
+.. py:module:: pre_render_obj
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: PROJECT_DIR
+
+.. py:data:: device
+
+.. py:data:: nas_path
+
+.. py:data:: mesh_template_dir
+
+.. py:function:: get_rendered_obj(obj_nm, N_rotation=1000, image_size=124, renderer_type='nvdiff', dino_module=None, device='cuda')
+
+.. py:data:: mesh_template_nview_dir
+
+.. py:function:: get_nview_rendered_obj(scene, obj_dict, initial_translate, N_rotation=1000, default_scale=1.0, image_size=124, rerender=False, dino_module=None)
+

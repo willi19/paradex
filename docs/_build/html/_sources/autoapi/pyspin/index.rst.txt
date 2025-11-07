@@ -1,0 +1,142 @@
+pyspin
+======
+
+.. py:module:: pyspin
+
+
+
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: lens_info
+
+.. py:data:: system
+
+.. py:function:: get_serial_list()
+
+.. py:function:: load_camera(serialnum)
+
+.. py:class:: PyspinCameraConfig
+
+   Camera configuration constants
+
+
+   .. py:attribute:: BUFFER_COUNT
+      :value: 10
+
+
+
+   .. py:attribute:: PACKET_SIZE
+      :value: 9000
+
+
+
+   .. py:attribute:: PACKET_DELAY_MULTIPLIER
+      :value: 2
+
+
+
+   .. py:attribute:: THROUGHPUT_ALIGNMENT
+      :value: 16000
+
+
+
+   .. py:attribute:: IMAGE_TIMEOUT_MS
+      :value: 100
+
+
+
+.. py:exception:: PyspinCameraConfigurationError
+
+   Bases: :py:obj:`Exception`
+
+
+   Exception raised when camera configuration fails.
+
+   This exception is raised during camera initialization or mode changes
+   when configuration of camera parameters fails.
+
+
+.. py:class:: PyspinCamera(camPtr, gain, exposure_time)
+
+   .. py:attribute:: mode
+      :value: None
+
+
+
+   .. py:attribute:: syncMode
+      :value: None
+
+
+
+   .. py:attribute:: frame_rate
+      :value: None
+
+
+
+   .. py:attribute:: gain
+
+
+   .. py:attribute:: exposure_time
+
+
+   .. py:attribute:: cam
+
+
+   .. py:attribute:: serial_num
+
+
+   .. py:attribute:: stream_nodemap
+
+
+   .. py:attribute:: nodeMap
+
+
+   .. py:attribute:: init_time
+
+
+   .. py:method:: get_image()
+
+      Get next image from camera.
+
+      Image mode: Retries with 100ms timeout, auto-restarts on failure.
+      Video/Stream mode: Blocks until image available.
+
+      :return: Raw image pointer (call Release() after use)
+      :rtype: PySpin.ImagePtr
+
+
+
+   .. py:method:: start(mode, syncMode, frame_rate=None, gain=None, exposure_time=None)
+
+      Start image acquisition.
+
+
+
+   .. py:method:: stop()
+
+      Stop image acquisition. Camera connection remains active.
+
+      Note: Only stops acquiring images. Use release() to disconnect camera.
+
+
+
+   .. py:method:: release()
+
+      Release camera resources. Call stop() first. Cannot reuse after.
+
+
+
+.. py:function:: autoforce_ip()
+
+   
+
+
+

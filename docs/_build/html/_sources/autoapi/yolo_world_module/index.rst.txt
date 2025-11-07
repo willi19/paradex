@@ -1,0 +1,55 @@
+yolo_world_module
+=================
+
+.. py:module:: yolo_world_module
+
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: DEVICE
+
+.. py:function:: check_mask(mask)
+
+.. py:class:: YOLO_MODULE(model_id='yolo_world/v2-l', categories: str = None, device=DEVICE, use_sam=False, use_pretrained=True)
+
+   .. py:attribute:: YOLO_WORLD_MODEL
+
+
+   .. py:attribute:: BOUNDING_BOX_ANNOTATOR
+
+
+   .. py:attribute:: MASK_ANNOTATOR
+
+
+   .. py:attribute:: LABEL_ANNOTATOR
+
+
+   .. py:attribute:: categories
+
+
+   .. py:method:: process_categories(categories: str) -> List[str]
+
+
+   .. py:method:: init_model(categories)
+
+
+   .. py:method:: process_img(input_image: numpy.ndarray, iou_threshold: float = 0.5, with_segmentation: bool = True, with_confidence: bool = False, with_class_agnostic_nms: bool = False, confidence: float = 0.001, top_1: bool = True, draw_mask: bool = False)
+
+
+   .. py:method:: parse_detection(detections)
+
+
+   .. py:method:: annotate_image(input_image: numpy.ndarray, detections: supervision.Detections, categories: List[str], with_confidence: bool = False) -> numpy.ndarray
+
+
+.. py:data:: confidence_threshold
+   :value: 0.001
+
+

@@ -4,64 +4,7 @@ import time
 import os
 import re
 
-
-def discover_cameras():
-    """
-    시스템에서 사용 가능한 카메라 목록을 자동으로 찾음
-    
-    Returns:
-        list: 활성화된 카메라 이름 리스트
-    """
-    camera_names = set()
-    
-    # Linux/Unix 시스템의 shared memory 경로
-    shm_path = "/dev/shm"
-    
-    if not os.path.exists(shm_path):
-        print(f"Warning: Shared memory path {shm_path} not found")
-        return []
-    
-    # shared memory 파일 스캔
-    for filename in os.listdir(shm_path):
-        # 카메라 shared memory 패턴: {camera_name}_image_a, {camera_name}_flag 등
-        match = re.match(r'^(.+?)_(image_[ab]|fid_[ab]|flag)$', filename)
-        if match:
-            camera_name = match.group(1)
-            camera_names.add(camera_name)
-    
-    camera_list = sorted(list(camera_names))
-    
-    if camera_list:
-        print(f"Found {len(camera_list)} camera(s): {camera_list}")
-    else:
-        print("No cameras found in shared memory")
-    
-    return camera_list
-
-
-def wait_for_cameras(timeout=10.0, poll_interval=0.5):
-    """
-    카메라가 초기화될 때까지 대기
-    
-    Args:
-        timeout: 최대 대기 시간 (초)
-        poll_interval: 스캔 간격 (초)
-    
-    Returns:
-        list: 발견된 카메라 이름 리스트
-    """
-    start_time = time.time()
-    
-    while time.time() - start_time < timeout:
-        cameras = discover_cameras()
-        if cameras:
-            return cameras
-        
-        print(f"Waiting for cameras... ({time.time() - start_time:.1f}s)")
-        time.sleep(poll_interval)
-    
-    raise RuntimeError(f"No cameras found within {timeout} seconds")
-
+from paradex.utils.env import get_serial_list
 
 class CameraReader:
     """Shared memory에서 카메라 이미지를 읽어오는 클래스"""
@@ -234,7 +177,7 @@ class MultiCameraReader:
         """
         # 카메라 목록이 제공되지 않으면 자동 탐색
         if camera_names is None:
-            camera_names = discover_cameras()
+            camera_names = get_serial_list()
             if not camera_names:
                 raise RuntimeError("No cameras found. Please start cameras first.")
         

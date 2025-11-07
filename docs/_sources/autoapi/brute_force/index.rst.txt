@@ -1,0 +1,16 @@
+brute_force
+===========
+
+.. py:module:: brute_force
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ObjectDetector
+
+   .. py:method:: get_search_space()
+
+

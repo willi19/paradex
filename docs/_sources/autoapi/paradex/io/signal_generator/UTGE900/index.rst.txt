@@ -1,0 +1,127 @@
+paradex.io.signal_generator.UTGE900
+===================================
+
+.. py:module:: paradex.io.signal_generator.UTGE900
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: UTGE900
+
+   Unit-T UTG900 signal generator PYVISA control wrapper.
+
+
+   .. py:method:: list_resources()
+      :staticmethod:
+
+
+
+   .. py:attribute:: sgen
+
+
+   .. py:attribute:: ch
+      :value: [False, False]
+
+
+
+   .. py:method:: quit()
+
+
+   .. py:method:: write(cmd)
+
+
+   .. py:method:: query(cmd, strip=False)
+
+
+   .. py:method:: llOpen()
+
+
+   .. py:method:: llCh(ch)
+
+
+   .. py:method:: llWave()
+
+
+   .. py:method:: llUtility()
+
+
+   .. py:method:: llF(digit)
+
+
+   .. py:method:: llKey(keyStr)
+
+
+   .. py:method:: llUp()
+
+
+   .. py:method:: llDown()
+
+
+   .. py:method:: llLeft()
+
+
+   .. py:method:: llRight()
+
+
+   .. py:method:: llNum(numStr)
+
+
+   .. py:method:: llFKey(val, keyMap)
+
+
+   .. py:method:: ilFreq(freq, unit)
+
+
+   .. py:method:: ilAmp(amp, unit)
+
+
+   .. py:method:: ilWave1(wave)
+
+      Selec wave type
+
+
+
+   .. py:method:: ilWave1Props(wave)
+
+      Wave properties, page1
+
+
+
+   .. py:method:: ilChooseChannel(ch)
+
+      Key sequence to to bring UTG962 to display to a known state.
+
+      Here, invoke Utility option, use function key F1 or F2 to
+      choose channel. Do it twice (and visit Wave menu in between)
+
+
+
+
+   .. py:method:: ilFreqUnit(unit)
+
+
+   .. py:method:: ilAmpUnit(unit)
+
+
+   .. py:method:: ilUtilityCh(ch)
+
+
+   .. py:method:: on(ch)
+
+
+   .. py:method:: off(ch)
+
+
+   .. py:method:: generate(ch=1, wave='square', freq=30, amp=10)
+
+      sine, square, pulse generation
+
+
+
+
+   .. py:method:: getName()
+
+

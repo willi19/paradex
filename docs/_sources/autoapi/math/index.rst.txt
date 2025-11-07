@@ -1,0 +1,26 @@
+math
+====
+
+.. py:module:: math
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: rigid_transform_3D(A, B)
+
+   Calculates the rigid transformation matrix (rotation + translation)
+   that best aligns A to B using Singular Value Decomposition (SVD).
+
+   :param A: Nx3 array of points.
+   :type A: numpy.ndarray
+   :param B: Nx3 array of points.
+   :type B: numpy.ndarray
+
+   :returns: 4x4 transformation matrix.
+             T @ A = B
+   :rtype: numpy.ndarray
+
+

@@ -1,0 +1,84 @@
+viser
+=====
+
+.. py:module:: viser
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ViserViewer
+
+   .. py:method:: add_robot(robot: paradex.visualization.robot.RobotModule)
+
+
+   .. py:method:: add_object(name, obj: trimesh.Trimesh, obj_T)
+
+
+   .. py:method:: load_server()
+
+
+   .. py:method:: add_traj(traj: Dict)
+
+
+   .. py:method:: add_grid_lines(size=5.0)
+
+      Add grid lines separately using line segments
+
+
+
+   .. py:method:: update_floor()
+
+      Update floor visibility and appearance
+
+
+
+   .. py:method:: create_floor_mesh(size=5.0)
+
+      Create a simple floor mesh
+
+
+
+.. py:class:: ViserRobotModule(target, urdf_path, scale: float = 1.0, root_node_name: str = '/', load_meshes=True, load_collision_meshes=False)
+
+   .. py:method:: change_color(name_list, color: Tuple[float, float, float]) -> None
+
+      Change the color of the visualized URDF.
+
+
+
+   .. py:property:: show_visual
+      :type: bool
+
+
+      Returns whether the visual meshes are currently visible.
+
+
+   .. py:property:: show_collision
+      :type: bool
+
+
+      Returns whether the collision meshes are currently visible.
+
+
+   .. py:property:: urdf
+      :type: paradex.visualization.robot.RobotModule
+
+
+      Get the underlying URDF object.
+
+
+   .. py:method:: remove() -> None
+
+      Remove URDF from scene.
+
+
+
+   .. py:method:: update_cfg(configuration: numpy.ndarray) -> None
+
+      Update the joint angles of the visualized URDF.
+
+
+

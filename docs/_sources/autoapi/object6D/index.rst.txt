@@ -1,0 +1,6 @@
+object6D
+========
+
+.. py:module:: object6D
+
+

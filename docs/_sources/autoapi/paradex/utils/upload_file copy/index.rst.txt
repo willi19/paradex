@@ -1,0 +1,27 @@
+paradex.utils.upload_file copy
+==============================
+
+.. py:module:: paradex.utils.upload_file copy
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: get_total_size(path, dest_path)
+
+   Calculate total size of files that need to be copied (excluding identical existing files).
+
+
+.. py:function:: copy_file_with_progress(src, dst, total_size, copied_size)
+
+   Copy a file with progress tracking, overwriting in case of corruption.
+
+
+.. py:function:: copy_to_nfs(source_path, destination_path, total_size, copied_size=0, end_with=None)
+
+.. py:data:: parser
+

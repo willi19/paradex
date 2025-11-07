@@ -1,0 +1,66 @@
+optimize_module
+===============
+
+.. py:module:: optimize_module
+
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: PROJECT_DIR
+
+.. py:function:: silhouette_iou_loss(pred_silhouette, target_silhouette)
+
+.. py:function:: silhouette_tg_loss(pred_silhouette, target_silhouette)
+
+.. py:function:: get_transformed_obj(obj_dict, optim_scale, optim_R, optim_t, R_type='6d')
+
+   Dimension check
+
+
+.. py:function:: compute_filtered_mean(diff, filter, percentile_thres=80)
+
+.. py:function:: optimize_with_initial_sRt(input_data)
+
+.. py:function:: get_initial_T_by_picking(scene, tg_cam_ids, o3d_mesh)
+
+.. py:function:: get_gt_data(scene, mask_root, cam_ids, device, computed_mask: dict = None, fidx=0)
+
+.. py:function:: load_obj_masks(org_scene: paradex.object_detection.obj_utils.scene.Scene, reload_mask=False, debug=False, confidence=0.002)
+
+.. py:function:: parse_and_crop(obj_mask_t_dict, obj_masked_rgb_t_dict, img_L=112)
+
+.. py:function:: render_and_compute_loss_all_cams(obj_dict, scene, rot_6d_t, initial_translate, default_scale, tg_rgbs, tg_sils, tg_rgbs_full, tg_sils_full, turn_on_filter=False, device='cuda')
+
+.. py:function:: compute_filtered_mean(diff, filter, percentile_thres=80)
+
+.. py:function:: render_and_compute_loss_all_cams(obj_dict, scene, rot_6d_t, initial_translate, default_scale, tg_rgbs, tg_sils, tg_rgbs_full, tg_sils_full, turn_on_filter=False, device='cuda')
+
+.. py:function:: render_and_compute_loss_all_cams_dino(obj_dict, scene, rot_6d_t, initial_translate, default_scale, tg_rgbs_full, tg_sils_full, tg_features, dino_module=None, use_local_feature=False, image_size=112, turn_on_filter=False, device='cuda')
+
+.. py:class:: EarlyStopping(patience=30, min_delta=0.0)
+
+   .. py:attribute:: patience
+      :value: 30
+
+
+
+   .. py:attribute:: min_delta
+      :value: 0.0
+
+
+
+   .. py:attribute:: counter
+      :value: 0
+
+
+
+   .. py:attribute:: best_loss
+
+

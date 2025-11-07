@@ -1,0 +1,61 @@
+paradex.pose_utils.retarget_utils
+=================================
+
+.. py:module:: paradex.pose_utils.retarget_utils
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: MEDIA_EDGES
+   :value: [(0, 1), (1, 2), (2, 3), (3, 4), (0, 5), (5, 6), (6, 7), (7, 8), (5, 9), (9, 10), (10, 11), (11,...
+
+
+.. py:function:: transform_vector(T, v)
+
+   벡터 (3,) -> (3,)
+
+
+.. py:function:: compute_world_up_and_front(cam_params, plane_ids, front_cam_id, convention='opencv')
+
+   return: up_world (3,), front_ref_world (3,)
+   - convention="opencv": 카메라 z가 전방(+Z), y는 아래. 카메라 'up' = -y_cam.
+
+
+.. py:function:: fix_pose_flip(T_old, obj_mesh, local_axis_vector, plane_up_vector)
+
+   객체의 실제 기하학적 중심(centroid)을 기준으로 뒤집힘을 보정합니다.
+
+
+.. py:function:: align_object_front(T, up_world, front_ref_world, db_local)
+
+   object의 front를 world front 방향에 맞추되,
+   up_world 축을 보존하는 회전으로 정렬.
+
+   :param T: (4,4) object pose (world 좌표계).
+   :type T: np.ndarray
+   :param up_world: (3,) world up vector.
+   :type up_world: np.ndarray
+   :param front_ref_world: (3,) target world front vector.
+   :type front_ref_world: np.ndarray
+   :param db_local: (3,) object local front vector.
+   :type db_local: np.ndarray
+
+   :returns: (4,4) 정렬된 object pose.
+   :rtype: T_new (np.ndarray)
+
+
+.. py:function:: basis_from_up_front(up, front)
+
+.. py:function:: make_W_from_up_front(up_prev, front_prev, up_today, front_today, anchor_prev=None, anchor_today=None)
+
+.. py:function:: load_keypoints_from_mano_params(scene_path) -> numpy.ndarray
+
+.. py:function:: get_keypoint_trajectory(scene_path, start_6d, obj_name, no_rot=False, wrist_up=False)
+
+.. py:function:: visualize_new_trajectory(obj_name, wrist_6d, hand_keypoint_dict, obj_trajectory_dict, q_pose_dict)
+

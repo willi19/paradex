@@ -1,0 +1,174 @@
+geometry
+========
+
+.. py:module:: geometry
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: rot6d_to_matrix(rot_6d)
+
+   Convert 6D rotation representation to 3x3 rotation matrix.
+   Reference: Zhou et al., "On the Continuity of Rotation Representations in Neural
+   Networks", CVPR 2019
+
+   :param rot_6d: Batch of 6D Rotation representation.
+   :type rot_6d: B x 6
+
+   :returns: Rotation matrices (B x 3 x 3).
+
+
+.. py:function:: matrix_to_rot6d(rotmat)
+
+   Convert rotation matrix to 6D rotation representation.
+
+   :param rotmat: Batch of rotation matrices.
+   :type rotmat: B x 3 x 3
+
+   :returns: 6D Rotations (B x 3 x 2).
+
+
+.. py:function:: combine_verts(verts_list)
+
+.. py:function:: center_vertices(vertices, faces, flip_y=True)
+
+   Centroid-align vertices.
+
+   :param vertices: Vertices.
+   :type vertices: V x 3
+   :param faces: Faces.
+   :type faces: F x 3
+   :param flip_y: If True, flips y verts to keep with image coordinates convention.
+   :type flip_y: bool
+
+   :returns: vertices, faces
+
+
+.. py:function:: compute_dist_z(verts1, verts2)
+
+   Computes distance between sets of vertices only in Z-direction.
+
+   :param verts1:
+   :type verts1: V x 3
+   :param verts2:
+   :type verts2: V x 3
+
+   :returns: tensor
+
+
+.. py:function:: compute_random_rotations(B=10, upright=False)
+
+.. py:function:: rigid_transform_3D(pt1, pt2, with_scale=False)
+
+.. py:function:: rigid_transform_3D_ransac(pt1, pt2, sample_ratio=0.2, with_scale=False, num_iter=500, threshold=0.02)
+
+.. py:function:: triangulate_ransac_batched(corners: dict, projections: list, sample_ratio: float, num_iter=2000, threshold=3)
+
+   N : number of images with same marker
+   corners : {1: (N,2) array, 2:(N,2) array, 3:(N,2) array, 4: (N,2) array}
+   projections : list of 3x4 matrices of length N
+   sample_ratio : ratio to sample, e.g. 0.8
+   num_iter : number of iterations (batched)
+
+
+.. py:function:: transform_by_extrinsic(point, extrinsic)
+
+.. py:function:: project_3d_to_2d(points3d, projections, same_dim=False)
+
+.. py:function:: project_3d_to_2d_tensor(points3d_t, projections_t, same_dim=False)
+
+.. py:function:: optimize_3d_to_target_multiview(point_3d, projections, target_2d, device)
+
+.. py:function:: rotation_matrix_from_vectors(v1, v2)
+
+   Returns the rotation matrix that aligns v1 to v2.
+   v1 and v2 are 3-element vectors.
+
+
+.. py:function:: generate_voxel_grid(voxel_range, resolution=0.01)
+
+.. py:function:: check_points_in_mask(points, mask)
+
+.. py:function:: get_visualhull_ctr(scene, resolution=0.01, mask_dict=None)
+
+.. py:function:: get_bbox_from_mask(mask)
+
+.. py:function:: center_bbox_from_mask(mask)
+
+.. py:function:: get_bbox_center(scene, tg_cams=None, mask_dict=None)
+
+.. py:function:: pixel_to_ray(K, R, t, pixel)
+
+   Convert 2D pixel to 3D ray in world coordinates.
+
+
+.. py:function:: ray_triangle_intersect(orig, dir, v0, v1, v2)
+
+   Möller–Trumbore ray-triangle intersection algorithm.
+   Returns intersection point if hit, otherwise None.
+
+
+.. py:function:: raycast_mesh(K, R, t, pixel, vertices, faces)
+
+.. py:function:: deterministic_so3_fibonacci(n)
+
+   Fibonacci 기반으로 SO(3) uniformly 샘플링
+
+
+.. py:function:: uniform_so3_fibonacci(n)
+
+   SO(3) 균일 샘플링 (deterministic, Hopf fibration 기반)
+   논문 기반: Yershova et al., 2010 (Fibonacci grids on SO(3))
+
+
+.. py:function:: matrix_to_rotation_6d(matrix: torch.Tensor) -> torch.Tensor
+
+   Converts rotation matrices to 6D rotation representation by Zhou et al. [1]
+   by dropping the last row. Note that 6D representation is not unique.
+   :param matrix: batch of rotation matrices of size (*, 3, 3)
+
+   :returns: 6D rotation representation, of size (*, 6)
+
+   [1] Zhou, Y., Barnes, C., Lu, J., Yang, J., & Li, H.
+   On the Continuity of Rotation Representations in Neural Networks.
+   IEEE Conference on Computer Vision and Pattern Recognition, 2019.
+   Retrieved from http://arxiv.org/abs/1812.07035
+
+
+.. py:function:: rotation_6d_to_matrix(d6: torch.Tensor) -> torch.Tensor
+
+   Converts 6D rotation representation by Zhou et al. [1] to rotation matrix
+   using Gram--Schmidt orthogonalization per Section B of [1].
+   :param d6: 6D rotation representation, of size (*, 6)
+
+   :returns: batch of rotation matrices of size (*, 3, 3)
+
+   [1] Zhou, Y., Barnes, C., Lu, J., Yang, J., & Li, H.
+   On the Continuity of Rotation Representations in Neural Networks.
+   IEEE Conference on Computer Vision and Pattern Recognition, 2019.
+   Retrieved from http://arxiv.org/abs/1812.07035
+
+
+.. py:function:: rotation_6d_to_matrix_np(r6d)
+
+.. py:function:: mean_rotmat(rotmats)
+
+   rotmats: (N, 3, 3) 형태의 회전 행렬 N개
+   반환값: 평균 회전 행렬 (3, 3)
+
+
+.. py:function:: normalize_rotation_matrix(R_mat)
+
+   Normalize (orthogonalize) a 3x3 rotation matrix using SVD.
+
+
+.. py:function:: rotation_distance(R1, R2)
+
+   Geodesic distance between two rotation matrices (in radians).
+
+
+.. py:function:: cluster_rotations(rotation_matrices, distance_threshold=0.3)
+

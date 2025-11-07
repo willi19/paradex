@@ -1,0 +1,26 @@
+docs/_static/custom.css << 'EOF'
+/* 햄버거 메뉴 숨기기 */
+.mobile-header {
+    display: none !important;
+}
+
+/* 테마 선택 버튼 완전히 제거 */
+.theme-toggle-container,
+.theme-toggle,
+button[class*="theme"],
+.theme-switch-button {
+    display: none !important;
+}
+
+/* Back to top 화살표 제거 */
+.to-top,
+a[class*="to-top"],
+.back-to-top {
+    display: none !important;
+}
+
+/* 큰 화살표 (sidebar toggle) 제거 */
+.sidebar-toggle,
+button.sidebar-toggle {
+    display: none !important;
+}

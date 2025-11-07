@@ -1,0 +1,122 @@
+open3d_viewer
+=============
+
+.. py:module:: open3d_viewer
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: Open3DVideoRenderer(obj_mesh, obj_T, urdf_path, qpos, c2r=None, object_nm='object', width=1280, height=720, fps=30)
+
+   .. py:attribute:: obj_T
+
+
+   .. py:attribute:: mesh
+
+
+   .. py:attribute:: object_nm
+      :value: 'object'
+
+
+
+   .. py:attribute:: width
+      :value: 1280
+
+
+
+   .. py:attribute:: height
+      :value: 720
+
+
+
+   .. py:attribute:: fps
+      :value: 30
+
+
+
+   .. py:attribute:: urdf_path
+
+
+   .. py:attribute:: robot
+
+
+   .. py:attribute:: qpos
+
+
+   .. py:attribute:: robot_mesh
+
+
+   .. py:attribute:: num_frames
+
+
+   .. py:attribute:: current_robot_parts
+      :value: 0
+
+
+
+   .. py:method:: setup_renderer()
+
+      Open3D 오프스크린 렌더러 설정
+
+
+
+   .. py:method:: setup_materials()
+
+      재질 설정
+
+
+
+   .. py:method:: setup_lighting()
+
+      조명 설정
+
+
+
+   .. py:method:: trimesh_to_o3d(trimesh_mesh)
+
+      Trimesh를 Open3D 메시로 변환
+
+
+
+   .. py:method:: load_mesh()
+
+
+   .. py:method:: add_floor()
+
+      바닥 추가
+
+
+
+   .. py:method:: add_coordinate_frame()
+
+      좌표계 프레임 추가
+
+
+
+   .. py:method:: render_frame(timestep)
+
+      단일 프레임 렌더링
+
+
+
+   .. py:method:: set_camera_view(eye=[1.5, 1.5, 1.5], center=[0, 0, 0.15], up=[0, 0, 1])
+
+      카메라 뷰 설정
+
+
+
+   .. py:method:: render_video(output_path='rendered_video_o3d.mp4', camera_eye=[1.5, 1.5, 1.5], logger=[])
+
+      전체 비디오 렌더링
+
+
+
+   .. py:method:: save_video_opencv(frames, output_path, logger=[])
+
+      OpenCV를 사용한 비디오 저장 (대안)
+
+
+

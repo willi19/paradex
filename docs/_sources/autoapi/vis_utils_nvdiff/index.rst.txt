@@ -1,0 +1,118 @@
+vis_utils_nvdiff
+================
+
+.. py:module:: vis_utils_nvdiff
+
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: transform_pos(mtx, pos)
+
+   pos: batch_num X J X 3
+
+
+.. py:function:: intr_opencv_to_opengl_proj(K, width, height, near=0.2, far=2.0)
+
+.. py:function:: projection(x=0.1, n=1.0, f=50.0)
+
+   x = tan(fov / 2) i
+
+
+.. py:function:: translate(x, y, z)
+
+.. py:function:: rotate_x(a)
+
+.. py:function:: rotate_y(a)
+
+.. py:function:: random_rotation_translation(t)
+
+.. py:function:: bilinear_downsample(x)
+
+.. py:function:: display_image(image, zoom=None, size=None, title=None)
+
+.. py:function:: save_image(fn, x)
+
+.. py:function:: q_unit()
+
+.. py:function:: q_rnd()
+
+.. py:function:: q_rnd_S4()
+
+.. py:function:: q_slerp(p, q, t)
+
+.. py:function:: q_scale(q, scl)
+
+.. py:function:: q_mul(p, q)
+
+.. py:function:: q_angle_deg(p, q)
+
+.. py:function:: q_mul_torch(p, q)
+
+.. py:function:: q_to_mtx(q)
+
+.. py:function:: transform_pos(mtx, pos)
+
+.. py:data:: PROJECT_DIR
+
+.. py:class:: BatchRenderer(opengl, cam_intrinsics, cam_extrinsics, width, height, near=0.01, far=2, device=None)
+
+   .. py:attribute:: glctx
+
+
+   .. py:attribute:: device
+      :value: None
+
+
+
+   .. py:attribute:: cam_extrs_t
+
+
+   .. py:attribute:: batch_size
+
+
+   .. py:attribute:: intr_opengl
+
+
+   .. py:attribute:: flip_z
+
+
+   .. py:method:: render_wvertexcolor(mtx, pos, pos_idx, vtx_col, col_idx)
+
+
+   .. py:method:: render_wtexture(mtx, pos, pos_idx, uv, uv_idx, tex, enable_mip=False, max_mip_level=9)
+
+      with enable_mip
+      mtx : BX4X3
+      pos : NX3
+      pos_idx : MX3
+      uv: BXUX2
+      uv_idx: VX3
+      tex: BXHXWX3
+
+
+
+
+   .. py:method:: render(obj_dict, render_rgb=True)
+
+      texture_type == 'vectex_color'
+          obj_dict = {'type':'vertex_color' ,'vtx_pos':, 'pos_idx':, 'vtx_col':, 'col_idx':}
+      texture_type == 'triangle_uvs'
+          obj_dict = {'type': triangle_uvs, 'vtx_pos':, 'pos_idx':, 'uvs':, 'uv_idx', 'texture' }
+
+      The parameter render_rgb is not used
+
+
+
+   .. py:method:: render_id(obj_dict_list)
+
+
+   .. py:method:: get_rendered_faces(obj_dict)
+
+

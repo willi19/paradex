@@ -1,0 +1,25 @@
+sam
+===
+
+.. py:module:: sam
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: HOME_PATH
+
+.. py:data:: GPU_EFFICIENT_SAM_CHECKPOINT
+
+.. py:data:: CPU_EFFICIENT_SAM_CHECKPOINT
+
+.. py:function:: load(device: torch.device) -> torch.jit.ScriptModule
+
+.. py:function:: inference_with_box(image: numpy.ndarray, box: numpy.ndarray, model: torch.jit.ScriptModule, device: torch.device) -> numpy.ndarray
+
+.. py:function:: inference_with_boxes(image: numpy.ndarray, xyxy: numpy.ndarray, model: torch.jit.ScriptModule, device: torch.device) -> numpy.ndarray
+

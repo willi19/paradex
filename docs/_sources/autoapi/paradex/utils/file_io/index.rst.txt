@@ -37,6 +37,8 @@ Module Contents
 
 .. py:data:: pc_name
 
+.. py:data:: log_path
+
 .. py:function:: get_video_list(video_dir)
 
    Get a list of video files in the specified directory.
@@ -107,4 +109,14 @@ Module Contents
 .. py:function:: load_latest_C2R()
 
 .. py:function:: load_latest_eef()
+
+.. py:function:: load_yaml(file_path: str) -> Dict
+
+   Load yaml file and return as dictionary. If file_path is a dictionary, return as is.
+
+   :param file_path: File path to yaml file or dictionary.
+
+   :returns: Dictionary containing yaml file content.
+   :rtype: Dict
+
 

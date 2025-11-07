@@ -36,8 +36,6 @@ Module Contents
 
 
 .. py:data:: serial_list
-   :value: []
-
 
 .. py:data:: socket
 

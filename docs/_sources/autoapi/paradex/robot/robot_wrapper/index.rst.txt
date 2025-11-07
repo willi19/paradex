@@ -93,7 +93,7 @@ Module Contents
 
 
 
-   .. py:method:: solve_ik(target_pose: numpy.typing.NDArray, end_effector_name: str, q_init: numpy.typing.NDArray = None, max_iter: int = 1000, tol: float = 1e-08, alpha: float = 0.05, try_num: int = 30) -> numpy.typing.NDArray
+   .. py:method:: solve_ik(target_pose: numpy.typing.NDArray, end_effector_name: str, q_init: numpy.typing.NDArray = None, max_iter: int = 1000, tol: float = 1e-08, alpha: float = 0.05, try_num: int = 30) -> Tuple[numpy.typing.NDArray, bool]
 
 
    .. py:method:: get_end_links() -> List[str]

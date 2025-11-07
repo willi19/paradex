@@ -15,6 +15,7 @@ Submodules
    /autoapi/paradex/io/robot_controller/inspire_controller/index
    /autoapi/paradex/io/robot_controller/inspire_controller copy/index
    /autoapi/paradex/io/robot_controller/xarm_controller/index
+   /autoapi/paradex/io/robot_controller/xarm_controller_tmp/index
 
 
 

@@ -61,6 +61,11 @@ Module Contents
    .. py:attribute:: last_link_id
 
 
+   .. py:attribute:: mode_change
+      :value: False
+
+
+
    .. py:attribute:: thread
 
 

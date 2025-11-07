@@ -6,161 +6,28 @@ camera_loader
 
 
 
-
-
 Module Contents
 ---------------
 
-.. py:function:: spin2cv(pImg, h, w)
+.. py:class:: CameraLoader
 
-   Convert Spinnaker image to OpenCV format.
-
-   :param pImg: Spinnaker image object
-   :param h: Image height
-   :type h: int
-   :param w: Image width
-   :type w: int
-
-   :returns: Converted OpenCV image
-   :rtype: cvImg (np.ndarray)
-
-
-.. py:class:: CameraManager(mode, serial_list=None, syncMode=True)
-
-   .. py:attribute:: exit
-
-
-   .. py:attribute:: start_capture
-
-
-   .. py:attribute:: mode_change
-
-
-   .. py:attribute:: save_dir
-      :value: None
-
-
-
-   .. py:attribute:: mode
-
-
-   .. py:attribute:: connected_serial_list
+   .. py:attribute:: cameralist
       :value: []
 
 
 
-   .. py:attribute:: num_cameras
+   .. py:method:: load_pyspin_camera(serial_list=None)
 
 
-   .. py:attribute:: connect_flag
+   .. py:method:: start(mode, syncMode, save_path=None, fps=30)
 
 
-   .. py:attribute:: connect_success
-
-
-   .. py:attribute:: cam_start_flag
-
-
-   .. py:attribute:: capture_end_flag
-
-
-   .. py:attribute:: save_finish_flag
-
-
-   .. py:attribute:: quit_flag
-
-
-   .. py:attribute:: mode_change_flag
-
-
-   .. py:attribute:: mode_change_complete
-
-
-   .. py:attribute:: cameras
-
-
-   .. py:attribute:: syncMode
-      :value: True
-
-
-
-   .. py:attribute:: new_mode
-      :value: None
-
-
-
-   .. py:attribute:: new_syncMode
-      :value: None
-
-
-
-   .. py:attribute:: camera_threads
-      :value: []
-
-
-
-   .. py:attribute:: lens_info
-
-
-   .. py:attribute:: cam_info
-
-
-   .. py:attribute:: capture_threads
-
-
-   .. py:method:: change_mode(mode, syncMode=None)
-
-      모든 카메라의 모드를 변경합니다.
-
-      :param mode: 새로운 모드 ("image", "video", "stream")
-      :type mode: str
-      :param syncMode: 새로운 동기화 모드. None이면 기존 값 유지
-      :type syncMode: bool, optional
-
-      :returns: 모드 변경 성공 여부
-      :rtype: bool
-
-
-
-   .. py:method:: get_serial_list()
-
-
-   .. py:method:: autoforce_ip()
-
-
-   .. py:method:: get_videostream(savePath)
-
-
-   .. py:method:: wait_for_connection()
-
-
-   .. py:method:: wait_for_camstart()
-
-
-   .. py:method:: wait_for_saveend()
-
-
-   .. py:method:: wait_for_quit()
-
-
-   .. py:method:: run_camera(index)
-
-
-   .. py:method:: wait_for_capture_end()
-
-
-   .. py:method:: start(save_dir=None)
+   .. py:method:: stop()
 
 
    .. py:method:: end()
 
 
-   .. py:method:: quit()
-
-
-   .. py:method:: get_frameid(index)
-
-
-   .. py:method:: get_data(index)
+   .. py:method:: get_status_list()
 
 

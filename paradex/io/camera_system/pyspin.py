@@ -196,6 +196,8 @@ class PyspinCamera():
         if syncMode != self.syncMode and syncMode:
             self.syncMode = syncMode
             self._configureTrigger()
+            print(self.syncMode)
+
             
         if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)):
             self.frame_rate = frame_rate

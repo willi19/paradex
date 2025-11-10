@@ -1,0 +1,60 @@
+remote_camera_controller
+========================
+
+.. py:module:: remote_camera_controller
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: remote_camera_controller(name, pc_list=None)
+
+   .. py:attribute:: name
+      :value: 'Uninferable_Uninferable'
+
+
+
+   .. py:attribute:: pc_info
+
+
+   .. py:attribute:: pc_list
+      :value: None
+
+
+
+   .. py:attribute:: ping_port
+      :value: 5480
+
+
+
+   .. py:attribute:: command_port
+      :value: 5482
+
+
+
+   .. py:method:: initialize()
+
+
+   .. py:method:: check_server_alive(pc)
+
+      ping port로 서버 확인
+
+
+
+   .. py:method:: send_command(cmd)
+
+      명령 전송 및 응답 수신
+
+
+
+   .. py:method:: start(mode, syncMode, save_path=None, fps=30)
+
+
+   .. py:method:: stop()
+
+
+   .. py:method:: end()
+
+

@@ -11,15 +11,10 @@ Module Contents
 
 .. py:class:: UTGE900
 
-   Unit-T UTG900 signal generator PYVISA control wrapper.
+   Unit-T UTG900 signal generator - Direct USBTMC control
 
 
-   .. py:method:: list_resources()
-      :staticmethod:
-
-
-
-   .. py:attribute:: sgen
+   .. py:attribute:: device
 
 
    .. py:attribute:: ch
@@ -29,11 +24,20 @@ Module Contents
 
    .. py:method:: quit()
 
+      Close device
+
+
 
    .. py:method:: write(cmd)
 
+      Send command to device
+
+
 
    .. py:method:: query(cmd, strip=False)
+
+      Send command and read response
+
 
 
    .. py:method:: llOpen()
@@ -80,7 +84,7 @@ Module Contents
 
    .. py:method:: ilWave1(wave)
 
-      Selec wave type
+      Select wave type
 
 
 
@@ -92,11 +96,7 @@ Module Contents
 
    .. py:method:: ilChooseChannel(ch)
 
-      Key sequence to to bring UTG962 to display to a known state.
-
-      Here, invoke Utility option, use function key F1 or F2 to
-      choose channel. Do it twice (and visit Wave menu in between)
-
+      Key sequence to bring UTG962 to display to a known state.
 
 
 
@@ -118,7 +118,6 @@ Module Contents
    .. py:method:: generate(ch=1, wave='square', freq=30, amp=10)
 
       sine, square, pulse generation
-
 
 
 

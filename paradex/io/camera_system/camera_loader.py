@@ -7,6 +7,7 @@ from paradex.utils.file_io import home_path
 class CameraLoader:
     def __init__(self):
         self.cameralist = []
+        self.camera_names = []
     
     def load_pyspin_camera(self, serial_list=None):
         from paradex.io.camera_system.pyspin import get_serial_list, autoforce_ip
@@ -17,6 +18,7 @@ class CameraLoader:
             serial_list = get_serial_list()
         
         self.cameralist = [Camera("pyspin", serial) for serial in serial_list]
+        self.camera_names = self.camera_names + serial_list
     
     def start(self, mode, syncMode, save_path=None, fps=30):
         if mode == "image":

@@ -529,11 +529,14 @@ class ViserRobotModule():
             mesh.apply_scale(self._scale)
             mesh.apply_transform(T_parent_child)
 
-            vertices = mesh.vertices
-            faces = mesh.faces
-            color = np.array(mesh.visual.vertex_colors[0, :3])
-            self._meshes[name] = (self._target.scene.add_mesh_simple(name, vertices, faces, color=color))
-
+            # vertices = mesh.vertices
+            # faces = mesh.faces
+            # color = np.array(mesh.visual.vertex_colors[0, :3])
+            # self._meshes[name] = (self._target.scene.add_mesh_simple(name, vertices, faces, color=color))
+            self._meshes[name] = self._target.scene.add_mesh_trimesh(
+                name=name,
+                mesh=mesh
+            )
         return root_frame
     # def apply_mesh_color_override(mesh_color_override):
         # elif len(mesh_color_override) == 3:

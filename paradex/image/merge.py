@@ -26,5 +26,4 @@ def merge_image(image_dict):
         r_start = r_idx * (new_H + border_px)
         c_start = c_idx * (new_W + border_px)
         grid_image[r_start:r_start+resized_img.shape[0], c_start:c_start+resized_img.shape[1]] = resized_img
-
     return grid_image

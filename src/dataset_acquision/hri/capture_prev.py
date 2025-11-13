@@ -5,7 +5,7 @@ import os
 import chime
 chime.theme('pokemon')
 
-from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
+from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.capture_pc.connect import git_pull, run_script
 from paradex.io.signal_generator.UTGE900 import UTGE900
 
@@ -19,12 +19,16 @@ pc_info = get_pcinfo()
 serial_list = get_serial_list()
 
 parser = argparse.ArgumentParser()
-# parser.add_argument("--arm", default="xarm")
-# parser.add_argument("--hand")
+parser.add_argument("--arm", default="xarm")
+parser.add_argument("--hand")
 parser.add_argument('--obj_name', required=True)
 args = parser.parse_args()
 
-rcc = remote_camera_controller("test")
+pc_list = list(pc_info.keys())
+git_pull("merging", pc_list)
+run_script(f"python src/dataset_acquision/hri/video_client.py", pc_list)
+
+camera_loader = RemoteCameraController("video", None, sync=True)
 signal_generator = UTGE900()
 
 stop_event = Event()
@@ -33,7 +37,7 @@ end_capture = Event()
 
 listen_keyboard({"s":start_capture, "e":end_capture, "q":stop_event})
 
-save_path = os.path.join("capture_hri", "hand", args.obj_name)
+save_path = os.path.join("capture_", "hri", args.obj_name)
 shared_path = os.path.join(shared_dir, save_path)
 last_capture_idx = -1
 
@@ -44,7 +48,6 @@ else:
 
 try:
     capture_idx = last_capture_idx + 1
-    print("start_capture", capture_idx)
     chime.warning()
     while not stop_event.is_set():
         if not start_capture.is_set():
@@ -54,15 +57,16 @@ try:
         copy_calib_files(f'{shared_path}/{capture_idx}')
         
         end_capture.clear()
-        rcc.start("video", True, f'{save_path}/{capture_idx}', fps=30)
-        print("start_capture", capture_idx)
+        camera_loader.start(f'{save_path}/{capture_idx}/videos')
+        print("start_capture")
         signal_generator.on(1)
         chime.info()
         
         while not end_capture.is_set():
             time.sleep(0.01)
             continue
-        rcc.stop()
+        
+        camera_loader.end()
         print("end_capture")
         start_capture.clear()
         signal_generator.off(1)
@@ -70,5 +74,5 @@ try:
         capture_idx += 1
         
 finally:
-    rcc.end()
+    camera_loader.quit()
     

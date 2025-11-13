@@ -5,41 +5,40 @@ import numpy as np
 
 from paradex.image.aruco import detect_aruco, triangulate_marker, draw_aruco
 from paradex.image.undistort import undistort_img
-from paradex.geometry.Tsai_Lenz import solve
+from paradex.geometry.Tsai_Lenz import solve, solve_axb_pytorch
 from paradex.geometry.conversion import project, to_homo
-from paradex.utils.file_io import handeye_calib_path, find_latest_directory, load_camparam
+from paradex.utils.file_io import shared_dir, find_latest_directory, load_camparam
 from paradex.image.projection import get_cammtx
 from paradex.geometry.math import rigid_transform_3D
 
-marker_id = [261, 262, 263, 264, 265, 266]
+marker_id = [452, 453, 454, 456, 457]
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
 
 args = parser.parse_args()
 if args.name is None:
-    args.name = find_latest_directory(handeye_calib_path)
+    args.name = find_latest_directory(os.path.join(shared_dir, "handeye_calib_bifranka_jangja"))
 
 name = args.name
-he_calib_path = os.path.join(handeye_calib_path, name)
+he_calib_path = os.path.join(os.path.join(shared_dir, "handeye_calib_bifranka_jangja"), name)
 
 intrinsic, extrinsic = load_camparam(os.path.join(he_calib_path, "0"))
 cammtx = get_cammtx(intrinsic, extrinsic)
-
 index_list = os.listdir(he_calib_path)
 
 robot_cor = []
 cam_cor = []
 
+robot_cor = np.load("/home/robot/sookwan/exp5-bimanual-paradex2/saved_poses/perturbed_2025-11-13-03-14-12.npy")
+
 for idx in index_list:
-    robot_cor.append(np.load(os.path.join(he_calib_path, idx, "robot.npy")))
-    
-    # if os.path.exists(os.path.join(he_calib_path, idx, "marker_3d.npy")):
-    #     marker_3d = np.load(os.path.join(he_calib_path, idx, "marker_3d.npy"), allow_pickle=True).item()
-    #     cam_cor.append(marker_3d)
-    #     continue
+    if os.path.exists(os.path.join(he_calib_path, idx, "marker_3d.npy")):
+        marker_3d = np.load(os.path.join(he_calib_path, idx, "marker_3d.npy"), allow_pickle=True).item()
+        cam_cor.append(marker_3d)
+        continue
         
-    img_dir = os.path.join(he_calib_path, idx, "image")
+    img_dir = os.path.join(he_calib_path, idx, "images")
     
     img_dict = {}
     for img_name in os.listdir(img_dir):
@@ -56,7 +55,6 @@ for idx in index_list:
         if ids is None:
             continue
         draw_aruco(undist_img, undist_kypt, ids, (0, 0, 255))
-        
         for mid in marker_id:
             if mid not in ids or cor_3d[mid] is None:
                 continue
@@ -78,8 +76,6 @@ A_list = []
 B_list = []
 
 for i in range(len(index_list)-1):
-    if i == 2:
-        continue
     B_list.append(robot_cor[i] @ np.linalg.inv(robot_cor[i+1]))
     
     marker1 = []
@@ -98,9 +94,11 @@ X = np.eye(4)
 theta, b_x = solve(A_list, B_list)
 X[0:3, 0:3] = theta
 X[0:3, -1] = b_x.flatten()
+
+X, loss = solve_axb_pytorch(A_list, B_list,X.copy(),learning_rate=0.001)
 for i in range(len(index_list)-1):
-    print(A_list[i] @ X - X @ B_list[i], "error")
-print(X)
+    print(np.linalg.norm((A_list[i] @ X - X @ B_list[i])[:3,3]), "error", i)
+
 np.save(os.path.join(he_calib_path, "0", "C2R.npy"), X)
 marker_pos = {}
 

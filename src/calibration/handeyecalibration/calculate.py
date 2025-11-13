@@ -49,7 +49,7 @@ for idx in index_list:
     qpos_idx = np.load(os.path.join(he_calib_path, idx, "qpos.npy"))
     robot.compute_forward_kinematics(qpos_idx)
     rp = robot.get_link_pose(robot.get_link_index("link6"))
-    robot_cor_qpos.append(rp)
+    robot_cor_qpos.append(rp) # 4X4
     
     robot_cor.append(np.load(os.path.join(he_calib_path, idx, "robot.npy")))
     qpos.append(qpos_idx)    

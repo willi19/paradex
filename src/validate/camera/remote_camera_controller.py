@@ -8,3 +8,5 @@ if __name__ == "__main__":
     rcc.start("video", True, "test1_1103", fps=30)
     n = input("Press Enter to stop...")
     rcc.stop()
+
+    rcc.end()

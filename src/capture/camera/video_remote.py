@@ -31,8 +31,8 @@ try:
             continue
         
         last_idx += 1
-        print(f"Capturing image to {args.save_path}/{last_idx}/image")
-        rcc.start("image", False, f'shared_data/{args.save_path}/{last_idx}/image')
+        print(f"Capturing video to {args.save_path}/{last_idx}/video")
+        rcc.start("video", False, f'{args.save_path}/{last_idx}/video')
         rcc.stop()
         save_event.clear()
         

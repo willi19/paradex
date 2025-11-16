@@ -9,7 +9,7 @@ from paradex.video.raw_video import get_savepath, get_serialnum
 from paradex.utils.file_io import shared_dir, load_camparam
 from paradex.image.undistort import undistort_img
 from paradex.image.aruco import detect_aruco
-from paradex.io.capture_pc.raw_video_processor import RawVideoProcessorWithProgress
+from paradex.io.capture_pc.deprecated.raw_video_processor import RawVideoProcessorWithProgress
 
 def process_frame(frame, info, fid):
     intrinsic = info

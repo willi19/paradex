@@ -3,7 +3,6 @@ import time
 import argparse
 import os
 
-from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
 
 from paradex.utils.keyboard_listener import listen_keyboard

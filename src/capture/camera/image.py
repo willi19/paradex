@@ -8,7 +8,6 @@ from paradex.utils.path import shared_dir
 from paradex.utils.keyboard_listener import listen_keyboard
 
 camera = CameraLoader() # video, image, stream
-
 stop_event = Event()
 save_event = Event()
 

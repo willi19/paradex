@@ -14,7 +14,6 @@ import time
 import cv2
 
 cl = CameraLoader()
-cl.load_pyspin_camera()  
 
 cl.start("stream", False, fps=10)
 try:

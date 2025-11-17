@@ -5,9 +5,13 @@ from paradex.io.camera_system.camera import Camera
 from paradex.utils.path import home_path
 
 class CameraLoader:
-    def __init__(self):
+    def __init__(self, types=["pyspin"]):
         self.cameralist = []
         self.camera_names = []
+        
+        for cam_type in types:
+            if cam_type == "pyspin":
+                self.load_pyspin_camera()        
     
     def load_pyspin_camera(self, serial_list=None):
         from paradex.io.camera_system.pyspin import get_serial_list, autoforce_ip

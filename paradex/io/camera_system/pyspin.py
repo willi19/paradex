@@ -7,15 +7,9 @@ import os
 import time
 import random
 
-from paradex.utils.path import config_dir
+from paradex.utils.system import get_camera_config
 
-if os.path.exists(os.path.join(config_dir, "camera/lens_info.json")):
-    lens_info = json.load(open(os.path.join(config_dir, "camera/lens_info.json"), "r"))
-    cam_info = json.load(open(os.path.join(config_dir,"camera/camera.json"), "r"))
-
-else:
-    lens_info = {}
-    cam_info = {}
+cam_info = get_camera_config()
     
 system = ps.System.GetInstance()
 
@@ -43,11 +37,10 @@ def load_camera(serialnum):
     except:
         raise ValueError(f"Camera with serial number {serialnum} not found.")
     
-    if serialnum in cam_info and cam_info[serialnum]["lens"] in lens_info:
-        lens_params = lens_info[cam_info[serialnum]["lens"]]
-        gain = lens_params["gain"]
-        exposure = lens_params["exposure_time"]
-    
+    if serialnum in cam_info:
+        gain = cam_info[serialnum]["gain"]
+        exposure = cam_info[serialnum]["exposure_time"]
+
     else:
         gain = 3.0
         exposure = 2500.0

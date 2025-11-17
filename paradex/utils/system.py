@@ -12,3 +12,11 @@ def get_camera_list(pc_name: str):
 
 def get_pc_list():
     return list(pc_info.keys())
+
+def get_camera_config():    
+    cam_config_path = os.path.join(config_dir, "camera.json")
+    if os.path.exists(cam_config_path):
+        cam_info = json.load(open(cam_config_path, "r"))
+    else:
+        cam_info = {}
+    return cam_info

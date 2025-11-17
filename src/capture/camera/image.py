@@ -20,7 +20,7 @@ args = parser.parse_args()
 
 save_dir = os.path.join("shared_data", args.save_path)
 
-last_idx = int(find_latest_index(os.path.join(shared_dir, args.save_path))) + 1
+last_idx = int(find_latest_index(os.path.join(shared_dir, args.save_path)))
 
 while not stop_event.is_set():
     if not save_event.is_set():

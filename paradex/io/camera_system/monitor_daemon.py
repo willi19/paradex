@@ -12,7 +12,7 @@ class pc_state:
     RUNNING = 2
 
 class CameraMonitor:
-    def __init__(self, web_port=8080, ping_interval=5.0):
+    def __init__(self, web_port=8080, ping_interval=1.0):
         self.ping_port = 5480       # ping-pong
         self.monitor_port = 5481    # SUB로 상태 받기
         self.command_port = 5482    # command (사용 안 함)

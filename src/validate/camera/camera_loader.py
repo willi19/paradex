@@ -12,4 +12,4 @@ for i in range(2):
     camera.start("image", False, "test_camloader")
     camera.stop()
     
-    camera.end()
+camera.end()

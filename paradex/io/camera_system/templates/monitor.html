@@ -164,7 +164,7 @@
                     
                     Object.keys(data.pc_states).forEach(pc => {
                         const pcState = data.pc_states[pc];
-                        const cameras = data.camera_states[pc] || {};
+                        const cameras = data.camera_states[pc] || [];  // [] 로 수정
                         const controller = data.controller_states[pc] || 'None';
                         
                         const card = document.createElement('div');
@@ -174,15 +174,24 @@
                         const statusText = pcState === 2 ? 'RUNNING' : 'DISCONNECTED';
                         
                         let cameraHTML = '';
-                        if (Object.keys(cameras).length === 0) {
+                        if (cameras.length === 0) {  // Object.keys 대신 .length
                             cameraHTML = '<div class="no-cameras">No cameras detected</div>';
                         } else {
-                            Object.entries(cameras).forEach(([camName, camStatus]) => {
-                                const statusClass = camStatus === 'recording' ? 'camera-recording' : 'camera-idle';
-                                const statusText = camStatus === 'recording' ? '🔴 RECORDING' : '⚫ IDLE';
+                            cameras.forEach(camera => {  // forEach로 직접 순회
+                                const isCapturing = camera.state === 'CAPTURING';
+                                const statusClass = isCapturing ? 'camera-recording' : 'camera-idle';
+                                const statusText = isCapturing ? '🔴 RECORDING' : '⚫ ' + camera.state;
+                                
                                 cameraHTML += `
                                     <div class="camera-item">
-                                        <span class="camera-name">${camName}</span>
+                                        <div>
+                                            <div class="camera-name">${camera.name}</div>
+                                            <div style="font-size: 0.8em; color: #888;">
+                                                Frame: ${camera.frame_id} | 
+                                                Mode: ${camera.mode || 'N/A'} | 
+                                                FPS: ${camera.fps || 'N/A'}
+                                            </div>
+                                        </div>
                                         <span class="camera-status ${statusClass}">${statusText}</span>
                                     </div>
                                 `;

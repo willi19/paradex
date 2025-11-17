@@ -134,12 +134,11 @@ class CameraMonitor:
             for pc, socket in self.monitor_sockets.items():
                 try:
                     status = socket.recv_json(flags=zmq.NOBLOCK)
-                    self.camera_states[pc] = status.get('cameras', {})
-                    self.controller_states[pc] = status.get('controller', 'None')  # 추가
+                    self.camera_states[pc] = status.get('cameras', [])  # [] 로 수정
+                    self.controller_states[pc] = status.get('controller', 'None')
                 except zmq.Again:
-                    # 데이터 없음 (정상)
                     pass
                 except Exception as e:
-                    print(f"{pc}: Monitor error - {e}")
+                    print(f"{pc}: Monitor error - {e}", flush=True)
             
             time.sleep(0.1)

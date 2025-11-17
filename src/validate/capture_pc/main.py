@@ -10,6 +10,7 @@ dc = DataCollector(
 dc.start()
 
 while True:
-    data = dc.get_data()
-    print(data)
+    data_dict = dc.get_data()
+    for pc_id, data in data_dict.items():
+        print(f"PC ID: {pc_id}, Data: {data}")
     time.sleep(1)

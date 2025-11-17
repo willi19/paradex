@@ -12,7 +12,7 @@ from paradex.io.camera.timecode_receiver import TimecodeReceiver
 from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.inference.object_6d import get_current_object_6d, get_image
 from paradex.utils.file_io import shared_dir, copy_calib_files, load_latest_C2R
-from paradex.io.capture_pc.connect import git_pull, run_script
+from paradex.io.capture_pc.ssh import git_pull, run_script
 from paradex.utils.env import get_pcinfo, get_serial_list
 from paradex.pose_utils.optimize_initial_frame import object6d_silhouette
 from paradex.pose_utils.retarget_utils import get_keypoint_trajectory, visualize_new_trajectory

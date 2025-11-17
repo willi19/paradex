@@ -10,7 +10,7 @@ from paradex.utils.env import get_pcinfo, get_serial_list
 
 from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.capture_pc.util import get_client_socket
-from paradex.io.capture_pc.connect import git_pull, run_script
+from paradex.io.capture_pc.ssh import git_pull, run_script
 
 from paradex.image.aruco import draw_charuco
 from paradex.image.merge import merge_image

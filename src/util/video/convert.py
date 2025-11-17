@@ -1,1 +1,0 @@
-change_to_h264(f"{args.out_path.split('.')[0]}_tmp.avi", args.out_path)

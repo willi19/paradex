@@ -120,6 +120,14 @@ class Camera():
         self.write_flag_shm.close()
         self.write_flag_shm.unlink()
         
+    def clear_shared_memory(self):
+        self.fid_array_a[0] = 0
+        self.fid_array_b[0] = 0
+        self.write_flag[0] = 0
+        
+        self.image_array_a.fill(0)
+        self.image_array_b.fill(0)
+        
     def start(self, mode, syncMode, save_path=None, fps=30):
         if fps < 0 and mode in ["video", "full"] and syncMode is False:
             raise ValueError("FPS must be specified for video recording.")
@@ -152,6 +160,7 @@ class Camera():
                
     def stop(self):
         self.event["start"].clear()
+        self.clear_shared_memory()
         self.event["stop"].wait()
            
     def end(self):

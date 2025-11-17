@@ -14,8 +14,10 @@ import threading
 from datetime import datetime
 from typing import Dict, Any, Optional, Callable
 
+from paradex.utils.system import get_pc_list
+
 class DataPublisher():
-    def __init__(self, port: int, name: Optional[str] = None):
+    def __init__(self, port: int=1234, name: Optional[str] = None):
         """
         Initialize data publisher.
         
@@ -62,34 +64,19 @@ class DataPublisher():
         print(f"[{self.name}] Closed")
 
 class DataCollector:
-    """
-    Collect data from multiple client PCs using SUB sockets.
-    
-    Usage:
-        collector = DataCollector(
-            pc_info={"pc1": {"ip": "192.168.1.10"}},
-            port=5500,
-            callback=lambda pc, data: print(f"{pc}: {data}")
-        )
-        collector.start()
-    """
     
     def __init__(
         self,
-        pc_info: Dict[str, Dict[str, str]],
-        port: int,
-        callback: Optional[Callable[[str, Dict[str, Any]], None]] = None
+        pc_list: Dict[str, Dict[str, str]] = None,
+        port: int = 1234
     ):
         """
         Initialize data collector.
         
         Args:
-            pc_info: Dictionary mapping PC names to their info (must include 'ip')
             port: Port to connect to on each client PC
-            callback: Function to call when data received: callback(pc_name, data)
         """
-        self.pc_info = pc_info
-        self.pc_list = list(pc_info.keys())
+        self.pc_list = pc_list or get_pc_list()
         self.port = port
         
         # ZMQ setup
@@ -110,7 +97,7 @@ class DataCollector:
     def _init_sockets(self) -> None:
         """Initialize SUB sockets to all client PCs."""
         for pc_name in self.pc_list:
-            ip = self.pc_info[pc_name]["ip"]
+            ip = get_pc_ip(pc_name)
             
             socket = self.context.socket(zmq.SUB)
             socket.setsockopt_string(zmq.SUBSCRIBE, '')  # Subscribe to all messages

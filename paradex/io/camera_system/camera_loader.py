@@ -2,7 +2,7 @@ from threading import Thread
 import os
 
 from paradex.io.camera_system.camera import Camera
-from paradex.utils.file_io import home_path
+from paradex.utils.path import home_path
 
 class CameraLoader:
     def __init__(self):

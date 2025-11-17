@@ -1,5 +1,6 @@
 from paradex.io.camera_system.camera_loader import CameraLoader
-from paradex.utils.file_io import find_latest_directory, shared_dir
+from paradex.utils.file_io import find_latest_directory
+from paradex.utils.path import shared_dir
 from paradex.utils.keyboard_listener import listen_keyboard
 from threading import Event
 import argparse

@@ -3,8 +3,8 @@ import zmq
 from flask import Flask, render_template, jsonify
 from threading import Thread
 
-from paradex.utils.env import get_pcinfo
-from paradex.io.capture_pc.connect import run_script
+from paradex.utils.system import get_pc_list, get_pc_ip
+from paradex.io.capture_pc.ssh import run_script
 
 class pc_state:
     DISCONNECTED = 0
@@ -17,8 +17,7 @@ class CameraMonitor:
         self.monitor_port = 5481    # SUB로 상태 받기
         self.command_port = 5482    # command (사용 안 함)
         
-        self.pc_info = get_pcinfo()
-        self.pc_list = list(self.pc_info.keys())
+        self.pc_list = get_pc_list()
         self.web_port = web_port
         self.ping_interval = ping_interval
         
@@ -80,7 +79,7 @@ class CameraMonitor:
         socket.setsockopt(zmq.SNDTIMEO, 2000)
         
         try:
-            socket.connect(f"tcp://{self.pc_info[pc]['ip']}:{self.ping_port}")
+            socket.connect(f"tcp://{get_pc_ip(pc)}:{self.ping_port}")
             socket.send_string("ping")
             response = socket.recv_string()
             return response == "pong"
@@ -104,7 +103,7 @@ class CameraMonitor:
         for pc in self.pc_list:
             try:
                 socket = self.ctx.socket(zmq.SUB)
-                socket.connect(f"tcp://{self.pc_info[pc]['ip']}:{self.monitor_port}")
+                socket.connect(f"tcp://{get_pc_ip(pc)}:{self.monitor_port}")
                 socket.setsockopt_string(zmq.SUBSCRIBE, '')
                 socket.setsockopt(zmq.RCVTIMEO, 100)  # 100ms timeout
                 self.monitor_sockets[pc] = socket

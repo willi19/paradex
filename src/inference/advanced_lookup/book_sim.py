@@ -17,7 +17,7 @@ from paradex.process.lookup import normalize
 
 from paradex.io.robot_controller import get_arm, get_hand
 from paradex.io.capture_pc.camera_main import RemoteCameraController
-from paradex.io.capture_pc.connect import run_script
+from paradex.io.capture_pc.ssh import run_script
 
 from paradex.utils.file_io import shared_dir, copy_calib_files, load_latest_C2R, load_current_camparam, rsc_path
 from paradex.utils.env import get_pcinfo

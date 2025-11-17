@@ -1,17 +1,16 @@
 import zmq
 from datetime import datetime
 
-from paradex.utils.env import get_pcinfo
+from paradex.utils.system import get_pc_list, get_pc_ip
 
 class remote_camera_controller:
     def __init__(self, name, pc_list=None):
         self.name = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
-        self.pc_info = get_pcinfo()
-        self.pc_list = pc_list if pc_list is not None else list(self.pc_info.keys())
+        self.pc_list = get_pc_list() if pc_list is None else pc_list
         
-        self.ping_port = 5480      # ping 확인용
-        self.command_port = 5482   # 명령 전송용
+        self.ping_port = 5480    
+        self.command_port = 5482   
         
         self.initialize()
 
@@ -21,17 +20,15 @@ class remote_camera_controller:
         failed_pcs = []
 
         for pc in self.pc_list:
-            # 1. 먼저 ping으로 서버 살았는지 확인
             if not self.check_server_alive(pc):
                 failed_pcs.append(pc)
                 continue
             
-            # 2. 서버 살아있으면 command 소켓 연결
             socket = self.ctx.socket(zmq.REQ)
             socket.setsockopt(zmq.LINGER, 0)
             socket.setsockopt(zmq.RCVTIMEO, 60000) 
             socket.setsockopt(zmq.SNDTIMEO, 60000)
-            socket.connect(f"tcp://{self.pc_info[pc]['ip']}:{self.command_port}")
+            socket.connect(f"tcp://{get_pc_ip(pc)}:{self.command_port}")
             self.command_sockets[pc] = socket
             print(f"{pc}: Command socket connected")
 
@@ -49,7 +46,7 @@ class remote_camera_controller:
         socket.setsockopt(zmq.SNDTIMEO, 2000)
         
         try:
-            socket.connect(f"tcp://{self.pc_info[pc]['ip']}:{self.ping_port}")
+            socket.connect(f"tcp://{get_pc_ip(pc)}:{self.ping_port}")
             socket.send_string("ping")
             response = socket.recv_string()
             return response == "pong"

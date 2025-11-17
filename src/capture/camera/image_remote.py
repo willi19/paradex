@@ -7,7 +7,8 @@ from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
 
 from paradex.utils.keyboard_listener import listen_keyboard
-from paradex.utils.file_io import find_latest_index, shared_dir
+from paradex.utils.path import shared_dir
+from paradex.utils.file_io import find_latest_index
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--save_path', required=True)

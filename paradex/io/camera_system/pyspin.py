@@ -7,7 +7,7 @@ import os
 import time
 import random
 
-from paradex.utils.file_io import config_dir
+from paradex.utils.path import config_dir
 
 if os.path.exists(os.path.join(config_dir, "camera/lens_info.json")):
     lens_info = json.load(open(os.path.join(config_dir, "camera/lens_info.json"), "r"))

@@ -100,7 +100,6 @@ class PyspinCamera():
         self.stream_nodemap = camPtr.GetTLStreamNodeMap() 
         self.nodeMap = camPtr.GetNodeMap() 
         self._init_configure()
-        self._read_current_state()
 
         self.init_time = time.time()
     
@@ -180,6 +179,7 @@ class PyspinCamera():
         """
         assert mode in ["single", "continuous"]
         
+        self._read_current_state()
         if syncMode:
             self.syncMode = syncMode
             self._configureTrigger()

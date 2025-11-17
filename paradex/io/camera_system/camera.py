@@ -4,6 +4,7 @@ import cv2
 from multiprocessing import shared_memory
 import numpy as np
 import os
+import traceback
 
 class Camera():
     def __init__(self, cam_type, name, frame_shape=(1536, 2048, 3)):
@@ -198,8 +199,26 @@ class Camera():
         if save_video:
             fourcc = cv2.VideoWriter_fourcc(*'MJPG')
             video_writer = cv2.VideoWriter(self.save_path, fourcc, fps=self.fps, frameSize=(self.frame_shape[1], self.frame_shape[0]))        
-                        
-        self.camera.start("continuous", self.syncMode, self.fps)
+        
+        try:
+            self.camera.start("continuous", self.syncMode, self.fps)
+        
+        except Exception as e:
+            self.event["error"].set()
+            self.last_error = str(e)
+            self.last_traceback = traceback.format_exc()
+            
+            print(f"[ERROR] Camera {self.name} exception occurred:")
+            print(f"Exception Type: {type(e).__name__}")
+            print(f"Exception Message: {str(e)}")
+            print(self.last_traceback)
+
+            self.event["acquisition"].set()  # To avoid deadlock
+
+            self.event["error_reset"].wait()
+            self.event["acquisition"].clear()
+            self.event["stop"].set()
+                
         self.event["acquisition"].set()
                 
         while self.event["start"].is_set() and not self.event["exit"].is_set():
@@ -301,30 +320,12 @@ class Camera():
         self.connect_camera()
         
         while not self.event["exit"].is_set(): # we should maintain the connection until exit
-            try:
-                if self.event["start"].is_set(): # Start data acquisition
-                    if self.mode in ["full", "video", "stream"]:
-                        self.continuous_acquire()
-                    else:
-                        self.single_acquire()
-            except Exception as e:
-                self.event["error"].set()
-                self.last_error = str(e)
-                import traceback
-                self.last_traceback = traceback.format_exc()
-                print(f"[ERROR] Camera {self.name} exception occurred:")
-                print(f"Exception Type: {type(e).__name__}")
-                print(f"Exception Message: {str(e)}")
-                print(self.last_traceback)
-
-                if not self.event["acquisition"].is_set():
-                    self.event["acquisition"].set()  # To avoid deadlock
-
-                    self.event["error_reset"].wait()
-                    self.event["acquisition"].clear()
-                    self.event["stop"].set()
-                
-                
+            if self.event["start"].is_set(): # Start data acquisition
+                if self.mode in ["full", "video", "stream"]:
+                    self.continuous_acquire()
+                else:
+                    self.single_acquire()
+            
             time.sleep(0.001)
                     
         self.release()

@@ -180,14 +180,9 @@ class PyspinCamera():
         """
         assert mode in ["single", "continuous"]
         
-        if mode != self.mode:
-            self.mode = mode
-            self._configureAcquisition()
         if syncMode:
             self.syncMode = syncMode
             self._configureTrigger()
-            print(self.syncMode)
-
             
         if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)):
             self.frame_rate = frame_rate
@@ -201,6 +196,10 @@ class PyspinCamera():
             self.exposure_time = exposure_time
             self._configureExposure()
             
+        if mode != self.mode:
+            self.mode = mode
+            self._configureAcquisition()
+        
         self.cam.BeginAcquisition()
         return
     

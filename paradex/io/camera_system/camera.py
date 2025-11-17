@@ -182,6 +182,10 @@ class Camera():
     def stop(self):
         self.event["start"].clear()
         self.clear_shared_memory()
+        
+        if self.event["error"].is_set():
+            self.error_reset()
+            
         self.event["stop"].wait()
            
     def end(self):
@@ -218,6 +222,7 @@ class Camera():
             self.event["acquisition"].set()  # To avoid deadlock
 
             self.event["error_reset"].wait()
+            
             self.event["acquisition"].clear()
             self.event["stop"].set()
                 
@@ -287,7 +292,7 @@ class Camera():
     
     def get_state(self):
         if self.event["error"].is_set():
-            return "ERROR"
+            return f"ERROR: {self.last_error} {self.last_traceback}"
         elif self.event["exit"].is_set():
             return "STOPPED"
         elif self.event["start"].is_set():

@@ -181,7 +181,6 @@ class Camera():
                
     def stop(self):
         self.event["start"].clear()
-        self.clear_shared_memory()
         
         if self.event["error"].is_set():
             self.error_reset()
@@ -225,6 +224,14 @@ class Camera():
             
             self.event["acquisition"].clear()
             self.event["stop"].set()
+            
+            if save_video:
+                video_writer.release()
+            if stream:
+                self.clear_shared_memory()
+                
+            return 
+            
                 
         self.event["acquisition"].set()
                 

@@ -104,7 +104,6 @@ class camera_server_daemon:
                 return {"status":"error", "msg":"end failed"}
 
         if action == "heartbeat":
-            self.last_heartbeat = time.time()
             if len(self.camera_loader.get_all_errors()) == 0:
                 return {"status":"ok", "msg":"heartbeat received"}
             else:
@@ -122,15 +121,13 @@ class camera_server_daemon:
             try:
                 cmd = self.command_socket.recv_json()
                 response = self.execute_command(cmd)
-                print(response)
-                if response['status'] != 'error':
-                    self.last_heartbeat = time.time()
                     
                 self.command_socket.send_json(response)
             
             except zmq.Again:
                 self.camera_loader.stop()
                 self.current_controller = None
+                print("[Error] Command socket timeout. Camera loader stopped and controller released.")
                     
             except Exception as e:
                 self.camera_loader.stop()

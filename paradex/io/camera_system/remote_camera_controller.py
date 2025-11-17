@@ -55,8 +55,8 @@ class remote_camera_controller:
         """ping port로 서버 확인"""
         socket = self.ctx.socket(zmq.REQ)
         socket.setsockopt(zmq.LINGER, 0)
-        socket.setsockopt(zmq.RCVTIMEO, 2000)
-        socket.setsockopt(zmq.SNDTIMEO, 2000)
+        socket.setsockopt(zmq.RCVTIMEO, 5000)
+        socket.setsockopt(zmq.SNDTIMEO, 5000)
         
         try:
             socket.connect(f"tcp://{get_pc_ip(pc)}:{self.ping_port}")
@@ -79,8 +79,10 @@ class remote_camera_controller:
                 response[pc] = socket.recv_json()
 
             except zmq.ZMQError as e:
-                print(f"{pc}: No response - {e}")
+                print(f"{pc}: No response in send_command - {e}")
                 response[pc] = {'status':'error', 'msg':'no response'}
+                
+        return response
             
     def register(self):
         cmd = {'action': 'register'}

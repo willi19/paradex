@@ -63,7 +63,6 @@ class camera_server_daemon:
     def execute_command(self, cmd):
         action = cmd.get('action')
         controller_name = cmd.get('controller_name')
-        ret = {}
         
         if controller_name != self.current_controller and self.current_controller is not None:
             print(f"[Warning] {controller_name} tried to access, but locked by {self.current_controller}")
@@ -123,6 +122,7 @@ class camera_server_daemon:
             try:
                 cmd = self.command_socket.recv_json()
                 response = self.execute_command(cmd)
+                print(response)
                 if response['status'] != 'error':
                     self.last_heartbeat = time.time()
                     

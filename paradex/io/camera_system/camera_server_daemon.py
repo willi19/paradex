@@ -141,4 +141,4 @@ class camera_server_daemon:
                     'msg': f'{type(e).__name__}: {str(e)} traceback : {traceback.format_exc()}'
                 })
                 print("[Error] Exception in command thread. Camera loader stopped and controller released.")
-                print("response": response)
+                print("response: ", response)

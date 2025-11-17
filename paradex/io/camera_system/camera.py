@@ -236,28 +236,47 @@ class Camera():
         self.event["acquisition"].set()
                 
         while self.event["start"].is_set() and not self.event["exit"].is_set():
-            frame, frame_data = self.camera.get_image()
-            if frame is None:
-                continue
-            current_frame_id = frame_data["frameID"]
-            if save_video:
-                for _ in range(current_frame_id - self.last_frame_id-1):
-                    print(f"frame drop {self.name}: missing frame id", current_frame_id-self.last_frame_id-1)
-                    video_writer.write(blank_frame)
-                video_writer.write(frame)
-            
-            if stream:
-                # Write to shared memory
-                if self.write_flag[0] == 0:
-                    np.copyto(self.image_array_a, frame)
-                    self.fid_array_a[0] = frame_data["frameID"]
-                    self.write_flag[0] = 1
-                else:
-                    np.copyto(self.image_array_b, frame)
-                    self.fid_array_b[0] = frame_data["frameID"]
-                    self.write_flag[0] = 0
+            try:
+                frame, frame_data = self.camera.get_image()
+                if frame is None:
+                    continue
+                current_frame_id = frame_data["frameID"]
+                if save_video:
+                    for _ in range(current_frame_id - self.last_frame_id-1):
+                        print(f"frame drop {self.name}: missing frame id", current_frame_id-self.last_frame_id-1)
+                        video_writer.write(blank_frame)
+                    video_writer.write(frame)
+                
+                if stream:
+                    # Write to shared memory
+                    if self.write_flag[0] == 0:
+                        np.copyto(self.image_array_a, frame)
+                        self.fid_array_a[0] = frame_data["frameID"]
+                        self.write_flag[0] = 1
+                    else:
+                        np.copyto(self.image_array_b, frame)
+                        self.fid_array_b[0] = frame_data["frameID"]
+                        self.write_flag[0] = 0
 
-            self.last_frame_id = current_frame_id
+                self.last_frame_id = current_frame_id
+                if self.last_frame_id == 25:
+                    raise RuntimeError("Simulated camera error for testing.")
+                
+            except Exception as e:
+                self.event["error"].set()
+                self.event["error_reset"].clear() 
+                   
+                self.last_error = str(e)
+                self.last_traceback = traceback.format_exc()
+                
+                print(f"[ERROR] Camera {self.name} exception occurred during acquisition:")
+                print(f"Exception Type: {type(e).__name__}")
+                print(f"Exception Message: {str(e)}")
+                print(self.last_traceback)
+
+                self.event["error_reset"].wait()
+                
+                break
 
         self.camera.stop()
         self.event["acquisition"].clear()

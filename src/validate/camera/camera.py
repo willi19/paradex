@@ -6,9 +6,16 @@ import time
 serial_list = get_serial_list()
 for serial_num in serial_list:
     camera = Camera("pyspin", serial_num)
-    
-    camera.start("full", True, f"test1_{serial_num}.avi",fps=30)
-    time.sleep(2)
-    camera.stop()
+    for i in range(2):
+        print(f"=== Test round {i} ===")
+        camera.start("image", False, f"test_{i}.png")
+        camera.stop()
+        print(f"Image capture {i} complete.")
+
+        camera.start("full", False, f"test_{i}.avi",fps=30)
+        time.sleep(1)
+        camera.stop()
+        print(f"Full capture {i} complete.")
+        
     camera.end()
     

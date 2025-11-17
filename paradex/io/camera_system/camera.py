@@ -178,7 +178,12 @@ class Camera():
         
         self.event["error"].clear()
         self.event["error_reset"].set()
-               
+        
+    def get_error(self):
+        if self.event["error"].is_set():
+            return True, (self.last_error, self.last_traceback)
+        return False, (None, None)
+
     def stop(self):
         self.event["start"].clear()
         
@@ -260,7 +265,7 @@ class Camera():
 
                 self.last_frame_id = current_frame_id
                 if self.last_frame_id == 25:
-                    raise RuntimeError("Simulated camera error for testing.")
+                    raise RuntimeError("Simulated error for testing.")
                 
             except Exception as e:
                 self.event["error"].set()
@@ -274,8 +279,7 @@ class Camera():
                 print(f"Exception Message: {str(e)}")
                 print(self.last_traceback)
 
-                self.event["error_reset"].wait()
-                
+                self.event["error_reset"].wait()             
                 break
 
         self.camera.stop()

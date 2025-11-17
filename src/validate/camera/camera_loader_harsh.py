@@ -4,17 +4,12 @@ import time
 camera = CameraLoader()
 camera.load_pyspin_camera()
 
-# for i in range(100):
-#     print(f"=== Test round {i} ===")
-#     camera.start("image", False, "test")
-#     camera.stop()
+for i in range(2):
+    camera.start("full", False, "test_camloader",fps=30)
+    time.sleep(5 * 60)
+    camera.stop()
 
-#     camera.start("full", False, "test",fps=30)
-#     time.sleep(1)
-#     camera.stop()
-
-camera.start("full", False, "test",fps=30)
-time.sleep(30 * 60)
-camera.stop()
-
-camera.end()
+    camera.start("image", False, "test_camloader")
+    camera.stop()
+    
+    camera.end()

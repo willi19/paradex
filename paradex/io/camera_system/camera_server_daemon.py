@@ -120,10 +120,12 @@ class camera_server_daemon:
         while True:
             try:
                 cmd = self.command_socket.recv_json()
+                print("cmd:", cmd)
                 response = self.execute_command(cmd)
                     
                 self.command_socket.send_json(response)
-            
+                print("response:", response)
+
             except zmq.Again:
                 self.camera_loader.stop()
                 self.current_controller = None
@@ -139,3 +141,4 @@ class camera_server_daemon:
                     'msg': f'{type(e).__name__}: {str(e)} traceback : {traceback.format_exc()}'
                 })
                 print("[Error] Exception in command thread. Camera loader stopped and controller released.")
+                print("response": response)

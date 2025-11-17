@@ -8,7 +8,7 @@ for serial_num in serial_list:
     camera = Camera("pyspin", serial_num)
     for i in range(5):
         print(f"=== Test round {i} ===")
-        camera.start("image", False, "test1.png")
+        camera.start("image", False, f"test_{i}.png")
         camera.stop()
 
         camera.start("full", False, f"test_{i}.avi",fps=30)

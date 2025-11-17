@@ -9,6 +9,7 @@ class camera_server_daemon:
     def __init__(self):
         self.camera_loader = CameraLoader()
         self.camera_loader.load_pyspin_camera()
+        print(self.camera_loader.camera_names)
 
         self.ping_port = 5480
         self.monitor_port = 5481

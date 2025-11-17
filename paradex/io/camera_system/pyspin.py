@@ -2,8 +2,6 @@ import PySpin as ps
 from typing import Literal, Optional
 import numpy as np
 import cv2
-import json
-import os
 import time
 import random
 

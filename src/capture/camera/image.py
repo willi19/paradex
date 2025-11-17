@@ -2,7 +2,6 @@ from threading import Event
 import argparse
 import os
 import time
-
 from paradex.io.camera_system.camera_loader import CameraLoader
 from paradex.utils.file_io import find_latest_directory
 from paradex.utils.path import shared_dir
@@ -29,7 +28,7 @@ while not stop_event.is_set():
         continue
     last_idx += 1
     save_path = f"{save_dir}/{last_idx}"
-
+    print(f"Capturing image to {save_path}")
     camera.start("image", False, save_path=save_path)
     camera.stop()
 camera.end()

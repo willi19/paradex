@@ -198,7 +198,6 @@ class Camera():
                 
         while self.event["start"].is_set() and not self.event["exit"].is_set():
             frame, frame_data = self.camera.get_image()
-            print("getting frame", frame_data["frameID"])
             if frame is None:
                 continue
             current_frame_id = frame_data["frameID"]

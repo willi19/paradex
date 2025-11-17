@@ -10,10 +10,12 @@ for serial_num in serial_list:
         print(f"=== Test round {i} ===")
         camera.start("image", False, f"test_{i}.png")
         camera.stop()
+        print(f"Image capture {i} complete.")
 
         camera.start("full", False, f"test_{i}.avi",fps=30)
         time.sleep(1)
         camera.stop()
+        print(f"Full capture {i} complete.")
         
     camera.end()
     

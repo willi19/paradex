@@ -21,6 +21,11 @@ class Camera():
         self.name = name
         
         self.frame_shape = frame_shape  
+        
+        self.error_state = None
+        self.last_error = None
+        self.last_traceback = None
+        
         self.load_shared_memory()
         
         self.capture_thread = Thread(target=self.run) 
@@ -137,6 +142,10 @@ class Camera():
         if self.event["start"].is_set():
             raise RuntimeError("Acquisition is already running.")
         
+        if self.error_state == "ERROR":
+            print(f"[WARNING] Camera {self.name} is in ERROR state. Resetting error state.")
+            return
+        
         self.mode = mode
         self.syncMode = syncMode
         self.fps = fps
@@ -157,6 +166,11 @@ class Camera():
         self.event["stop"].clear()
         self.event["start"].set()  
         self.event["acquisition"].wait()   
+    
+    def error_reset(self):
+        self.error_state = None
+        self.last_error = None
+        self.last_traceback = None
                
     def stop(self):
         self.event["start"].clear()
@@ -247,7 +261,9 @@ class Camera():
         self.event["release"].set()
     
     def get_state(self):
-        if self.event["exit"].is_set():
+        if self.error_state == "ERROR":
+            return "ERROR"
+        elif self.event["exit"].is_set():
             return "STOPPED"
         elif self.event["start"].is_set():
             if self.event["acquisition"].is_set():
@@ -281,11 +297,23 @@ class Camera():
         self.connect_camera()
         
         while not self.event["exit"].is_set(): # we should maintain the connection until exit
-            if self.event["start"].is_set(): # Start data acquisition
-                if self.mode in ["full", "video", "stream"]:
-                    self.continuous_acquire()
-                else:
-                    self.single_acquire()
+            try:
+                if self.event["start"].is_set(): # Start data acquisition
+                    if self.mode in ["full", "video", "stream"]:
+                        self.continuous_acquire()
+                    else:
+                        self.single_acquire()
+            except Exception as e:
+                self.error_state = "ERROR"
+                self.last_error = str(e)
+                import traceback
+                self.last_traceback = traceback.format_exc()
+                print(f"[ERROR] Camera {self.name} exception occurred:")
+                print(f"Exception Type: {type(e).__name__}")
+                print(f"Exception Message: {str(e)}")
+                print(self.last_traceback)
+                self.event["start"].clear()
+                self.event["acquisition"].clear()
                 
             time.sleep(0.001)
                     

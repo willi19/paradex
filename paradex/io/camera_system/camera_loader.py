@@ -77,13 +77,9 @@ class CameraLoader:
     
     def get_all_errors(self):
         """모든 카메라의 에러 정보 반환"""
-        errors = []
+        errors = {}
         for camera in self.cameralist:
             has_error, (error_msg, traceback_msg) = camera.get_error()
             if has_error:
-                errors.append({
-                    'name': camera.name,
-                    'error': error_msg,
-                    'traceback': traceback_msg
-                })
+                errors[camera.name] = (error_msg, traceback_msg)
         return errors

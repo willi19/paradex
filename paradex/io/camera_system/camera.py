@@ -27,6 +27,8 @@ class Camera():
         
         self.frame_shape = frame_shape  
         
+        self.last_frame_id = 0
+
         self.last_error = None
         self.last_traceback = None
         

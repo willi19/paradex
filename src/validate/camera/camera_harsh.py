@@ -11,7 +11,7 @@ for serial_num in serial_list:
         camera.start("image", False, "test1.png")
         camera.stop()
 
-        camera.start("stream", False, "test",fps=30)
+        camera.start("full", False, f"test_{i}.avi",fps=30)
         time.sleep(1)
         camera.stop()
         

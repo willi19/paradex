@@ -200,7 +200,8 @@ class Camera():
         return False, (None, None)
 
     def stop(self):
-        self.event["start"].clear()
+        if not self.event["start"].is_set():
+            self.event["start"].clear()
         
         if self.event["error"].is_set():
             self.error_reset()

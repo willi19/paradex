@@ -13,10 +13,13 @@ class camera_server_daemon:
         self.ping_port = 5480
         self.monitor_port = 5481
         self.command_port = 5482
+        self.connection_port = 5483
 
         self.ctx = zmq.Context()
 
         self.current_controller = None
+        
+        self.state = "idle"
 
         threading.Thread(target=self.pingpong_thread, daemon=True).start()
         threading.Thread(target=self.monitor_thread, daemon=True).start()
@@ -34,6 +37,17 @@ class camera_server_daemon:
             except zmq.ZMQError:
                 time.sleep(0.1)
 
+    def connection_thread(self):
+        self.connection_socket = self.ctx.socket(zmq.REP)
+        self.connection_socket.bind(f"tcp://*:{self.connection_port}")
+
+        while True:
+            try:
+                _ = self.connection_socket.recv_string(flags=zmq.NOBLOCK)
+                self.connection_socket.send_string("connected")
+            except zmq.ZMQError:
+                time.sleep(0.1)
+
     def monitor_thread(self):
         monitor_socket = self.ctx.socket(zmq.PUB)
         monitor_socket.bind(f"tcp://*:{self.monitor_port}")
@@ -46,80 +60,84 @@ class camera_server_daemon:
             monitor_socket.send_json(status)
             time.sleep(0.1)
 
+    def execute_command(self, cmd):
+        action = cmd.get('action')
+        controller_name = cmd.get('controller_name')
+        ret = {}
+        
+        if controller_name != self.current_controller and self.current_controller is not None:
+            print(f"[Warning] {controller_name} tried to access, but locked by {self.current_controller}")
+            return {"status":"error", "msg":f"locked by {self.current_controller}"}
+        
+        if action == "register":
+            self.current_controller = controller_name
+            return {"status":"ok", "msg":"registered"}
+
+        if self.current_controller is None:
+            return {"status":"error", "msg":"no active controller"}
+        
+        if action == "start":
+            try:
+                self.camera_loader.start(
+                            cmd.get('mode'),
+                            cmd.get('syncMode'),
+                            cmd.get('save_path'),
+                            cmd.get('fps', 30)
+                        )
+                
+                return {"status":"ok", "msg":"started"}
+
+            except:
+                return {"status":"error", "msg":"start failed"}
+
+        if action == "stop":
+            try:
+                self.camera_loader.stop()
+                return {"status":"ok", "msg":"stopped"}
+            except:
+                return {"status":"error", "msg":"stop failed"}
+
+        if action == "end":
+            try:
+                self.current_controller = None
+                return {"status":"ok", "msg":"ended"}
+            except:
+                return {"status":"error", "msg":"end failed"}
+
+        if action == "heartbeat":
+            self.last_heartbeat = time.time()
+            if len(self.camera_loader.get_all_errors()) == 0:
+                return {"status":"ok", "msg":"heartbeat received"}
+            else:
+                return {"status":"error", "msg":"camera errors detected"}
+
+        return {"status":"error", "msg":"unknown action"}
+
+
     def command_thread(self):
         self.command_socket = self.ctx.socket(zmq.REP)
+        self.command_socket.setsockopt(zmq.RCVTIMEO, 5000)  # 5 second timeout
         self.command_socket.bind(f"tcp://*:{self.command_port}")
         
         while True:
             try:
                 cmd = self.command_socket.recv_json()
-                action = cmd.get('action')
-                controller_name = cmd.get('controller_name')
-                
-                if self.current_controller is None:
-                    if action == 'start':
-                        self.current_controller = controller_name
-                        print(f"[Controller] {controller_name} connected")
-                        print(f"[Current Controller] {self.current_controller}")
-                        
-                        self.camera_loader.start(
-                            cmd.get('mode'),
-                            cmd.get('syncMode'),
-                            cmd.get('save_path'),
-                            cmd.get('fps', 30)
-                        )
-                        self.command_socket.send_json({'status': 'ok', 'msg': 'started'})
-                    else:
-                        self.command_socket.send_json({'status': 'error', 'msg': 'no active controller'})
-                
-                elif controller_name == self.current_controller:
-                    print(f"[Command] {action} from {controller_name}")
+                response = self.execute_command(cmd)
+                if response['status'] != 'error':
+                    self.last_heartbeat = time.time()
                     
-                    if action == 'start':
-                        self.camera_loader.start(
-                            cmd.get('mode'),
-                            cmd.get('syncMode'),
-                            cmd.get('save_path'),
-                            cmd.get('fps', 30)
-                        )
-                        self.command_socket.send_json({'status': 'ok', 'msg': 'started'})
-                    
-                    elif action == 'stop':
-                        self.camera_loader.stop()
-                        self.command_socket.send_json({'status': 'ok', 'msg': 'stopped'})
-                    
-                    elif action == 'exit':
-                        print(f"[Controller] {controller_name} disconnected")
-                        self.current_controller = None
-                        print(f"[Current Controller] None")
-                        self.command_socket.send_json({'status': 'ok', 'msg': 'exited'})
-                    
-                    else:
-                        self.command_socket.send_json({'status': 'error', 'msg': 'unknown action'})
-                
-                else:
-                    print(f"[Warning] {controller_name} tried to access, but locked by {self.current_controller}")
-                    self.command_socket.send_json({
-                        'status': 'error', 
-                        'msg': f'controller locked by {self.current_controller}'
-                    })
-
-            except Exception as e:
-                print(f"="*60)
-                print(f"[ERROR] Command thread exception occurred:")
-                print(f"Exception Type: {type(e).__name__}")
-                print(f"Exception Message: {str(e)}")
-                print(f"-"*60)
-                print("Traceback:")
-                traceback.print_exc()
-                print(f"="*60)
-                
-                try:
-                    self.command_socket.send_json({
-                        'status': 'error', 
-                        'msg': f'{type(e).__name__}: {str(e)}'
-                    })
-                except:
-                    print("[ERROR] Failed to send error response to client")
-                
+                self.command_socket.send_json(response)
+            
+            except zmq.Again:
+                self.camera_loader.stop()
                 self.current_controller = None
+                    
+            except Exception as e:
+                self.camera_loader.stop()
+                self.current_controller = None
+                
+                traceback.print_exc()
+                self.command_socket.send_json({
+                    'status': 'error', 
+                    'msg': f'{type(e).__name__}: {str(e)} traceback : {traceback.format_exc()}'
+                })

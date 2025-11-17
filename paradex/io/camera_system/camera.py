@@ -139,13 +139,26 @@ class Camera():
         
     def start(self, mode, syncMode, save_path=None, fps=30):
         if fps < 0 and mode in ["video", "full"] and syncMode is False:
-            raise ValueError("FPS must be specified for video recording.")
+            self.event["error"].set()
+            self.event["error_reset"].clear()
+            
+            self.last_error = "FPS must be non-negative for video or full mode when syncMode is False."
+            self.last_traceback = ""
         
         if mode in ["video", "full", "image"] and save_path is None:
-            raise ValueError("Save path must be specified for video or image saving.")
+            self.event["error"].set()
+            self.event["error_reset"].clear()
+            
+            self.last_error = "Save path must be specified for video or image saving."
+            self.last_traceback = ""
+            
         if self.event["start"].is_set():
-            raise RuntimeError("Acquisition is already running.")
-
+            self.event["error"].set()
+            self.event["error_reset"].clear()
+            
+            self.last_error = "Acquisition is already running."
+            self.last_traceback = ""
+            
         if self.event["error"].is_set():
             print(f"[WARNING] Camera {self.name} is in ERROR state. Resetting error state.")
             return
@@ -264,8 +277,6 @@ class Camera():
                         self.write_flag[0] = 0
 
                 self.last_frame_id = current_frame_id
-                if self.last_frame_id == 25:
-                    raise RuntimeError("Simulated error for testing.")
                 
             except Exception as e:
                 self.event["error"].set()
@@ -336,10 +347,7 @@ class Camera():
             return "CONNECTING"
 
     def get_frame_id(self):
-        if self.write_flag[0] == 0:
-            return int(self.fid_array_b[0])
-        else:
-            return int(self.fid_array_a[0])
+        return self.last_frame_id
 
     def get_status(self):
         return {

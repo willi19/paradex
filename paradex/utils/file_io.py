@@ -57,7 +57,9 @@ def find_latest_index(directory):
     Returns:
     - latest_dir: Latest directory in the specified directory.
     """
-        
+    if not os.path.exists(directory):
+        return -1
+    
     dirs = [d for d in os.listdir(directory)] 
 
     if not dirs:

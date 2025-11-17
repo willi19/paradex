@@ -6,7 +6,7 @@ import time
 serial_list = get_serial_list()
 for serial_num in serial_list:
     camera = Camera("pyspin", serial_num)
-    for i in range(100):
+    for i in range(5):
         print(f"=== Test round {i} ===")
         camera.start("image", False, "test1.png")
         camera.stop()

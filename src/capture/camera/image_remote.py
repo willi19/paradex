@@ -28,7 +28,7 @@ try:
             time.sleep(0.01)
             continue
 
-        date_str = datetime.datetime.now().strftime("%Y%m%d")
+        date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         print(f"Capturing image to {args.save_path}/{date_str}")
         rcc.start("image", False, f'shared_data/{args.save_path}/{date_str}')
         rcc.stop()

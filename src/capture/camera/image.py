@@ -28,7 +28,7 @@ while not stop_event.is_set():
         continue
     last_idx += 1
     save_path = f"{save_dir}/{last_idx}"
-    
+    print(f"Capturing image to {save_path}")
     camera.start("image", False, save_path=save_path)
     camera.stop()
     save_event.clear()

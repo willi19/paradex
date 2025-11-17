@@ -316,14 +316,13 @@ class Camera():
                 print(f"Exception Type: {type(e).__name__}")
                 print(f"Exception Message: {str(e)}")
                 print(self.last_traceback)
-                
-                self.event["acquisition"].set()  # To avoid deadlock
-                
-                self.event["error_reset"].wait()
-                
-                self.camera.stop()
-                self.event["acquisition"].clear()
-                self.event["stop"].set()
+
+                if not self.event["acquisition"].is_set():
+                    self.event["acquisition"].set()  # To avoid deadlock
+
+                    self.event["error_reset"].wait()
+                    self.event["acquisition"].clear()
+                    self.event["stop"].set()
                 
                 
             time.sleep(0.001)

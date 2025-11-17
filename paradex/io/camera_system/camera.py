@@ -200,7 +200,6 @@ class Camera():
         return False, (None, None)
 
     def stop(self):
-        print(f"[INFO] Stopping camera {self.name}...")
         self.event["start"].clear()
         
         if self.event["error"].is_set():
@@ -219,7 +218,7 @@ class Camera():
         save_video = (self.mode in ["video", "full"] and self.save_path is not None)
         stream = (self.mode in ["stream", "full"])
         blank_frame = np.zeros(self.frame_shape, dtype=np.uint8)
-        
+        print(f"[INFO] Camera {self.name} starting continuous acquisition. Mode: {self.mode}, SyncMode: {self.syncMode}, Save Path: {self.save_path}, FPS: {self.fps}")
         if save_video:
             fourcc = cv2.VideoWriter_fourcc(*'MJPG')
             video_writer = cv2.VideoWriter(self.save_path, fourcc, fps=self.fps, frameSize=(self.frame_shape[1], self.frame_shape[0]))        
@@ -250,7 +249,7 @@ class Camera():
                 video_writer.release()
             if stream:
                 self.clear_shared_memory()
-                
+            print(f"[INFO] Camera {self.name} acquisition aborted due to error during start.")
             return 
             
                 

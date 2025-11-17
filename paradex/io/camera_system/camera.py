@@ -205,6 +205,8 @@ class Camera():
         
         except Exception as e:
             self.event["error"].set()
+            self.event["error_reset"].clear() 
+               
             self.last_error = str(e)
             self.last_traceback = traceback.format_exc()
             

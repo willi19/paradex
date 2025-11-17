@@ -23,6 +23,7 @@ class CameraLoader:
     def start(self, mode, syncMode, save_path=None, fps=30):
         if mode == "image":
             save_paths = [os.path.join(home_path, save_path, "images") for _ in self.cameralist]
+            print(save_paths)
             for path in save_paths:
                 os.makedirs(path, exist_ok=True)
 

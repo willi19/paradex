@@ -157,7 +157,7 @@ class PyspinCamera():
         # else:
         pImageRaw = self.cam.GetNextImage()
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
-        
+        print(f"Frame ID: {frame_data['frameID']}", self.serial_num, time.time() - self.init_time)
         if pImageRaw.IsIncomplete() or pImageRaw.GetWidth() == 0 or pImageRaw.GetHeight() == 0:
             if pImageRaw.IsIncomplete():
                 print(f"Image incomplete with image status {pImageRaw.GetImageStatus()}")

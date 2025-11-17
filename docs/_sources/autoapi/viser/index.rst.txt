@@ -1,0 +1,132 @@
+viser
+=====
+
+.. py:module:: viser
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ViserViewer(up_direction=np.array([0, 0, 1]))
+
+   .. py:attribute:: frame_nodes
+      :type:  dict[str, FrameHandle]
+
+
+   .. py:attribute:: up_direction
+
+
+   .. py:attribute:: robot_dict
+
+
+   .. py:attribute:: obj_dict
+
+
+   .. py:attribute:: traj_list
+      :value: []
+
+
+
+   .. py:attribute:: num_frames
+      :value: 0
+
+
+
+   .. py:method:: load_server()
+
+
+   .. py:method:: add_robot(name, urdf_path)
+
+
+   .. py:method:: add_object(name, obj: trimesh.Trimesh, obj_T)
+
+      Add an object mesh to the scene
+
+      :param name: Unique name for the object
+      :param obj: trimesh.Trimesh object
+      :param obj_T: 4x4 transformation matrix for the object pose
+
+
+
+   .. py:method:: add_traj(name, robot_traj: Dict, obj_traj: Dict = {})
+
+
+   .. py:method:: add_grid_lines(height=0.0, size=5.0)
+
+      Add grid lines separately using line segments
+
+
+
+   .. py:method:: add_floor(height=0.0)
+
+      Update floor visibility and appearance
+
+
+
+   .. py:method:: create_floor_mesh(size=5.0)
+
+      Create a simple floor mesh
+
+
+
+   .. py:method:: update_scene(timestep)
+
+
+   .. py:method:: update()
+
+
+   .. py:method:: start_viewer()
+
+
+   .. py:method:: add_player()
+
+
+   .. py:method:: add_frame(name)
+
+
+   .. py:method:: add_lights()
+
+
+.. py:class:: ViserRobotModule(target, urdf_path, scale: float = 1.0, root_node_name: str = '/', load_meshes=True, load_collision_meshes=False)
+
+   .. py:method:: change_color(name_list, color: Tuple[float, float, float]) -> None
+
+      Change the color of the visualized URDF.
+
+
+
+   .. py:property:: show_visual
+      :type: bool
+
+
+      Returns whether the visual meshes are currently visible.
+
+
+   .. py:property:: show_collision
+      :type: bool
+
+
+      Returns whether the collision meshes are currently visible.
+
+
+   .. py:property:: urdf
+      :type: paradex.visualization.robot.RobotModule
+
+
+      Get the underlying URDF object.
+
+
+   .. py:method:: remove() -> None
+
+      Remove URDF from scene.
+
+
+
+   .. py:method:: update_cfg(configuration: numpy.ndarray) -> None
+
+      Update the joint angles of the visualized URDF.
+
+
+

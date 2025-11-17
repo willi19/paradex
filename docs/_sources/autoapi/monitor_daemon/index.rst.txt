@@ -1,0 +1,118 @@
+monitor_daemon
+==============
+
+.. py:module:: monitor_daemon
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: pc_state
+
+   .. py:attribute:: DISCONNECTED
+      :value: 0
+
+
+
+   .. py:attribute:: CONNECTED
+      :value: 1
+
+
+
+   .. py:attribute:: RUNNING
+      :value: 2
+
+
+
+.. py:class:: CameraMonitor(web_port=8080, ping_interval=5.0)
+
+   .. py:attribute:: ping_port
+      :value: 5480
+
+
+
+   .. py:attribute:: monitor_port
+      :value: 5481
+
+
+
+   .. py:attribute:: command_port
+      :value: 5482
+
+
+
+   .. py:attribute:: pc_info
+
+
+   .. py:attribute:: pc_list
+
+
+   .. py:attribute:: web_port
+      :value: 8080
+
+
+
+   .. py:attribute:: ping_interval
+      :value: 5.0
+
+
+
+   .. py:attribute:: pc_state
+
+
+   .. py:attribute:: camera_states
+
+
+   .. py:attribute:: controller_states
+
+
+   .. py:attribute:: ctx
+
+
+   .. py:attribute:: monitor_sockets
+
+
+   .. py:attribute:: app
+
+
+   .. py:method:: setup_routes()
+
+
+   .. py:method:: initialize()
+
+      초기 서버 확인 및 시작
+
+
+
+   .. py:method:: ping_server(pc)
+
+      서버 ping 확인 (5480)
+
+
+
+   .. py:method:: start_server(pc)
+
+      서버 데몬 시작
+
+
+
+   .. py:method:: setup_monitor_sockets()
+
+      5481 SUB 소켓 구독
+
+
+
+   .. py:method:: ping_loop()
+
+      주기적으로 ping 확인
+
+
+
+   .. py:method:: monitor_loop()
+
+      5481에서 카메라 상태 받기
+
+
+

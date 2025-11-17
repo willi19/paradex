@@ -1,0 +1,13 @@
+set_seed
+========
+
+.. py:module:: set_seed
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: set_global_seed(seed=42)
+

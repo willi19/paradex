@@ -1,0 +1,15 @@
+paradex.retargetor.hand_regargetor
+==================================
+
+.. py:module:: paradex.retargetor.hand_regargetor
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: allegro(hand_pose_frame)
+
+.. py:function:: inspire(hand_pose_frame)
+

@@ -1,0 +1,13 @@
+paradex.robot.urdf
+==================
+
+.. py:module:: paradex.robot.urdf
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: generate_urdf(xacro_path, output_path, args_dict)
+

@@ -1,0 +1,13 @@
+overlay
+=======
+
+.. py:module:: overlay
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: overlay_mask(image, mask, color, alpha=0.7)
+

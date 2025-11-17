@@ -1,0 +1,92 @@
+paradex.io.robot_controller.inspire_controller copy
+===================================================
+
+.. py:module:: paradex.io.robot_controller.inspire_controller copy
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: action_dof
+   :value: 6
+
+
+.. py:data:: regdict
+
+.. py:class:: InspireController
+
+   .. py:attribute:: ip
+
+
+   .. py:attribute:: port
+
+
+   .. py:attribute:: capture_path
+      :value: None
+
+
+
+   .. py:attribute:: home_pose
+
+
+   .. py:attribute:: exit
+
+
+   .. py:attribute:: lock
+
+
+   .. py:attribute:: target_action
+
+
+   .. py:attribute:: thread
+
+
+   .. py:method:: start(save_path=None)
+
+
+   .. py:method:: end()
+
+
+   .. py:method:: set_homepose(home_pose)
+
+
+   .. py:method:: home_robot(home_pose=None)
+
+
+   .. py:method:: open_modbus()
+
+
+   .. py:method:: write_register(address, values)
+
+
+   .. py:method:: read_register(address, count)
+
+
+   .. py:method:: write6(reg_name, val)
+
+
+   .. py:method:: read6(reg_name)
+
+
+   .. py:method:: get_qpos()
+
+
+   .. py:method:: get_force()
+
+
+   .. py:method:: move_hand()
+
+
+   .. py:method:: set_target_action(action)
+
+
+   .. py:method:: save()
+
+
+   .. py:method:: quit()
+
+

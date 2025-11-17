@@ -1,0 +1,29 @@
+connect
+=======
+
+.. py:module:: connect
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: ssh_port
+   :value: 77
+
+
+.. py:data:: repo_path
+
+.. py:data:: cache_path
+
+.. py:data:: paradex_cache_path
+
+.. py:function:: load_pc_info(pc_list)
+
+.. py:function:: git_pull(branch, pc_list=None)
+
+.. py:function:: run_script(script: str, pc_list=None, log=False)
+

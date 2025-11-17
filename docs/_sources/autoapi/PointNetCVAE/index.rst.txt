@@ -1,0 +1,150 @@
+PointNetCVAE
+============
+
+.. py:module:: PointNetCVAE
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: PointNetEncoder(layers_size=[4, 64, 128, 512])
+
+   Bases: :py:obj:`torch.nn.Module`
+
+
+   .. py:attribute:: layers_size
+      :value: [4, 64, 128, 512]
+
+
+
+   .. py:attribute:: conv_layers
+
+
+   .. py:attribute:: bn_layers
+
+
+   .. py:attribute:: activate_func
+
+
+   .. py:method:: forward(x)
+
+
+.. py:class:: PointNetDecoder(global_feat_size=512, latent_size=128, pointwise_layers_size=[3, 64, 64], global_layers_size=[64, 128, 512], decoder_layers_size=[64 + 512 + 128, 512, 64, 64, 1])
+
+   Bases: :py:obj:`torch.nn.Module`
+
+
+   .. py:attribute:: global_feat_size
+      :value: 512
+
+
+
+   .. py:attribute:: latent_size
+      :value: 128
+
+
+
+   .. py:attribute:: pointwise_layers_size
+      :value: [3, 64, 64]
+
+
+
+   .. py:attribute:: global_layers_size
+      :value: [64, 128, 512]
+
+
+
+   .. py:attribute:: decoder_layers_size
+
+
+   .. py:attribute:: pointwise_conv_layers
+
+
+   .. py:attribute:: pointwise_bn_layers
+
+
+   .. py:attribute:: global_conv_layers
+
+
+   .. py:attribute:: global_bn_layers
+
+
+   .. py:attribute:: activate_func
+
+
+   .. py:attribute:: decoder_conv_layers
+
+
+   .. py:attribute:: decoder_bn_layers
+
+
+   .. py:attribute:: sigmoid
+
+
+   .. py:method:: forward(x, z_latent_code)
+
+      :param x: B x N x 3
+      :param z_latent_code: B x latent_size
+      :return:
+
+
+
+.. py:class:: PointNetCVAE(latent_size=128, encoder_layers_size=[4, 64, 128, 512], decoder_global_feat_size=512, decoder_pointwise_layers_size=[3, 64, 64], decoder_global_layers_size=[64, 128, 512], decoder_decoder_layers_size=[64 + 512 + 128, 512, 64, 64, 1])
+
+   Bases: :py:obj:`torch.nn.Module`
+
+
+   .. py:attribute:: latent_size
+      :value: 128
+
+
+
+   .. py:attribute:: encoder
+
+
+   .. py:attribute:: decoder
+
+
+   .. py:attribute:: encoder_z_means
+
+
+   .. py:attribute:: encoder_z_logvars
+
+
+   .. py:method:: forward(object_cmap)
+
+      :param object_cmap: B x N x 4
+      :return:
+
+
+
+   .. py:method:: inference(object_pts, z_latent_code)
+
+      :param object_pts: B x N x 3
+      :param z_latent_code: B x latent_size
+      :return:
+
+
+
+   .. py:method:: reparameterize(means, logvars)
+
+
+   .. py:method:: forward_encoder(object_cmap)
+
+
+   .. py:method:: forward_decoder(object_pts, z_latent_code)
+
+      :param object_pts: B x N x 3
+      :param z_latent_code: B x latent_size
+      :return:
+
+
+
+.. py:data:: device
+   :value: 'cuda'
+
+

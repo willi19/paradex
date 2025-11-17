@@ -1,0 +1,42 @@
+paradex.video.raw_video
+=======================
+
+.. py:module:: paradex.video.raw_video
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: magic_number
+   :value: 5
+
+
+.. py:data:: td
+   :value: 0.06666666666666667
+
+
+.. py:function:: fill_framedrop(cam_timestamp)
+
+.. py:function:: get_synced_data(pc_times, data, data_times)
+
+   2-pointer 방식으로 pc_times와 가장 가까운 data_times의 데이터를 매칭
+
+
+.. py:function:: check_valid(timestamp)
+
+.. py:function:: get_timestamp_path(video_path)
+
+.. py:function:: load_timestamp(video_path)
+
+.. py:function:: get_videopath_list(video_dir)
+
+.. py:function:: get_savepath(path)
+
+.. py:function:: get_serialnum(video_path)
+
+.. py:function:: fill_dropped_frames(video_path, load_info, process_frame, process_result, preserve, overwrite, frame_counter=None)
+

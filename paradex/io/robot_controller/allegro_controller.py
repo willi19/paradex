@@ -29,31 +29,90 @@ class AllegroController:
         self.grav_comp = DEFAULT_VAL
         self.cmd_joint_state = DEFAULT_VAL
         
-        self.capture_path = None
-        
-        self.allegro_home_pose = np.zeros(16)
-        self.target_action = np.zeros(16)
-        
         rospy.init_node('allegro_hand_node')
         
-        self.exit = Event()
+        self.save_event = Event()
+        self.exit_event = Event()
+        self.connection_event = Event()
+        
         self.lock = Lock()       
-        self.thread = Thread(target=self.move_hand)
+        self.thread = Thread(target=self.control_loop)
         self.thread.start()
+        
+        self.connection_event.wait()
+        
+    def control_loop(self):
+        rospy.Subscriber(JOINT_STATE_TOPIC, JointState, self._sub_callback_joint_state)
+        rospy.Subscriber(GRAV_COMP_TOPIC, JointState, self._sub_callback_grav_comp)
+        rospy.Subscriber(COMM_JOINT_STATE_TOPIC, JointState, self._sub_callback_cmd__joint_state)
+
+        self.joint_comm_publisher = rospy.Publisher(JOINT_COMM_TOPIC, JointState, queue_size=-1)
+        self.connection_event.wait()
+        
+        while not self.exit_event.is_set():
+            start_time = time.perf_counter()
+            joint_value = np.asarray(self.current_joint_pose.position)
+            
+            with self.lock:
+                action = self.action.copy()
+                joint_value = joint_value.copy()
+
+            self._publish_action(action, absolute=True)
+            
+            if self.save_event.is_set():
+                self.data["action"].append(action.copy())
+                self.data["time"].append(time.time())
+                self.data["joint_value"].append(joint_value.copy())
+
+            elapsed = time.perf_counter() - start_time
+            time_to_wait = max(0.0, 0.01 - elapsed)
+            time.sleep(time_to_wait)
 
     def start(self, save_path):
-        if save_path is not None:
-            self.capture_path = save_path
-            self.data = {
-                "action":[],
-                "time":[],
-                "position":[]
-            }
-            
-    def end(self):
-        self.save()
+        self.capture_path = save_path
+        self.data = {
+            "action": [],
+            "time": [],
+            "joint_value": []
+        }
+        
+        self.save_event.set()
 
+    def stop(self):
+        self.save_event.clear()
+        
+        os.makedirs(os.path.join(self.capture_path), exist_ok=True)
+        for name, value in self.data.items():                     
+            np.save(os.path.join(self.capture_path, f"{name}.npy"), np.array(value))
+                    
+        self.capture_path = None
+        
+    def end(self):
+        self.exit_event.set()
+        self.thread.join()
+        
+        self.stop()
+        
+    def get_data(self):
+        ret = {}
+        with self.lock:
+            ret["action"] = self.action.copy()
+            ret["joint_value"] = self.joint_value.copy()
+            ret["time"] = time.time()
+            
+        return ret
+        
+    def move(self, action):
+        with self.lock:
+            self.action = action.copy()
+    
     def _sub_callback_joint_state(self, data):
+        if not self.connection_event.is_set():
+            with self.lock:
+                self.action = np.asarray(data.position)
+                self.joint_value = np.asarray(data.position)
+                self.connection_event.set()
+                
         self.current_joint_pose = data
 
     def _sub_callback_grav_comp(self, data):
@@ -65,7 +124,7 @@ class AllegroController:
     def _clip(self, action, value):
         return np.clip(action, -value, value)
     
-    def move(self, desired_action = np.zeros(action_dof), absolute = True):
+    def _publish_action(self, desired_action = np.zeros(action_dof), absolute = True):
         if self.current_joint_pose == DEFAULT_VAL:
             print('No joint data received!')
             return
@@ -83,63 +142,6 @@ class AllegroController:
         desired_js.effort = list([])
 
         self.joint_comm_publisher.publish(desired_js)
-        
-
-    def set_homepose(self, allegro_home_pose):
-        self.allegro_home_pose = allegro_home_pose.copy()
     
-    def home_robot(self):
-        self.target_action[:] = self.allegro_home_pose.copy()
-    
-    def get_data(self):
-        with self.lock:
-            return np.asarray(self.current_joint_pose.position)
-        
-    def move_hand(self):
-        fps = 100
-        self.hand_cnt = 0
-        self.hand_lock = Lock()
-        
-        rospy.Subscriber(JOINT_STATE_TOPIC, JointState, self._sub_callback_joint_state)
-        rospy.Subscriber(GRAV_COMP_TOPIC, JointState, self._sub_callback_grav_comp)
-        rospy.Subscriber(COMM_JOINT_STATE_TOPIC, JointState, self._sub_callback_cmd__joint_state)
-
-        self.joint_comm_publisher = rospy.Publisher(JOINT_COMM_TOPIC, JointState, queue_size=-1)
-
-        while not self.exit.is_set():
-        
-            start_time = time.time()
-            with self.lock:
-                action = self.target_action.copy()
-                if self.current_joint_pose == DEFAULT_VAL:
-                    current_hand_angles = np.zeros(action_dof)
-                else:
-                    current_hand_angles = np.asarray(self.current_joint_pose.position)
-                self.move(action)
-                
-                if self.capture_path is not None:
-                    self.data["position"].append(current_hand_angles.copy())
-                    self.data["time"].append(start_time)
-                    self.data["action"].append(action.copy())
-
-                end_time = time.time()
-                time.sleep(max(0, 1 / fps - (end_time - start_time)))
-        
-    def set_target_action(self, action):
-        self.target_action[:] = action.copy()
-    
-    def save(self):
-        with self.lock:
-            if self.capture_path is not None:       
-                os.makedirs(os.path.join(self.capture_path), exist_ok=True)
-                for name, value in self.data.items():                     
-                    np.save(os.path.join(self.capture_path, f"{name}.npy"), np.array(value))
-                    self.data[name] = value
-            self.capture_path = None
-            
-    def quit(self):
-        self.exit.set()
-        self.save()
-        self.thread.join()
-    
-        print("Allegro Exiting...")
+    def is_error(self):
+        return False

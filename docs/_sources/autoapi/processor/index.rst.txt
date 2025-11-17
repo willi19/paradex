@@ -1,0 +1,216 @@
+processor
+=========
+
+.. py:module:: processor
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ProcessorLocal(process)
+
+   .. py:attribute:: process
+
+
+   .. py:attribute:: socket
+
+
+   .. py:attribute:: log_list
+
+
+   .. py:attribute:: finished
+      :value: False
+
+
+
+   .. py:method:: send_message(message)
+
+
+   .. py:method:: register()
+
+
+   .. py:method:: send_log()
+
+
+   .. py:method:: listen()
+
+
+.. py:class:: WebHandler(request, client_address, server)
+
+   Bases: :py:obj:`http.server.BaseHTTPRequestHandler`
+
+
+   HTTP request handler base class.
+
+   The following explanation of HTTP serves to guide you through the
+   code as well as to expose any misunderstandings I may have about
+   HTTP (so you don't need to read the code to figure out I'm wrong
+   :-).
+
+   HTTP (HyperText Transfer Protocol) is an extensible protocol on
+   top of a reliable stream transport (e.g. TCP/IP).  The protocol
+   recognizes three parts to a request:
+
+   1. One line identifying the request type and path
+   2. An optional set of RFC-822-style headers
+   3. An optional data part
+
+   The headers and data are separated by a blank line.
+
+   The first line of the request has the form
+
+   <command> <path> <version>
+
+   where <command> is a (case-sensitive) keyword such as GET or POST,
+   <path> is a string containing path information for the request,
+   and <version> should be the string "HTTP/1.0" or "HTTP/1.1".
+   <path> is encoded using the URL encoding scheme (using %xx to signify
+   the ASCII character with hex code xx).
+
+   The specification specifies that lines are separated by CRLF but
+   for compatibility with the widest range of clients recommends
+   servers also handle LF.  Similarly, whitespace in the request line
+   is treated sensibly (allowing multiple spaces between components
+   and allowing trailing whitespace).
+
+   Similarly, for output, lines ought to be separated by CRLF pairs
+   but most clients grok LF characters just fine.
+
+   If the first line of the request has the form
+
+   <command> <path>
+
+   (i.e. <version> is left out) then this is assumed to be an HTTP
+   0.9 request; this form has no optional headers and data part and
+   the reply consists of just the data.
+
+   The reply form of the HTTP 1.x protocol again has three parts:
+
+   1. One line giving the response code
+   2. An optional set of RFC-822-style headers
+   3. The data
+
+   Again, the headers and data are separated by a blank line.
+
+   The response code line has the form
+
+   <version> <responsecode> <responsestring>
+
+   where <version> is the protocol version ("HTTP/1.0" or "HTTP/1.1"),
+   <responsecode> is a 3-digit response code indicating success or
+   failure of the request, and <responsestring> is an optional
+   human-readable string explaining what the response code means.
+
+   This server parses the request and the headers, and then calls a
+   function specific to the request type (<command>).  Specifically,
+   a request SPAM will be handled by a method do_SPAM().  If no
+   such method exists the server sends an error response to the
+   client.  If it exists, it is called with no arguments:
+
+   do_SPAM()
+
+   Note that the request name is case sensitive (i.e. SPAM and spam
+   are different requests).
+
+   The various request details are stored in instance variables:
+
+   - client_address is the client IP address in the form (host,
+   port);
+
+   - command, path and version are the broken-down request line;
+
+   - headers is an instance of email.message.Message (or a derived
+   class) containing the header information;
+
+   - rfile is a file object open for reading positioned at the
+   start of the optional input data part;
+
+   - wfile is a file object open for writing.
+
+   IT IS IMPORTANT TO ADHERE TO THE PROTOCOL FOR WRITING!
+
+   The first thing to be written must be the response line.  Then
+   follow 0 or more header lines, then a blank line, and then the
+   actual data (if any).  The meaning of the header lines depends on
+   the command executed by the server; in most cases, when data is
+   returned, there should be at least one header line of the form
+
+   Content-type: <type>/<subtype>
+
+   where <type> and <subtype> should be registered MIME types,
+   e.g. "text/html" or "text/plain".
+
+
+
+   .. py:method:: do_GET()
+
+
+.. py:class:: ProcessorMain(process_dir_list, web_port=8080)
+
+   .. py:attribute:: pc_info
+
+
+   .. py:attribute:: pc_list
+
+
+   .. py:attribute:: socket_dict
+
+
+   .. py:attribute:: log_socket
+
+
+   .. py:attribute:: process_dir_list
+
+
+   .. py:attribute:: original_dir_list
+
+
+   .. py:attribute:: pc_state
+
+
+   .. py:attribute:: current_tasks
+
+
+   .. py:attribute:: task_status
+
+
+   .. py:attribute:: finish
+      :value: False
+
+
+
+   .. py:method:: start_web_server(port)
+
+      웹 서버 시작
+
+
+
+   .. py:method:: register()
+
+
+   .. py:method:: send_message(message)
+
+
+   .. py:method:: wait_for_message(message, timeout=-1)
+
+
+   .. py:method:: receive_logs()
+
+
+   .. py:method:: monitor()
+
+
+   .. py:method:: get_status_json()
+
+      JSON 형태로 상태 반환
+
+
+
+   .. py:method:: get_status_html()
+
+      HTML 형태로 상태 반환
+
+
+

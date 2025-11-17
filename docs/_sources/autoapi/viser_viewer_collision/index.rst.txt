@@ -1,0 +1,77 @@
+viser_viewer_collision
+======================
+
+.. py:module:: viser_viewer_collision
+
+.. autoapi-nested-parse::
+
+   env: hoifield_310
+   play /stop / next frame/ previous frame
+   slider
+   floor vis (on/off)
+   debugline / debugpoint / debug sphere (on/off)
+   rendering the current 3D scene into images
+   Visualizing the 3D scene changes during optimization
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ViserViewer(obj_dict, urdf_path, qpos, c2r=None, object_nm='object')
+
+   .. py:attribute:: urdf
+
+
+   .. py:attribute:: urdf_vis
+
+
+   .. py:attribute:: qpos
+
+
+   .. py:attribute:: num_frames
+
+
+   .. py:attribute:: prev_timestep
+      :value: 0
+
+
+
+   .. py:method:: load_server()
+
+
+   .. py:method:: add_player()
+
+
+   .. py:method:: add_frames()
+
+
+   .. py:method:: update_floor()
+
+
+   .. py:method:: add_grid_lines(size=1.0)
+
+
+   .. py:method:: add_initial_meshes()
+
+
+   .. py:method:: update_scene(timestep)
+
+
+   .. py:method:: render_current_frame(timestep)
+
+
+   .. py:method:: render_full_video()
+
+      모든 프레임을 렌더링하고 동영상으로 저장
+
+
+
+   .. py:method:: update()
+
+
+   .. py:method:: start_viewer()
+
+

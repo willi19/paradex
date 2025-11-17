@@ -1,0 +1,256 @@
+paradex.colmap.database
+=======================
+
+.. py:module:: paradex.colmap.database
+
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: IS_PYTHON3
+
+.. py:data:: MAX_IMAGE_ID
+   :value: 2147483647
+
+
+.. py:data:: CREATE_CAMERAS_TABLE
+   :value: Multiline-String
+
+   .. raw:: html
+
+      <details><summary>Show Value</summary>
+
+   .. code-block:: python
+
+      """CREATE TABLE IF NOT EXISTS cameras (
+          camera_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          model INTEGER NOT NULL,
+          width INTEGER NOT NULL,
+          height INTEGER NOT NULL,
+          params BLOB,
+          prior_focal_length INTEGER NOT NULL)"""
+
+   .. raw:: html
+
+      </details>
+
+
+
+.. py:data:: CREATE_DESCRIPTORS_TABLE
+   :value: Multiline-String
+
+   .. raw:: html
+
+      <details><summary>Show Value</summary>
+
+   .. code-block:: python
+
+      """CREATE TABLE IF NOT EXISTS descriptors (
+          image_id INTEGER PRIMARY KEY NOT NULL,
+          rows INTEGER NOT NULL,
+          cols INTEGER NOT NULL,
+          data BLOB,
+          FOREIGN KEY(image_id) REFERENCES images(image_id) ON DELETE CASCADE)"""
+
+   .. raw:: html
+
+      </details>
+
+
+
+.. py:data:: CREATE_IMAGES_TABLE
+   :value: Multiline-String
+
+   .. raw:: html
+
+      <details><summary>Show Value</summary>
+
+   .. code-block:: python
+
+      """CREATE TABLE IF NOT EXISTS images (
+          image_id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+          name TEXT NOT NULL UNIQUE,
+          camera_id INTEGER NOT NULL,
+          prior_qw REAL,
+          prior_qx REAL,
+          prior_qy REAL,
+          prior_qz REAL,
+          prior_tx REAL,
+          prior_ty REAL,
+          prior_tz REAL,
+          CONSTRAINT image_id_check CHECK(image_id >= 0 and image_id < 2147483647),
+          FOREIGN KEY(camera_id) REFERENCES cameras(camera_id))
+      """
+
+   .. raw:: html
+
+      </details>
+
+
+
+.. py:data:: CREATE_TWO_VIEW_GEOMETRIES_TABLE
+   :value: Multiline-String
+
+   .. raw:: html
+
+      <details><summary>Show Value</summary>
+
+   .. code-block:: python
+
+      """
+      CREATE TABLE IF NOT EXISTS two_view_geometries (
+          pair_id INTEGER PRIMARY KEY NOT NULL,
+          rows INTEGER NOT NULL,
+          cols INTEGER NOT NULL,
+          data BLOB,
+          config INTEGER NOT NULL,
+          F BLOB,
+          E BLOB,
+          H BLOB)
+      """
+
+   .. raw:: html
+
+      </details>
+
+
+
+.. py:data:: CREATE_KEYPOINTS_TABLE
+   :value: Multiline-String
+
+   .. raw:: html
+
+      <details><summary>Show Value</summary>
+
+   .. code-block:: python
+
+      """CREATE TABLE IF NOT EXISTS keypoints (
+          image_id INTEGER PRIMARY KEY NOT NULL,
+          rows INTEGER NOT NULL,
+          cols INTEGER NOT NULL,
+          data BLOB,
+          FOREIGN KEY(image_id) REFERENCES images(image_id) ON DELETE CASCADE)
+      """
+
+   .. raw:: html
+
+      </details>
+
+
+
+.. py:data:: CREATE_MATCHES_TABLE
+   :value: Multiline-String
+
+   .. raw:: html
+
+      <details><summary>Show Value</summary>
+
+   .. code-block:: python
+
+      """CREATE TABLE IF NOT EXISTS matches (
+          pair_id INTEGER PRIMARY KEY NOT NULL,
+          rows INTEGER NOT NULL,
+          cols INTEGER NOT NULL,
+          data BLOB)"""
+
+   .. raw:: html
+
+      </details>
+
+
+
+.. py:data:: CREATE_NAME_INDEX
+   :value: 'CREATE UNIQUE INDEX IF NOT EXISTS index_name ON images(name)'
+
+
+.. py:data:: CREATE_ALL
+   :value: ''
+
+
+.. py:function:: image_ids_to_pair_id(image_id1, image_id2)
+
+.. py:function:: pair_id_to_image_ids(pair_id)
+
+.. py:function:: array_to_blob(array)
+
+.. py:function:: blob_to_array(blob, dtype, shape=(-1, ))
+
+.. py:class:: COLMAPDatabase(*args, **kwargs)
+
+   Bases: :py:obj:`sqlite3.Connection`
+
+
+   .. py:method:: connect(database_path)
+      :staticmethod:
+
+
+
+   .. py:attribute:: create_tables
+
+
+   .. py:attribute:: create_cameras_table
+
+
+   .. py:attribute:: create_descriptors_table
+
+
+   .. py:attribute:: create_images_table
+
+
+   .. py:attribute:: create_two_view_geometries_table
+
+
+   .. py:attribute:: create_keypoints_table
+
+
+   .. py:attribute:: create_matches_table
+
+
+   .. py:attribute:: create_name_index
+
+
+   .. py:method:: add_camera(model, width, height, params, prior_focal_length=False, camera_id=None)
+
+
+   .. py:method:: add_image(name, camera_id, prior_q=np.full(4, np.NaN), prior_t=np.full(3, np.NaN), image_id=None)
+
+
+   .. py:method:: add_keypoints(image_id, keypoints)
+
+
+   .. py:method:: add_descriptors(image_id, descriptors)
+
+
+   .. py:method:: add_matches(image_id1, image_id2, matches)
+
+
+   .. py:method:: add_two_view_geometry(image_id1, image_id2, matches, F=np.eye(3), E=np.eye(3), H=np.eye(3), config=2)
+
+
+   .. py:method:: get_camera()
+
+
+   .. py:method:: get_descriptors()
+
+
+   .. py:method:: get_keypoints()
+
+
+   .. py:method:: get_corners()
+
+
+   .. py:method:: get_matches()
+
+
+   .. py:method:: get_images()
+
+
+   .. py:method:: get_two_view_geometries()
+
+

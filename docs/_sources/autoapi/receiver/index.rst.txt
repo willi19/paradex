@@ -1,0 +1,82 @@
+receiver
+========
+
+.. py:module:: receiver
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: occulus_hand_joint_name
+   :value: ['palm', 'wrist', 'thumb_metacarpal', 'thumb_proximal', 'thumb_distal', 'thumb_tip',...
+
+
+.. py:data:: occulus_hand_joint_parent
+
+.. py:data:: occulus_hand_joint_parent_name
+
+.. py:data:: occulus_body_joint_name
+   :value: ['Root', 'Hips', 'Spine Lower', 'Spine Middle', 'Spine Upper', 'Chest', 'Neck', 'Head', 'Left...
+
+
+.. py:data:: occulus_body_joint_parent
+
+.. py:data:: occulus_upper_body_joint_parent
+
+.. py:data:: unity2Euclidian_mat
+
+.. py:data:: unity2EuclidianPelvis_mat
+
+.. py:data:: OCCULUS2WRIST_Left
+
+.. py:data:: OCCULUS2WRIST_Right
+
+.. py:class:: OculusReceiver(is_body=False)
+
+   .. py:attribute:: hand_pose
+
+
+   .. py:attribute:: body_pose
+      :value: None
+
+
+
+   .. py:attribute:: is_body
+      :value: False
+
+
+
+   .. py:attribute:: host_ip
+
+
+   .. py:attribute:: port
+
+
+   .. py:attribute:: stop_event
+
+
+   .. py:attribute:: lock
+
+
+   .. py:attribute:: recv_thread
+
+
+   .. py:method:: get_data()
+
+
+   .. py:method:: parse_posedata(pose_data)
+
+
+   .. py:method:: parse_hand(token)
+
+
+   .. py:method:: run()
+
+
+   .. py:method:: quit()
+
+

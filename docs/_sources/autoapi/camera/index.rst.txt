@@ -1,0 +1,69 @@
+camera
+======
+
+.. py:module:: camera
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: Camera(cam_type, name, frame_shape=(1536, 2048, 3))
+
+   .. py:attribute:: event
+
+
+   .. py:attribute:: type
+
+
+   .. py:attribute:: name
+
+
+   .. py:attribute:: frame_shape
+      :value: (1536, 2048, 3)
+
+
+
+   .. py:attribute:: capture_thread
+
+
+   .. py:method:: load_shared_memory()
+
+
+   .. py:method:: release_shared_memory()
+
+
+   .. py:method:: start(mode, syncMode, save_path=None, fps=30)
+
+
+   .. py:method:: stop()
+
+
+   .. py:method:: end()
+
+
+   .. py:method:: continuous_acquire()
+
+
+   .. py:method:: single_acquire()
+
+
+   .. py:method:: connect_camera()
+
+
+   .. py:method:: release()
+
+
+   .. py:method:: get_state()
+
+
+   .. py:method:: get_frame_id()
+
+
+   .. py:method:: get_status()
+
+
+   .. py:method:: run()
+
+

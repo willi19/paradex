@@ -1,0 +1,29 @@
+io
+==
+
+.. py:module:: io
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: get_optimal_T(directory_path, obj_name=None)
+
+.. py:function:: get_obj_trajectory(directory_path)
+
+.. py:function:: get_obj_info(scene_path, object_nm, obj_status_path, return_type='trimesh', device=None)
+
+.. py:function:: get_obj_realtime_t(scene_path, object_nm, return_type='trimesh', device=None)
+
+.. py:function:: resize_with_aspect_ratio(image, maximumL=1920)
+
+.. py:function:: makevideo(img_paths, output_video_path, fps=5, delete_imgs=True)
+
+.. py:function:: get_binary_mask(mask)
+
+.. py:function:: get_ttl_framenumb(cur_state, tg_frame)
+
+.. py:function:: read_camerainfo(camerainfo_dir)
+

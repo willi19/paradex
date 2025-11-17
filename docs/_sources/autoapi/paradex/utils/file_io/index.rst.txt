@@ -1,0 +1,122 @@
+paradex.utils.file_io
+=====================
+
+.. py:module:: paradex.utils.file_io
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: rsc_path
+
+.. py:data:: home_path
+
+.. py:data:: shared_dir
+
+.. py:data:: calib_path_list
+
+.. py:data:: capture_path_list
+
+.. py:data:: download_dir
+
+.. py:data:: cam_param_dir
+
+.. py:data:: cam_param_dir_fix
+
+.. py:data:: handeye_calib_path
+
+.. py:data:: config_dir
+
+.. py:data:: model_dir
+
+.. py:data:: eef_calib_path
+
+.. py:data:: pc_name
+
+.. py:data:: log_path
+
+.. py:function:: get_video_list(video_dir)
+
+   Get a list of video files in the specified directory.
+
+   Parameters:
+   - video_dir: Directory containing video files.
+
+   Returns:
+   - video_list: List of video files in the directory.
+
+
+.. py:function:: find_latest_directory(directory)
+
+   Get the latest directory in the specified directory.
+
+   Parameters:
+   - directory: Directory containing timestamped directories.
+
+   Returns:
+   - latest_dir: Latest directory in the specified directory.
+
+
+.. py:function:: find_latest_index(directory)
+
+   Get the latest directory in the specified directory.
+
+   Parameters:
+   - directory: Directory containing timestamped directories.
+
+   Returns:
+   - latest_dir: Latest directory in the specified directory.
+
+
+.. py:function:: load_current_camparam(name=None)
+
+.. py:function:: load_current_camparam_fixed(name=None)
+
+.. py:function:: is_image_file(file)
+
+.. py:function:: load_images(dir)
+
+.. py:function:: load_obj_traj(demo_path)
+
+.. py:function:: load_robot_traj(demo_path)
+
+.. py:function:: load_robot_traj_prev(demo_path)
+
+.. py:function:: load_robot_target_traj(demo_path)
+
+.. py:function:: load_contact_value(demo_path)
+
+.. py:function:: load_mesh(obj_name)
+
+.. py:function:: load_camparam(demo_path)
+
+.. py:function:: load_intrinsic()
+
+.. py:function:: load_c2r(demo_path)
+
+.. py:function:: load_eef(demo_path)
+
+.. py:function:: load_eef(demo_path)
+
+.. py:function:: get_robot_urdf_path(arm_name=None, hand_name=None)
+
+.. py:function:: copy_calib_files(save_path)
+
+.. py:function:: load_latest_C2R()
+
+.. py:function:: load_latest_eef()
+
+.. py:function:: load_yaml(file_path: str) -> Dict
+
+   Load yaml file and return as dictionary. If file_path is a dictionary, return as is.
+
+   :param file_path: File path to yaml file or dictionary.
+
+   :returns: Dictionary containing yaml file content.
+   :rtype: Dict
+
+

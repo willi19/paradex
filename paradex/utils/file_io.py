@@ -5,28 +5,7 @@ import numpy as np
 import cv2
 import shutil
 import yaml
-
-def get_video_list(video_dir):
-    """
-    Get a list of video files in the specified directory.
-
-    Parameters:
-    - video_dir: Directory containing video files.
-
-    Returns:
-    - video_list: List of video files in the directory.
-    """
-    video_list = []
-    for f in os.listdir(video_dir):
-        if f.endswith(".avi") or f.endswith(".mp4"):
-            video_name = f.split("-")[0] # {serial_num}_{date}
-            timestamp_path = os.path.join(video_dir, video_name+"_timestamp.json")
-            if not os.path.exists(timestamp_path):
-                video_list.append((os.path.join(video_dir, f), None))
-                continue
-            video_list.append((os.path.join(video_dir, f), timestamp_path))
-
-    return video_list
+import pickle
 
 def find_latest_directory(directory):
     """
@@ -41,8 +20,7 @@ def find_latest_directory(directory):
     
     dirs = [d for d in os.listdir(directory)] 
     if not dirs:
-        print("No valid directories found.")
-        return "0"
+        return None
         
     latest_dir = max(dirs, key=str)
     return latest_dir
@@ -67,7 +45,6 @@ def find_latest_index(directory):
         
     latest_dir = max(dirs, key=int)    
     return latest_dir
-
 
 def is_image_file(file):
     return file.endswith(".png") or file.endswith(".jpg") or file.endswith(".jpeg")

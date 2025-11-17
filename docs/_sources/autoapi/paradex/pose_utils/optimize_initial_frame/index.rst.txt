@@ -1,0 +1,19 @@
+paradex.pose_utils.optimize_initial_frame
+=========================================
+
+.. py:module:: paradex.pose_utils.optimize_initial_frame
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: PROJECT_DIR
+
+.. py:data:: device
+
+.. py:function:: object6d_silhouette(scene_path, obj_name, renderer_type='nvdiffrast', wo_simplify=False, rescale_factor=0.25, confidence=0.002, learning_rate=0.01, iou_weight=0.5, tg_weight=10.0, use_rgb=False, image_dir=None)
+

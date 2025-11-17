@@ -5,12 +5,12 @@ import json
 import time
 import os
 
-from paradex.utils.file_io import shared_dir
-from paradex.utils.env import get_pcinfo, get_serial_list
+from paradex.utils.path import shared_dir
+from paradex.utils.system import get_pc_list
 
-from paradex.io.capture_pc.camera_main import RemoteCameraController
-from paradex.io.capture_pc.util import get_client_socket
-from paradex.io.capture_pc.ssh import git_pull, run_script
+from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
+from paradex.io.capture_pc.ssh import run_script
+from paradex.
 
 from paradex.image.aruco import draw_charuco
 from paradex.image.merge import merge_image

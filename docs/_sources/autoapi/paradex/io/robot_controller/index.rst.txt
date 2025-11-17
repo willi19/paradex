@@ -1,0 +1,29 @@
+paradex.io.robot_controller
+===========================
+
+.. py:module:: paradex.io.robot_controller
+
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/paradex/io/robot_controller/allegro_controller/index
+   /autoapi/paradex/io/robot_controller/franka_controller/index
+   /autoapi/paradex/io/robot_controller/inspire_controller/index
+   /autoapi/paradex/io/robot_controller/inspire_controller copy/index
+   /autoapi/paradex/io/robot_controller/xarm_controller/index
+   /autoapi/paradex/io/robot_controller/xarm_controller_tmp/index
+
+
+
+
+Package Contents
+----------------
+
+.. py:function:: get_arm(arm_name)
+
+.. py:function:: get_hand(hand_name)
+

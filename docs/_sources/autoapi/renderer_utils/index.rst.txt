@@ -1,0 +1,117 @@
+renderer_utils
+==============
+
+.. py:module:: renderer_utils
+
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: device
+
+.. py:function:: import_pytorch3d()
+
+.. py:function:: extract_mesh(o3d_mesh, tg_type='array', device='cuda:0')
+
+.. py:function:: convert_mesho3d2py3d(o3d_mesh, device)
+
+.. py:function:: convert_meshtrimesh2py3d(trimesh_mesh_list, device)
+
+.. py:function:: combine_trimesh_to_pytorch3d(mesh_list)
+
+.. py:function:: combine_pytorch3d_meshes(link_list, mesh_info)
+
+.. py:function:: combine_mesh_features(link_list, mesh_info)
+
+.. py:class:: Renderer(extrinsic, intrinsic, Him, Wim, light_positions, device, num_face, views=[16, 8, 29, 18, 38])
+
+   .. py:attribute:: views
+      :value: [16, 8, 29, 18, 38]
+
+
+
+   .. py:attribute:: intrinsic
+
+
+   .. py:attribute:: extrinsic
+
+
+   .. py:attribute:: imsize
+
+
+   .. py:attribute:: raster_settings
+
+
+   .. py:attribute:: camera
+
+
+   .. py:attribute:: blend_params
+
+
+   .. py:attribute:: lights
+
+
+   .. py:attribute:: renderer
+
+
+   .. py:attribute:: proj_matrix
+
+
+   .. py:method:: render(target_lst)
+
+
+   .. py:method:: save_image(rendered_tensor, outpartial)
+
+
+   .. py:method:: project_joint(joints)
+
+
+   .. py:method:: save_process(mask, rendered_tensor, out_path, rgb_path, smpl_proj_joints=None, tg_proj_joints=None, tg_proj_mask=None, tips=None)
+
+
+   .. py:method:: save_process_befproj(mask, rendered_tensor, out_path, rgb_path, smpl_joints=None, rgb_joints=None, tips=None)
+
+
+.. py:function:: transform_mesh(mesh_path, transf, device)
+
+.. py:class:: Batched_RGB_Silhouette_Renderer(extrinsics, intrinsics, img_sizes, device)
+
+   .. py:attribute:: batch_size
+
+
+   .. py:attribute:: intrinsics
+
+
+   .. py:attribute:: extrinsics
+
+
+   .. py:attribute:: imsize
+
+
+   .. py:attribute:: imsize_tuple
+
+
+   .. py:attribute:: cameras
+
+
+   .. py:attribute:: lights
+
+
+   .. py:attribute:: rgb_renderers
+
+
+   .. py:attribute:: silhouette_renderers
+
+
+   .. py:method:: render(obj_dict, render_rgb=True, preextend=False)
+
+
+   .. py:method:: get_rendered_faces(obj_dict)
+
+

@@ -1,0 +1,47 @@
+Tsai_Lenz
+=========
+
+.. py:module:: Tsai_Lenz
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: logR(T)
+
+.. py:function:: solve(A, B)
+
+.. py:class:: HandEyeCalibrationNet(init_rotation=None, init_translation=None)
+
+   Bases: :py:obj:`torch.nn.Module`
+
+
+   PyTorch module for hand-eye calibration using gradient descent
+   Solves AX = XB where X is the hand-to-camera transformation
+
+
+   .. py:method:: forward()
+
+      Returns the current 4x4 transformation matrix X
+
+
+
+.. py:function:: solve_axb_pytorch(A_list, B_list, init_X, max_epochs=3000, learning_rate=0.01, verbose=True)
+
+   Solve AX = XB using PyTorch gradient descent
+
+   :param A_list: List of 4x4 numpy arrays (camera poses)
+   :param B_list: List of 4x4 numpy arrays (robot poses)
+   :param max_epochs: Maximum number of training epochs
+   :param learning_rate: Learning rate for optimization
+   :param verbose: Print progress
+
+   :returns: 4x4 numpy array (hand-to-camera transformation)
+             losses: List of loss values during training
+   :rtype: X
+
+

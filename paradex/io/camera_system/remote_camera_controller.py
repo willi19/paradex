@@ -143,4 +143,6 @@ class remote_camera_controller:
         for socket in self.command_sockets.values():
             socket.close()
         self.ctx.term()
-        
+    
+    def is_error(self):
+        return self.error_event.is_set()

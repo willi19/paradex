@@ -1,0 +1,111 @@
+paradex.robot.robot_wrapper_updating
+====================================
+
+.. py:module:: paradex.robot.robot_wrapper_updating
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: RobotWrapper(urdf_path: str)
+
+   .. py:attribute:: model
+      :type:  pinocchio.Model
+
+
+   .. py:attribute:: data
+      :type:  pinocchio.Data
+
+
+   .. py:attribute:: q0
+
+
+   .. py:property:: joint_names
+      :type: List[str]
+
+
+
+   .. py:property:: dof_joint_names
+      :type: List[str]
+
+
+
+   .. py:property:: dof
+      :type: int
+
+
+
+   .. py:property:: link_names
+      :type: List[str]
+
+
+
+   .. py:property:: joint_limits
+
+
+   .. py:method:: get_joint_index(name: str)
+
+
+   .. py:method:: get_joint_indices(names: List[str])
+
+
+   .. py:method:: get_link_index(name: str)
+
+
+   .. py:method:: get_link_indices(names: List[str])
+
+
+   .. py:method:: get_frame_list()
+
+
+   .. py:method:: compute_forward_kinematics(qpos: numpy.typing.NDArray)
+
+
+   .. py:method:: get_link_pose(link_id: int) -> numpy.typing.NDArray
+
+
+   .. py:method:: get_link_pose_pino(link_id: int) -> numpy.typing.NDArray
+
+
+   .. py:method:: get_link_pose_inv(link_id: int) -> numpy.typing.NDArray
+
+
+   .. py:method:: get_joint_pose(joint_id: int) -> numpy.typing.NDArray
+
+      Returns the SE3 pose of the joint as a 4x4 homogeneous matrix.
+
+
+
+   .. py:method:: get_frame_pose(frame_id: int) -> numpy.typing.NDArray
+
+
+   .. py:method:: compute_single_link_local_jacobian(qpos, link_id: int) -> numpy.typing.NDArray
+
+
+   .. py:method:: integrate(q, v, dt)
+
+
+   .. py:method:: get_all_link_poses()
+
+      Returns a dictionary with link names as keys and their homogeneous transformation matrices as values.
+
+
+
+   .. py:method:: solve_ik(target_pose: numpy.typing.NDArray, end_effector_name: str, q_init: numpy.typing.NDArray = None, max_iter: int = 1000, tol: float = 1e-08, alpha: float = 0.05, try_num: int = 30) -> numpy.typing.NDArray
+
+
+   .. py:method:: get_end_links() -> List[str]
+
+      Returns names of links (frames of type BODY) that are not referenced
+      as parent by any joint. These are the "end links".
+
+
+
+   .. py:method:: get_root_link() -> str
+
+      Returns the root link name (never appears as a child link).
+
+
+

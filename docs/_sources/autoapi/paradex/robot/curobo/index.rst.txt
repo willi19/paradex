@@ -1,0 +1,66 @@
+paradex.robot.curobo
+====================
+
+.. py:module:: paradex.robot.curobo
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: to_quat(obj_pose)
+
+.. py:function:: load_world_config(obstacle_dict, obj_dict)
+
+.. py:class:: CuroboPlanner(obstacle_dict, obj_dict, robot_cfg, tensor_args)
+
+   .. py:attribute:: obstacle_dict
+
+
+   .. py:attribute:: world_cfg
+
+
+   .. py:attribute:: motion_gen
+
+
+   .. py:attribute:: plan_config
+
+
+   .. py:attribute:: batch_plan_config
+
+
+   .. py:attribute:: ik_solver
+
+
+   .. py:method:: get_robot_mesh(joint_state)
+
+
+   .. py:method:: update_world(obj_dict)
+
+
+   .. py:method:: plan_goalset(init_state, goal_pose)
+
+
+   .. py:method:: plan_full_step(current_state: curobo.types.robot.JointState, target_positions: torch.Tensor, target_quats: torch.Tensor, num_grasp: int)
+
+      Plan for entire target object, provided with plausible grasping target
+      full_trajectory : generated trajectory for full object
+
+
+
+   .. py:method:: plan_to_joint_target(init_state, goal_joint_state)
+
+      Plan trajectory to reach a target joint configuration
+
+      :param init_state: Initial joint positions (numpy array or list)
+      :param goal_joint_state: Target joint positions (numpy array or list)
+
+      :returns: bool
+                trajectory: numpy array of joint positions
+      :rtype: success
+
+
+

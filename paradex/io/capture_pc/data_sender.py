@@ -14,7 +14,7 @@ import threading
 from datetime import datetime
 from typing import Dict, Any, Optional, Callable
 
-from paradex.utils.system import get_pc_list
+from paradex.utils.system import get_pc_list, get_pc_ip
 
 class DataPublisher():
     def __init__(self, port: int=1234, name: Optional[str] = None):

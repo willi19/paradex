@@ -1,0 +1,61 @@
+client_trigger
+==============
+
+.. py:module:: client_trigger
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: HOME_PATH
+
+.. py:data:: parser
+
+.. py:data:: args
+   :value: None
+
+
+.. py:data:: obj_name
+
+.. py:data:: DEVICE
+
+.. py:data:: template
+
+.. py:data:: matcherto3d
+
+.. py:data:: paircount_threshold
+
+.. py:data:: mask_detector
+
+.. py:data:: camera_loader
+
+.. py:data:: ident
+   :value: None
+
+
+.. py:data:: serial_list
+
+.. py:data:: socket
+
+.. py:data:: NAS_IMG_SAVEDIR
+
+.. py:data:: board_info
+
+.. py:data:: num_cam
+
+.. py:data:: last_frame_ind
+
+.. py:data:: frame_id
+   :value: -1
+
+
+.. py:data:: process_img
+   :value: False
+
+
+.. py:data:: save_path
+   :value: './tmp'
+
+

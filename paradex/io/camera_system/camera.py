@@ -10,6 +10,8 @@ class Camera():
         self.event = {
             "start": Event(),
             "exit": Event(),
+            "error": Event(),
+            "error_reset": Event(),
             
             "connection": Event(),
             "acquisition": Event(),
@@ -17,12 +19,13 @@ class Camera():
             "stop": Event()
         }
         
+        self.event["error_reset"].set()
+        
         self.type = cam_type
         self.name = name
         
         self.frame_shape = frame_shape  
         
-        self.error_state = None
         self.last_error = None
         self.last_traceback = None
         
@@ -141,8 +144,8 @@ class Camera():
             raise ValueError("Save path must be specified for video or image saving.")
         if self.event["start"].is_set():
             raise RuntimeError("Acquisition is already running.")
-        
-        if self.error_state == "ERROR":
+
+        if self.event["error"].is_set():
             print(f"[WARNING] Camera {self.name} is in ERROR state. Resetting error state.")
             return
         
@@ -165,12 +168,15 @@ class Camera():
             
         self.event["stop"].clear()
         self.event["start"].set()  
+        
         self.event["acquisition"].wait()   
     
     def error_reset(self):
-        self.error_state = None
         self.last_error = None
         self.last_traceback = None
+        
+        self.event["error"].clear()
+        self.event["error_reset"].set()
                
     def stop(self):
         self.event["start"].clear()
@@ -223,9 +229,8 @@ class Camera():
         self.camera.stop()
         self.event["acquisition"].clear()
 
-        self.fid_array_a[0] = 0
-        self.fid_array_b[0] = 0
-        self.write_flag[0] = 0
+        if stream:
+            self.clear_shared_memory()
         
         if save_video:
             video_writer.release()
@@ -260,7 +265,7 @@ class Camera():
         self.event["release"].set()
     
     def get_state(self):
-        if self.error_state == "ERROR":
+        if self.event["error"].is_set():
             return "ERROR"
         elif self.event["exit"].is_set():
             return "STOPPED"
@@ -303,7 +308,7 @@ class Camera():
                     else:
                         self.single_acquire()
             except Exception as e:
-                self.error_state = "ERROR"
+                self.event["error"].set()
                 self.last_error = str(e)
                 import traceback
                 self.last_traceback = traceback.format_exc()
@@ -311,8 +316,15 @@ class Camera():
                 print(f"Exception Type: {type(e).__name__}")
                 print(f"Exception Message: {str(e)}")
                 print(self.last_traceback)
-                self.event["start"].clear()
+                
+                self.event["acquisition"].set()  # To avoid deadlock
+                
+                self.event["error_reset"].wait()
+                
+                self.camera.stop()
                 self.event["acquisition"].clear()
+                self.event["stop"].set()
+                
                 
             time.sleep(0.001)
                     

@@ -1,25 +1,67 @@
-from threading import Event
 import time
+import cv2
+import threading
+from threading import Event
 
+from paradex.io.camera_system.camera_reader import MultiCameraReader
 from paradex.io.capture_pc.data_sender import DataPublisher
 from paradex.io.capture_pc.command_sender import CommandReceiver
 
-start_event = Event()
+# Initialize components
+dp = DataPublisher(port=1234, name="camera_stream")
 exit_event = Event()
-stop_event = Event()    
+cr = CommandReceiver(event_dict={"exit": exit_event}, port=6890)
 
-dp = DataPublisher()
-cr = CommandReceiver({"start": start_event, "exit": exit_event, "stop": stop_event})
+# Initialize multi-camera reader
+reader = MultiCameraReader()
 
-start_time = time.time()    
-while not exit_event.is_set():
-    if start_event.is_set() and not stop_event.is_set():
-        dp.send_data({"value": time.time() - start_time})
-    time.sleep(0.1)
+def stream_loop():
+    """Main loop to read camera images and publish compressed data"""
+    last_frame_ids = {name: 0 for name in reader.camera_names}
+    
+    while not exit_event.is_set():
+        # Get images from all cameras
+        images_data = reader.get_images(copy=True)
+        
+        # Prepare data to send
+        send_data = {}
+        
+        for camera_name, (image, frame_id) in images_data.items():
+            # Only send if we have a new frame
+            if frame_id > last_frame_ids[camera_name] and frame_id > 0:
+                # Get drop count for this camera
+                drop_count = reader.readers[reader.camera_names.index(camera_name)].get_drop_count()
+                
+                # Compress image to JPEG
+                encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
+                success, encoded_image = cv2.imencode('.jpg', image, encode_param)
+                
+                if success:
+                    send_data[camera_name] = {
+                        'frame_id': int(frame_id),
+                        'image': encoded_image.tobytes(),
+                        'shape': image.shape,
+                        'drop_count': int(drop_count)
+                    }
+                    last_frame_ids[camera_name] = frame_id
+        
+        # Publish if we have new data
+        if send_data:
+            dp.send_data(send_data)
+        
+        time.sleep(0.01)  # Small sleep to prevent busy-waiting
 
-    if stop_event.is_set():
-        print("Stopped")
-        start_event.clear()
-        stop_event.clear()
-        continue
+# Start streaming thread
+stream_thread = threading.Thread(target=stream_loop, daemon=True)
+stream_thread.start()
 
+print("Camera streaming client started. Waiting for exit command...")
+
+# Wait for exit
+exit_event.wait()
+
+# Cleanup
+reader.close()
+dp.close()
+cr.end()
+print("Camera streaming client stopped.")

@@ -2,34 +2,29 @@ from threading import Event
 import time
 
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
-
+from paradex.io.capture_pc.ssh import run_script
+from paradex.io.capture_pc.data_sender import DataCollector
 from paradex.utils.keyboard_listener import listen_keyboard
 
+
+run_script("python src/capture/stream_client.py")
+
 rcc = remote_camera_controller("stream_main.py")
+dc = DataCollector()
 
 start_event = Event()
-stop_event = Event()
-end_event = Event()
+exit_event = Event()
 
-listen_keyboard({"c":start_event, "q":stop_event, "e":end_event})
+listen_keyboard({"q":exit_event})
 
-try:
-    while not end_event.is_set():        
-        if not start_event.is_set() and not end_event.is_set():
-            time.sleep(0.01)
-            continue
-        if end_event.is_set():
-            break
-        
-        rcc.start("stream", False, fps=10)
-        print("Capture started. Press 'q' to stop.")
-        while not stop_event.is_set():
-            time.sleep(0.1)
-        print("Stopping capture...")
-        rcc.stop()
-        start_event.clear()
-        stop_event.clear()
-        print("Capture stopped. Press 'c' to start again or 'e' to exit.")
+rcc.start("stream", False, fps=10)
 
-finally:
-    rcc.end()
+while not exit_event.is_set():        
+    time.sleep(0.1)
+
+print("Stopping capture...")
+rcc.stop()
+rcc.end()     
+
+
+ 

@@ -2,39 +2,42 @@ from threading import Event
 import time
 import argparse
 import os
+import datetime
 
-from paradex.io.capture_pc.camera_main import RemoteCameraController
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
-
 from paradex.utils.keyboard_listener import listen_keyboard
-from paradex.utils.file_io import find_latest_index, shared_dir
+from paradex.utils.path import shared_dir
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--save_path', required=True)
+parser.add_argument('--sync_mode', default=False, action='store_true')
+parser.add_argument('--frame_rate', default=30, type=int)
+
 args = parser.parse_args()
 
-rcc = remote_camera_controller("image_main.py")
+rcc = remote_camera_controller("video_main.py")
 
 stop_event = Event()
 save_event = Event()
+exit_event = Event()
 
-listen_keyboard({"c":save_event, "q":stop_event})
-
-save_dir = os.path.join(shared_dir, args.save_path)
-last_idx = int(find_latest_index(save_dir)) if os.path.exists(save_dir) else -1
+listen_keyboard({"c":save_event, "q":exit_event, "s":stop_event})
 
 try:
-    while not stop_event.is_set():
-        
+    while not exit_event.is_set():
         if not save_event.is_set():
             time.sleep(0.01)
             continue
         
-        last_idx += 1
-        print(f"Capturing video to {args.save_path}/{last_idx}/video")
-        rcc.start("video", False, f'{args.save_path}/{last_idx}/video')
+        date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        rcc.start("video", args.sync_mode, f'{args.save_path}/{date_str}/video', frame_rate=args.frame_rate)
+        print(f"Capturing video to {args.save_path}/{date_str}/video")
+        while not stop_event.is_set() and not exit_event.is_set():
+            time.sleep(0.02)
+            
         rcc.stop()
         save_event.clear()
+        stop_event.clear()
         
 finally:
     rcc.end()

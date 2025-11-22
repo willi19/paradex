@@ -218,6 +218,8 @@ class Camera():
         save_video = (self.mode in ["video", "full"] and self.save_path is not None)
         stream = (self.mode in ["stream", "full"])
         blank_frame = np.zeros(self.frame_shape, dtype=np.uint8)
+        blank_frame[::2, ::2] = 255  # checkerboard pattern for dropped frames
+        
         print(f"[INFO] Camera {self.name} starting continuous acquisition.")
         if save_video:
             fourcc = cv2.VideoWriter_fourcc(*'MJPG')

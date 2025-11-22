@@ -11,7 +11,7 @@ from paradex.utils.path import shared_dir
 parser = argparse.ArgumentParser()
 parser.add_argument('--save_path', required=True)
 parser.add_argument('--sync_mode', default=False, action='store_true')
-parser.add_argument('--frame_rate', default=30, type=int)
+parser.add_argument('--fps', default=30, type=int)
 
 args = parser.parse_args()
 
@@ -30,8 +30,8 @@ try:
             continue
         
         date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        rcc.start("video", args.sync_mode, f'{args.save_path}/{date_str}/video', frame_rate=args.frame_rate)
-        print(f"Capturing video to {args.save_path}/{date_str}/video")
+        rcc.start("video", args.sync_mode, f'{args.save_path}/{date_str}', fps=args.fps)
+        print(f"Capturing video to {args.save_path}/{date_str}/raw")
         while not stop_event.is_set() and not exit_event.is_set():
             time.sleep(0.02)
             

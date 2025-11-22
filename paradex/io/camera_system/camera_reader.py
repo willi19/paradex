@@ -5,6 +5,7 @@ import os
 import re
 
 from paradex.utils.system import get_camera_list
+from paradex.utils.path import pc_name
 
 class CameraReader:
     """Shared memory에서 카메라 이미지를 읽어오는 클래스"""
@@ -177,7 +178,7 @@ class MultiCameraReader:
         """
         # 카메라 목록이 제공되지 않으면 자동 탐색
         if camera_names is None:
-            camera_names = get_camera_list()
+            camera_names = get_camera_list(pc_name)
             if not camera_names:
                 raise RuntimeError("No cameras found. Please start cameras first.")
         

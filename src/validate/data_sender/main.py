@@ -2,11 +2,13 @@ import time
 
 from paradex.io.capture_pc.data_sender import DataCollector
 from paradex.io.capture_pc.ssh import run_script
+from paradex.io.capture_pc.command_sender import CommandSender
 
 run_script("python src/validate/data_sender/client.py")
 
 dc = DataCollector()
 dc.start()
+
 
 while True:
     data_dict = dc.get_data()

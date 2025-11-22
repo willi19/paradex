@@ -15,6 +15,7 @@ start_time = time.time()
 while not exit_event.is_set():
     if start_event.is_set() and not stop_event.is_set():
         dp.send_data({"value": time.time() - start_time})
+        print("Data sent")
     time.sleep(0.1)
 
     if stop_event.is_set():

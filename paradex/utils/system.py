@@ -8,7 +8,7 @@ def get_pc_ip(pc_name: str) -> str:
     return pc_info[pc_name]["ip"]
 
 def get_camera_list(pc_name: str):
-    return pc_info[pc_name]["camera_list"]
+    return pc_info[pc_name]["cam_list"]
 
 def get_pc_list():
     return list(pc_info.keys())

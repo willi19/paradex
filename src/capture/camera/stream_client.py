@@ -29,6 +29,7 @@ def stream_loop():
         for camera_name, (image, frame_id) in images_data.items():
             # Only send if we have a new frame
             if frame_id > last_frame_ids[camera_name] and frame_id > 0:
+                image = cv2.resize(image, (image.shape[1]//8, image.shape[0]//8))
                 # Get drop count for this camera
                 encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
                 success, encoded_image = cv2.imencode('.jpg', image, encode_param)

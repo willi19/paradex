@@ -41,26 +41,26 @@ while not exit_event.is_set():
             frame_id = cam_info.get('frame_id', 0)
             drop_count = cam_info.get('drop_count', 0)
             
-            if image_bytes:
-                # Decode JPEG
-                nparr = np.frombuffer(image_bytes, np.uint8)
-                image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+            # if image_bytes:
+            #     # Decode JPEG
+            #     nparr = np.frombuffer(image_bytes, np.uint8)
+            #     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
                 
-                if image is not None:
-                    # Add text overlay with PC name, frame ID, and drop count
-                    text1 = f"{pc_name}:{camera_name}"
-                    text2 = f"Frame {frame_id} | Drops: {drop_count}"
+            #     if image is not None:
+            #         # Add text overlay with PC name, frame ID, and drop count
+            #         text1 = f"{pc_name}:{camera_name}"
+            #         text2 = f"Frame {frame_id} | Drops: {drop_count}"
                     
-                    cv2.putText(image, text1, (10, 30), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-                    cv2.putText(image, text2, (10, 60), 
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.6, 
-                                (0, 0, 255) if drop_count > 0 else (0, 255, 0), 2)
+            #         cv2.putText(image, text1, (10, 30), 
+            #                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
+            #         cv2.putText(image, text2, (10, 60), 
+            #                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, 
+            #                     (0, 0, 255) if drop_count > 0 else (0, 255, 0), 2)
                     
-                    # Resize for display if needed
-                    display_h, display_w = 480, 640
-                    image_resized = cv2.resize(image, (display_w, display_h))
-                    display_images.append(image_resized)
+            #         # Resize for display if needed
+            #         display_h, display_w = 480, 640
+            #         image_resized = cv2.resize(image, (display_w, display_h))
+            #         display_images.append(image_resized)
 print("Stopping capture...")
 
 # Cleanup

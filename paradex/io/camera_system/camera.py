@@ -47,12 +47,12 @@ class Camera():
             self.name + "_fid_b",
             self.name + "_flag"
         ]
-        print("unlink existing shm if any:", shm_names)
         for shm_name in shm_names:
             try:
                 shm = shared_memory.SharedMemory(name=shm_name)
                 shm.close()
                 shm.unlink()
+                print("unlink existing shm if any:", shm_names)
             except FileNotFoundError:
                 pass  # 없으면 패스
     

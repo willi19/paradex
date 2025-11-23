@@ -1,4 +1,5 @@
 from multiprocessing import shared_memory
+from multiprocessing.resource_tracker import unregister
 import numpy as np
 import time
 import os
@@ -32,22 +33,29 @@ class CameraReader:
             self.image_shm_a = shared_memory.SharedMemory(
                 name=self.name + "_image_a"
             )
+            unregister(self.image_shm_a._name, "shared_memory")
+
             self.image_shm_b = shared_memory.SharedMemory(
                 name=self.name + "_image_b"
             )
+            unregister(self.image_shm_b._name, "shared_memory")
             
             # Frame ID 2개에 연결
             self.fid_shm_a = shared_memory.SharedMemory(
                 name=self.name + "_fid_a"
             )
+            unregister(self.fid_shm_a._name, "shared_memory")
+
             self.fid_shm_b = shared_memory.SharedMemory(
                 name=self.name + "_fid_b"
             )
+            unregister(self.fid_shm_b._name, "shared_memory")
             
             # Write buffer flag에 연결
             self.write_flag_shm = shared_memory.SharedMemory(
                 name=self.name + "_flag"
             )
+            unregister(self.write_flag_shm._name, "shared_memory")
             
             # Arrays 생성
             self.image_array_a = np.ndarray(
@@ -140,20 +148,19 @@ class CameraReader:
     
     def close(self):
         # """Shared memory 연결 해제"""
-        # self.image_array_a = None
-        # self.image_array_b = None
-        # self.fid_array_a = None
-        # self.fid_array_b = None
-        # self.write_flag = None
+        self.image_array_a = None
+        self.image_array_b = None
+        self.fid_array_a = None
+        self.fid_array_b = None
+        self.write_flag = None
         
-        # self.image_shm_a.close()
-        # self.image_shm_b.close()
-        # self.fid_shm_a.close()
-        # self.fid_shm_b.close()
-        # self.write_flag_shm.close()
+        self.image_shm_a.close()
+        self.image_shm_b.close()
+        self.fid_shm_a.close()
+        self.fid_shm_b.close()
+        self.write_flag_shm.close()
         
         print(f"Closed shared memory connection for camera: {self.name}")
-    
 
 class MultiCameraReader:
     """여러 카메라의 shared memory를 동시에 읽는 클래스"""

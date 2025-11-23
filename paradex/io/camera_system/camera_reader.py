@@ -28,50 +28,46 @@ class CameraReader:
         start_time = time.time()
         
         while time.time() - start_time < self.timeout:
-            try:
-                # Buffer 2개에 연결
-                self.image_shm_a = shared_memory.SharedMemory(
-                    name=self.name + "_image_a"
-                )
-                self.image_shm_b = shared_memory.SharedMemory(
-                    name=self.name + "_image_b"
-                )
-                
-                # Frame ID 2개에 연결
-                self.fid_shm_a = shared_memory.SharedMemory(
-                    name=self.name + "_fid_a"
-                )
-                self.fid_shm_b = shared_memory.SharedMemory(
-                    name=self.name + "_fid_b"
-                )
-                
-                # Write buffer flag에 연결
-                self.write_flag_shm = shared_memory.SharedMemory(
-                    name=self.name + "_flag"
-                )
-                
-                # Arrays 생성
-                self.image_array_a = np.ndarray(
-                    self.frame_shape, dtype=np.uint8, buffer=self.image_shm_a.buf
-                )
-                self.image_array_b = np.ndarray(
-                    self.frame_shape, dtype=np.uint8, buffer=self.image_shm_b.buf
-                )
-                self.fid_array_a = np.ndarray(
-                    (1,), dtype=np.int64, buffer=self.fid_shm_a.buf
-                )
-                self.fid_array_b = np.ndarray(
-                    (1,), dtype=np.int64, buffer=self.fid_shm_b.buf
-                )
-                self.write_flag = np.ndarray(
-                    (1,), dtype=np.uint8, buffer=self.write_flag_shm.buf
-                )
-                
-                print(f"Successfully connected to shared memory for camera: {self.name}")
-                return
-                
-            except FileNotFoundError:
-                time.sleep(0.1)
+            # Buffer 2개에 연결
+            self.image_shm_a = shared_memory.SharedMemory(
+                name=self.name + "_image_a"
+            )
+            self.image_shm_b = shared_memory.SharedMemory(
+                name=self.name + "_image_b"
+            )
+            
+            # Frame ID 2개에 연결
+            self.fid_shm_a = shared_memory.SharedMemory(
+                name=self.name + "_fid_a"
+            )
+            self.fid_shm_b = shared_memory.SharedMemory(
+                name=self.name + "_fid_b"
+            )
+            
+            # Write buffer flag에 연결
+            self.write_flag_shm = shared_memory.SharedMemory(
+                name=self.name + "_flag"
+            )
+            
+            # Arrays 생성
+            self.image_array_a = np.ndarray(
+                self.frame_shape, dtype=np.uint8, buffer=self.image_shm_a.buf
+            )
+            self.image_array_b = np.ndarray(
+                self.frame_shape, dtype=np.uint8, buffer=self.image_shm_b.buf
+            )
+            self.fid_array_a = np.ndarray(
+                (1,), dtype=np.int64, buffer=self.fid_shm_a.buf
+            )
+            self.fid_array_b = np.ndarray(
+                (1,), dtype=np.int64, buffer=self.fid_shm_b.buf
+            )
+            self.write_flag = np.ndarray(
+                (1,), dtype=np.uint8, buffer=self.write_flag_shm.buf
+            )
+            
+            print(f"Successfully connected to shared memory for camera: {self.name}")
+            return
         
         raise RuntimeError(
             f"Failed to connect to shared memory for camera '{self.name}' "

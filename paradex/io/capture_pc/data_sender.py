@@ -12,7 +12,7 @@ import json
 import time
 import threading
 from datetime import datetime
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, List
 
 from paradex.utils.system import get_pc_list, get_pc_ip
 
@@ -41,20 +41,27 @@ class DataPublisher():
         
         # Give subscribers time to connect
         time.sleep(0.1)
-    
-    def send_data(self, data: Dict[str, Any]) -> None:
+
+    def send_data(self, metadata: List[Dict[str, Any]], data: List[bytes]) -> None:
         """
-        Publish data.
+        Publish data using multipart messages for efficient binary transmission.
         
         Args:
-            data: Data dictionary to send
+            metadata: Metadata dictionary for each camera (frame_id, shape, image_index)
+            data: List of binary image data (JPEG bytes)
         """
+        
         message = {
             'timestamp': datetime.now().isoformat(),
             'publisher': self.name,
-            'data': data
+            'items': metadata
         }
-        self.socket.send_json(message)
+        
+        # Send as multipart: [topic, metadata_json, image1_bytes, image2_bytes, ...]
+        message_parts = [b'data', json.dumps(message).encode('utf-8')]
+        message_parts.extend(data)
+        
+        self.socket.send_multipart(message_parts)
     
     def close(self) -> None:
         """Clean up resources."""
@@ -85,7 +92,7 @@ class DataCollector:
         self.poller = zmq.Poller()
         
         # Data storage
-        self.latest_data = {pc: None for pc in self.pc_list}
+        self.latest_data = {}
         
         # Collection control
         self.collecting = False
@@ -109,24 +116,41 @@ class DataCollector:
             print(f"[Collector] Subscribed to {pc_name} at {ip}:{self.port}")
     
     def _collection_loop(self) -> None:
-        """Main loop for collecting data from all PCs."""
         while self.collecting:
-            # Poll all sockets with timeout
-            socks = dict(self.poller.poll(timeout=100))  # 100ms timeout
+            socks = dict(self.poller.poll(timeout=100))
             
             for pc_name, socket in self.sockets.items():
                 if socket in socks:
                     try:
-                        data = socket.recv_json(flags=zmq.NOBLOCK)                        
-                        self.latest_data[pc_name] = data
+                        parts = socket.recv_multipart(flags=zmq.NOBLOCK)
+                        
+                        if len(parts) < 2:
+                            continue
+                        
+                        metadata = json.loads(parts[1].decode('utf-8'))
+                        
+                        # 각 item을 name 기준으로 저장
+                        items = metadata.get('items', [])
+                        for item in items:
+                            if 'data_index' in item:
+                                idx = item.pop('data_index')
+                                if idx + 2 < len(parts):
+                                    item['data'] = parts[idx + 2]
+                            
+                            # name을 key로 저장!
+                            item_name = item.get('name')
+                            if item_name:
+                                item['pc'] = pc_name  # 어느 PC에서 왔는지 기록
+                                item['timestamp'] = metadata.get('timestamp')
+                                item['publisher'] = metadata.get('publisher')
+                                
+                                self.latest_data[item_name] = item
                         
                     except zmq.Again:
                         pass
-                    except json.JSONDecodeError as e:
-                        print(f"[Collector] JSON error from {pc_name}: {e}")
                     except Exception as e:
                         print(f"[Collector] Error from {pc_name}: {e}")
-    
+        
     def start(self) -> None:
         """Start collecting data from all PCs."""
         if self.collecting:

@@ -33,7 +33,7 @@ while not exit_event.is_set():
     for pc_name, pc_data in all_data.items():
         if pc_data is None:
             continue
-        
+        print(all_data)
         camera_data = pc_data.get('data', {})
         for camera_name, cam_info in camera_data.items():
             # Decompress image
@@ -41,6 +41,7 @@ while not exit_event.is_set():
                 image_bytes = cam_info.get('image')
                 frame_id = cam_info.get('frame_id', 0)
                 drop_count = cam_info.get('drop_count', 0)
+                
 
                 # if image_bytes:
                 #     # Decode JPEG

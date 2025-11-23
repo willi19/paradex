@@ -376,6 +376,7 @@ class Camera():
         while not self.event["exit"].is_set(): # we should maintain the connection until exit
             if self.event["start"].is_set(): # Start data acquisition
                 if self.mode in ["full", "video", "stream"]:
+                    print(f"[INFO] Camera {self.name} entering continuous acquisition mode.")
                     self.continuous_acquire()
                 else:
                     self.single_acquire()

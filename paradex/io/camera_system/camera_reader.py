@@ -158,13 +158,6 @@ class CameraReader:
         
         print(f"Closed shared memory connection for camera: {self.name}")
     
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-        return False
-
 
 class MultiCameraReader:
     """여러 카메라의 shared memory를 동시에 읽는 클래스"""
@@ -241,9 +234,3 @@ class MultiCameraReader:
         for reader in self.readers:
             reader.close()
     
-    def __enter__(self):
-        return self
-    
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
-        return False

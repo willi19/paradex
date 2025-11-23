@@ -62,8 +62,8 @@ class camera_server_daemon:
     def execute_command(self, cmd):
         action = cmd.get('action')
         controller_name = cmd.get('controller_name')
-        if action != "heartbeat":
-            print(f"[Command] From {controller_name}: {action}")
+        # if action != "heartbeat":
+        print(f"[Command] From {controller_name}: {action}")
             
         if controller_name != self.current_controller and self.current_controller is not None:
             print(f"[Warning] {controller_name} tried to access, but locked by {self.current_controller}")

@@ -38,7 +38,7 @@ class CameraLoader:
             
         else:
             save_paths = [None for _ in self.cameralist]
-
+        print("starting cameras... cameras:", self.camera_names)
         threads = []
         for camera, path in zip(self.cameralist, save_paths):
             t = Thread(target=camera.start, args=(mode, syncMode, path, fps))

@@ -130,7 +130,7 @@ class camera_server_daemon:
                     self.current_controller = None
                     
             except Exception as e:
-                self.camera_loader.stop()
+                self.camera_loader.end()
                 self.current_controller = None
                 
                 traceback.print_exc()

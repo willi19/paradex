@@ -77,18 +77,17 @@ class camera_server_daemon:
             return {"status":"error", "msg":"no active controller"}
         
         if action == "start":
-            try:
-                self.camera_loader.start(
-                            cmd.get('mode'),
-                            cmd.get('syncMode'),
-                            cmd.get('save_path'),
-                            cmd.get('fps', 30)
-                        )
-                
-                return {"status":"ok", "msg":"started"}
+            self.camera_loader.start(
+                        cmd.get('mode'),
+                        cmd.get('syncMode'),
+                        cmd.get('save_path'),
+                        cmd.get('fps', 30)
+                    )
+            
+            return {"status":"ok", "msg":"started"}
 
-            except:
-                return {"status":"error", "msg":"start failed"}
+            # except:
+            #     return {"status":"error", "msg":"start failed"}
 
         if action == "stop":
             try:

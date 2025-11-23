@@ -186,6 +186,7 @@ class Camera():
         self.event["start"].set()  
         
         self.event["acquisition"].wait()   
+        print(f"[INFO] Camera {self.name} acquisition started.")
     
     def error_reset(self):
         self.last_error = None
@@ -438,6 +439,7 @@ class TimestampGenerator():
         self.event["start"].set()  
         
         self.event["acquisition"].wait()   
+        
     
     def error_reset(self):
         self.last_error = None

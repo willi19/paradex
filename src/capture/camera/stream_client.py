@@ -7,19 +7,18 @@ from paradex.io.camera_system.camera_reader import MultiCameraReader
 from paradex.io.capture_pc.data_sender import DataPublisher
 from paradex.io.capture_pc.command_sender import CommandReceiver
 
-# Initialize components
-dp = DataPublisher(port=1234, name="camera_stream")
-exit_event = Event()
-cr = CommandReceiver(event_dict={"exit": exit_event}, port=6890)
+for _ in range(3):
+    # Initialize components
+    dp = DataPublisher(port=1234, name="camera_stream")
+    exit_event = Event()
+    # cr = CommandReceiver(event_dict={"exit": exit_event}, port=6890)
 
-# Initialize multi-camera reader
-reader = MultiCameraReader()
+    # Initialize multi-camera reader
+    reader = MultiCameraReader()
 
-def stream_loop():
-    """Main loop to read camera images and publish compressed data"""
     last_frame_ids = {name: 0 for name in reader.camera_names}
-    
-    while not exit_event.is_set():
+    start_time = time.time()
+    while time.time() - start_time < 10:  # Run for 60 seconds
         # Get images from all cameras
         images_data = reader.get_images(copy=True)
         
@@ -48,17 +47,8 @@ def stream_loop():
         
         time.sleep(0.01)  # Small sleep to prevent busy-waiting
 
-# Start streaming thread
-stream_thread = threading.Thread(target=stream_loop, daemon=True)
-stream_thread.start()
-
-print("Camera streaming client started. Waiting for exit command...")
-
-# Wait for exit
-exit_event.wait()
-
-# Cleanup
-reader.close()
-dp.close()
-cr.end()
-print("Camera streaming client stopped.")
+    # Cleanup
+    reader.close()
+    dp.close()
+    # cr.end()
+    print("Camera streaming client stopped.")

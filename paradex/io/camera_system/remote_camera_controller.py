@@ -81,7 +81,7 @@ class remote_camera_controller:
             except zmq.ZMQError as e:
                 print(f"{pc}: No response in send_command - {e}")
                 response[pc] = {'status':'error', 'msg':'no response'}
-                
+        print("response:", response)
         return response
             
     def register(self):

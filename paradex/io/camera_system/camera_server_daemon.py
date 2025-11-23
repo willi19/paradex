@@ -97,6 +97,7 @@ class camera_server_daemon:
 
         if action == "end":
             try:
+                self.camera_loader.end()
                 self.current_controller = None
                 return {"status":"ok", "msg":"ended"}
             except:

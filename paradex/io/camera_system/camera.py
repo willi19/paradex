@@ -33,7 +33,7 @@ class Camera():
         self.last_traceback = None
         
         self.load_shared_memory()
-        
+        print(f"[INFO] Camera {self.name} shared memory loaded.")
         self.capture_thread = Thread(target=self.run) 
         self.capture_thread.start()  
         

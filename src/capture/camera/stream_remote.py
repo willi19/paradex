@@ -29,7 +29,7 @@ rcc.start("stream", False, fps=10)
 while not exit_event.is_set():        
     all_data = dc.get_data()
     display_images = []
-    
+    print(all_data)
     for pc_name, pc_data in all_data.items():
         if pc_data is None:
             continue

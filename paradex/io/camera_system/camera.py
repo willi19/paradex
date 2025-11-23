@@ -208,6 +208,7 @@ class Camera():
             self.error_reset()
             
         self.event["stop"].wait()
+        print(f"[INFO] Camera {self.name} has been stopped.")
            
     def end(self):
         if self.event["start"].is_set():

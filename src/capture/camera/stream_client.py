@@ -37,7 +37,7 @@ def stream_loop():
                 if success:
                     send_data[camera_name] = {
                         'frame_id': int(frame_id),
-                        'image': encoded_image.tobytes(),
+                        # 'image': encoded_image.tobytes(),
                         # 'shape': image.shape,
                     }
                     last_frame_ids[camera_name] = frame_id

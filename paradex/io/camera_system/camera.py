@@ -213,6 +213,7 @@ class Camera():
         
         self.event["exit"].set()
         self.capture_thread.join()
+        print(f"[INFO] Camera {self.name} has been successfully ended.")
     
     def continuous_acquire(self):
         save_video = (self.mode in ["video", "full"] and self.save_path is not None)
@@ -333,6 +334,7 @@ class Camera():
     def release(self):
         self.camera.release()
         self.release_shared_memory()
+        print(f"[INFO] Camera {self.name} shared memory released.")
         self.event["release"].set()
     
     def get_state(self):

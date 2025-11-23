@@ -31,7 +31,7 @@ while not exit_event.is_set():
             # Get drop count for this camera
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
             success, encoded_image = cv2.imencode('.jpg', image, encode_param)
-            
+            print(encoded_image.nbytes, encoded_image.shape)
             if success:
                 send_data[camera_name] = {
                     'frame_id': int(frame_id),

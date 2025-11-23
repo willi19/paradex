@@ -182,7 +182,7 @@ class Camera():
             if save_dir:
                 os.makedirs(save_dir, exist_ok=True)
                 
-        print(f"[INFO] Camera {self.name} will save to {self.save_path}.")  
+        print(f"[INFO] Camera {self.name} will start.")  
         self.event["stop"].clear()
         self.event["start"].set()  
         

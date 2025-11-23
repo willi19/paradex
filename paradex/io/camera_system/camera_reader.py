@@ -139,18 +139,18 @@ class CameraReader:
         return frame_id
     
     def close(self):
-        """Shared memory 연결 해제"""
-        self.image_array_a = None
-        self.image_array_b = None
-        self.fid_array_a = None
-        self.fid_array_b = None
-        self.write_flag = None
+        # """Shared memory 연결 해제"""
+        # self.image_array_a = None
+        # self.image_array_b = None
+        # self.fid_array_a = None
+        # self.fid_array_b = None
+        # self.write_flag = None
         
-        self.image_shm_a.close()
-        self.image_shm_b.close()
-        self.fid_shm_a.close()
-        self.fid_shm_b.close()
-        self.write_flag_shm.close()
+        # self.image_shm_a.close()
+        # self.image_shm_b.close()
+        # self.fid_shm_a.close()
+        # self.fid_shm_b.close()
+        # self.write_flag_shm.close()
         
         print(f"Closed shared memory connection for camera: {self.name}")
     

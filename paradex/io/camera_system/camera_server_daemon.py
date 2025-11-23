@@ -62,9 +62,7 @@ class camera_server_daemon:
     def execute_command(self, cmd):
         action = cmd.get('action')
         controller_name = cmd.get('controller_name')
-        # if action != "heartbeat":
-        print(f"[Command] From {controller_name}: {action}")
-            
+        
         if controller_name != self.current_controller and self.current_controller is not None:
             print(f"[Warning] {controller_name} tried to access, but locked by {self.current_controller}")
             return {"status":"error", "msg":f"locked by {self.current_controller}"}
@@ -77,17 +75,18 @@ class camera_server_daemon:
             return {"status":"error", "msg":"no active controller"}
         
         if action == "start":
-            self.camera_loader.start(
-                        cmd.get('mode'),
-                        cmd.get('syncMode'),
-                        cmd.get('save_path'),
-                        cmd.get('fps', 30)
-                    )
-            
-            return {"status":"ok", "msg":"started"}
+            try:
+                self.camera_loader.start(
+                            cmd.get('mode'),
+                            cmd.get('syncMode'),
+                            cmd.get('save_path'),
+                            cmd.get('fps', 30)
+                        )
+                
+                return {"status":"ok", "msg":"started"}
 
-            # except:
-            #     return {"status":"error", "msg":"start failed"}
+            except:
+                return {"status":"error", "msg":"start failed"}
 
         if action == "stop":
             try:
@@ -98,7 +97,6 @@ class camera_server_daemon:
 
         if action == "end":
             try:
-                self.camera_loader.end()
                 self.current_controller = None
                 return {"status":"ok", "msg":"ended"}
             except:
@@ -131,7 +129,7 @@ class camera_server_daemon:
                     self.current_controller = None
                     
             except Exception as e:
-                self.camera_loader.end()
+                self.camera_loader.stop()
                 self.current_controller = None
                 
                 traceback.print_exc()
@@ -139,4 +137,5 @@ class camera_server_daemon:
                     'status': 'error', 
                     'msg': f'{type(e).__name__}: {str(e)} traceback : {traceback.format_exc()}'
                 })
-                
+                print("[Error] Exception in command thread. Camera loader stopped and controller released.")
+                print("response: ", response)

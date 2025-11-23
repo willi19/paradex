@@ -8,7 +8,7 @@ from paradex.io.capture_pc.ssh import run_script
 from paradex.io.capture_pc.data_sender import DataCollector
 from paradex.io.capture_pc.command_sender import CommandSender
 from paradex.utils.keyboard_listener import listen_keyboard
-
+from paradex.image.merge import merge_image
 
 # run_script("python src/capture/stream_client.py")
 
@@ -26,47 +26,33 @@ listen_keyboard({"q":exit_event})
 
 rcc.start("stream", False, fps=10)
 
+img_dict = {}
+img_text = {}
+
 while not exit_event.is_set():        
     all_data = dc.get_data()
-    display_images = []
-    # print(all_data)
-    for pc_name, pc_data in all_data.items():
-        if pc_data is None:
+    for item_name, item_data in all_data.items():
+        # Only process image type data
+        if item_data.get('type') != 'image':
             continue
-        print(all_data)
-        camera_data = pc_data.get('data', {})
-        for camera_name, cam_info in camera_data.items():
-            # Decompress image
-            try:
-                image_bytes = cam_info.get('image')
-                frame_id = cam_info.get('frame_id', 0)
-                drop_count = cam_info.get('drop_count', 0)
-                
-
-                # if image_bytes:
-                #     # Decode JPEG
-                #     nparr = np.frombuffer(image_bytes, np.uint8)
-                #     image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                    
-                #     if image is not None:
-                #         # Add text overlay with PC name, frame ID, and drop count
-                #         text1 = f"{pc_name}:{camera_name}"
-                #         text2 = f"Frame {frame_id} | Drops: {drop_count}"
-                        
-                #         cv2.putText(image, text1, (10, 30), 
-                #                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 0), 2)
-                #         cv2.putText(image, text2, (10, 60), 
-                #                     cv2.FONT_HERSHEY_SIMPLEX, 0.6, 
-                #                     (0, 0, 255) if drop_count > 0 else (0, 255, 0), 2)
-                        
-                #         # Resize for display if needed
-                #         display_h, display_w = 480, 640
-                #         image_resized = cv2.resize(image, (display_w, display_h))
-                #         display_images.append(image_resized)
-            except:
-                continue
+        
+        image_bytes = item_data.get('data')
+        frame_id = item_data.get('frame_id', 0)
+        
+        if image_bytes:
+            # Decode JPEG
+            nparr = np.frombuffer(image_bytes, np.uint8)
+            image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             
-    time.sleep(0.01)
+            if image is not None:
+                img_dict[item_name] = image
+                img_text[item_name] = str(frame_id)
+
+    if img_dict:
+        merged_image = merge_image(img_dict, img_text)
+        cv2.imshow("Merged Stream", merged_image)      
+        cv2.waitKey(1)  
+        time.sleep(0.01)
     
 print("Stopping capture...")
 

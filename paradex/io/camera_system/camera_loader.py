@@ -49,6 +49,7 @@ class CameraLoader:
         
         for t in threads:
             t.join()
+        print("all cameras started.")
     
     def stop(self):
         threads = []

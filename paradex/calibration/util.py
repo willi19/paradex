@@ -32,7 +32,7 @@ def load_current_camparam(name=None):
     return intrinsic, extrinsic
 
 def load_camparam(demo_path):
-    intrinsic_data = json.load(open(os.path.join(demo_path, "cam_param", "intrinsics.json"), "r"))
+    intrinsic_data = json.load(open(os.path.join(demo_path, "intrinsics.json"), "r"))
     intrinsic = {}
     for serial, values in intrinsic_data.items():
         intrinsic[serial] = {
@@ -42,13 +42,13 @@ def load_camparam(demo_path):
             "height": values["height"],  # Scalar values remain unchanged
             "width": values["width"],
         }
-    extrinsic_data = json.load(open(os.path.join(demo_path, "cam_param", "extrinsics.json"), "r"))
+    extrinsic_data = json.load(open(os.path.join(demo_path, "extrinsics.json"), "r"))
     extrinsic = {}
     for serial, values in extrinsic_data.items():
         extrinsic[serial] = np.array(values).reshape(3, 4)
     return intrinsic, extrinsic
 
-def load_intrinsic():
+def load_current_intrinsic():
     intrinsics = {}
     intrinsic_path = os.path.join(shared_dir, "intrinsic")
     cam_list = os.listdir(intrinsic_path)
@@ -72,7 +72,6 @@ def load_intrinsic():
             }
     return intrinsics
 
-
 def load_c2r(demo_path):
     C2R = np.load(os.path.join(demo_path, "C2R.npy"))
     return C2R
@@ -81,22 +80,25 @@ def load_eef(demo_path):
     eef= np.load(os.path.join(demo_path, "eef.npy"))
     return eef
 
-def load_eef(demo_path):
-    eef = np.load(os.path.join(demo_path, "eef.npy"))
-    return eef
-
-
-def copy_calib_files(save_path):
+def save_current_camparam(save_path):
     camparam_dir = os.path.join(shared_dir, "cam_param")
     camparam_name = find_latest_directory(camparam_dir)
     camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
 
     shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"), dirs_exist_ok=True)
     
-def load_latest_C2R():
+def load_current_C2R():
     name = find_latest_directory(handeye_calib_path)
     return load_c2r(os.path.join(handeye_calib_path, name, "0"))
 
-def load_latest_eef():
+def load_current_eef():
     name = find_latest_directory(eef_calib_path)
     return load_eef(os.path.join(eef_calib_path, name, "0"))
+
+def get_cammtx(intrinsic, extrinsic):
+    cammat = {}
+    for serial_num in list(intrinsic.keys()):
+        int_mat = intrinsic[serial_num]["intrinsics_undistort"]
+        ext_mat = extrinsic[serial_num]
+        cammat[serial_num] = int_mat @ ext_mat
+    return cammat

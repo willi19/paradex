@@ -127,6 +127,7 @@ class camera_server_daemon:
                 if self.current_controller is not None:
                     self.camera_loader.stop()
                     self.current_controller = None
+                    print("[Error] Command socket timeout. Camera loader stopped and controller released.")
                     
             except Exception as e:
                 self.camera_loader.stop()

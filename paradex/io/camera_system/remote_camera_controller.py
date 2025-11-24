@@ -127,7 +127,7 @@ class remote_camera_controller:
             if self.stop_event.is_set():
                 cmd = {'action': 'stop'}
                 self.stop_event.clear()
-            print(cmd)
+            
             response = self.send_command(cmd)
             if cmd['action'] in ['start', 'stop']:
                 self.sending_event.set()

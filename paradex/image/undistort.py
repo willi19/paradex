@@ -3,6 +3,19 @@ import cv2
 import os
 import json
 
+def precomute_undistort_map(intrinsic):
+    cammtx = np.array(intrinsic["original_intrinsics"])
+    dist_coef = np.array(intrinsic["dist_params"])
+    wh = (intrinsic["width"], intrinsic["height"])
+    new_cammtx = intrinsic['intrinsics_undistort']
+    
+    mapx, mapy = cv2.initUndistortRectifyMap(cammtx, dist_coef, None, new_cammtx, wh, cv2.CV_32FC1)
+    return new_cammtx, mapx, mapy
+
+def apply_undistort_map(img, mapx, mapy):
+    undistorted_img = cv2.remap(img, mapx, mapy, cv2.INTER_LINEAR)
+    return undistorted_img
+
 def undistort_img(img, intrinsic):
     """
     Undistort image using intrinsic parameters.
@@ -38,14 +51,3 @@ def remap_corners(corners, cammtx, dist_coef, sn, img=None):
     #     cv2.circle(warped, (int(mapped_pixels[idx,0]), int(mapped_pixels[idx,1])), radius=1, color=(255,0,0), thickness=1)
     # cv2.imwrite(f"/home/capture2/Videos/{sn}_overliad.png", warped)
     return mapped_pixels, new_cammtx
-
-if __name__ == "__main__":
-    images = os.listdir("/home/temp_id/shared_data/demo_250618/pringles/0/images")
-    
-    for image in images:
-        img = cv2.imread(f"/home/temp_id/shared_data/demo_250618/pringles/0/images/{image}")
-        cam_id = image.split(".")[0]
-        intrinsic = json.load(open("/home/temp_id/shared_data/demo_250618/pringles/0/cam_param/intrinsics.json", "r"))
-        undistorted_img = undistort_img(img, intrinsic[cam_id])
-        cv2.imwrite(f"/home/temp_id/shared_data/demo_250618/pringles/0/images_undistorted/{image}", undistorted_img)
-    

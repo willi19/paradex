@@ -261,8 +261,8 @@ class ImageDict:
         
         if save_path is not None:
             undistorted_images.save(save_path)
-            
-        elif self.path is not None:
+
+        elif self.path is not None and not (self.path / "images").exists():
             undistorted_images.save(self.path)
             
         return undistorted_images
@@ -295,35 +295,26 @@ class ImageDict:
         marker_3d = {id: triangulation(np.array(marker_2d[id]["2d"]), np.array(marker_2d[id]["cammtx"]))
                      for id in marker_2d}
         return marker_3d
+
+    def project_mesh(self, object):
+        if self._cache.get('proj_mtx') is None:
+            self._cache['proj_mtx'] = get_cammtx(self.intrinsic, self.extrinsic)
         
-    def project():
-        pass
-    
-    
+        if self._cache.get('render') is None:
+            from paradex.image.projection import BatchRenderer
+            self._cache['render'] = BatchRenderer(
+                self.intrinsic,
+                self.extrinsic
+            )
+            
+        renderer = self._cache['render']
+        if type(object) == list:
+            return renderer.render_multi(object) # color_dict, mask_dict, depth_dict, id_dict
+        else:
+            return renderer.render(object) # color_dict, mask_dict, depth_dict
+            
     def merge(self, image_text: Optional[Dict[str, str]] = None) -> np.ndarray:
         """Merge all images into a grid layout"""
         return merge_image(self.images, image_text)
     
-    def project_mesh_nvdiff(object, renderer):
-        # from paradex.visualization_.renderer import BatchRenderer
-        
-        img, mask = renderer.render(object)
-        return img, mask
     
-    # def project_points(self, points_3d: np.ndarray, 
-    #                   color: tuple = (255, 0, 0)) -> 'ImageDict':
-    #     """Project 3D points onto all camera views"""
-    #     from paradex.image.projection import get_cammtx, project_point
-        
-    #     cammat = get_cammtx(self.intrinsic, self.extrinsic)
-        
-    #     projected_imgs = {}
-    #     for serial, img in self.images.items():
-    #         if serial in cammat:
-    #             projected_imgs[serial] = project_point(
-    #                 points_3d, cammat[serial], img.copy(), color
-    #             )
-    #         else:
-    #             projected_imgs[serial] = img.copy()
-        
-    #     return ImageDict(projected_imgs, self.intrinsic, self.extrinsic)

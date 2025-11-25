@@ -21,10 +21,7 @@ def get_camera_config():
         cam_info = {}
     return cam_info
 
-def load_device(device_type, device_name):
-    pass
-
-def load_devices(config_name: str):
+def load_device_list(config_name: str):
     capture_config_path = os.path.join(config_dir, "dataset_acquisition", f"{config_name}.json")
     if os.path.exists(capture_config_path):
         capture_info = json.load(open(capture_config_path, "r"))

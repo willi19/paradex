@@ -267,7 +267,11 @@ class Camera():
                 frame, frame_data = self.camera.get_image()
                 if frame is None:
                     continue
+                
                 current_frame_id = frame_data["frameID"]
+                if self.last_frame_id > current_frame_id:
+                    continue  # Skip out-of-order frames
+                
                 if save_video:
                     for _ in range(current_frame_id - self.last_frame_id-1):
                         print(f"frame drop {self.name}: missing frame id", current_frame_id-self.last_frame_id-1)
@@ -278,11 +282,11 @@ class Camera():
                     # Write to shared memory
                     if self.write_flag[0] == 0:
                         np.copyto(self.image_array_a, frame)
-                        self.fid_array_a[0] = frame_data["frameID"]
+                        self.fid_array_a[0] = current_frame_id
                         self.write_flag[0] = 1
                     else:
                         np.copyto(self.image_array_b, frame)
-                        self.fid_array_b[0] = frame_data["frameID"]
+                        self.fid_array_b[0] = current_frame_id
                         self.write_flag[0] = 0
 
                 self.last_frame_id = current_frame_id

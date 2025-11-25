@@ -1,10 +1,10 @@
 import cv2
 import os
-from paradex.video.convert_codec import change_to_h264
 import numpy as np
 
+from paradex.video.util import change_to_h264
+
 def process_video(video_path, out_path, load_info, process_frame):
-    print(video_path)
     data = load_info(video_path)
     
     cap = cv2.VideoCapture(video_path)

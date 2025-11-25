@@ -1,6 +1,6 @@
 import numpy as np
 
-def triangulate(corners: np.ndarray, projections: np.ndarray):
+def _triangulate(corners: np.ndarray, projections: np.ndarray):
     """
     Triangulates 3D points from multiple camera views.
     
@@ -12,7 +12,7 @@ def triangulate(corners: np.ndarray, projections: np.ndarray):
         kp3d: (1, 3) matrix containing the triangulated 3D point.
     """
     if len(corners.shape) == 3:
-        ret = np.array([triangulate(corners[:, i], projections) for i in range(corners.shape[1])])
+        ret = np.array([_triangulate(corners[:, i], projections) for i in range(corners.shape[1])])
         return np.vstack(ret)
         
     numImg = projections.shape[0]
@@ -33,7 +33,7 @@ def triangulate(corners: np.ndarray, projections: np.ndarray):
     return (X[:3] / X[3]).reshape(3)  # Normalize homogeneous coordinate
 
 
-def ransac_triangulation(corners: np.ndarray, projections: np.ndarray, threshold=1.5, iterations=100):
+def triangulation(corners: np.ndarray, projections: np.ndarray, threshold=1.5, iterations=100):
     """
     RANSAC-based triangulation to filter out outliers.
     
@@ -50,7 +50,7 @@ def ransac_triangulation(corners: np.ndarray, projections: np.ndarray, threshold
         if numImg <= 2:
             return None
         
-        ret = [ransac_triangulation(corners[:, i], projections) for i in range(corners.shape[1])]
+        ret = [triangulation(corners[:, i], projections) for i in range(corners.shape[1])]
         for r in ret:
             if r is None:
                 # If any triangulation fails, return None
@@ -73,7 +73,7 @@ def ransac_triangulation(corners: np.ndarray, projections: np.ndarray, threshold
         sampled_projections = projections[sample_idx]
         
         # Triangulate points
-        kp3d = np.array(triangulate(sampled_corners, sampled_projections))
+        kp3d = np.array(_triangulate(sampled_corners, sampled_projections))
         kp3d_h = np.hstack((kp3d, np.ones((1))))  # Convert to homogeneous coordinates
         reprojections = projections @ kp3d_h.T  # Shape: (N, 3, numPts)
         # print(kp3d_h.shape, projections.shape, reprojections.shape, corners.shape)

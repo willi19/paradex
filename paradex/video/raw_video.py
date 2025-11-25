@@ -2,96 +2,12 @@ import cv2
 import numpy as np
 import os
 import json
+from multiprocessing import Pool, shared_memory, Manager, Value
 
-from paradex.utils.upload_file import copy_file
-from paradex.utils.file_io import shared_dir, home_path
-
-import bisect
-
-magic_number = 5
-td = 2 / 30
-
-def fill_framedrop(cam_timestamp):
-    frameID = cam_timestamp["frameID"]
-    real_start = -1
-    for i, fi in enumerate(frameID):
-        if fi > 5:
-            real_start = i
-            break
-    
-    frameID = frameID[real_start:]
-    pc_time = np.array(cam_timestamp["pc_time"])[real_start:]
-    timestamp = np.array(cam_timestamp["timestamps"])
-    time_delta = (pc_time[-1] - pc_time[0]) / (frameID[-1] - frameID[0])
-    offset = np.mean(pc_time - (np.array(frameID)-1)*time_delta)
-    pc_time_nodrop = []
-    frameID_nodrop = []
-
-    time_delta_new = 1 / 30
-    
-    if time_delta / time_delta_new > 1.01:
-        return None, None
-    
-    for i in range(1, frameID[-1] + 10):
-        frameID_nodrop.append(i)
-        pc_time_nodrop.append((i-1)*time_delta_new+offset - td)
-    
-    return pc_time_nodrop, frameID_nodrop
-
-def get_synced_data(pc_times, data, data_times):
-    """
-    2-pointer 방식으로 pc_times와 가장 가까운 data_times의 데이터를 매칭
-    """
-    synced_data = []
-    n = len(pc_times)
-    m = len(data_times)
-
-    i = 0  # pc_times pointer
-    j = 0  # data_times pointer
-
-    while i < n:
-        # data_times[j]가 pc_time[i]보다 작으면 j를 앞으로
-        while j + 1 < m and abs(data_times[j + 1] - pc_times[i]) <= abs(data_times[j] - pc_times[i]):
-            j += 1
-        synced_data.append(data[j])
-        i += 1
-
-    return np.array(synced_data)
-
-
-def check_valid(timestamp):
-    assert "frameID" in timestamp and "timestamps" in timestamp
-    
-    fid_array = np.array(timestamp["frameID"])
-    fid_diff = fid_array[1:] - fid_array[:-1]
-    
-    ts_array = np.array(timestamp["timestamps"])
-    ts_diff = ts_array[1:] - ts_array[:-1]
-    
-    interval = ts_diff / fid_diff
-    if np.size(interval) == 0:
-        print("no timestamp")
-        return False
-    
-    if np.max(interval[magic_number:]) > np.min(interval[magic_number:]) * 1.5:
-        print(interval)
-        print(np.min(interval), np.max(interval))
-        return False
-    
-    return True
-
-def get_timestamp_path(video_path):
-    video_name = os.path.basename(video_path).split("-")[0]
-    video_dir = os.path.dirname(video_path)
-    
-    timestamp_file_name = video_name + "_timestamps.json"
-    timestamp_path = os.path.join(video_dir, timestamp_file_name)
-    return timestamp_path
-
-def load_timestamp(video_path):
-    timestamp_path = get_timestamp_path(video_path)
-    timestamp = json.load(open(timestamp_path))
-    return timestamp
+from paradex.utils.upload_file import rsync_copy
+from paradex.utils.path import shared_dir, home_path
+from paradex.calibration.util import load_camparam
+from paradex.image.undistort import precomute_undistort_map, apply_undistort_map
 
 def get_videopath_list(video_dir):
     avi_path_list = []
@@ -116,27 +32,34 @@ def get_savepath(path):
 def get_serialnum(video_path):
     return os.path.basename(video_path).split("-")[0]
 
-def fill_dropped_frames(video_path, load_info, process_frame, process_result, preserve, overwrite, frame_counter=None): # process_frame=None, preserve = True):
-    timestamp_path = get_timestamp_path(video_path)
-    serial_num = get_serialnum(video_path)
-    out_path = os.path.join(os.path.dirname(video_path), f"{serial_num}.avi")
-    nas_path = os.path.join(shared_dir, get_savepath(out_path))
+def process_raw_video(video_path, frame_counter=None): # process_frame=None, preserve = True):
+    serial_num = get_serialnum(video_path) # root_path / raw / video / *.avi
     
-    data_list = []
+    root_path = os.path.dirname(os.path.dirname(video_path))
+    nas_root_path = os.path.join(shared_dir, get_savepath(root_path))
+    os.makedirs(os.path.join(nas_root_path, "videos"), exist_ok=True)
     
-    if os.path.exists(nas_path) and not overwrite:
-        return f"{video_path}:already exist"
+    out_path = os.path.join(os.path.dirname(video_path), f"{serial_num}_undistort.avi")
+    nas_path = os.path.join(nas_root_path, "videos", f"{serial_num}.avi")
+
+    if os.path.exists(nas_path) and not os.path.exists(out_path):
+        print(f"✅ Undistorted video already exists: {nas_path}")
+        return f"{video_path}:exists"
+    
+    if os.path.exists(nas_path) and os.path.exists(out_path):
+        rsync_copy(out_path, nas_path, move=True)
+        return f"{video_path}:success"
+
     try:
-        info = load_info(video_path)
-    except Exception as e:
-        # if not preserve:
-        #     os.remove(video_path)
-        #     os.remove(timestamp_path)
-        return f"{video_path}: {e} error during loading info"            
+        intrinsic = load_camparam(nas_root_path)[0][serial_num]
+        _, mapx, mapy = precomute_undistort_map(intrinsic)
+            
+    except:
+        return f"{video_path}:no_camparam"
     
-    timestamp_dict = json.load(open(timestamp_path))
-    frame_ids = np.array(timestamp_dict["frameID"])
-    
+    if os.path.exists(out_path): # end in the middle of previous run
+        os.remove(out_path)
+        
     cap = cv2.VideoCapture(video_path)
     fps = cap.get(cv2.CAP_PROP_FPS)
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -145,43 +68,63 @@ def fill_dropped_frames(video_path, load_info, process_frame, process_result, pr
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')  # <-- 프레임 단위 압축
     
     out = cv2.VideoWriter(out_path, fourcc, fps, (w, h))
-    
     last_frame = 0
-
-    for fid in frame_ids:
-        while last_frame + 1 < fid:
-            black_frame = np.zeros((h, w, 3), dtype=np.uint8)
-            out.write(black_frame)
-            last_frame += 1
-            
+    
+    while True:
         ret, frame = cap.read()
+        if not ret:
+            break
+        
         last_frame += 1
-        if process_frame is not None:
-            try:
-                frame, data = process_frame(frame, info, fid)
-            except Exception as e:
-                return f"{video_path}:{str(e)} during processing frame {last_frame}"
-            data_list.append(data)
+        undistorted = apply_undistort_map(frame, mapx, mapy)
         
         if frame_counter is not None:      
             frame_counter.value = last_frame
-            
-        out.write(frame)
+
+        out.write(undistorted)
+        
     cap.release()
     out.release()
 
-    if process_result is not None:
-        try:
-            process_result(video_path, data_list, frame_ids)
-        except Exception as e:
-            return f"{video_path}:{str(e)} during processing result"
-            
-    if not preserve:
-        os.remove(video_path)
-        os.remove(timestamp_path)
-        
-    # upload video and remove previous one if preserve is False
-    copy_file(out_path, nas_path)
-    os.remove(out_path)
+    rsync_copy(out_path, nas_path, move=True) 
+       
+    os.remove(video_path)  # 원본 파일 삭제
+    
     return f"{video_path}:success"
+
+
+class RawVideoProcessor():
+    def __init__(self, save_path):
+        self.save_path = save_path
+        self.manager = Manager()
+        
+        self.log = []
+        self.video_path_list = get_videopath_list(f"{home_path}/captures1/{save_path}") + \
+                                get_videopath_list(f"{home_path}/captures2/{save_path}")
+        
+        self.total_frames = {}
+        
+        for vid_path in self.video_path_list:
+            cap = cv2.VideoCapture(vid_path)
+            if not cap.isOpened() or int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) == 0:
+                print(f"Invalid video file: {vid_path}")
+            self.total_frames[vid_path] = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        self.frame_counter = {vid_path:self.manager.Value('i', 0) for vid_path in self.video_path_list}
+        self.pool = Pool()
+        self.process()
+            
+    def async_callback(self, result):
+        self.log.append(result)
+        
+    def error_callback(self, e):
+        self.log.append("ERROR in process:", e)
+        
+    def process(self):
+        self.process_list = [self.pool.apply_async(process_raw_video, args=(vid_path, self.frame_counter[vid_path]), callback=self.async_callback, error_callback=self.error_callback)
+                        for vid_path in self.video_path_list]    
+       
+    def finished(self):
+        return all(r.ready() for r in self.process_list)
+
     

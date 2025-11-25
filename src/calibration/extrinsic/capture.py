@@ -73,8 +73,9 @@ while True:
                 alpha=0.5
             )    
             corners, frame = cur_state[serial_num]
+            
             if corners.shape[0] > 0:
-                draw_charuco(display_dict[serial_num], corners[:,0], BOARD_COLORS[1], 5, -1)
+                draw_charuco(display_dict[serial_num], corners, BOARD_COLORS[1], 1, -1)
 
         merged_image = merge_image(display_dict, img_text)
         cv2.imshow("Merged Stream", merged_image)
@@ -97,7 +98,7 @@ while True:
         for serial_num in cur_state.keys():
             corners, ids, frame = cur_state[serial_num]
             if corners.shape[0] > 0:
-                draw_charuco(saved_corner_img[serial_num], corners[:,0], BOARD_COLORS[1], 5, -1, ids)
+                draw_charuco(saved_corner_img[serial_num], corners[:,0], BOARD_COLORS[1], 1, -1, ids)
         
         time.sleep(0.01)
     

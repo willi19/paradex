@@ -34,7 +34,7 @@ while not exit_event.is_set():
         if frame_id > last_frame_ids[camera_name] and frame_id > 0:
             
             detect_result = detect_charuco(image)
-            merged_detect_result = merge_charuco_detection(de
+            merged_detect_result = merge_charuco_detection(detect_result)
             
             if save_event.is_set():
                 save_name = find_latest_directory(root_dir)

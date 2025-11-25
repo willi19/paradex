@@ -21,7 +21,7 @@ BOARD_COLORS = [
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
 
-run_script("python src/calibration/extrinsic/client.py")
+# run_script("python src/calibration/extrinsic/client.py")
 
 rcc = remote_camera_controller("extrinsic_calibration")
 dc = DataCollector()
@@ -31,6 +31,7 @@ cs = CommandSender()
 rcc.start("stream", False, fps=30)
 
 saved_corner_img = {}# serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
+saved_corner_mask = {}
 cur_state = {}#serial_num:(np.array([]), np.array([]), 0) for serial_num in serial_list}
 
 img_dict = {}
@@ -58,20 +59,17 @@ while True:
             serial_num = item_name.split("_")[0]
             corners = np.frombuffer(data, dtype=np.float32).reshape(-1, 2)
             if serial_num not in saved_corner_img:
-                saved_corner_img[serial_num] = np.zeros((1536 // 8, 2048 // 8), dtype=np.uint8)
-
+                saved_corner_img[serial_num] = np.zeros((1536 // 8, 2048 // 8, 3), dtype=np.uint8)
+                saved_corner_mask[serial_num] = np.zeros((0, 2), dtype=np.int32)
+                
             cur_state[serial_num] = (corners, frame_id)
 
     if img_dict:
         display_dict = {}
         
         for serial_num in cur_state.keys():
-            display_dict[serial_num] = overlay_mask(
-                img_dict[serial_num].copy(), 
-                saved_corner_img[serial_num], 
-                BOARD_COLORS[0], 
-                alpha=0.5
-            )    
+            display_dict[serial_num] = img_dict[serial_num].copy()
+            display_dict[serial_num][saved_corner_mask[serial_num][:, 1], saved_corner_mask[serial_num][:, 0]] = BOARD_COLORS[0]
             corners, frame = cur_state[serial_num]
             
             if corners.shape[0] > 0:
@@ -93,13 +91,18 @@ while True:
     elif key == ord('c'):
         capture_idx = time.strftime("%Y%m%d_%H%M%S", time.localtime())
         os.makedirs(os.path.join(extrinsic_dir, filename, str(capture_idx)), exist_ok=True)
+        os.makedirs(os.path.join(extrinsic_dir, filename, str(capture_idx), "markers_2d"), exist_ok=True)
+        os.makedirs(os.path.join(extrinsic_dir, filename, str(capture_idx), "images"), exist_ok=True)
+        
         cs.send_command("save", True)
         
         for serial_num in cur_state.keys():
             corners, frame = cur_state[serial_num]
             if corners.shape[0] > 0:
-                draw_charuco(saved_corner_img[serial_num], corners[:,0], BOARD_COLORS[1], 1, -1)
-        
+                draw_charuco(saved_corner_img[serial_num], corners, BOARD_COLORS[1], 1, -1)
+                ys, xs, _ = np.where(saved_corner_img[serial_num] != 0)
+                
+                saved_corner_mask[serial_num] = np.stack([xs, ys], axis=1)
         time.sleep(0.01)
     
 print("Stopping capture...")

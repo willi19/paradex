@@ -102,12 +102,11 @@ def detect_charuco(img):
     return detection_results
 
 
-def merge_charuco_detection(detection_list, boardinfo):
-    check_boardinfo_valid(boardinfo)
+def merge_charuco_detection(detection_list):
 
     offset_map = {}
     offset = 0
-    for b_id, cfg in boardinfo.items():
+    for b_id, cfg in boardinfo_dict.items():
         offset_map[b_id] = offset
         offset += (cfg["numX"] - 1) * (cfg["numY"] - 1)
 

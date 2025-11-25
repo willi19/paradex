@@ -55,16 +55,12 @@ while True:
         
         elif item_data.get('type') == 'charuco_detection':
             data = item_data.get('data')
-            serial_num = data["serial_num"]
-            result = data["detect_result"]
-            frame = data["frame"]
             
-            corners = np.array(result["checkerCorner"], dtype=np.float32)
-            ids = np.array(result["checkerIDs"], dtype=np.int32).reshape(-1, 1)
-            cur_state[serial_num] = (corners, ids, frame)                
-            
+            corners = np.frombuffer(data['checkerCorner'], dtype=np.float32).reshape(-1, 2)
             if serial_num not in saved_corner_img:
-                saved_corner_img[serial_num] = np.zeros((1536, 2048), dtype=np.uint8)
+                saved_corner_img[serial_num] = np.zeros((1536 // 8, 2048 // 8), dtype=np.uint8)
+            
+            cur_state[item_name] = (corners, frame_id)
 
     if img_dict:
         display_dict = {}
@@ -76,9 +72,9 @@ while True:
                 BOARD_COLORS[0], 
                 alpha=0.5
             )    
-            corners, ids, frame = cur_state[serial_num]
+            corners, frame = cur_state[serial_num]
             if corners.shape[0] > 0:
-                draw_charuco(display_dict[serial_num], corners[:,0], BOARD_COLORS[1], 5, -1, ids)
+                draw_charuco(display_dict[serial_num], corners[:,0], BOARD_COLORS[1], 5, -1)
 
         merged_image = merge_image(display_dict, img_text)
         cv2.imshow("Merged Stream", merged_image)

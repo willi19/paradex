@@ -67,7 +67,8 @@ while not exit_event.is_set():
                     'type': 'charuco_detection',
                     'name': camera_name+"_corners",
                     'frame_id': int(frame_id),
-                    'data_index': len(binary_data)
+                    'data_index': len(binary_data),
+                    'shape': merged_detect_result["checkerCorner"].shape
                 })
                 
                 binary_data.append(

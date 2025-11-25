@@ -10,6 +10,7 @@ from paradex.utils.file_io import find_latest_directory
 cam_param_dir = os.path.join(shared_dir, "cam_param")
 handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")
 eef_calib_path = os.path.join(shared_dir, "eef")
+extrinsic_dir = os.path.join(shared_dir, "extrinsic")
 
 def load_current_camparam(name=None):
     if name == None:

@@ -1,97 +1,116 @@
-import threading
-import numpy as np
-import cv2
-import json
+from threading import Event
 import time
+import cv2
+import numpy as np
 import os
-
-from paradex.utils.path import shared_dir
-from paradex.utils.system import get_pc_list
 
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
 from paradex.io.capture_pc.ssh import run_script
-from paradex.
-
-from paradex.image.aruco import draw_charuco
+from paradex.io.capture_pc.data_sender import DataCollector
+from paradex.io.capture_pc.command_sender import CommandSender
 from paradex.image.merge import merge_image
+from paradex.image.overlay import overlay_mask
+from paradex.calibration.util import extrinsic_dir
+from paradex.image.aruco import draw_charuco
 
 BOARD_COLORS = [
     (0, 0, 255), 
     (0, 255, 0)
 ]
 
-pc_info = get_pcinfo()
-serial_list = get_serial_list()
-
-saved_corner_img = {serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
-cur_state = {serial_num:(np.array([]), np.array([]), 0) for serial_num in serial_list}
-
-capture_idx = 0
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
 
-def listen_socket(pc_name, socket):
-    while True:
-        msg = socket.recv_string()
-        try:
-            data = json.loads(msg)
-        except json.JSONDecodeError:
-            print(f"[{pc_name}] Non-JSON message: {msg}")
-            continue
+run_script("python src/calibration/extrinsic/client.py")
+
+rcc = remote_camera_controller("extrinsic_calibration")
+dc = DataCollector()
+dc.start()
+
+cs = CommandSender()
+rcc.start("stream", False, fps=10)
+
+saved_corner_img = {}# serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
+cur_state = {}#serial_num:(np.array([]), np.array([]), 0) for serial_num in serial_list}
+
+img_dict = {}
+img_text = {}
+
+while True:
+    all_data = dc.get_data()
+    for item_name, item_data in all_data.items():
+        # Only process image type data
+        if item_data.get('type') == 'image':
+            image_bytes = item_data.get('data')
+            frame_id = item_data.get('frame_id', 0)
+            
+            if image_bytes:
+                # Decode JPEG
+                nparr = np.frombuffer(image_bytes, np.uint8)
+                image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+                
+                if image is not None:
+                    img_dict[item_name] = image
+                    img_text[item_name] = str(frame_id)
         
-        if data.get("type") == "charuco":
+        elif item_data.get('type') == 'charuco_detection':
+            data = item_data.get('data')
             serial_num = data["serial_num"]
             result = data["detect_result"]
+            frame = data["frame"]
+            
             corners = np.array(result["checkerCorner"], dtype=np.float32)
             ids = np.array(result["checkerIDs"], dtype=np.int32).reshape(-1, 1)
-            frame = data["frame"]
             cur_state[serial_num] = (corners, ids, frame)                
+            
+            if serial_num not in saved_corner_img:
+                saved_corner_img[serial_num] = np.zeros((1536, 2048), dtype=np.uint8)
 
-        else:
-            print(f"[{pc_name}] Unknown JSON type: {data.get('type')}")
-
-pc_list = list(pc_info.keys())
-git_pull("merging", pc_list)
-run_script(f"python src/calibration/extrinsic/client.py", pc_list)
-
-camera_controller = RemoteCameraController("stream", None, sync=False, debug=True)
-camera_controller.start()
-
-try:
-    socket_dict = {name:get_client_socket(pc_info["ip"], 5564) for name, pc_info in pc_info.items()}
-
-    for pc_name, sock in socket_dict.items():
-        threading.Thread(target=listen_socket, args=(pc_name, sock), daemon=True).start()
+    if img_dict:
+        display_dict = {}
         
-    while True:
-        img_dict = {}
-        for serial_num in serial_list:
-            img = saved_corner_img[serial_num].copy()
+        for serial_num in cur_state.keys():
+            display_dict[serial_num] = overlay_mask(
+                img_dict[serial_num], 
+                saved_corner_img[serial_num], 
+                BOARD_COLORS[0], 
+                alpha=0.5
+            )    
             corners, ids, frame = cur_state[serial_num]
             if corners.shape[0] > 0:
-                draw_charuco(img, corners[:,0], BOARD_COLORS[0], 5, -1, ids)
-            img = cv2.putText(img, f"{serial_num} {frame}", (50, 150), cv2.FONT_HERSHEY_SIMPLEX, 6, (255, 255, 0), 12)
-            img_dict[serial_num] = img   
-        
-        grid_image = merge_image(img_dict)
-        grid_image = cv2.resize(grid_image, (int(2048//1.5), int(1536//1.5)))
-        
-        cv2.imshow("Grid", grid_image)
-        key = cv2.waitKey(1)
-        if key == ord('q'):
-            for socket in socket_dict.values():
-                socket.send_string("quit")
-            break
-        
-        elif key == ord('c'):
-            os.makedirs(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx)), exist_ok=True)
-            for serial_num in serial_list:
-                corners, ids, frame = cur_state[serial_num]
-                np.save(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx), serial_num + "_cor.npy"), corners)
-                np.save(os.path.join(shared_dir, "extrinsic", filename, str(capture_idx), serial_num + "_id.npy"), ids)
-                if corners.shape[0] > 0:
-                    draw_charuco(saved_corner_img[serial_num], corners[:,0], BOARD_COLORS[1], 5, -1, ids)
-            capture_idx += 1
+                draw_charuco(display_dict[serial_num], corners[:,0], BOARD_COLORS[1], 5, -1, ids)
 
-finally:
-    camera_controller.end()
-    camera_controller.quit()        
+        merged_image = merge_image(display_dict, img_text)
+        cv2.imshow("Merged Stream", merged_image)
+        key = cv2.waitKey(1)
+
+    else:
+        blank_image = np.ones((600, 800, 3), dtype=np.uint8)*500
+        cv2.putText(blank_image, "Waiting for stream...", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+        cv2.imshow("Merged Stream", blank_image)
+        key = cv2.waitKey(1)
+        
+    if key == ord('q'):
+        break
+    
+    elif key == ord('c'):
+        capture_idx = time.strftime("%Y%m%d_%H%M%S", time.localtime())
+        os.makedirs(os.path.join(extrinsic_dir, filename, str(capture_idx)), exist_ok=True)
+        cs.send_command("save", True)
+        
+        for serial_num in cur_state.keys():
+            corners, ids, frame = cur_state[serial_num]
+            if corners.shape[0] > 0:
+                draw_charuco(saved_corner_img[serial_num], corners[:,0], BOARD_COLORS[1], 5, -1, ids)
+        
+        time.sleep(0.01)
+    
+print("Stopping capture...")
+
+# Cleanup
+rcc.stop()
+rcc.end()
+dc.end()
+cs.end()
+
+print("Stream stopped.")

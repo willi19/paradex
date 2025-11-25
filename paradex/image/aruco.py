@@ -35,7 +35,7 @@ aruco_dict = {
     "7X7_1000": aruco.getPredefinedDictionary(aruco.DICT_7X7_1000),
 }
 
-boardinfo = json.load(open(os.path.join(config_dir, "charuco_info.json"), "r"))
+boardinfo_dict = json.load(open(os.path.join(config_dir, "charuco_info.json"), "r"))
 
 
 _aruco_detector_cache = {}
@@ -49,17 +49,22 @@ def get_aruco_detector(dict_type: str):
 
 
 def get_charuco_detector():
-    key = tuple(boardinfo.items())  # hashable config signature
-    if key not in _charuco_detector_cache:
-        board = aruco.CharucoBoard(
-            (boardinfo["numX"], boardinfo["numY"]),
-            boardinfo["checkerLength"],
-            boardinfo["markerLength"],
-            aruco_dict[boardinfo["dict_type"]],
-            np.array(boardinfo["markerIDs"])
-        )
-        _charuco_detector_cache[key] = aruco.CharucoDetector(board)
-    return _charuco_detector_cache[key]
+    key_list = list(boardinfo_dict.keys())
+    for key in key_list:
+        if key not in _charuco_detector_cache:
+            boardinfo = boardinfo_dict[key]
+            check_boardinfo_valid({key: boardinfo})
+            
+            board = aruco.CharucoBoard(
+                (boardinfo["numX"], boardinfo["numY"]),
+                boardinfo["checkerLength"],
+                boardinfo["markerLength"],
+                aruco_dict[boardinfo["dict_type"]],
+                np.array(boardinfo["markerIDs"])
+            )
+            _charuco_detector_cache[key] = aruco.CharucoDetector(board)
+
+    return _charuco_detector_cache
 
 # --------------------------------------------------------------
 
@@ -79,13 +84,12 @@ def check_boardinfo_valid(boardinfo):
         assert len(missing) == 0, f"Missing fields {missing} for board {b}"
 
 
-def detect_charuco(img, boardinfo):
-    check_boardinfo_valid(boardinfo)
+def detect_charuco(img):
     detection_results = {}
-
-    for b_id, cfg in boardinfo.items():
-        detector = get_charuco_detector(cfg)
-        checkerCorner, checkerIDs, _, _ = detector.detectBoard(img)
+    detector = get_charuco_detector()
+    
+    for b_id, det in detector.items():
+        checkerCorner, checkerIDs, _, _ = det.detectBoard(img)
 
         if checkerIDs is None or len(checkerIDs) == 0:
             continue
@@ -94,7 +98,7 @@ def detect_charuco(img, boardinfo):
             "checkerCorner": checkerCorner,
             "checkerIDs": checkerIDs,
         }
-
+    
     return detection_results
 
 

@@ -20,7 +20,7 @@ from paradex.image.undistort import undistort_points
 from paradex.image.projection import get_cammtx
 from paradex.geometry.triangulate import ransac_triangulation
 
-extrinsic_dir = os.path.join(shared_dir, "extrinsic")
+
 config_dir = "config"
 cam_param_dir = os.path.join(shared_dir, "cam_param")
 

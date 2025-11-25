@@ -10,7 +10,7 @@ from paradex.io.capture_pc.command_sender import CommandSender
 from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.image.merge import merge_image
 
-# run_script("python src/capture/stream_client.py")
+run_script("python src/capture/stream_client.py")
 
 rcc = remote_camera_controller("stream_main.py")
 dc = DataCollector()

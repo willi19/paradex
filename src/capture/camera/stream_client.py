@@ -1,6 +1,5 @@
 import time
 import cv2
-import threading
 from threading import Event
 
 from paradex.io.camera_system.camera_reader import MultiCameraReader

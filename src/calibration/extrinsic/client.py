@@ -1,47 +1,81 @@
-import json
-import os
 import time
 import cv2
+from threading import Event
+import os
+import numpy as np
 
-from paradex.utils.file_io import config_dir
+from paradex.io.camera_system.camera_reader import MultiCameraReader
+from paradex.io.capture_pc.data_sender import DataPublisher
+from paradex.io.capture_pc.command_sender import CommandReceiver
 from paradex.image.aruco import detect_charuco, merge_charuco_detection
-from paradex.io.capture_pc.util import get_server_socket
-from paradex.io.capture_pc.camera_local import CameraCommandReceiver
+from paradex.calibration.util import extrinsic_dir
+from paradex.utils.file_io import find_latest_directory
 
-camera_loader = CameraCommandReceiver()
+dp = DataPublisher(port=1234, name="camera_stream")
 
-ident = camera_loader.ident
-socket = get_server_socket(5564)
+exit_event = Event()
+save_event = Event()
+cr = CommandReceiver(event_dict={"exit": exit_event, "save": save_event}, port=6890)
 
-board_info = json.load(open(os.path.join(config_dir, "environment", "charuco_info.json"), "r"))
-serial_list = camera_loader.camera.serial_list
-num_cam = len(serial_list)
-last_frame_ind = [-1 for _ in range(num_cam)]
+reader = MultiCameraReader()
+last_frame_ids = {name: 0 for name in reader.camera_names}
+last_frame_dict = {name: None for name in reader.camera_names}
 
-while not camera_loader.exit:
-    for i, serial_num in enumerate(serial_list):
-        frame_id = camera_loader.camera.get_frameid(i)
-        
-        if frame_id == last_frame_ind[i]:
-            continue
-        
-        data = camera_loader.camera.get_data(i)
-        last_frame_ind[i] = data["frameid"]
-        last_image = data["image"]
-        
-        detect_result = detect_charuco(last_image, board_info)
-        merged_detect_result = merge_charuco_detection(detect_result, board_info)
-        
-        for data_name in ["checkerCorner", "checkerIDs"]:
-            merged_detect_result[data_name] = merged_detect_result[data_name].tolist()
+root_name = find_latest_directory(extrinsic_dir)
+root_dir = os.path.join(extrinsic_dir, root_name)
 
-        msg_dict = {
-            "frame": int(last_frame_ind[i]),
-            "detect_result": merged_detect_result,
-            "type": "charuco",
-            "serial_num": serial_num,
-        }
-        msg_json = json.dumps(msg_dict)
-        socket.send_multipart([ident, msg_json.encode()])
+while not exit_event.is_set():
+    images_data = reader.get_images(copy=False)
+    
+    meta_data = []
+    binary_data = []
+    
+    for camera_name, (image, frame_id) in images_data.items():
+        if frame_id > last_frame_ids[camera_name] and frame_id > 0:
+            
+            detect_result = detect_charuco(image)
+            merged_detect_result = merge_charuco_detection(image)
+            
+            if save_event.is_set():
+                save_name = find_latest_directory(root_dir)
+                save_path = os.path.join(root_dir, save_name)
+                np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), merged_detect_result["checkerCorner"])
+                np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), merged_detect_result["checkerIDs"])
+
+                cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), image)
+                save_event.clear()
         
-    time.sleep(0.01)
+        
+            image = cv2.resize(image, (image.shape[1]//8, image.shape[0]//8))
+            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
+            success, encoded_image = cv2.imencode('.jpg', image, encode_param)
+            merged_detect_result["checkerCorner"] = merged_detect_result["checkerCorner"] / 8.0
+            
+            if success:
+                meta_data.append({
+                    'type': 'image',  # 데이터 타입
+                    'name': camera_name,
+                    'frame_id': int(frame_id),
+                    'shape': tuple(int(x) for x in image.shape),
+                    'data_index': len(binary_data)
+                })
+                # Add binary data
+                binary_data.append(encoded_image)
+                last_frame_ids[camera_name] = frame_id
+                
+                meta_data.append({
+                    'type': 'charuco_detection',
+                    'name': camera_name+"_corners",
+                    'frame_id': int(frame_id),
+                    'data_index': len(binary_data)
+                })
+                
+                binary_data.append(
+                    np.array(merged_detect_result["checkerCorner"], dtype=np.float32).tobytes()
+                )
+                
+                
+    if meta_data:
+        dp.send_data(meta_data, binary_data)
+
+    time.sleep(0.01)  # Small sleep to prevent busy-waiting

@@ -21,14 +21,14 @@ BOARD_COLORS = [
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
 
-# run_script("python src/calibration/extrinsic/client.py")
+run_script("python src/calibration/extrinsic/client.py")
 
 rcc = remote_camera_controller("extrinsic_calibration")
 dc = DataCollector()
 dc.start()
 
 cs = CommandSender()
-rcc.start("stream", False, fps=10)
+rcc.start("stream", False, fps=30)
 
 saved_corner_img = {}# serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
 cur_state = {}#serial_num:(np.array([]), np.array([]), 0) for serial_num in serial_list}
@@ -96,9 +96,9 @@ while True:
         cs.send_command("save", True)
         
         for serial_num in cur_state.keys():
-            corners, ids, frame = cur_state[serial_num]
+            corners, frame = cur_state[serial_num]
             if corners.shape[0] > 0:
-                draw_charuco(saved_corner_img[serial_num], corners[:,0], BOARD_COLORS[1], 1, -1, ids)
+                draw_charuco(saved_corner_img[serial_num], corners[:,0], BOARD_COLORS[1], 1, -1)
         
         time.sleep(0.01)
     

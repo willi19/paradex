@@ -33,7 +33,7 @@ while not exit_event.is_set():
     for camera_name, (image, frame_id) in images_data.items():
         if frame_id > last_frame_ids[camera_name] and frame_id > 0:
             
-            detect_result = detect_charuco(image)
+            # detect_result = detect_charuco(image)
             # merged_detect_result = merge_charuco_detection(detect_result)
             
             if save_event.is_set():

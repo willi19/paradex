@@ -43,7 +43,7 @@ while not exit_event.is_set():
                 np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), merged_detect_result["checkerIDs"])
 
                 cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), image)
-                print(f"Saved data for camera {camera_name} at frame {frame_id}")
+                print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
                 save_event.clear()
         
         

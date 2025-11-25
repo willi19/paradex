@@ -55,19 +55,19 @@ while True:
         
         elif item_data.get('type') == 'charuco_detection':
             data = item_data.get('data')
-            
-            corners = np.frombuffer(data['checkerCorner'], dtype=np.float32).reshape(-1, 2)
+            serial_num = item_name.split("_")[0]
+            corners = np.frombuffer(data, dtype=np.float32).reshape(-1, 2)
             if serial_num not in saved_corner_img:
                 saved_corner_img[serial_num] = np.zeros((1536 // 8, 2048 // 8), dtype=np.uint8)
-            
-            cur_state[item_name] = (corners, frame_id)
+
+            cur_state[serial_num] = (corners, frame_id)
 
     if img_dict:
         display_dict = {}
         
         for serial_num in cur_state.keys():
             display_dict[serial_num] = overlay_mask(
-                img_dict[serial_num], 
+                img_dict[serial_num].copy(), 
                 saved_corner_img[serial_num], 
                 BOARD_COLORS[0], 
                 alpha=0.5

@@ -49,7 +49,7 @@ while not exit_event.is_set():
             image = cv2.resize(image, (image.shape[1]//8, image.shape[0]//8))
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
             success, encoded_image = cv2.imencode('.jpg', image, encode_param)
-            merged_detect_result["checkerCorner"] = merged_detect_result["checkerCorner"] / 8.0
+            merged_detect_result["checkerCorner"] = (merged_detect_result["checkerCorner"] / 8).astype(np.int16)
             
             if success:
                 meta_data.append({

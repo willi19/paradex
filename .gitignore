@@ -10,6 +10,9 @@
 *.avi
 
 config/current/*
+system/current/*
+system/current
+system/current/
 
 data/*
 state/*

@@ -13,6 +13,8 @@ config/current/*
 system/current/*
 system/current
 system/current/
+paradex.egg-info
+paradex.egg-info/
 
 data/*
 state/*

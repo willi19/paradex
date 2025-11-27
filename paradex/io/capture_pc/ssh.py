@@ -45,7 +45,7 @@ def git_pull(branch, pc_list=None):
             print(f"[{pc_name}] Failed: {e}")
 
 
-def run_script(script: str, pc_list = None, log=False):    
+def run_script(script: str, pc_list = None, log=False, conda_env_name = "camera"):    
     if pc_list is None:
         pc_list = get_pc_list()
         
@@ -58,14 +58,31 @@ def run_script(script: str, pc_list = None, log=False):
             logoutput = 'test.log'
         else:
             logoutput = '/dev/null'
-            
-        remote_cmd = (
-            f"cd {repo_path} && "    
-            f"nohup bash -i -c '"
-            f"source ~/anaconda3/etc/profile.d/conda.sh && "
-            f"conda activate flir_python && "
-            f"{script} &' </dev/null > {logoutput} 2>&1 & "
-        )
+
+
+        initialize_github = False
+        if initialize_github:
+            git_repo_url = "git@github.com:willi19/paradex.git"
+            remote_cmd = (
+                f"if [ -d {repo_path}/.git ]; then "
+                f"cd {repo_path} && git pull origin main; "
+                f"else "
+                f"git clone {git_repo_url} {repo_path}; "
+                f"fi && "
+                f"cd {repo_path} && "
+                f"nohup bash -i -c '"
+                f"source ~/anaconda3/etc/profile.d/conda.sh && "
+                f"conda activate {conda_env_name} && "
+                f"{script}' </dev/null > {logoutput} 2>&1 &"
+            )
+        else:
+            remote_cmd = (
+                f"cd {repo_path} && "    
+                f"nohup bash -i -c '"
+                f"source ~/anaconda3/etc/profile.d/conda.sh && "
+                f"conda activate {conda_env_name} && "
+                f"{script} &' </dev/null > {logoutput} 2>&1 & "
+            )
 
         ssh_cmd = f"ssh -p {ssh_port} {pc_name}@{ip} \"{remote_cmd}\""
 

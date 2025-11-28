@@ -101,14 +101,14 @@ def detect_charuco(img):
 
         img_pts = checkerCorner.reshape(-1, 2)
 
-        H, inliers = cv2.findHomography(obj_pts_detected, img_pts, cv2.RANSAC, ransacReprojThreshold=1.0)
-        print(img_pts.shape, obj_pts_detected.shape, H.shape, inliers.shape, inliers.ravel().shape  )
-        corners_filtered = img_pts[inliers.ravel() == 1]
-        ids_filtered = checkerIDs[inliers.ravel() == 1]        
+        # H, inliers = cv2.findHomography(obj_pts_detected, img_pts, cv2.RANSAC, ransacReprojThreshold=1.0)
+        # print(img_pts.shape, obj_pts_detected.shape, H.shape, inliers.shape, inliers.ravel().shape  )
+        # corners_filtered = img_pts[inliers.ravel() == 1]
+        # ids_filtered = checkerIDs[inliers.ravel() == 1]        
 
         detection_results[b_id] = {
-            "checkerCorner": corners_filtered,
-            "checkerIDs": ids_filtered,
+            "checkerCorner": img_pts,
+            "checkerIDs": checkerIDs[:, 0],
         }
     
     return detection_results

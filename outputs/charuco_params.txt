@@ -1,0 +1,8 @@
+ChArUco Board Parameters
+========================
+Dictionary: DICT_4X4_50
+Squares X: 4
+Squares Y: 5
+Square Length: 50 mm
+Marker Length: 40 mm
+Board Size: 200mm x 250mm

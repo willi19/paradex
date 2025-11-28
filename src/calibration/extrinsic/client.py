@@ -41,12 +41,7 @@ while not exit_event.is_set():
             merged_detect_result = merge_charuco_detection(detect_result)
             
             if save_event.is_set():
-                if not os.path.exists(os.path.join(root_dir, "markers_2d")):
-                    os.makedirs(os.path.join(root_dir, "markers_2d"))
-                if not os.path.exists(os.path.join(root_dir, "images")):
-                    os.makedirs(os.path.join(root_dir, "images"))
-                
-                if os.path.exists(os.path.join(root_dir, "markers_2d", f"{camera_name}_corner.npy")):
+                if os.path.exists(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy")):
                     continue  # Already saved for this camera
                 
                 save_name = find_latest_directory(root_dir)

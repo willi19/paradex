@@ -41,6 +41,7 @@ while not exit_event.is_set():
             
             if save_event.is_set():
                 save_name = find_latest_directory(root_dir)
+                print(save_name)
                 save_path = os.path.join(root_dir, save_name)
                 
                 if os.path.exists(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy")):

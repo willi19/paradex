@@ -24,6 +24,7 @@ last_frame_dict = {name: None for name in reader.camera_names}
 root_name = find_latest_directory(extrinsic_dir)
 root_dir = os.path.join(extrinsic_dir, root_name)
 
+save_remain = len(reader.camera_names)
 
 while not exit_event.is_set():
     images_data = reader.get_images(copy=False)
@@ -31,8 +32,6 @@ while not exit_event.is_set():
     meta_data = []
     binary_data = []
 
-    if save_event.is_set():
-        save_remain = len(reader.camera_names)
 
     for camera_name, (image, frame_id) in images_data.items():
         if frame_id > last_frame_ids[camera_name] and frame_id > 0:
@@ -84,9 +83,10 @@ while not exit_event.is_set():
                     np.array(merged_detect_result["checkerCorner"], dtype=np.float32).tobytes()
                 )
         
-        if save_event.is_set() and save_remain == 0:
-            save_event.clear()
-            print("Completed saving data for all cameras.")
+    if save_event.is_set() and save_remain == 0:
+        save_event.clear()
+        save_remain = len(reader.camera_names)
+        print("Completed saving data for all cameras.")
                 
                 
     if meta_data:

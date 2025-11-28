@@ -44,6 +44,7 @@ while not exit_event.is_set():
                 save_path = os.path.join(root_dir, save_name)
                 
                 if os.path.exists(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy")):
+                    print(f"Data for camera {camera_name} already saved, skipping.")
                     continue  # Already saved for this camera
                 
                 np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), merged_detect_result["checkerCorner"])

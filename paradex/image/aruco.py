@@ -96,7 +96,7 @@ def detect_charuco(img):
         if checkerIDs is None or len(checkerIDs) == 0:
             continue
 
-        obj_pts = _charuco_board_cache[b_id].chessboardCorners.reshape(-1, 2)  # Nx2
+        obj_pts = _charuco_board_cache[b_id].getChessboardCorners().reshape(-1, 2)  # Nx2
         img_pts = checkerCorner.reshape(-1, 2)
 
         H, inliers = cv2.findHomography(obj_pts, img_pts, cv2.RANSAC, ransacReprojThreshold=1.0)

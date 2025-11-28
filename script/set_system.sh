@@ -5,4 +5,4 @@ fi
 
 SYSTEM_NAME="$1"
 
-cp -r "config/${SYSTEM_NAME}/." config/current
+cp -r "system/${SYSTEM_NAME}/." system/current

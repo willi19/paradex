@@ -127,6 +127,7 @@ class CommandReceiver:
                         self.event_info[cmd] = cmd_info
                         if is_wait:
                             self.event_dict[cmd].wait()
+                        print(f"[CommandReceiver] Command '{cmd}' executed")
                         response = {"state": "success", "message": f"Command '{cmd}' executed"}
                     except Exception as e:
                         response = {"state": "error", "message": f"Callback error: {str(e)}"}

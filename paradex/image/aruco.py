@@ -40,6 +40,7 @@ boardinfo_dict = json.load(open(os.path.join(config_dir, "charuco_info.json"), "
 
 _aruco_detector_cache = {}
 _charuco_detector_cache = {}
+_charuco_board_cache = {}
 
 
 def get_aruco_detector(dict_type: str):
@@ -62,6 +63,7 @@ def get_charuco_detector():
                 aruco_dict[boardinfo["dict_type"]],
                 np.array(boardinfo["markerIDs"])
             )
+            _charuco_board_cache[key] = board
             _charuco_detector_cache[key] = aruco.CharucoDetector(board)
 
     return _charuco_detector_cache
@@ -94,9 +96,17 @@ def detect_charuco(img):
         if checkerIDs is None or len(checkerIDs) == 0:
             continue
 
+        obj_pts = _charuco_board_cache[b_id].chessboardCorners.reshape(-1, 2)  # Nx2
+        img_pts = checkerCorner.reshape(-1, 2)
+
+        H, inliers = cv2.findHomography(obj_pts, img_pts, cv2.RANSAC, ransacReprojThreshold=1.0)
+
+        corners_filtered = img_pts[inliers.ravel() == 1]
+        ids_filtered = checkerIDs[inliers.ravel() == 1]        
+
         detection_results[b_id] = {
-            "checkerCorner": checkerCorner,
-            "checkerIDs": checkerIDs,
+            "checkerCorner": corners_filtered,
+            "checkerIDs": ids_filtered,
         }
     
     return detection_results

@@ -12,9 +12,9 @@ from scipy.spatial.transform import Rotation as R
 import matplotlib.pyplot as plt
 import contextlib
 
-from paradex.utils.file_io import find_latest_directory, shared_dir, load_intrinsic, config_dir
-from paradex.colmap.database import *
-from paradex.colmap.colmap import get_two_view_geometries, load_colmap_camparam
+from paradex.utils.file_io import find_latest_directory
+from paradex.utils.path import shared_dir
+from paradex.calibration.colmap import *
 from paradex.image.aruco import draw_charuco
 from paradex.image.undistort import undistort_points
 from paradex.image.projection import get_cammtx

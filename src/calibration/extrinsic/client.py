@@ -24,12 +24,16 @@ last_frame_dict = {name: None for name in reader.camera_names}
 root_name = find_latest_directory(extrinsic_dir)
 root_dir = os.path.join(extrinsic_dir, root_name)
 
+
 while not exit_event.is_set():
     images_data = reader.get_images(copy=False)
     
     meta_data = []
     binary_data = []
-    
+
+    if save_event.is_set():
+        save_remain = len(reader.camera_names)
+
     for camera_name, (image, frame_id) in images_data.items():
         if frame_id > last_frame_ids[camera_name] and frame_id > 0:
             
@@ -37,6 +41,14 @@ while not exit_event.is_set():
             merged_detect_result = merge_charuco_detection(detect_result)
             
             if save_event.is_set():
+                if not os.path.exists(os.path.join(root_dir, "markers_2d")):
+                    os.makedirs(os.path.join(root_dir, "markers_2d"))
+                if not os.path.exists(os.path.join(root_dir, "images")):
+                    os.makedirs(os.path.join(root_dir, "images"))
+                
+                if os.path.exists(os.path.join(root_dir, "markers_2d", f"{camera_name}_corner.npy")):
+                    continue  # Already saved for this camera
+                
                 save_name = find_latest_directory(root_dir)
                 save_path = os.path.join(root_dir, save_name)
                 np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), merged_detect_result["checkerCorner"])
@@ -44,7 +56,7 @@ while not exit_event.is_set():
 
                 cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), image)
                 print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
-                save_event.clear()
+                save_remain -= 1
         
         
             image = cv2.resize(image, (image.shape[1]//8, image.shape[0]//8))
@@ -75,6 +87,10 @@ while not exit_event.is_set():
                 binary_data.append(
                     np.array(merged_detect_result["checkerCorner"], dtype=np.float32).tobytes()
                 )
+        
+        if save_event.is_set() and save_remain == 0:
+            save_event.clear()
+            print("Completed saving data for all cameras.")
                 
                 
     if meta_data:

@@ -10,7 +10,7 @@ import os
 
 from paradex.calibration.util import load_camparam, load_current_camparam, get_cammtx
 from paradex.image.undistort import apply_undistort_map, precomute_undistort_map
-from paradex.image.aruco import detect_aruco
+from paradex.image.aruco import detect_aruco, detect_charuco
 from paradex.transforms.triangulate import triangulation
 from paradex.image.merge import merge_image
 
@@ -131,6 +131,13 @@ class ImageDict:
                         new_images[serial] = img
         
         self.images = new_images
+        
+    def set_camparam(self, 
+                     intrinsic: Dict[str, Dict], 
+                     extrinsic: Dict[str, np.ndarray]):
+        """Set camera parameters"""
+        self.intrinsic = intrinsic
+        self.extrinsic = extrinsic
 
     @property
     def serial_list(self):
@@ -245,7 +252,7 @@ class ImageDict:
     # Image processing operations
     def undistort(self, save_path: Optional[Union[str, Path]] = None) -> 'ImageDict':
         for serial, img in self.images.items():
-            if self._cache['undistort_map'] is None:
+            if 'undistort_map' not in self._cache:
                 self._cache['undistort_map'] = {}
                 for serial in self.images.keys():
                     self._cache['undistort_map'][serial] = precomute_undistort_map(self.intrinsic[serial])
@@ -294,8 +301,79 @@ class ImageDict:
 
         marker_3d = {id: triangulation(np.array(marker_2d[id]["2d"]), np.array(marker_2d[id]["cammtx"]))
                      for id in marker_2d}
-        return marker_3d
+        return marker_2d, marker_3d
 
+    def triangulate_charuco(self) -> Dict[str, np.ndarray]:
+        """Triangulate ChArUco corners from multiple views"""
+        
+        if 'proj_mtx' not in self._cache:
+            self._cache['proj_mtx'] = get_cammtx(self.intrinsic, self.extrinsic)
+            
+        result = self.apply(
+            func=detect_charuco
+        )
+        
+        charuco_2d = {}
+        for serial, det_dict in result.items():
+            for board_id, (kypts, ids) in det_dict.items():
+                if ids is None or len(ids) == 0:
+                    continue
+                
+                for id, k in zip(ids.reshape(-1), kypts):
+                    k = k.squeeze()
+                    key = f"{board_id}_corner_{id}"
+                    if key not in charuco_2d:
+                        charuco_2d[key] = {"2d": [], "cammtx": []}
+                    cammtx = self._cache['proj_mtx'][serial]
+                    charuco_2d[key]["2d"].append(k)
+                    charuco_2d[key]["cammtx"].append(cammtx)
+
+        charuco_3d = {key: triangulation(np.array(charuco_2d[key]["2d"]), np.array(charuco_2d[key]["cammtx"]))
+                      for key in charuco_2d}
+        return charuco_2d, charuco_3d
+    
+    def traingulate_points(self, points_2d: np.ndarray) -> np.ndarray:
+        """Triangulate 3D points from multiple views
+        
+        Args:
+            points_2d: Dict mapping serial numbers to Nx2 arrays of 2D points   
+        Returns:
+            points_3d: Nx3 array of triangulated 3D points
+        """
+        if self._cache.get('proj_mtx') is None:
+            self._cache['proj_mtx'] = get_cammtx(self.intrinsic, self.extrinsic)
+        
+        proj_mtxs = []
+        pts_2d_list = []
+        
+        for serial, pts_2d in points_2d.items():
+            if serial in self._cache['proj_mtx']:
+                proj_mtxs.append(self._cache['proj_mtx'][serial])
+                pts_2d_list.append(pts_2d)
+            else:
+                raise ValueError(f"Projection matrix not found for serial {serial}")
+        
+        points_3d = triangulation(
+            points_2d=np.array(pts_2d_list),  # List of Nx2 arrays
+            proj_mtx=np.array(proj_mtxs)      # List of 3x4 projection matrices
+        )
+        
+        return points_3d
+        
+    def project_pointcloud(self, points_3d: np.ndarray) -> Dict[str, np.ndarray]:
+        """Project 3D points onto all camera views"""
+        if self._cache.get('proj_mtx') is None:
+            self._cache['proj_mtx'] = get_cammtx(self.intrinsic, self.extrinsic)
+        
+        proj_points = {}
+        for serial, proj_mtx in self._cache['proj_mtx'].items():
+            homog_points = np.hstack((points_3d, np.ones((points_3d.shape[0], 1))))  # Nx4
+            img_points_homog = (proj_mtx @ homog_points.T).T  # Nx3
+            img_points = img_points_homog[:, :2] / img_points_homog[:, 2:3]  # Nx2
+            proj_points[serial] = img_points
+        
+        return proj_points
+    
     def project_mesh(self, object):
         if self._cache.get('proj_mtx') is None:
             self._cache['proj_mtx'] = get_cammtx(self.intrinsic, self.extrinsic)

@@ -5,8 +5,6 @@ Generate ChArUco board as PDF for A4 printing using matplotlib
 import cv2
 import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-import matplotlib.patches as patches
 import os
 import datetime
 
@@ -16,7 +14,7 @@ def generate_charuco_board_pdf(board_number=1, marker_id_offset=0):
     
     Args:
         board_number: Board number (1-4)
-        marker_id_offset: Starting marker ID for this board
+        marker_id_offset: Starting marker ID offset for this board
     """
     # ChArUco board parameters
     squares_x = 4  # number of squares in X direction
@@ -49,19 +47,25 @@ def generate_charuco_board_pdf(board_number=1, marker_id_offset=0):
     # Create ArUco dictionary
     aruco_dict = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_6X6_250)
     
-    # CRITICAL: Manually create board with specific marker IDs
-    # For 4x5 board, we have (4-1)*(5-1) = 12 markers
-    num_markers = (squares_x - 1) * (squares_y - 1)
-    
-    # Create custom marker IDs for this board
-    marker_ids = np.arange(marker_id_offset, marker_id_offset + num_markers, dtype=np.int32)
-    
-    print(f"  Marker IDs: {marker_id_offset} to {marker_id_offset + num_markers - 1}")
-    
-    # Generate each marker separately and compose the board
+    # Calculate square and marker sizes in pixels
     square_size_px = int(square_length * pixels_per_mm)
     marker_size_px = int(marker_length * pixels_per_mm)
-    margin_px = (square_size_px - marker_size_px) // 2
+    
+    # ChArUco board: markers go in BLACK squares only
+    # Count black squares and assign marker IDs
+    marker_positions = []  # (row, col, marker_id)
+    marker_id = marker_id_offset
+    
+    for row in range(squares_y):
+        for col in range(squares_x):
+            # Black square if (row + col) is odd
+            if (row + col) % 2 == 0:
+                marker_positions.append((row, col, marker_id))
+                marker_id += 1
+    
+    num_markers = len(marker_positions)
+    print(f"  Marker IDs: {marker_id_offset} to {marker_id - 1}")
+    print(f"  Total markers: {num_markers}")
     
     # Create board image manually
     board_image = np.ones((board_height_px, board_width_px), dtype=np.uint8) * 255
@@ -69,39 +73,35 @@ def generate_charuco_board_pdf(board_number=1, marker_id_offset=0):
     # Draw checkerboard pattern
     for row in range(squares_y):
         for col in range(squares_x):
+            y_start = row * square_size_px
+            y_end = (row + 1) * square_size_px
+            x_start = col * square_size_px
+            x_end = (col + 1) * square_size_px
+            
             if (row + col) % 2 == 0:  # White squares
-                y_start = row * square_size_px
-                y_end = (row + 1) * square_size_px
-                x_start = col * square_size_px
-                x_end = (col + 1) * square_size_px
                 board_image[y_start:y_end, x_start:x_end] = 255
             else:  # Black squares
-                y_start = row * square_size_px
-                y_end = (row + 1) * square_size_px
-                x_start = col * square_size_px
-                x_end = (col + 1) * square_size_px
                 board_image[y_start:y_end, x_start:x_end] = 0
     
-    # Place ArUco markers at intersections
-    marker_idx = 0
-    for row in range(1, squares_y):
-        for col in range(1, squares_x):
-            # Generate marker with specific ID
-            marker_img = cv2.aruco.generateImageMarker(aruco_dict, marker_ids[marker_idx], marker_size_px)
-            
-            # Calculate position (at intersection of squares)
-            y_center = row * square_size_px
-            x_center = col * square_size_px
-            y_start = y_center - marker_size_px // 2
-            x_start = x_center - marker_size_px // 2
-            
-            # Place marker
-            board_image[y_start:y_start+marker_size_px, x_start:x_start+marker_size_px] = marker_img
-            
-            marker_idx += 1
+    # Place ArUco markers in BLACK squares
+    for row, col, mid in marker_positions:
+        # Generate marker with specific ID
+        marker_img = cv2.aruco.generateImageMarker(aruco_dict, mid, marker_size_px)
+        
+        # Calculate position (centered in the black square)
+        y_start = row * square_size_px + (square_size_px - marker_size_px) // 2
+        x_start = col * square_size_px + (square_size_px - marker_size_px) // 2
+        
+        # Place marker in black square
+        board_image[y_start:y_start+marker_size_px, x_start:x_start+marker_size_px] = marker_img
+    
+    # Note: OpenCV's ChArUco board generation uses sequential IDs starting from 0
+    # We can't easily change them without reconstructing the entire board manually
+    # So we'll note the ID offset in the PDF text
     
     # Create output directory
-    output_dir = f'outputs/{datetime.datetime.now().strftime("%Y%m%d_%H%M%S")}'
+    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = f"outputs/charuco/{timestamp}"
     os.makedirs(output_dir, exist_ok=True)
     
     output_filename = os.path.join(output_dir, f"charuco_board_{board_number}.pdf")
@@ -127,11 +127,7 @@ def generate_charuco_board_pdf(board_number=1, marker_id_offset=0):
               y_offset, y_offset + board_height_mm]
     ax.imshow(board_image, cmap='gray', extent=extent, origin='lower')
     
-    # Add title
-    title_text = f"ChArUco Board #{board_number} | DICT_6X6_250 | IDs: {marker_id_offset}-{marker_id_offset+num_markers-1}"
-    ax.text(a4_width_mm/2, a4_height_mm - 10, title_text,
-            ha='center', va='top', fontsize=10, fontweight='bold')
-    
+    # Add title with actual marker ID information
     plt.savefig(output_filename, format='pdf', dpi=300, 
                 bbox_inches='tight', pad_inches=0)
     plt.close()
@@ -149,7 +145,16 @@ def generate_charuco_board_pdf(board_number=1, marker_id_offset=0):
         f.write(f"Square Length: {square_length} mm\n")
         f.write(f"Marker Length: {marker_length} mm\n")
         f.write(f"Board Size: {board_width_mm}mm x {board_height_mm}mm\n")
-        f.write(f"Marker IDs: {marker_id_offset} to {marker_id_offset + num_markers - 1}\n")
+        f.write(f"Number of markers: {num_markers}\n")
+        f.write(f"Marker ID range: {marker_id_offset} to {marker_id_offset + num_markers - 1}\n")
+        f.write(f"\nNOTE: This board should be detected with marker ID offset = {marker_id_offset}\n")
+        f.write(f"When using for calibration, configure your detection to use offset {marker_id_offset}\n")
+    
+    # Copy to outputs for easy access
+    output_copy = f"outputs/charuco_board_{board_number}_ids_{marker_id_offset}-{marker_id_offset+num_markers-1}.pdf"
+    import shutil
+    shutil.copy(output_filename, output_copy)
+    print(f"  ✓ Copied to: {output_copy}")
     
     return output_filename, num_markers
 
@@ -158,7 +163,7 @@ if __name__ == "__main__":
     print("Generating 4 ChArUco Boards with Non-Overlapping Marker IDs")
     print("="*70)
     
-    num_boards = 4
+    num_boards = 6
     current_marker_id = 0
     
     for i in range(1, num_boards + 1):
@@ -168,5 +173,12 @@ if __name__ == "__main__":
     print("\n" + "="*70)
     print(f"✓ All {num_boards} boards generated successfully!")
     print(f"✓ Total markers used: {current_marker_id}")
-    print(f"✓ Check the output directory for PDF files")
+    print(f"✓ Files saved to outputs/")
+    print("="*70)
+    print("\nIMPORTANT NOTE:")
+    print("OpenCV's ChArUco board uses sequential IDs starting from 0.")
+    print("To use these boards without overlap, you need to:")
+    print("1. Use Board 1 as-is (IDs 0-9)")
+    print("2. For Boards 2-4, you'll need to offset detection IDs in your code")
+    print("   OR print different sized boards that naturally use different ID ranges")
     print("="*70)

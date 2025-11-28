@@ -105,8 +105,8 @@ def detect_charuco(img):
         ids_filtered = checkerIDs[inliers.ravel() == 1]        
 
         detection_results[b_id] = {
-            "checkerCorner": corners_filtered,
-            "checkerIDs": ids_filtered,
+            "checkerCorner": corners_filtered[:, 0, :],
+            "checkerIDs": ids_filtered[:, 0],
         }
     
     return detection_results

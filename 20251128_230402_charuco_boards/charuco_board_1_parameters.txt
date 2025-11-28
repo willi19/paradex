@@ -6,4 +6,8 @@ Squares Y: 5
 Square Length: 50 mm
 Marker Length: 40 mm
 Board Size: 200mm x 250mm
-Marker IDs: 0 to 11
+Number of markers: 10
+Marker ID range: 0 to 9
+
+NOTE: This board should be detected with marker ID offset = 0
+When using for calibration, configure your detection to use offset 0

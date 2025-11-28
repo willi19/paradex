@@ -20,7 +20,7 @@ def get_two_view_geometries(cam1, cam2, pix1, pix2, indices, pair): # get tuple 
 
 
 def load_colmap_camparam(path):
-    reconstruction = pycolmap.Reconstruction(os.path.join(path, "0", "colmap"))
+    reconstruction = pycolmap.Reconstruction(path)
     cameras, images = dict(), dict()
     for camera_id, camera in reconstruction.cameras.items():
         cameras[camera_id] = camera # distortion params

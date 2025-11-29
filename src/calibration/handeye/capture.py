@@ -32,21 +32,24 @@ if __name__ == "__main__":
     
     rcc = remote_camera_controller("handeye_calibration")
     save_current_camparam(os.path.join(root_dir, "0"))
+    file_list = [file_name for file_name in os.listdir(get_handeye_calib_traj(args.arm)) if "_qpos" in file_name]
     
-    for idx, file_name in enumerate(os.listdir(get_handeye_calib_traj(args.arm))[:5]):
+    for idx, file_name in enumerate(file_list):
         os.makedirs(os.path.join(root_dir, str(idx)), exist_ok=True)
         action = np.load(os.path.join(get_handeye_calib_traj(args.arm), file_name))
         
-        robot_data = controller.get_data()
         controller.move(action, is_servo=False)
-        np.save(os.path.join(root_dir, str(idx), "robot.npy"), robot_data)
+        
 
         os.makedirs(f"{root_dir}/{idx}/images", exist_ok=True)
-        np.save(f"{root_dir}/{idx}/eef.npy", robot_data["position"])
-        np.save(f"{root_dir}/{idx}/qpos.npy", robot_data["qpos"])
-
         rcc.start("image", False, remove_home(os.path.join(root_dir, str(idx))))
         rcc.stop()
+        
+        robot_data = controller.get_data()
+        np.save(os.path.join(root_dir, str(idx), "robot.npy"), robot_data)
+        np.save(f"{root_dir}/{idx}/eef.npy", robot_data["position"])
+        np.save(f"{root_dir}/{idx}/qpos.npy", robot_data["qpos"])
+        
         print(f"Saved data for step {idx}")
         
     controller.end(True)

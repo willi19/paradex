@@ -151,6 +151,8 @@ class BatchRenderer:
                                         ] 
                                         ) 
         self.flip_z = torch.tensor(np.diag([1, -1, -1, 1]).astype(np.float32)).to(device)
+        self.near = near
+        self.far = far
 
     def render_wvertexcolor(self, mtx, pos, pos_idx, vtx_col, col_idx):
         """
@@ -286,8 +288,8 @@ class BatchRenderer:
         depth = torch.flip(depth, dims=[1]).cpu().numpy()
 
         color_dict = {serial: color[i] for i, serial in enumerate(self.serial_list)}
-        mask_dict = {serial: mask_soft[i] for i, serial in enumerate(self.serial_list)}
-        depth_dict = {serial: depth[i] for i, serial in enumerate(self.serial_list)}
+        mask_dict = {serial: mask_soft[i][:,:,0].astype(np.bool_) for i, serial in enumerate(self.serial_list)}
+        depth_dict = {serial: depth[i][:,:,0] for i, serial in enumerate(self.serial_list)}
 
         return color_dict, mask_dict, depth_dict
 

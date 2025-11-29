@@ -405,19 +405,19 @@ class ViserRobotModule():
         num_joints_to_repeat = 0
 
         if load_meshes:
-            if self.urdf.scene is not None:
+            if self._urdf.scene is not None:
                 num_joints_to_repeat += 1
                 self._visual_root_frame = self._add_joint_frames_and_meshes(
-                    self.urdf.scene,
+                    self._urdf.scene,
                     root_node_name,
                     collision_geometry=False
                 )
 
         if load_collision_meshes:
-            if self.urdf.collision_scene is not None:
+            if self._urdf.collision_scene is not None:
                 num_joints_to_repeat += 1
                 self._collision_root_frame = self._add_joint_frames_and_meshes(
-                    self.urdf.collision_scene,
+                    self._urdf.collision_scene,
                     root_node_name,
                     collision_geometry=True
                 )

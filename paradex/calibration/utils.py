@@ -34,7 +34,7 @@ def load_current_camparam(name=None):
     return intrinsic, extrinsic
 
 def load_camparam(demo_path):
-    intrinsic_data = json.load(open(os.path.join(demo_path, "intrinsics.json"), "r"))
+    intrinsic_data = json.load(open(os.path.join(demo_path, "cam_param", "intrinsics.json"), "r"))
     intrinsic = {}
     for serial, values in intrinsic_data.items():
         intrinsic[serial] = {
@@ -44,7 +44,7 @@ def load_camparam(demo_path):
             "height": values["height"],  # Scalar values remain unchanged
             "width": values["width"],
         }
-    extrinsic_data = json.load(open(os.path.join(demo_path, "extrinsics.json"), "r"))
+    extrinsic_data = json.load(open(os.path.join(demo_path, "cam_param", "extrinsics.json"), "r"))
     extrinsic = {}
     for serial, values in extrinsic_data.items():
         extrinsic[serial] = np.array(values).reshape(3, 4)

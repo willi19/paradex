@@ -185,14 +185,15 @@ def undistort(name):
     
     img_dict = None
     for index in tqdm.tqdm(index_list, desc="Undistorting images"):
-        if os.path.exists(os.path.join(extrinsic_dir, name, index, "undistort", "images")) \
-            and len(os.listdir(os.path.join(extrinsic_dir, name, index, "undistort", "images"))) == \
-                len(os.listdir(os.path.join(extrinsic_dir, name, index, "images"))):
+        # if os.path.exists(os.path.join(extrinsic_dir, name, index, "undistort", "images")) \
+        #     and len(os.listdir(os.path.join(extrinsic_dir, name, index, "undistort", "images"))) == \
+        #         len(os.listdir(os.path.join(extrinsic_dir, name, index, "images"))):
             
-            continue
+        #     continue
         
         if img_dict is None:
             img_dict = ImageDict.from_path(os.path.join(extrinsic_dir, name, index))
+            img_dict.set_camparam(intrinsics, extrinsics)
         else:
             img_dict.update_path(os.path.join(extrinsic_dir, name, index), reload_images=True)
         # img_dict.set_camparam(intrinsics, extrinsics)
@@ -206,8 +207,8 @@ def save_kypt_3d(name):
     intrinsics, extrinsics = load_colmap_camparam(out_pose_dir)
 
     for index in tqdm.tqdm(index_list, desc="Saving 3D keypoints"):
-        if os.path.exists(os.path.join(extrinsic_dir, name, index, "kypt_3d_id.npy")):
-            continue
+        # if os.path.exists(os.path.join(extrinsic_dir, name, index, "kypt_3d_id.npy")):
+        #     continue
         
         img_dict_undistort = ImageDict.from_path(os.path.join(extrinsic_dir, name, index, "undistort"))
         img_dict_undistort.set_camparam(intrinsics, extrinsics)
@@ -344,18 +345,18 @@ if __name__ == "__main__":
     else:
         name = args.name
 
-    # run_calibration(name, False)
-    # index_list = sorted(os.listdir(os.path.join(extrinsic_dir, name)))
-    # out_pose_dir = os.path.join(extrinsic_dir, name, index_list[0], "colmap")
-    # intrinsics, extrinsics = load_colmap_camparam(out_pose_dir)
+    run_calibration(name)
+    index_list = sorted(os.listdir(os.path.join(extrinsic_dir, name)))
+    out_pose_dir = os.path.join(extrinsic_dir, name, index_list[0], "colmap")
+    intrinsics, extrinsics = load_colmap_camparam(out_pose_dir)
 
-    # undistort(name)
-    # save_kypt_3d(name)
-    # get_length(name)
-    # err_dict = debug(name)
-    # with open(os.path.join(extrinsic_dir, name, index_list[0], " reproj_error.txt"), 'w') as f:
-    #     for serial_num, proj in err_dict.items():
-    #         f.write(f"{serial_num} : mean {np.mean(proj)}, max{np.max(proj)} \n")
+    undistort(name)
+    save_kypt_3d(name)
+    get_length(name)
+    err_dict = debug(name)
+    with open(os.path.join(extrinsic_dir, name, index_list[0], " reproj_error.txt"), 'w') as f:
+        for serial_num, proj in err_dict.items():
+            f.write(f"{serial_num} : mean {np.mean(proj)}, max{np.max(proj)} \n")
     
     new_name = find_latest_directory(extrinsic_dir)
     index_list = sorted(os.listdir(os.path.join(extrinsic_dir, new_name)))  

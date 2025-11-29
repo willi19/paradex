@@ -4,7 +4,7 @@ from threading import Event, Thread, Lock
 import zmq
 import json
 import os
-from paradex.utils.file_io import config_dir
+from paradex.utils.system import network_info
 import time
 import socket
 
@@ -80,7 +80,7 @@ OCCULUS2WRIST_Right = np.array([[0, 0 ,1 ,0],
                                 [0, 0, 0, 1]])
     
 class OculusReceiver:
-    def __init__(self, is_body=False):
+    def __init__(self, ip, is_body=False):
         network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
         self.hand_pose = {}
         self.body_pose = None

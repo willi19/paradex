@@ -416,7 +416,7 @@ class ImageDict:
         
         images = {}
         for serial, m in mask.items():
-            images[serial] = overlay_mask(self.images[serial], m)
+            images[serial] = overlay_mask(self.images[serial], m, color=(0,255,0), alpha=0.5)
         
         new_img_dict = ImageDict(images, self.intrinsic, self.extrinsic, self.path)
         return new_img_dict
@@ -447,4 +447,4 @@ class ImageDict:
                 for pt in keypoints[serial]:
                     x, y = map(int, pt)
                     cv2.circle(img, (x, y), radius, color, thickness)
-        return ImageDict(new_images)
+        return ImageDict(new_images, intrinsic=self.intrinsic, extrinsic=self.extrinsic, path=self.path)

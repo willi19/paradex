@@ -8,7 +8,6 @@ def precomute_undistort_map(intrinsic):
     dist_coef = np.array(intrinsic["dist_params"])
     wh = (intrinsic["width"], intrinsic["height"])
     new_cammtx = intrinsic['intrinsics_undistort']
-    
     mapx, mapy = cv2.initUndistortRectifyMap(cammtx, dist_coef, None, new_cammtx, wh, cv2.CV_32FC1)
     return new_cammtx, mapx, mapy
 

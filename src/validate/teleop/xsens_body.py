@@ -1,10 +1,10 @@
-from paradex.visualization.skeleton.hand import HandVisualizer
-from paradex.utils.system import network_info
 
 from threading import Event
 from paradex.utils.keyboard_listener import listen_keyboard
 import time
 import argparse
+
+from paradex.visualization.skeleton.hand import HandVisualizer
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -14,7 +14,7 @@ if __name__ == "__main__":
 
     if args.device == 'xsens': 
         from paradex.io.teleop import XSensReceiver, xsens_joint_name, xsens_joint_parent_name
-        receiver = XSensReceiver(**network_info['xsens']['param'])
+        receiver = XSensReceiver()
         skeleton_info = {child:parent for child, parent in zip(xsens_joint_name, xsens_joint_parent_name)}
         joint_name_list = xsens_joint_name
 

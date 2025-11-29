@@ -64,11 +64,14 @@ def solve_axb_cpu(A, B):
         C[3*i:3*i+3, :] = np.eye(3) - rot_a
         d[3*i:3*i+3, 0] = trans_a - np.dot(theta, trans_b)
     b_x  = np.dot(np.linalg.inv(np.dot(C.T, C)), np.dot(C.T, d))
-    return theta, b_x
+    T = np.eye(4)
+    T[:3, :3] = theta
+    T[:3, 3] = b_x.flatten()
 
+    return T
 
     
-def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.01, verbose=False):
+def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.001, verbose=False):
     """
     Solve AX = XB using PyTorch gradient descent
     
@@ -142,11 +145,7 @@ def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.01
     
     # Initialize network with Tsai-Lenz solution as starting point
     if init_X is None:
-        init_R, init_t = solve_axb_cpu(np.array(A_list), np.array(B_list))
-        init_X = np.eye(4)
-        init_X[:3, :3] = init_R
-        init_X[:3, 3] = init_t.flatten()
-        
+        init_X = solve_axb_cpu(np.array(A_list), np.array(B_list))
     init_R = init_X[:3, :3]
     init_t = init_X[:3, 3]
     model = HandEyeCalibrationNet(init_rotation=torch.tensor(init_R, dtype=torch.float64),
@@ -199,5 +198,4 @@ def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.01
     # Return final transformation as numpy array
     with torch.no_grad():
         X_final = model().numpy()
-    
     return X_final

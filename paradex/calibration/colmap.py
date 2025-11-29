@@ -19,7 +19,7 @@ def get_two_view_geometries(cam1, cam2, pix1, pix2, indices, pair): # get tuple 
     return pair[0], pair[1], indices, F['F'], E['E'], H['H'], 3 # ways to getting two-view-geometries
 
 
-def load_colmap_camparam(path):
+def load_colmap_camparam(path, orig_size=(2048, 1536)):
     reconstruction = pycolmap.Reconstruction(path)
     cameras, images = dict(), dict()
     for camera_id, camera in reconstruction.cameras.items():
@@ -39,10 +39,8 @@ def load_colmap_camparam(path):
 
         cammtx = np.array([[fx,0.,cx],[0.,fy, cy], [0.,0.,1.]])
         dist_params = np.array([k1,k2,p1,p2])
-        new_cammtx, roi = cv2.getOptimalNewCameraMatrix(cammtx, dist_params, (w, h), 1, (w, h))
-        mapx, mapy = cv2.initUndistortRectifyMap(cammtx, dist_params, None, new_cammtx, (w, h), 5) # Last argument is image representation mapping option
-        x,y,w,h = roi
-
+        new_cammtx, roi = cv2.getOptimalNewCameraMatrix(cammtx, dist_params, (w, h), 1, orig_size)
+        
         intrinsics[serialnum] = dict()
         # Save into parameters
         intrinsics[serialnum]["original_intrinsics"] = cammtx # calibrated
@@ -50,8 +48,11 @@ def load_colmap_camparam(path):
         # intrinsics[serialnum]["Intrinsics_warped"] = list(new_cammtx.reshape(-1))
         # intrinsics[serialnum]["Intrinsics_warped"][2] -= x   # check this to get undistorted information
         # intrinsics[serialnum]["Intrinsics_warped"][5] -= y
-        intrinsics[serialnum]["height"] = h 
-        intrinsics[serialnum]["width"] = w
+        intrinsics[serialnum]["dist_height"] = h 
+        intrinsics[serialnum]["dist_height"] = w
+        intrinsics[serialnum]["height"] = orig_size[1]
+        intrinsics[serialnum]["width"] = orig_size[0]
+        
         intrinsics[serialnum]["dist_params"] = dist_params
 
 

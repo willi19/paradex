@@ -1,23 +1,17 @@
 import argparse
 import os
-import json
-import yaml
-from itertools import chain
-from multiprocessing import Pool
-from glob import glob
 import pycolmap
-import cv2
 import multiprocessing as mp
-from scipy.spatial.transform import Rotation as R
-import matplotlib.pyplot as plt
-import contextlib
+import tqdm
+import numpy as np
+from datetime import datetime
+import shutil
+import json
 
 from paradex.utils.file_io import find_latest_directory
 from paradex.calibration.colmap import *
-from paradex.image.aruco import draw_charuco, detect_charuco
-from paradex.image.undistort import undistort_points
-from paradex.transforms.triangulate import triangulation
-from paradex.calibration.util import cam_param_dir, extrinsic_dir, load_current_intrinsic
+from paradex.image.aruco import detect_charuco, merge_charuco_detection, get_adjecent_ids, find_common_indices
+from paradex.calibration.utils import cam_param_dir, extrinsic_dir, load_current_intrinsic
 from paradex.image.image_dict import ImageDict
 
 def process_match(args):
@@ -65,8 +59,8 @@ def load_keypoint(root_dir):
             if corners.shape[0] == 0:
                 continue
             keypoint_dict[index][serial_num] = {}
-            keypoint_dict[index][serial_num]["corners"] = corners[:,0, :]
-            keypoint_dict[index][serial_num]["ids"] = np.load(os.path.join(frame_dir, f"{serial_num}_id.npy"))[:, 0]
+            keypoint_dict[index][serial_num]["corners"] = corners
+            keypoint_dict[index][serial_num]["ids"] = np.load(os.path.join(frame_dir, f"{serial_num}_id.npy"))
     return keypoint_dict
 
 def add_camera(db, intrinsics_dict, serial_list):
@@ -173,6 +167,7 @@ def run_calibration(name):
         'ba_refine_principal_point': True,
         'ba_refine_extra_params': True,
         'ba_refine_focal_length': True,
+        'max_extra_param': 4,
     }
     Options = pycolmap.IncrementalPipelineOptions(options)
     
@@ -181,8 +176,162 @@ def run_calibration(name):
     best_idx = max(maps, key=lambda i: maps[i].num_images())
     maps[best_idx].write(out_pose_dir)
     maps[best_idx].write_text(out_pose_dir)
+    return 
+
+def undistort(name):
+    index_list = sorted(os.listdir(os.path.join(extrinsic_dir, name)))
+    out_pose_dir = os.path.join(extrinsic_dir, name, index_list[0], "colmap")
     intrinsics, extrinsics = load_colmap_camparam(out_pose_dir)
-    return intrinsics, extrinsics
+    
+    img_dict = None
+    for index in tqdm.tqdm(index_list, desc="Undistorting images"):
+        if os.path.exists(os.path.join(extrinsic_dir, name, index, "undistort", "images")) \
+            and len(os.listdir(os.path.join(extrinsic_dir, name, index, "undistort", "images"))) == \
+                len(os.listdir(os.path.join(extrinsic_dir, name, index, "images"))):
+            
+            continue
+        
+        if img_dict is None:
+            img_dict = ImageDict.from_path(os.path.join(extrinsic_dir, name, index))
+        else:
+            img_dict.update_path(os.path.join(extrinsic_dir, name, index), reload_images=True)
+        # img_dict.set_camparam(intrinsics, extrinsics)
+        img_dict_undistort = img_dict.undistort(save_path=os.path.join(extrinsic_dir, name, index, "undistort"))
+    
+    return
+
+def save_kypt_3d(name):
+    index_list = sorted(os.listdir(os.path.join(extrinsic_dir, name)))
+    out_pose_dir = os.path.join(extrinsic_dir, name, index_list[0], "colmap")
+    intrinsics, extrinsics = load_colmap_camparam(out_pose_dir)
+
+    for index in tqdm.tqdm(index_list, desc="Saving 3D keypoints"):
+        if os.path.exists(os.path.join(extrinsic_dir, name, index, "kypt_3d_id.npy")):
+            continue
+        
+        img_dict_undistort = ImageDict.from_path(os.path.join(extrinsic_dir, name, index, "undistort"))
+        img_dict_undistort.set_camparam(intrinsics, extrinsics)
+        charuco_3d = img_dict_undistort.triangulate_charuco()
+        merged_charuco_3d = merge_charuco_detection(charuco_3d)
+        np.save(os.path.join(extrinsic_dir, name, index, "kypt_3d_id.npy"), merged_charuco_3d["checkerIDs"])
+        np.save(os.path.join(extrinsic_dir, name, index, "kypt_3d_cor.npy"), merged_charuco_3d["checkerCorner"])
+    
+def get_length(name):
+    index_list = sorted(os.listdir(os.path.join(extrinsic_dir, name)))
+    length_list = []
+    
+    adj_ids = get_adjecent_ids()
+
+    for index in tqdm.tqdm(index_list, desc="Getting 3D keypoints length"):
+        kypt_3d_ids = np.load(os.path.join(extrinsic_dir, name, index, "kypt_3d_id.npy"))
+        kypt_3d_cor = np.load(os.path.join(extrinsic_dir, name, index, "kypt_3d_cor.npy"))
+        kypt_3d = {}
+        
+        for id, cor in zip(kypt_3d_ids, kypt_3d_cor):
+            kypt_3d[id] = cor
+        
+        for mid in kypt_3d.keys():
+            for adj_id in adj_ids[mid]:
+                if adj_id in kypt_3d:
+                    length_list.append(np.linalg.norm(kypt_3d[mid] - kypt_3d[adj_id]))
+                    
+    print("Length mean:", np.mean(length_list))
+    print("Length std:", np.std(length_list))
+    print("Max length:", np.max(length_list))
+    print("Min length:", np.min(length_list))
+    return np.mean(length_list)
+     
+def debug(name, refine=True):
+    index_list = sorted(os.listdir(os.path.join(extrinsic_dir, name)))
+    out_pose_dir = os.path.join(extrinsic_dir, name, index_list[0], "colmap")
+    err_dict = {}
+    intrinsics, extrinsics = load_colmap_camparam(out_pose_dir)
+    
+    if refine:
+        new_name = datetime.now().strftime("%Y%m%d_%H%M%S")
+        os.makedirs(os.path.join(extrinsic_dir, new_name), exist_ok=True)
+    
+    for index in tqdm.tqdm(index_list, desc="Debugging 2D keypoints"):
+        # if os.path.exists(os.path.join(extrinsic_dir, name, index, "debug", "images")) and \
+        #     len(os.listdir(os.path.join(extrinsic_dir, name, index, "debug", "images"))) == \
+        #         len(os.listdir(os.path.join(extrinsic_dir, name, index, "images"))):
+        #     continue
+        
+        img_dict_undistort = ImageDict.from_path(os.path.join(extrinsic_dir, name, index, "undistort"))
+        img_dict_undistort.set_camparam(intrinsics, extrinsics)
+        charuco_2d = img_dict_undistort.apply(detect_charuco, False)
+        charuco_2d = {serial_num: merge_charuco_detection(detection) for serial_num, detection in charuco_2d.items()}
+        
+        kypt_3d_id = np.load(os.path.join(extrinsic_dir, name, index, "kypt_3d_id.npy"))
+        kypt_3d_cor = np.load(os.path.join(extrinsic_dir, name, index, "kypt_3d_cor.npy"))
+        
+        proj_kypt_3d = img_dict_undistort.project_pointcloud(kypt_3d_cor)
+        
+        if refine:
+            shutil.copytree(os.path.join(extrinsic_dir, name, index, "images"), 
+                                os.path.join(extrinsic_dir, new_name, index, "images"))
+        
+        kypt_2d = {}
+        
+        idx_error_dict = {}
+        for serial_num, det_2d in charuco_2d.items():
+            idx_error_dict[serial_num] = []
+            if serial_num not in err_dict:
+                err_dict[serial_num] = []
+                
+            charuco_orig_2d = np.load(os.path.join(extrinsic_dir, name, index, "markers_2d", f"{serial_num}_corner.npy"))
+            charuco_orig_id = np.load(os.path.join(extrinsic_dir, name, index, "markers_2d", f"{serial_num}_id.npy"))
+            
+            proj_2d = proj_kypt_3d[serial_num]
+            
+            kypt_2d[serial_num] = det_2d["checkerCorner"]
+            kypt_id = det_2d["checkerIDs"]
+            
+            refined_kypt_id = []
+            refined_kypt_2d = []
+            
+            for mid, cor_2d in zip(kypt_id, kypt_2d[serial_num]):
+                if not refine and mid not in charuco_orig_id:
+                    continue
+                
+                idx = np.where(kypt_3d_id == mid)[0]
+                if len(idx) == 0:
+                    continue
+                
+                proj_cor_2d = proj_2d[idx[0]]
+                err = np.linalg.norm(cor_2d - proj_cor_2d)
+                idx_error_dict[serial_num].append(err)
+                if err < 2.0 and refine:
+                    new_id = np.where(charuco_orig_id == mid)[0]
+                    if len(new_id) == 0:
+                        continue
+                    
+                    refined_kypt_id.append(mid)
+                    refined_kypt_2d.append(charuco_orig_2d[new_id[0]])
+                    
+            
+            if refine:
+                refined_kypt_id = np.array(refined_kypt_id)
+                refined_kypt_2d = np.array(refined_kypt_2d)
+                os.makedirs(os.path.join(extrinsic_dir, new_name, index, "markers_2d"), exist_ok=True)
+                np.save(os.path.join(extrinsic_dir, new_name, index, "markers_2d", f"{serial_num}_id.npy"), refined_kypt_id)
+                np.save(os.path.join(extrinsic_dir, new_name, index, "markers_2d", f"{serial_num}_corner.npy"), refined_kypt_2d)
+                
+                
+        plot_2d = img_dict_undistort.draw_keypoint(kypt_2d, (255, 0, 0))
+        plot_proj = plot_2d.draw_keypoint(proj_kypt_3d, (0, 255, 0))
+        
+        plot_proj.save(os.path.join(extrinsic_dir, name, index, "debug"))
+        
+        for serial_num, err_list in idx_error_dict.items():
+            if len(err_list) == 0:
+                continue
+            err_dict[serial_num].extend(err_list)
+            if np.max(err_list) > 2.0:
+                os.makedirs(os.path.join(extrinsic_dir, name, index_list[0], "outlier"), exist_ok=True)
+                cv2.imwrite(os.path.join(extrinsic_dir, name, index_list[0], "outlier", f"{index}_{serial_num}.png"), plot_proj.images[serial_num])
+                print(f"Index {index}, Serial {serial_num}, Max reproj err: {np.max(err_list)}")
+    return err_dict
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Manage timestamped directories.")
@@ -195,120 +344,49 @@ if __name__ == "__main__":
     else:
         name = args.name
 
-    intrinsic, extrinsic = run_calibration(name)
-    img_dict = None
-    
-    for index in os.listdir(os.path.join(extrinsic_dir, name)):
-        if img_dict is None:
-            img_dict = ImageDict.from_path(os.path.join(extrinsic_dir, name, index))
-        else:
-            img_dict.update_path(ImageDict.from_path(os.path.join(extrinsic_dir, name, index)), reload_images=True)
-        print(sorted(intrinsic.keys()), sorted(extrinsic.keys()), len(intrinsic), len(extrinsic))
-        img_dict.set_camparam(intrinsic, extrinsic)
-        
-        os.makedirs(os.path.join(extrinsic_dir, name, index+"_undistort"), exist_ok=True)
-        img_dict_undistort = img_dict.undistort(save_path=os.path.join(extrinsic_dir, name, index+"_undistort"))
-        
-        kypt_2d, kypt_3d = img_dict_undistort.triangulate_charuco()
-        proj_kypt_3d = {k: img_dict_undistort.project_pointcloud(k) for k in kypt_3d}
-        print(proj_kypt_3d)
+    # run_calibration(name, False)
+    # index_list = sorted(os.listdir(os.path.join(extrinsic_dir, name)))
+    # out_pose_dir = os.path.join(extrinsic_dir, name, index_list[0], "colmap")
+    # intrinsics, extrinsics = load_colmap_camparam(out_pose_dir)
 
-    
-    # cammtx = {serial_num: intrinsics[serial_num]['intrinsics_undistort'] @ }
-    # cammtx = get_cammtx(intrinsics, extrinsics)
-    
-    # for serial in serial_list:
-    #     if str(serial) not in list(intrinsics.keys()):
-    #         print(serial, "not found")
-    # print("============")
-
-    # length = []
-    # proj_err = {serial_num:[] for serial_num in serial_list}
-
-    # keypoint_dict = {}
-    # for index, kypt_2d_dict in keypoint_dict_distort.items():
-    #     keypoint_dict[index] = {}
-    #     for serial_num, kypt_2d in kypt_2d_dict.items():
-    #         kypt_2d_undist = {'ids':[], 'corners':[]}
-    #         for id, cor in zip(kypt_2d['ids'], kypt_2d['corners']):
-    #             cor_undist = undistort_points(cor, intrinsics[serial_num])
-                
-    #             kypt_2d_undist['ids'].append(id)
-    #             kypt_2d_undist['corners'].append(cor_undist)
-    #         keypoint_dict[index][serial_num] = kypt_2d_undist
-    
-    # for index, kypt_2d_dict in keypoint_dict.items():
-    #     kypt_id_dict = {}
-    #     kypt_3d = {}
-        
-    #     for serial_num, kypt_2d in kypt_2d_dict.items():
-    #         for id, cor in zip(kypt_2d['ids'], kypt_2d['corners']):
-    #             if id[0] not in kypt_id_dict.keys():
-    #                 kypt_id_dict[id[0]] = {"2d": [], "projection":[]}
-                
-    #             kypt_id_dict[id[0]]["2d"].append(cor)
-    #             kypt_id_dict[id[0]]["projection"].append(cammtx[serial_num].copy())
-
-    #     for id in kypt_id_dict.keys():
-    #         proj_mat = np.array(kypt_id_dict[id]["projection"])
-    #         kypt_2d = np.array(kypt_id_dict[id]["2d"])
-            
-    #         pt3d = triangulation(kypt_2d, proj_mat)
-    #         if pt3d is None:
-    #             continue
-            
-            
-    #         kypt_3d[id] = pt3d
-
-    #     idx_list = list(kypt_3d.keys())
-    #     idx_list.sort()
-    #     for i in idx_list:
-    #         if i-1 in list(kypt_3d.keys()) and i % 10 != 0:
-    #             length.append(np.linalg.norm(kypt_3d[i] - kypt_3d[i-1]))
-    #         if i+10 in list(kypt_3d.keys()):
-    #             length.append(np.linalg.norm(kypt_3d[i] - kypt_3d[i+10]))
-        
-    #     for serial_num, kypt_2d in kypt_2d_dict.items():
-    #         for id, cor in zip(kypt_2d['ids'], kypt_2d['corners']):
-    #             if id[0] not in kypt_3d.keys():
-    #                 continue
-    #             pt3d = kypt_3d[id[0]][0]
-    #             pt3d_h = np.hstack((pt3d, np.ones((1))))
-    #             proj = cammtx[serial_num] @ pt3d_h
-    #             proj = proj[:2] / proj[2]
-
-    #             err = np.linalg.norm(proj - cor)
-    #             if err > 10:
-    #                 print(f"index {index}, serial {serial_num}, id {id[0]}, err {err}")
-    #             proj_err[serial_num].append(err)
-                    
-    # print(np.std(length))
-    # print(np.mean(length))
-    
-    # for serial_num, err in proj_err.items():
-    #     print(serial_num, np.mean(err), np.max(err))
-
-    # with open(os.path.join(root_dir, '0', 'colmap', 'result.txt'), 'w') as f:
-    #     for serial_num, proj in proj_err.items():
+    # undistort(name)
+    # save_kypt_3d(name)
+    # get_length(name)
+    # err_dict = debug(name)
+    # with open(os.path.join(extrinsic_dir, name, index_list[0], " reproj_error.txt"), 'w') as f:
+    #     for serial_num, proj in err_dict.items():
     #         f.write(f"{serial_num} : mean {np.mean(proj)}, max{np.max(proj)} \n")
+    
+    new_name = find_latest_directory(extrinsic_dir)
+    index_list = sorted(os.listdir(os.path.join(extrinsic_dir, new_name)))  
+    run_calibration(new_name)
+    undistort(new_name)
+    save_kypt_3d(new_name)
+    length = get_length(new_name)
+    err_dict = debug(new_name, refine=False)
+    
+    with open(os.path.join(extrinsic_dir, new_name, index_list[0], " reproj_error.txt"), 'w') as f:
+        for serial_num, proj in err_dict.items():
+            f.write(f"{serial_num} : mean {np.mean(proj)}, max{np.max(proj)} \n")
+    
+    intrinsics, extrinsics = load_colmap_camparam(os.path.join(extrinsic_dir, new_name, index_list[0], "colmap"))
+    new_extrinsics = {}
+    for serial_num, extrinsic in extrinsics.items():
+        new_extrinsic = np.array(extrinsic)
+        new_extrinsic[:3, 3] *= (0.025 / np.mean(length))
+        new_extrinsics[serial_num] = new_extrinsic.tolist()
 
-    # new_extrinsics = {}
-    # for serial_num, extrinsic in extrinsics.items():
-    #     new_extrinsic = np.array(extrinsic)
-    #     new_extrinsic[:3, 3] *= (0.025 / np.mean(length))
-    #     new_extrinsics[serial_num] = new_extrinsic.tolist()
-
-    # os.makedirs(os.path.join(cam_param_dir, name), exist_ok=True)
+    os.makedirs(os.path.join(cam_param_dir, name), exist_ok=True)
         
-    # with open(os.path.join(cam_param_dir, name, "extrinsics.json"), "w") as f:
-    #     json.dump(new_extrinsics, f, indent=4)
+    with open(os.path.join(cam_param_dir, name, "extrinsics.json"), "w") as f:
+        json.dump(new_extrinsics, f, indent=4)
 
-    # for serial_num, intrinsic in intrinsics.items():
-    #     new_intrinsic = np.array(intrinsic['intrinsics_undistort'])
-    #     intrinsics[serial_num]['intrinsics_undistort'] = new_intrinsic.tolist()
-    #     intrinsics[serial_num]['original_intrinsics'] = np.array(intrinsic['original_intrinsics']).tolist()
-    #     intrinsics[serial_num]['dist_params'] = np.array(intrinsic['dist_params']).tolist()
+    for serial_num, intrinsic in intrinsics.items():
+        new_intrinsic = np.array(intrinsic['intrinsics_undistort'])
+        intrinsics[serial_num]['intrinsics_undistort'] = new_intrinsic.tolist()
+        intrinsics[serial_num]['original_intrinsics'] = np.array(intrinsic['original_intrinsics']).tolist()
+        intrinsics[serial_num]['dist_params'] = np.array(intrinsic['dist_params']).tolist()
 
-    # with open(os.path.join(cam_param_dir, name, "intrinsics.json"), "w") as f:
-    #     json.dump(intrinsics, f, indent=4)
+    with open(os.path.join(cam_param_dir, name, "intrinsics.json"), "w") as f:
+        json.dump(intrinsics, f, indent=4)
     

@@ -6,6 +6,7 @@ import cv2
 
 from paradex.utils.path import shared_dir
 from paradex.utils.file_io import find_latest_directory
+from paradex.utils.system import config_dir
 
 cam_param_dir = os.path.join(shared_dir, "cam_param")
 handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")
@@ -103,3 +104,6 @@ def get_cammtx(intrinsic, extrinsic):
         ext_mat = extrinsic[serial_num]
         cammat[serial_num] = int_mat @ ext_mat
     return cammat
+
+def get_handeye_calib_traj(arm_name: str):
+    return os.path.join(config_dir, "hecalib", arm_name)

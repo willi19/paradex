@@ -10,7 +10,7 @@ from paradex.io.capture_pc.data_sender import DataCollector
 from paradex.io.capture_pc.command_sender import CommandSender
 from paradex.image.merge import merge_image
 from paradex.image.overlay import overlay_mask
-from paradex.calibration.util import extrinsic_dir
+from paradex.calibration.utils import extrinsic_dir
 from paradex.image.aruco import draw_charuco
 
 BOARD_COLORS = [

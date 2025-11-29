@@ -8,8 +8,9 @@ import cv2
 import json
 import os
 
-from paradex.calibration.util import load_camparam, load_current_camparam, get_cammtx
-from paradex.image.undistort import apply_undistort_map, precomute_undistort_map
+from paradex.calibration.utils import load_camparam, load_current_camparam, get_cammtx
+from paradex.image.undistort import apply_undistort_map, precomute_undistort_map, undistort_img
+from paradex.image.overlay import overlay_mask
 from paradex.image.aruco import detect_aruco, detect_charuco
 from paradex.transforms.triangulate import triangulation
 from paradex.image.merge import merge_image
@@ -174,6 +175,7 @@ class ImageDict:
         save_path = path or self.path
         if save_path is None:
             raise ValueError("No path specified for saving images.")
+        os.makedirs(os.path.join(save_path, "images"), exist_ok=True)
         
         for serial, img in self.images.items():
             filename = f"{serial}.png"
@@ -259,20 +261,23 @@ class ImageDict:
             if serial not in self.intrinsic:
                 raise ValueError(f"Intrinsic parameters not found for serial {serial}")
         
-        undistorted_images = self.map_images(
-            func=apply_undistort_map,
-            use_camparam=False,
-            mapx=self._cache['undistort_map'][serial][1],
-            mapy=self._cache['undistort_map'][serial][2]
-        )
-        
+        undistort_image = {}
+        for serial in self.images.keys():
+            undistort_image[serial] = apply_undistort_map(
+                self.images[serial],
+                self._cache['undistort_map'][serial][1],
+                self._cache['undistort_map'][serial][2]
+            )
+
+        undistort_image_dict = ImageDict(undistort_image, self.intrinsic, self.extrinsic, save_path)
+
         if save_path is not None:
-            undistorted_images.save(save_path)
+            undistort_image_dict.save(save_path)
 
         elif self.path is not None and not (self.path / "images").exists():
-            undistorted_images.save(self.path)
+            undistort_image_dict.save(self.path)
             
-        return undistorted_images
+        return undistort_image_dict
     
     # # Multi-view geometry
     def triangulate_markers(self, dict_type: str = '6X6_1000') -> Dict[int, np.ndarray]:
@@ -315,22 +320,38 @@ class ImageDict:
         
         charuco_2d = {}
         for serial, det_dict in result.items():
-            for board_id, (kypts, ids) in det_dict.items():
+            for board_id in det_dict.keys():
+                kypts = det_dict[board_id]["checkerCorner"]
+                ids = det_dict[board_id]["checkerIDs"]
+                
                 if ids is None or len(ids) == 0:
                     continue
                 
+                if board_id not in charuco_2d:
+                    charuco_2d[board_id] = {}
+                    
                 for id, k in zip(ids.reshape(-1), kypts):
                     k = k.squeeze()
-                    key = f"{board_id}_corner_{id}"
-                    if key not in charuco_2d:
-                        charuco_2d[key] = {"2d": [], "cammtx": []}
+                    if id not in charuco_2d[board_id]:
+                        charuco_2d[board_id][id] = {"2d": [], "cammtx": []}
                     cammtx = self._cache['proj_mtx'][serial]
-                    charuco_2d[key]["2d"].append(k)
-                    charuco_2d[key]["cammtx"].append(cammtx)
+                    charuco_2d[board_id][id]["2d"].append(k)
+                    charuco_2d[board_id][id]["cammtx"].append(cammtx)
 
-        charuco_3d = {key: triangulation(np.array(charuco_2d[key]["2d"]), np.array(charuco_2d[key]["cammtx"]))
-                      for key in charuco_2d}
-        return charuco_2d, charuco_3d
+        charuco_3d = {}
+        for board_id, ids in charuco_2d.items():
+            charuco_3d[board_id] = {'checkerIDs': [], 'checkerCorner': []}
+            for id, data in ids.items():
+                pt3d = triangulation(np.array(data["2d"]), np.array(data["cammtx"]))
+                if board_id not in charuco_3d:
+                    charuco_3d[board_id] = {}
+                if pt3d is not None:
+                    charuco_3d[board_id]['checkerIDs'].append(id)
+                    charuco_3d[board_id]['checkerCorner'].append(pt3d)
+            charuco_3d[board_id]['checkerIDs'] = np.array(charuco_3d[board_id]['checkerIDs'])
+            charuco_3d[board_id]['checkerCorner'] = np.array(charuco_3d[board_id]['checkerCorner'])
+            
+        return charuco_3d
     
     def traingulate_points(self, points_2d: np.ndarray) -> np.ndarray:
         """Triangulate 3D points from multiple views
@@ -365,6 +386,9 @@ class ImageDict:
         if self._cache.get('proj_mtx') is None:
             self._cache['proj_mtx'] = get_cammtx(self.intrinsic, self.extrinsic)
         
+        if points_3d.ndim == 1:
+            points_3d = points_3d.reshape(1, 3)
+            
         proj_points = {}
         for serial, proj_mtx in self._cache['proj_mtx'].items():
             homog_points = np.hstack((points_3d, np.ones((points_3d.shape[0], 1))))  # Nx4
@@ -386,13 +410,41 @@ class ImageDict:
             )
             
         renderer = self._cache['render']
-        if type(object) == list:
-            return renderer.render_multi(object) # color_dict, mask_dict, depth_dict, id_dict
-        else:
-            return renderer.render(object) # color_dict, mask_dict, depth_dict
+        # if type(object) == list:
+        #     return renderer.render_multi(object) # color_dict, mask_dict, depth_dict, id_dict
+        _, mask, _ =  renderer.render(object) # color_dict, mask_dict, depth_dict
+        
+        images = {}
+        for serial, m in mask.items():
+            images[serial] = overlay_mask(self.images[serial], m)
+        
+        new_img_dict = ImageDict(images, self.intrinsic, self.extrinsic, self.path)
+        return new_img_dict
+        
             
     def merge(self, image_text: Optional[Dict[str, str]] = None) -> np.ndarray:
         """Merge all images into a grid layout"""
         return merge_image(self.images, image_text)
     
-    
+    def draw_keypoint(self, keypoints: Dict[str, np.ndarray], 
+                      color: tuple = (0, 255, 0), 
+                      radius: int = 3, 
+                      thickness: int = -1) -> 'ImageDict':
+        """Draw keypoints on images
+        
+        Args:
+            keypoints: Dict mapping serial numbers to Nx2 arrays of keypoints
+            color: Color of keypoints
+            radius: Radius of keypoint circles
+            thickness: Thickness of circle outline (-1 for filled)
+            
+        Returns:
+            New ImageDict with keypoints drawn
+        """
+        new_images = {serial: img.copy() for serial, img in self.images.items()}
+        for serial, img in new_images.items():
+            if serial in keypoints:
+                for pt in keypoints[serial]:
+                    x, y = map(int, pt)
+                    cv2.circle(img, (x, y), radius, color, thickness)
+        return ImageDict(new_images)

@@ -6,7 +6,7 @@ from multiprocessing import Pool, shared_memory, Manager, Value
 
 from paradex.utils.upload_file import rsync_copy
 from paradex.utils.path import shared_dir, home_path
-from paradex.calibration.util import load_camparam
+from paradex.calibration.utils import load_camparam
 from paradex.image.undistort import precomute_undistort_map, apply_undistort_map
 
 def get_videopath_list(video_dir):

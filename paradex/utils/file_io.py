@@ -3,6 +3,7 @@ from typing import Dict
 import numpy as np
 import yaml
 import pickle
+from pathlib import Path
 
 def find_latest_directory(directory):
     """
@@ -90,17 +91,6 @@ def load_mesh(obj_name):
     )
     return mesh
 
-
-def get_robot_urdf_path(arm_name=None, hand_name=None):
-    if arm_name == None:
-        return os.path.join(rsc_path, "robot", hand_name+"_float.urdf")
-    
-    if hand_name == None:
-        return os.path.join(rsc_path, "robot", arm_name+".urdf")
-    
-    return os.path.join(rsc_path, "robot", f"{arm_name}_{hand_name}.urdf")
-
-
 def load_yaml(file_path:str) -> Dict:
     """Load yaml file and return as dictionary. If file_path is a dictionary, return as is.
 
@@ -114,3 +104,7 @@ def load_yaml(file_path:str) -> Dict:
         with open(file_path) as file_p:
             yaml_params = yaml.load(file_p, Loader=yaml.Loader)
     return yaml_params
+
+def remove_home(path):
+    path = Path(path)
+    return str(path.relative_to(Path.home()))

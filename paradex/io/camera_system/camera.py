@@ -161,6 +161,7 @@ class Camera():
             
             self.last_error = "Acquisition is already running."
             self.last_traceback = ""
+            print(f"[WARNING] Camera {self.name} acquisition is already running.")
             
         if self.event["error"].is_set():
             print(f"[WARNING] Camera {self.name} is in ERROR state. Resetting error state.")

@@ -54,11 +54,14 @@ class XArmController:
         
     def control_loop(self):
         with self.lock:
-            self.action = np.array(self.arm.get_position(is_radian=True)[1][0])[:6]
+            self.action = np.array(self.arm.get_joint_states(is_radian=True)[1][0])[:6]
+            
+            
         self.is_servo = True
         self.connect_event.set()
         
         while not self.exit_event.is_set():
+            # print("asdfasdf")
             start_time = time.perf_counter()
             if self.arm.has_err_warn:
                 self.error_event.set()
@@ -66,10 +69,10 @@ class XArmController:
             with self.lock:
                 action = self.action.copy()
                 is_servo = self.is_servo
-            
+
             is_joint_value = (action.shape == (6,))
             
-            if not is_servo:
+            if not is_servo and not self.finished:
                 self.arm.set_mode(0)  # 0: position control, 1: servo control
                 self.arm.set_state(state=0)
                     
@@ -89,13 +92,28 @@ class XArmController:
                 
                 self.arm.set_mode(1)
                 self.arm.set_state(state=0)
+                self.finished = True
                 self.position_control_event.set()
+                
             
             else:
                 if is_joint_value:
+                    self._last_pose = np.array(self.arm.get_position(is_radian=True)[1])[:3]
+                    self._target_pose = np.array(self.arm.get_forward_kinematics(action.tolist(), input_is_radian=True, return_is_radian=True)[1])[:3]
+                    if np.linalg.norm(self._last_pose - self._target_pose) > 7:
+                        print("too large delta pose, skip servo command\n")
+                        continue
+                    
                     self.arm.set_servo_angle_j(angles=action.tolist(), is_radian=True)
                 else:
+                    self._last_pose = np.array(self.arm.get_position(is_radian=True)[1])[:3]
                     aa = homo2aa(action)
+                    # print(np.linalg.norm(self._last_pose - aa[3:]), "delta pose")
+                    if np.linalg.norm(self._last_pose - aa[:3]) > 7:
+                        print(np.linalg.norm(self._last_pose - aa[:3]))
+                        print("too large delta pose, skip servo command\n")
+                        continue
+                    
                     self.arm.set_servo_cartesian_aa(aa, is_radian=True)
             
             if self.save_event.is_set():
@@ -115,6 +133,8 @@ class XArmController:
                     
             elapsed = time.perf_counter() - start_time
             time.sleep(max(0, (1 / self.fps) - elapsed))
+            
+        print("Control loop exited.")
 
     def start(self, save_path):            
         self.save_path = save_path
@@ -154,11 +174,12 @@ class XArmController:
         assert action.shape == (4,4) or action.shape == (6,)
         
         with self.lock:
-            self.position_control_event.clear()
             self.action = action.copy()
             self.is_servo = is_servo
         
         if not is_servo:
+            self.finished = False
+            self.position_control_event.clear()
             self.position_control_event.wait()
         
     def reset(self):

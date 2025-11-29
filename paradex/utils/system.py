@@ -3,6 +3,7 @@ import os
 
 config_dir = os.path.join(os.path.dirname(__file__), "..", "..", "system", "current")
 pc_info = json.load(open(os.path.join(config_dir, "pc.json"), "r"))
+network_info = json.load(open(os.path.join(config_dir, "network.json"), "r"))
 
 def get_pc_ip(pc_name: str) -> str:
     return pc_info[pc_name]["ip"]
@@ -20,11 +21,3 @@ def get_camera_config():
     else:
         cam_info = {}
     return cam_info
-
-def load_device_list(config_name: str):
-    capture_config_path = os.path.join(config_dir, "dataset_acquisition", f"{config_name}.json")
-    if os.path.exists(capture_config_path):
-        capture_info = json.load(open(capture_config_path, "r"))
-    else:
-        capture_info = {}
-    return capture_info

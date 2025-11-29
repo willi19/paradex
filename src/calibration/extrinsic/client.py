@@ -8,7 +8,7 @@ from paradex.io.camera_system.camera_reader import MultiCameraReader
 from paradex.io.capture_pc.data_sender import DataPublisher
 from paradex.io.capture_pc.command_sender import CommandReceiver
 from paradex.image.aruco import detect_charuco, merge_charuco_detection
-from paradex.calibration.util import extrinsic_dir
+from paradex.calibration.utils import extrinsic_dir
 from paradex.utils.file_io import find_latest_directory
 
 dp = DataPublisher(port=1234, name="camera_stream")

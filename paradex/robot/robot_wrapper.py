@@ -73,8 +73,14 @@ class RobotWrapper:
     # -------------------------------------------------------------------------- #
     # Kinematics function
     # -------------------------------------------------------------------------- #
-    def compute_forward_kinematics(self, qpos: npt.NDArray):
+    def compute_forward_kinematics(self, qpos: npt.NDArray, link_list = []):
         pin.forwardKinematics(self.model, self.data, qpos)
+        ret = {}
+        for link_name in link_list:
+            link_id = self.get_link_index(link_name)
+            ret[link_name] = self.get_link_pose(link_id)
+            
+        return ret
 
     def get_link_pose(self, link_id: int) -> npt.NDArray:
         pose: pin.SE3 = pin.updateFramePlacement(self.model, self.data, link_id)
@@ -203,3 +209,4 @@ class RobotWrapper:
         if len(root_links) != 1:
             raise RuntimeError(f"Ambiguous or missing root link(s): {root_links}")
         return root_links[0]
+    

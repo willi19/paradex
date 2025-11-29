@@ -105,6 +105,29 @@ def detect_charuco(img):
     
     return detection_results
 
+def get_adjecent_ids():
+    offset = 0
+    result = {}
+    for b_id, cfg in boardinfo_dict.items():
+        for row in range(cfg["numY"] - 1):
+            for col in range(cfg["numX"] - 1):
+                cur_id = row * (cfg["numX"]-1) + col + offset
+                
+                right_id = row * (cfg["numX"]-1) + (col + 1) + offset
+                down_id = (row + 1) * (cfg["numX"]-1) + col + offset
+
+                if cur_id not in result:
+                    result[cur_id] = []
+                
+                if right_id < offset + (cfg["numX"] - 1) * (cfg["numY"] - 1) and col < cfg["numX"] - 2:
+                    result[cur_id].append(right_id)
+                if down_id < offset + (cfg["numX"] - 1) * (cfg["numY"] - 1) and row < cfg["numY"] - 2:
+                    result[cur_id].append(down_id)
+        
+        offset += (cfg["numX"] - 1) * (cfg["numY"] - 1)
+    
+    return result
+    
 
 def merge_charuco_detection(detection_list):
 
@@ -165,3 +188,33 @@ def draw_keypoint(img, kypt, color=(255, 0, 0)):
     for x, y in pts:
         cv2.circle(img, (x, y), 1, color, -1)
     return img
+
+def find_common_indices(ids1, ids2):
+    """
+    Find indices such that corners can be directly matched.
+    
+    Usage:
+        idx1, idx2 = find_common_points(ids1, ids2)
+        matched_cor1 = cor1[idx1]
+        matched_cor2 = cor2[idx2]
+        # Now matched_cor1[i] corresponds to matched_cor2[i]
+    
+    Returns:
+        idx1: indices for array1
+        idx2: indices for array2
+        (Both sorted by ID to ensure correspondence)
+    """
+    common_ids = np.intersect1d(ids1, ids2)
+    
+    if len(common_ids) == 0:
+        return None, None
+    
+    # Create mapping: id -> index
+    id_to_idx1 = {id: i for i, id in enumerate(ids1)}
+    id_to_idx2 = {id: i for i, id in enumerate(ids2)}
+    
+    # Get indices in same order (sorted by ID)
+    idx1 = np.array([id_to_idx1[id] for id in common_ids])
+    idx2 = np.array([id_to_idx2[id] for id in common_ids])
+    
+    return idx1, idx2

@@ -28,6 +28,8 @@ def project(proj_mtx, x):
     proj_x = (proj_x / proj_x[:,2:])[:, :2]
     return proj_x
 
+def SOLVE_XA_B_torch(A, B):
+    
 
 def SOLVE_XA_B(A, B):
     """

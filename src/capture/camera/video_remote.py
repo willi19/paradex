@@ -32,7 +32,7 @@ try:
             continue
         
         date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        rcc.start("video", args.sync_mode, f'{args.save_path}/{date_str}', fps=args.fps)
+        rcc.start("video", args.sync_mode, f'{args.save_path}/{date_str}/raw', fps=args.fps)
         print(f"Capturing video to {args.save_path}/{date_str}/raw")
         while not stop_event.is_set() and not exit_event.is_set():
             time.sleep(0.02)

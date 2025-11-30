@@ -1,0 +1,496 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Processing Monitor</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .header h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+
+        .header .subtitle {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .stat-card.total .stat-value { color: #667eea; }
+        .stat-card.completed .stat-value { color: #10b981; }
+        .stat-card.processing .stat-value { color: #f59e0b; }
+        .stat-card.failed .stat-value { color: #ef4444; }
+
+        .progress-bar-container {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .progress-bar-label {
+            margin-bottom: 10px;
+            color: #333;
+            font-weight: 600;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 30px;
+            background: #e5e7eb;
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.5s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .videos-container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+
+        .videos-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .videos-header h2 {
+            color: #333;
+            font-size: 24px;
+        }
+
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+        }
+
+        .filter-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 8px;
+            background: #f3f4f6;
+            color: #666;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            background: #e5e7eb;
+        }
+
+        .filter-btn.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .video-list {
+            display: grid;
+            gap: 15px;
+        }
+
+        .video-item {
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+
+        .video-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.1);
+        }
+
+        .video-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .video-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 16px;
+            flex: 1;
+        }
+
+        .video-path {
+            font-size: 12px;
+            color: #999;
+            margin-bottom: 10px;
+        }
+
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-pending { background: #f3f4f6; color: #666; }
+        .status-starting { background: #dbeafe; color: #1e40af; }
+        .status-loading_params { background: #fef3c7; color: #92400e; }
+        .status-processing { background: #fef3c7; color: #92400e; }
+        .status-uploading { background: #ddd6fe; color: #5b21b6; }
+        .status-completed { background: #d1fae5; color: #065f46; }
+        .status-failed { background: #fee2e2; color: #991b1b; }
+
+        .video-progress {
+            margin-top: 10px;
+        }
+
+        .video-progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .video-progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            transition: width 0.3s ease;
+        }
+
+        .video-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 10px;
+            font-size: 13px;
+            color: #666;
+        }
+
+        .video-stat {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .video-stat-label {
+            font-weight: 500;
+        }
+
+        .video-stat-value {
+            color: #333;
+            font-weight: 600;
+        }
+
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: #dcfce7;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #065f46;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .empty-state-text {
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎥 Video Processing Monitor</h1>
+            <div class="subtitle">Real-time monitoring of video undistortion progress</div>
+        </div>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-label">Total Videos</div>
+                <div class="stat-value" id="stat-total">0</div>
+            </div>
+            <div class="stat-card completed">
+                <div class="stat-label">Completed</div>
+                <div class="stat-value" id="stat-completed">0</div>
+            </div>
+            <div class="stat-card processing">
+                <div class="stat-label">Processing</div>
+                <div class="stat-value" id="stat-processing">0</div>
+            </div>
+            <div class="stat-card failed">
+                <div class="stat-label">Failed</div>
+                <div class="stat-value" id="stat-failed">0</div>
+            </div>
+        </div>
+
+        <!-- Overall Progress Bar -->
+        <div class="progress-bar-container">
+            <div class="progress-bar-label">Overall Progress</div>
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="overall-progress" style="width: 0%">0%</div>
+            </div>
+        </div>
+
+        <!-- Videos Container -->
+        <div class="videos-container">
+            <div class="videos-header">
+                <h2>Video Details</h2>
+                <div style="display: flex; gap: 15px; align-items: center;">
+                    <div class="live-indicator">
+                        <div class="live-dot"></div>
+                        <span>LIVE</span>
+                    </div>
+                    <div class="filter-buttons">
+                        <button class="filter-btn active" data-filter="all">All</button>
+                        <button class="filter-btn" data-filter="processing">Processing</button>
+                        <button class="filter-btn" data-filter="completed">Completed</button>
+                        <button class="filter-btn" data-filter="failed">Failed</button>
+                    </div>
+                </div>
+            </div>
+            <div class="video-list" id="video-list">
+                <div class="empty-state">
+                    <div class="empty-state-icon">🎬</div>
+                    <div class="empty-state-text">Waiting for video data...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let currentFilter = 'all';
+        let allVideos = {};
+
+        // Socket.IO 연결
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+
+        socket.on('initial_data', (data) => {
+            console.log('Received initial data', data);
+            allVideos = data.videos || {};
+            updateUI(allVideos);
+        });
+
+        socket.on('progress_update', (data) => {
+            console.log('Progress update', data);
+            
+            // 업데이트된 비디오 정보 병합
+            if (data.videos) {
+                Object.assign(allVideos, data.videos);
+            }
+            
+            // 통계 업데이트
+            if (data.summary) {
+                updateStats(data.summary);
+            }
+            
+            updateUI(allVideos);
+        });
+
+        // 통계 업데이트
+        function updateStats(summary) {
+            document.getElementById('stat-total').textContent = summary.total || 0;
+            document.getElementById('stat-completed').textContent = summary.completed || 0;
+            document.getElementById('stat-processing').textContent = summary.processing || 0;
+            document.getElementById('stat-failed').textContent = summary.failed || 0;
+            
+            const progress = summary.avg_progress || 0;
+            const progressBar = document.getElementById('overall-progress');
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = progress.toFixed(1) + '%';
+        }
+
+        // UI 업데이트
+        function updateUI(videos) {
+            const videoList = document.getElementById('video-list');
+            
+            // 필터링
+            const filteredVideos = Object.entries(videos).filter(([name, info]) => {
+                if (currentFilter === 'all') return true;
+                return info.status === currentFilter;
+            });
+
+            if (filteredVideos.length === 0) {
+                videoList.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🎬</div>
+                        <div class="empty-state-text">No videos match the current filter</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // 비디오 항목 생성
+            videoList.innerHTML = filteredVideos.map(([name, info]) => {
+                const progress = info.progress || 0;
+                const status = info.status || 'unknown';
+                const statusClass = `status-${status.replace(' ', '_')}`;
+                
+                return `
+                    <div class="video-item">
+                        <div class="video-header">
+                            <div style="flex: 1;">
+                                <div class="video-name">${name}</div>
+                                <div class="video-path">${info.video_path || ''}</div>
+                            </div>
+                            <span class="status-badge ${statusClass}">${status}</span>
+                        </div>
+                        
+                        ${status === 'processing' ? `
+                            <div class="video-progress">
+                                <div class="video-progress-bar">
+                                    <div class="video-progress-fill" style="width: ${progress}%"></div>
+                                </div>
+                                <div class="video-stats">
+                                    <div class="video-stat">
+                                        <span class="video-stat-label">Progress:</span>
+                                        <span class="video-stat-value">${progress.toFixed(1)}%</span>
+                                    </div>
+                                    <div class="video-stat">
+                                        <span class="video-stat-label">Frames:</span>
+                                        <span class="video-stat-value">${info.current_frame || 0}/${info.total_frames || 0}</span>
+                                    </div>
+                                    <div class="video-stat">
+                                        <span class="video-stat-label">FPS:</span>
+                                        <span class="video-stat-value">${(info.fps || 0).toFixed(1)}</span>
+                                    </div>
+                                    <div class="video-stat">
+                                        <span class="video-stat-label">ETA:</span>
+                                        <span class="video-stat-value">${formatTime(info.eta || 0)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        ` : `
+                            <div style="margin-top: 10px; color: #666; font-size: 14px;">
+                                ${info.message || ''}
+                            </div>
+                        `}
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // 시간 포맷팅
+        function formatTime(seconds) {
+            if (seconds < 60) return `${Math.round(seconds)}s`;
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.round(seconds % 60);
+            return `${minutes}m ${secs}s`;
+        }
+
+        // 필터 버튼
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                updateUI(allVideos);
+            });
+        });
+    </script>
+</body>
+</html>

@@ -146,7 +146,7 @@ def undistort_raw_video(video_path, progress_dict, video_id):
         'message': 'Uploading to NAS...'
     })
     
-    # rsync_copy(out_path, nas_path)
+    rsync_copy(out_path, nas_path)
 
     update_progress(progress_dict, video_id, {
         'status': 'completed',
@@ -155,8 +155,8 @@ def undistort_raw_video(video_path, progress_dict, video_id):
         'message': 'Success'
     })
     
-    # os.remove(out_path)
-    # os.remove(video_path)
+    os.remove(out_path)
+    os.remove(video_path)
     
     return f"{video_path}: success"
 

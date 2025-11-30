@@ -9,6 +9,8 @@ from paradex.io.camera_system.remote_camera_controller import remote_camera_cont
 from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.utils.path import shared_dir
 
+from paradex.calibration.utils import save_current_camparam
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--save_path', required=True)
 args = parser.parse_args()
@@ -29,6 +31,7 @@ try:
             continue
 
         date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        save_current_camparam(os.path.join(shared_dir, args.save_path, date_str))
         print(f"Capturing image to {args.save_path}/{date_str}")
         rcc.start("image", False, f'shared_data/{args.save_path}/{date_str}/raw')
         rcc.stop()

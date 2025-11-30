@@ -8,6 +8,8 @@ from paradex.io.camera_system.remote_camera_controller import remote_camera_cont
 from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.utils.path import shared_dir
 
+from paradex.calibration.utils import save_current_camparam
+
 parser = argparse.ArgumentParser()
 parser.add_argument('--save_path', required=True)
 parser.add_argument('--sync_mode', default=False, action='store_true')
@@ -38,6 +40,9 @@ try:
         rcc.stop()
         save_event.clear()
         stop_event.clear()
+        
+        save_current_camparam(os.path.join(shared_dir, args.save_path, date_str))
+
         
 finally:
     rcc.end()

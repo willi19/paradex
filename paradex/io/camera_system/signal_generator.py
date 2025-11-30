@@ -190,7 +190,7 @@ class UTGE900:
         
         time.sleep(0.1)
 
-    def stop(self, fps, ch=1):
+    def stop(self, ch=1):
         ch = int(ch)
         if not self.ch[ch-1]:
             return

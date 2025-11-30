@@ -7,7 +7,8 @@ from xarm.wrapper import XArmAPI
 import numpy as np
 
 from paradex.utils.keyboard_listener import listen_keyboard
-from paradex.geometry.conversion import aa2mtx
+from paradex.utils.system import network_info
+from paradex.transforms.conversion import aa2mtx
 
 stop_event = Event()
 save_event = Event()
@@ -20,8 +21,7 @@ args = parser.parse_args()
 if args.save_path is not None:
     os.makedirs(args.save_path, exist_ok=True)
      
-ip = "192.168.1.221"
-arm = XArmAPI(ip, is_radian=True)
+arm = XArmAPI(network_info["xarm"]["param"]["ip"], is_radian=True)
 if arm.has_err_warn:
     arm.clean_error()
     

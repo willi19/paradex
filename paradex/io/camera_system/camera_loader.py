@@ -2,7 +2,7 @@ from threading import Thread
 import os
 
 from paradex.io.camera_system.camera import Camera
-from paradex.utils.path import home_path
+from paradex.utils.path import home_path, capture_path_list
 
 class CameraLoader:
     def __init__(self, types=["pyspin"]):
@@ -32,9 +32,10 @@ class CameraLoader:
                 os.makedirs(path, exist_ok=True)
 
         elif mode in ["video", "full"]:
-            save_paths = [os.path.join(home_path, f"captures{ind % 2 + 1}", save_path, "videos") for ind, _ in enumerate(self.cameralist)]
+            save_paths = [os.path.join(capture_path_list[ind % len(capture_path_list)], save_path, "videos") for ind, _ in enumerate(self.cameralist)]
             for path in save_paths:
                 os.makedirs(path, exist_ok=True)
+            print("video save paths:", save_paths)
             
         else:
             save_paths = [None for _ in self.cameralist]

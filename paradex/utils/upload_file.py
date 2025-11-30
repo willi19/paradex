@@ -72,105 +72,24 @@ def rsync_copy(src, dst, move=False, resume=True, dry_run=False,
     # inplace: 임시 파일 없이 직접 쓰기 (재개 시 유용)
     if resume:
         cmd.append('--inplace')
-    
+        
+    cmd.append('--no-owner')
+    cmd.append('--no-group')
+    cmd.append('--progress')
     # 소스/목적지 추가
     cmd.append(str(src))
     cmd.append(str(dst))
-    
-    print(f"🚀 Starting rsync...")
-    print(f"   Source: {src}")
-    print(f"   Dest:   {dst}")
-    if move:
-        print(f"   Mode:   MOVE (will delete source)")
-    if dry_run:
-        print(f"   DRY RUN - no actual changes")
-    print()
-    
+
     try:
-        # rsync 실행
-        if verbose:
-            # Verbose 모드: 직접 출력
-            result = subprocess.run(cmd, check=True)
-        else:
-            # Progress bar 모드
-            result = _rsync_with_progress(cmd)
-        
+        result = subprocess.run(cmd, check=True)
         if result.returncode == 0:
-            print("\n✅ Success!")
-            if move and not dry_run:
-                print(f"🗑️  Source removed: {src}")
             return True
         else:
-            print(f"\n❌ rsync failed with code {result.returncode}")
             return False
             
     except subprocess.CalledProcessError as e:
         print(f"\n❌ rsync error: {e}")
         return False
-
-def _rsync_with_progress(cmd):
-    """
-    rsync를 실행하면서 progress bar 표시
-    """
-    process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True,
-        bufsize=1
-    )
-    
-    # Progress bar 초기화
-    pbar = None
-    total_size = None
-    
-    # rsync 출력 파싱
-    # Format: "     12,345,678  45%  123.45MB/s    0:00:12"
-    progress_pattern = re.compile(
-        r'\s*([\d,]+)\s+(\d+)%\s+([\d.]+[kKmMgG]?B/s)\s+(\d+:\d+:\d+)'
-    )
-    
-    try:
-        for line in process.stdout:
-            line = line.strip()
-            
-            if not line:
-                continue
-            
-            # Progress line 파싱
-            match = progress_pattern.search(line)
-            if match:
-                transferred = int(match.group(1).replace(',', ''))
-                percent = int(match.group(2))
-                speed = match.group(3)
-                eta = match.group(4)
-                
-                # Total size 추정 (첫 업데이트 시)
-                if total_size is None and percent > 0:
-                    total_size = int(transferred * 100 / percent)
-                    pbar = tqdm(
-                        total=total_size,
-                        unit='B',
-                        unit_scale=True,
-                        unit_divisor=1024,
-                        desc='rsync',
-                        ascii=True
-                    )
-                
-                # Progress bar 업데이트
-                if pbar:
-                    pbar.n = transferred
-                    pbar.set_postfix({
-                        'speed': speed,
-                        'eta': eta
-                    })
-                    pbar.refresh()
-    
-    finally:
-        if pbar:
-            pbar.close()
-    
-    return process.wait()
 
 def check_rsync_installed():
     """rsync 설치 여부 확인"""

@@ -68,6 +68,7 @@ class VideoProgressPublisher:
             print(f"  - {log}")
         
         self.publisher.close()
-        
-rvp = RawVideoProcessor()
-rvp.process()
+
+if __name__ == "__main__":
+    video_publisher = VideoProgressPublisher(port=1234)
+    video_publisher.start_processing(update_interval=1.0)

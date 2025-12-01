@@ -96,6 +96,7 @@ class ModbusClient:
         Args:
             address: Starting register address
             num_registers: Number of registers to read
+            one register: 2 bytes
             
         Returns:
             List of register values if successful, None otherwise

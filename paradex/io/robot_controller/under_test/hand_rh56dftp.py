@@ -36,7 +36,11 @@ class RegisterRH56DFTP:
     ANGLE_SET = 1486      # Angle set values (for all joints)
     FORCE_SET = 1498      # Force control threshold values
     SPEED_SET = 1522      # Speed values
-    
+    POSE_MAX = 2000
+    ANGLE_MAX = 1000
+    SPEED_MAX = 1000
+    FORCE_MAX = 3000      # 3000g
+
     # Status registers - Current pose reading
     POSE_ACT = 1534       # Actual pose/position values
     ANGLE_ACT = 1546      # Actual angle values
@@ -45,13 +49,6 @@ class RegisterRH56DFTP:
     ERROR = 1606          # Error codes
     STATUS = 1612         # Status information
     TEMP = 1618           # Actuator temperature values
-    
-    # Contact information registers
-    # These addresses need to be verified from the manual
-    # Contact sensors typically provide information about which fingers are in contact
-    CONTACT_INFO = 1624   # Contact information (which fingers are touching)
-    CONTACT_FORCE = 1630  # Contact force values for each finger
-    CONTACT_STATUS = 1636 # Contact status flags
 
     LF_TOUCH = 3000         # Little finger tactile sensor
     RF_TOUCH = 3370         # Ring finger tactile sensor
@@ -59,6 +56,22 @@ class RegisterRH56DFTP:
     IF_TOUCH = 4110         # Index finger tactile sensor
     TF_TOUCH = 4480         # Thumb tactile sensor
     PALM_TOUCH = 4900       # Palm tactile sensor
+    
+    # Tactile sensor data lengths (in bytes/registers)
+    # Tip: 3*3*2 = 18 bytes
+    # Nail: 12*8*2 = 192 bytes
+    # Pad: 10*8*2 = 160 bytes (Thumb Pad is 12*8*2 = 192 bytes)
+    # Thumb Middle: 3*3*2 = 18 bytes
+    # Palm: 8*14*2 = 224 bytes
+    
+    TACTILE_LENS = {
+        'tip': 18,
+        'nail': 192,
+        'pad': 160,
+        'thumb_mid': 18,
+        'thumb_pad': 192,
+        'palm': 224
+    }
 
 class FingerID(IntEnum):
     """Finger IDs for the Inspire Hand RH56DFTP."""
@@ -81,6 +94,15 @@ class FingerStatus(IntEnum):
     LOCKED_ROTOR = 6
     FAULT = 7
 
+
+class ErrorStatus(IntEnum):
+    """Error codes for the Inspire Hand RH56DFTP."""
+    Locked_Rotor_Error = 0
+    Over_Temperature_Error = 1
+    Overcurrent_Error = 2
+    Abnormal_Operation_Motor = 3
+    Communication_Error = 4
+    
 
 class ContactStatus:
     """Contact status information for fingers."""
@@ -158,7 +180,7 @@ class InspireHandRH56DFTP:
             port: Serial port path
             baudrate: Serial baudrate
                     0: 115200 (R485 Inferface)
-                    0: 1000 (CAN Interface)
+                    0: 1000 (CAN Interface)'
             slave_id: Modbus slave ID of the hand
             debug: Whether to print debug information
         """
@@ -260,13 +282,89 @@ class InspireHandRH56DFTP:
             return angle_values
         except Exception as e:
             raise CommandError(f"Error reading angles: {e}")
+
+
+    def read_error(self) -> List[int]:
+        """
+        Read the current error code of the hand.
+        
+        Returns:
+            List of error codes for all joints
+            
+        Raises:
+            ConnectionError: If not connected
+            CommandError: If command fails
+        """
+        self._check_connection()
+        try:
+            error_values = self.modbus.read_holding_registers(RegisterRH56DFTP.ERROR, 6)
+            if error_values is None:
+                raise CommandError("Failed to read error from hand")
+            return error_values
+        except Exception as e:
+            raise CommandError(f"Error reading error: {e}")
+
+
+    def read_contact(self) -> List[int]:
+        """
+        Read the current contact flag of the hand.
+        
+        Returns:
+            List of contact flags for all joints
+            
+        Raises:
+            ConnectionError: If not connected
+            CommandError: If command fails
+        """
+        self._check_connection()
+        try:
+            contact_flags_data = self.modbus.read_holding_registers(RegisterRH56DFTP.CONTACT_FLAG, 6)
+            if contact_flags_data is None:
+                raise CommandError("Failed to read contact flags from hand")
+            return contact_flags_data
+        except Exception as e:
+            raise CommandError(f"Error reading contact flags: {e}")
+
+
+    def write_pose_by_id(self, id: int, pose: int) -> None:
+        """
+        Write/execute a pose for all joints.
+        
+        Args:
+            id: Joint ID (0-5)
+            pose: Pose value for the joint (0-2000, -1 for no action)
+            order of DOF: lf, rf, mf, if, thumb bending, thumb rotating
+            0 : open 2000: closed
+            
+        Raises:
+            ConnectionError: If not connected
+            CommandError: If command fails
+            ValueError: If pose values are invalid
+        """
+        self._check_connection()
+        
+        if not 0 <= id <= 5:
+            raise ValueError(f"Invalid joint ID. Must be 0-5, got {id}")
+        
+        if not 0 <= pose <= RegisterRH56DFTP.POSE_MAX:
+            raise ValueError(f"Pose value must be between 0 and {RegisterRH56DFTP.POSE_MAX}, got {pose}")
+        
+        try:
+            # Write pose values to registers
+            success = self.modbus.write_single_register(RegisterRH56DFTP.POS_SET + id*2, pose)
+            if not success:
+                raise CommandError(f"Failed to write pose to joint {id}")
+        except Exception as e:
+            raise CommandError(f"Error writing pose to joint {id}: {e}")
+
     
     def write_pose(self, pose: List[int]) -> None:
         """
         Write/execute a pose for all joints.
         
         Args:
-            pose: List of pose values for all joints (typically 6 values)
+            pose: List of pose values for all joints (typically 6 values) (0-2000, -1 for no action)
+            order of DOF: lf, rf, mf, if, thumb bending, thumb rotating
             
         Raises:
             ConnectionError: If not connected
@@ -281,20 +379,49 @@ class InspireHandRH56DFTP:
         if len(pose) != 6:
             raise ValueError(f"Pose must contain 6 values, got {len(pose)}")
         
-        # Validate pose values (typically 0-1000 range)
+        # Validate pose values (typically 0-2000 range)
         for i, value in enumerate(pose):
             if not isinstance(value, int):
                 raise ValueError(f"Pose value at index {i} must be an integer")
-            if not 0 <= value <= 1000:
-                raise ValueError(f"Pose value at index {i} must be between 0 and 1000, got {value}")
+            if not 0 <= value <= RegisterRH56DFTP.POSE_MAX:
+                raise ValueError(f"Pose value at index {i} must be between 0 and 2000, got {value}")
         
         try:
             # Write pose values to registers
             success = self.modbus.write_multiple_registers(RegisterRH56DFTP.POS_SET, pose)
             if not success:
-                raise CommandError("Failed to write pose to hand")
+                raise CommandError("Failed to write angle to hand")
         except Exception as e:
-            raise CommandError(f"Error writing pose: {e}")
+            raise CommandError(f"Error writing angle: {e}")
+
+
+    def write_angle_by_id(self, id: int, angle: int) -> None:
+        """
+        Write/execute a pose for all joints.
+        
+        Args:
+            id: Joint ID (0-5)
+            angle: angle value for each joint (0-1000)
+            
+        Raises:
+            ConnectionError: If not connected
+            CommandError: If command fails
+            ValueError: If angle values are invalid
+        """
+        self._check_connection()
+        
+        if not 0 <= id <= 5:
+            raise ValueError(f"Invalid joint ID. Must be 0-5, got {id}")
+        
+        if not 0 <= angle <= RegisterRH56DFTP.ANGLE_MAX:
+            raise ValueError(f"Angle value must be between 0 and {RegisterRH56DFTP.ANGLE_MAX}, got {angle}")
+        
+        try:
+            success = self.modbus.write_single_register(RegisterRH56DFTP.ANGLE_SET+2*id, angle)
+            if not success: 
+                raise CommandError("Failed to write angles to hand")
+        except Exception as e:
+            raise CommandError(f"Error writing angles: {e}")
     
     def write_angles(self, angles: List[int]) -> None:
         """
@@ -320,7 +447,7 @@ class InspireHandRH56DFTP:
         for i, value in enumerate(angles):
             if not isinstance(value, int):
                 raise ValueError(f"Angle value at index {i} must be an integer")
-            if not 0 <= value <= 1000:
+            if not 0 <= value <= RegisterRH56DFTP.ANGLE_MAX:
                 raise ValueError(f"Angle value at index {i} must be between 0 and 1000, got {value}")
         
         try:
@@ -349,7 +476,7 @@ class InspireHandRH56DFTP:
         if not 0 <= joint_id <= 5:
             raise ValueError(f"Invalid joint ID. Must be 0-5, got {joint_id}")
         
-        if not 0 <= angle <= 1000:
+        if not 0 <= angle <= RegisterRH56DFTP.ANGLE_MAX:
             raise ValueError(f"Invalid angle. Must be 0-1000, got {angle}")
         
         try:
@@ -463,7 +590,7 @@ class InspireHandRH56DFTP:
         """
         self._check_connection()
         
-        if not 0 <= speed <= 1000:
+        if not 0 <= speed <= RegisterRH56DFTP.SPEED_MAX:
             raise ValueError(f"Invalid speed. Must be 0-1000, got {speed}")
         
         try:
@@ -487,7 +614,9 @@ class InspireHandRH56DFTP:
         Set the force threshold for all joints.
         
         Args:
-            force: Force threshold value (0-1000)
+            force: Force threshold value (0-3000)
+            After the user set the angle of the index finger, index finger will move towards
+            until it reach the actual force in this force threshold
             
         Raises:
             ConnectionError: If not connected
@@ -496,8 +625,8 @@ class InspireHandRH56DFTP:
         """
         self._check_connection()
         
-        if not 0 <= force <= 1000:
-            raise ValueError(f"Invalid force. Must be 0-1000, got {force}")
+        if not 0 <= force <= RegisterRH56DFTP.FORCE_MAX:
+            raise ValueError(f"Invalid force. Must be 0-3000, got {force}")
         
         try:
             values = [force] * 6
@@ -526,7 +655,8 @@ class InspireHandRH56DFTP:
     def get_forces(self) -> List[int]:
         """
         Read the actual forces applied by all joints.
-        
+        Range: -4000~4000, unit g
+
         Returns:
             List of force values for all joints
             
@@ -566,4 +696,114 @@ class InspireHandRH56DFTP:
             return status
         except Exception as e:
             raise CommandError(f"Error getting status: {e}")
+
+    def _read_tactile_section(self, start_addr: int, byte_count: int) -> List[int]:
+        """
+        Read a section of tactile sensor data.
+        
+        Args:
+            start_addr: Starting register address
+            byte_count: Number of bytes (registers) to read
+            
+        Returns:
+            List of 16-bit integer values
+        """
+        values = []
+        # Max registers per read (Modbus limit is typically around 125)
+        chunk_size = 100
+        
+        for i in range(0, byte_count, chunk_size):
+            count = min(chunk_size, byte_count - i)
+            addr = start_addr + i
+            
+            # Read registers (assuming 1 register = 1 byte of data)
+            regs = self.modbus.read_holding_registers(addr, count)
+            if regs is None:
+                raise CommandError(f"Failed to read tactile data at {addr}")
+            
+            values.extend(regs)
+            
+        # Combine bytes into 16-bit integers (Little-Endian)
+        # Data Point = Low Byte + High Byte * 256
+        # regs[0] is Low Byte, regs[1] is High Byte
+        tactile_values = []
+        for i in range(0, len(values), 2):
+            if i + 1 < len(values):
+                low_byte = values[i]
+                high_byte = values[i+1]
+                val = low_byte | (high_byte << 8)
+                tactile_values.append(val)
+                
+        return tactile_values
+
+    def read_tactile_data(self) -> Dict[str, any]:
+        """
+        Read all tactile sensor data.
+        
+        Returns:
+            Dictionary containing tactile data for all fingers and palm.
+            Structure:
+            {
+                'little': {'tip': [], 'nail': [], 'pad': []},
+                'ring': {'tip': [], 'nail': [], 'pad': []},
+                'middle': {'tip': [], 'nail': [], 'pad': []},
+                'index': {'tip': [], 'nail': [], 'pad': []},
+                'thumb': {'tip': [], 'nail': [], 'mid': [], 'pad': []},
+                'palm': []
+            }
+        """
+        self._check_connection()
+        
+        try:
+            data = {}
+            
+            # Little Finger
+            lf_base = RegisterRH56DFTP.LF_TOUCH
+            data['little'] = {
+                'tip': self._read_tactile_section(lf_base, RegisterRH56DFTP.TACTILE_LENS['tip']),
+                'nail': self._read_tactile_section(lf_base + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
+                'pad': self._read_tactile_section(lf_base + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
+            }
+            
+            # Ring Finger
+            rf_base = RegisterRH56DFTP.RF_TOUCH
+            data['ring'] = {
+                'tip': self._read_tactile_section(rf_base, RegisterRH56DFTP.TACTILE_LENS['tip']),
+                'nail': self._read_tactile_section(rf_base + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
+                'pad': self._read_tactile_section(rf_base + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
+            }
+            
+            # Middle Finger
+            mf_base = RegisterRH56DFTP.MF_TOUCH
+            data['middle'] = {
+                'tip': self._read_tactile_section(mf_base, RegisterRH56DFTP.TACTILE_LENS['tip']),
+                'nail': self._read_tactile_section(mf_base + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
+                'pad': self._read_tactile_section(mf_base + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
+            }
+            
+            # Index Finger
+            if_base = RegisterRH56DFTP.IF_TOUCH
+            data['index'] = {
+                'tip': self._read_tactile_section(if_base, RegisterRH56DFTP.TACTILE_LENS['tip']),
+                'nail': self._read_tactile_section(if_base + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
+                'pad': self._read_tactile_section(if_base + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
+            }
+            
+            # Thumb
+            tf_base = RegisterRH56DFTP.TF_TOUCH
+            data['thumb'] = {
+                'tip': self._read_tactile_section(tf_base, RegisterRH56DFTP.TACTILE_LENS['tip']),
+                'nail': self._read_tactile_section(tf_base + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
+                'mid': self._read_tactile_section(tf_base + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['thumb_mid']),
+                'pad': self._read_tactile_section(tf_base + 18 + 192 + 18, RegisterRH56DFTP.TACTILE_LENS['thumb_pad'])
+            }
+            
+            # Palm
+            palm_base = RegisterRH56DFTP.PALM_TOUCH
+            data['palm'] = self._read_tactile_section(palm_base, RegisterRH56DFTP.TACTILE_LENS['palm'])
+            
+            return data
+            
+        except Exception as e:
+            raise CommandError(f"Error reading tactile data: {e}")
 

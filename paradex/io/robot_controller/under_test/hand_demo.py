@@ -38,7 +38,7 @@ def parse_args():
     parser.add_argument(
         "--demo", "-d",
         type=str,
-        choices=["basic", "pose", "contact", "full"],
+        choices=["basic", "pose", "contact", "full", "tactile"],
         default="basic",
         help="Demo to run (default: basic)"
     )
@@ -92,10 +92,10 @@ def basic_demo(hand: InspireHandRH56DFTP):
     print("\n1. Reading current pose...")
     print_pose(hand)
     
-    # Open all fingers (set all angles to 999)
+    # Open all fingers (set all angles to 0)
     
-    print("\n2. Opening all fingers (pose = [999, 999, 999, 999, 999, 999])...")
-    hand.write_pose([999, 999, 999, 999, 999, 999])
+    print("\n2. Opening all fingers (pose = [0, 0, 0, 0, 0, 0])...")
+    hand.write_pose([0, 0, 0, 0, 0, 0])
     time.sleep(2)
     
     # Read pose again
@@ -131,8 +131,8 @@ def pose_demo(hand: InspireHandRH56DFTP):
     
     # Try different poses
     poses = [
-        ([999, 999, 999, 999, 999, 999], "Fully open"),
-        ([0, 0, 0, 0, 0, 0], "Fully closed"),
+        ([0, 0, 0, 0, 0, 0], "Fully open"),
+        ([1500, 1500, 1500, 1500, 1500, 1500], "Closed"),
         ([500, 500, 500, 500, 500, 500], "Middle position"),
         ([999, 0, 999, 0, 999, 500], "Alternating pattern"),
     ]
@@ -193,16 +193,16 @@ def full_demo(hand: InspireHandRH56DFTP):
         print(f"   Note: {e}")
     
     # Set speed
-    print("\n2. Setting speed to 800...")
+    print("\n2. Setting speed to 1000...")
     try:
-        hand.set_speed(800)
+        hand.set_speed(1000)
     except Exception as e:
         print(f"   Note: {e}")
     
     # Set force threshold
-    print("\n3. Setting force threshold to 500...")
+    print("\n3. Setting force threshold to 300...")
     try:
-        hand.set_force_threshold(500)
+        hand.set_force_threshold(300)
     except Exception as e:
         print(f"   Note: {e}")
     
@@ -222,13 +222,24 @@ def full_demo(hand: InspireHandRH56DFTP):
     print("\n6. Contact operations...")
     print_contact_info(hand)
     
+    print("\n7. Angle operations...")
+    for idx in range(6):
+        hand.write_angles([1000, 1000, 1000, 1000, 1000, 1000])
+        print(f"\n   Moving joint {idx} to close...")
+        for joint_angle in range(0, 1000, 200):
+            hand.write_angle_by_id(idx, joint_angle)
+            time.sleep(0.1)
+            print(f"   Current angle:")
+            angle_values = hand.read_angles()
+            print(f"     {angle_values}")
+
     # Move through a sequence
-    print("\n7. Moving through a sequence...")
+    print("\n8. Moving through a sequence...")
     sequence = [
-        ([999, 999, 999, 999, 999, 999], "Open"),
-        ([500, 500, 500, 500, 500, 500], "Middle"),
-        ([0, 0, 0, 0, 0, 0], "Closed"),
-        ([999, 500, 0, 500, 999, 500], "Pattern"),
+        ([2000, 2000, 2000, 2000, 2000, 2000], "Fully Closed"),
+        ([500, 500, 500, 500, 500, 500], "Middle Position"),
+        ([0, 0, 0, 0, 0, 0], "Fully Open"),
+        ([999, 500, 0, 500, 999, 500], "Alternating Pattern"),
     ]
     
     for pose, name in sequence:
@@ -244,6 +255,30 @@ def full_demo(hand: InspireHandRH56DFTP):
         contact_info = hand.read_contact_info()
         contacts = contact_info.get_all_contacts()
         print(f"     {contacts}")
+
+    # Fully Open all fingers
+    for idx in range(6):
+        hand.write_pose([0, 0, 0, 0, 0, 0])
+        print(f"\n   Moving joint {idx} to close...")
+        for joint_pose in range(0, 2000, 400):
+            hand.write_pose_by_id(idx, joint_pose)
+            time.sleep(0.1)
+            print(f"   Current pose:")
+            pose_values = hand.read_pose()
+            print(f"     {pose_values}")
+
+
+def tactile_demo(hand: InspireHandRH56DFTP):
+    """Demonstrate tactile information reading."""
+    print("\n=== Tactile Information Demo ===")
+    print("\n1. Opening hand...")
+    hand.write_pose([0, 0, 0, 0, 0, 0])
+    while True:
+        tactile_info = hand.read_tactile_data()
+        print(f"   Tactile info: {tactile_info}")
+        time.sleep(0.5)
+
+
 
 
 def main():
@@ -273,7 +308,8 @@ def main():
                 contact_demo(hand)
             elif args.demo == "full":
                 full_demo(hand)
-            
+            elif args.demo == "tactile":
+                tactile_demo(hand)
             print("\n=== Demo completed successfully! ===")
             
     except KeyboardInterrupt:

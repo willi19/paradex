@@ -6,7 +6,7 @@ import serial
 import time
 from enum import IntEnum
 from typing import List, Optional, Union, Tuple
-from .exceptions import ConnectionError, CommandError
+from exceptions import ConnectionError, CommandError
 
 
 class ModbusFunction(IntEnum):

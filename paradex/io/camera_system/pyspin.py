@@ -180,7 +180,7 @@ class PyspinCamera():
         pImageRaw = self.cam.GetNextImage()
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
         
-        if frame_data['frameID'] % 300 == 0:
+        if frame_data['frameID'] % 1 == 0:
             print(f"Frame ID: {frame_data['frameID']}", self.serial_num, time.time() - self.init_time)
         if pImageRaw.IsIncomplete() or pImageRaw.GetWidth() == 0 or pImageRaw.GetHeight() == 0:
             if pImageRaw.IsIncomplete():
@@ -205,11 +205,14 @@ class PyspinCamera():
         assert mode in ["single", "continuous"]
         
         self._read_current_state()
+        print(self.syncMode)
         if syncMode:
+            print("Configuring camera for hardware sync mode.")
             self.syncMode = syncMode
             self._configureTrigger()
             
-        if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)):
+        if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)) and (not syncMode):
+            print("Configuring camera for free-run mode.")
             self.frame_rate = frame_rate
             self._configureFrameRate()
         
@@ -220,7 +223,7 @@ class PyspinCamera():
         if exposure_time is not None and exposure_time != self.exposure_time:
             self.exposure_time = exposure_time
             self._configureExposure()
-            
+        
         if mode != self.mode:
             self.mode = mode
             self._configureAcquisition()
@@ -235,6 +238,14 @@ class PyspinCamera():
         Note: Only stops acquiring images. Use release() to disconnect camera.
         """
         self.cam.EndAcquisition()
+        # Flush buffer command (있으면)
+        try:
+            while True:
+                image = self.cam.GetNextImage(1)  # timeout=0 (즉시 반환)
+                image.Release()
+        except ps.SpinnakerException:
+            pass  # 버퍼가 비면 예외 발생
+        
         return
     
     def release(self):

@@ -172,6 +172,12 @@ class TimestampMonitor():
             'time': self.last_timestamp
         }  
 
+    def is_signal_active(self, fps):
+        self.camera.start()
+        frame_data = self.camera.get_timestamp( timeout_ms= int(1000.0 / fps * 1.5) )
+        self.camera.stop()
+        return frame_data is not None
+    
     def wait_signal_inactive(self, fps):
         self.camera.start()
         while True:

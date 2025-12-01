@@ -4,7 +4,7 @@ from isaacgym import gymapi
 import pickle
 from scipy.spatial.transform import Rotation as R
 import cv2
-from paradex.utils.file_io import rsc_path
+from paradex.utils.path import rsc_path
 
 
 class Simulator:

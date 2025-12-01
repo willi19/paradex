@@ -38,5 +38,9 @@
             "cam_type":"pyspin",
             "name":"22645026"
         }
+    },
+    "allegro":{
+        "name":"allegro",
+        "param":{}
     }
 }

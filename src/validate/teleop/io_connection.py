@@ -30,6 +30,7 @@ if __name__ == "__main__":
     
     init_wrist_mid_pose = None
     
+    receiver.start("tmp/hand_pose")
     while not stop_event.is_set():
         start_time = time.time()
         hand_data = receiver.get_data()
@@ -49,7 +50,7 @@ if __name__ == "__main__":
         if time_lapse > 0.02:
             continue
         time.sleep(max(0.02 - time_lapse, 0))
-
+    receiver.stop()
     visualizer.stop()    
-    receiver.quit()
+    receiver.end()
     

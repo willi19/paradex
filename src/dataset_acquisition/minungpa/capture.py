@@ -10,26 +10,27 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--device', choices=['xsens', 'occulus'])
 parser.add_argument('--arm', type=str, default=None)
 parser.add_argument('--hand', type=str, default=None)
-parser.add_argument('--save_path', type=str)
+parser.add_argument('--name', type=str)
 
 args = parser.parse_args()
 
 cs = CaptureSession(
-    camera=False,
+    camera=True,
     arm=args.arm,
     hand=args.hand,
     teleop=args.device
 )
 
+name = args.name
 while True:
-    name = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    index = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     
     print("Prepare to record new session:", name)
     state = cs.teleop()
     if state == "exit":
         break
     
-    cs.start(os.path.join(args.save_path, name))
+    cs.start(os.path.join("capture", "miyungpa", args.name, index))
     print("Starting new recording session:", name)
     state = cs.teleop()
     cs.stop()

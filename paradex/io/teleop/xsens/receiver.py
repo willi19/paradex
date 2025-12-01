@@ -140,6 +140,7 @@ class XSensReceiver:
         with self.lock:
             self.save_event.clear()
         
+        os.makedirs(self.save_path, exist_ok=True)
         np.save(os.path.join(self.save_path, "time.npy"), self.data["time"])
         np.save(os.path.join(self.save_path, "left.npy"), self.data["Left"])
         np.save(os.path.join(self.save_path, "right.npy"), self.data["Right"])

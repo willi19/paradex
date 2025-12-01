@@ -81,7 +81,7 @@ class AllegroController:
     def stop(self):
         self.save_event.clear()
         
-        os.makedirs(os.path.join(self.capture_path), exist_ok=True)
+        os.makedirs(self.capture_path, exist_ok=True)
         for name, value in self.data.items():                     
             np.save(os.path.join(self.capture_path, f"{name}.npy"), np.array(value))
                     
@@ -91,7 +91,8 @@ class AllegroController:
         self.exit_event.set()
         self.thread.join()
         
-        self.stop()
+        if self.save_event.is_set():
+            self.stop()
         
     def get_data(self):
         ret = {}

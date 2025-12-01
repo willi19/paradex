@@ -117,19 +117,25 @@ class XArmController:
                     self.arm.set_servo_cartesian_aa(aa, is_radian=True)
             
             if self.save_event.is_set():
+                if is_joint_value:
+                    cart = homo2cart(action)
+                    qpos = action.copy()
+                else:
+                    cart = homo2cart(action)
+                    success, qpos = self.arm.get_inverse_kinematics(cart)
+                    qpos = np.array(qpos)
+                    if success != 0:
+                        print("ik not success")
+                        qpos = - np.ones(6)
+                    
                 _, state = self.arm.get_joint_states(is_radian=True)
                 self.data["position"].append(np.array(state[0])[:6])
                 self.data["velocity"].append(np.array(state[1])[:6])
                 self.data["torque"].append(np.array(state[2])[:6])
                 self.data["time"].append(np.array(start_time))
-                self.data["action"].append(action.copy())
+                self.data["action"].append(cart)
                 
-                success, ik = self.arm.get_inverse_kinematics(cart)
-                if success != 0:
-                    print("ik not success")
-                    ik = - np.ones(6)
-                    
-                self.data["action_qpos"].append(np.array(ik)[:6])
+                self.data["action_qpos"].append(qpos[:6])
                     
             elapsed = time.perf_counter() - start_time
             time.sleep(max(0, (1 / self.fps) - elapsed))

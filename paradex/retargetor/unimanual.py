@@ -1,9 +1,9 @@
 import numpy as np
-from paradex.geometry.coordinate import DEVICE2WRIST,  DEVICE2GLOBAL
+from paradex.transforms.coordinate import DEVICE2WRIST,  DEVICE2GLOBAL
 from paradex.retargetor.hand_regargetor import inspire, allegro
 
 class Retargetor(): # Input is only from Xsens
-    def __init__(self, arm_name=None, hand_name=None, home_pose=None):
+    def __init__(self, arm_name=None, hand_name=None):
         self.arm_name = arm_name
         self.hand_name = hand_name
         
@@ -12,13 +12,6 @@ class Retargetor(): # Input is only from Xsens
         if hand_name not in [None, "inspire", "allegro"]:
             raise ValueError("Invalid hand name")
         
-        self.home_pose = home_pose.copy() #Init Robot hand wrist pose
-        self.cur_pose = home_pose.copy()
-        self.last_arm_pose = home_pose.copy()
-
-        self.init_robot_pose = home_pose.copy()
-        self.init_human_pose = None
-
         self.hand_retargetor = None
         if self.hand_name == "inspire":
             self.hand_retargetor = inspire
@@ -46,9 +39,8 @@ class Retargetor(): # Input is only from Xsens
                 
         robot_wrist_pose[:3,3] = delta_wrists_t + self.init_robot_pose[:3,3]
         robot_wrist_pose[3,3] = 1
-
+        
         self.last_arm_pose = robot_wrist_pose.copy()
-
         arm_action = robot_wrist_pose.copy()
         
         if self.hand_name is not None:
@@ -58,11 +50,11 @@ class Retargetor(): # Input is only from Xsens
 
         return arm_action, hand_action
 
-    def reset(self):
-        self.init_robot_pose = self.home_arm_pose.copy()
-        self.cur_pose = self.home_arm_pose.copy()
+    def start(self, home_pose):
+        self.init_robot_pose = home_pose.copy()
+        self.last_arm_pose = home_pose.copy()
         self.init_human_pose = None
 
-    def pause(self):
+    def stop(self):
         self.init_human_pose = None
         self.init_robot_pose = self.last_arm_pose.copy()

@@ -1,17 +1,46 @@
 {
-    "xsens":9763,
-    "metaquest":{
-        "ip":"192.168.0.2",
-        "port":8088
+    "xsens":{
+        "name":"xsens",
+        "param":
+            {"port":9763}
     },
-    "xarm":"192.168.1.196",
-    "franka":"172.16.0.2",
+    "metaquest":{
+        "name":"quest",
+        "param":{
+            "ip":"192.168.0.2",
+            "port":8088
+        }
+    },
+    "xarm":{
+        "name":"xarm",
+        "param":{
+            "ip":"192.168.1.221"
+        }
+    },
     "inspire":{
-        "ip":"192.168.11.210",
-        "port":6000
+        "name":"inspire",
+        "param":{
+            "ip":"192.168.11.210",
+            "port":6000
+        }
     },
     "remote_camera":5563,
     "remote_data":5564,
     "remote_command":5567,
-    "signal_generator":"/dev/usbtmc1"
+    "signal_generator":{
+        "name":"UTG900",
+        "param":{
+            "addr":"/dev/usbtmc1"
+        }
+    },
+    "timestamp":{
+        "param":{
+            "cam_type":"pyspin",
+            "name":"22645026"
+        }
+    },
+    "allegro":{
+        "name":"allegro",
+        "param":{}
+    }
 }

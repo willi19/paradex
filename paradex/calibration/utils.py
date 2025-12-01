@@ -91,8 +91,14 @@ def save_current_camparam(save_path):
     
 def load_current_C2R():
     name = find_latest_directory(handeye_calib_path)
-    return load_c2r(os.path.join(handeye_calib_path, name, "0"))
+    index_list = sorted(os.listdir(os.path.join(handeye_calib_path, name)))
+    
+    return load_c2r(os.path.join(handeye_calib_path, name, index_list[0]))
 
+def save_current_C2R(save_path):
+    c2r = load_current_C2R()
+    np.save(os.path.join(save_path, "C2R.npy"), c2r)
+    
 def load_current_eef():
     name = find_latest_directory(eef_calib_path)
     return load_eef(os.path.join(eef_calib_path, name, "0"))

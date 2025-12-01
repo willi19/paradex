@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+import time
 
 def allegro(hand_pose_frame):
     hand_joint_angle = np.zeros((20,3))
@@ -26,20 +27,20 @@ def allegro(hand_pose_frame):
         tip_position = tip_position - finger_base_position
         tip_direction  = tip_position / np.linalg.norm(tip_position)
 
-        if tip_direction[1] < -0.7:
+        if tip_direction[1] > 0.9:
             allegro_angles[4*i] = 0
         else:
-            allegro_angles[4*i] = np.arctan(tip_direction[0] / tip_direction[2]) * 0.5
-
+            allegro_angles[4*i] = np.arctan(tip_direction[0] / tip_direction[2]) * (0.9-tip_direction[1])
+        
         for j in range(3):
             parent_name = finger_name + "_" + joint_name_list[j]
             joint_name = finger_name + "_" + joint_name_list[j+1]
             rot_mat = np.linalg.inv(hand_pose_frame[parent_name][:3,:3]) @ hand_pose_frame[joint_name][:3,:3]
-            v = rot_mat[1, 1]
+            v = rot_mat[1, 1] if rot_mat[2, 1] >= 0 else 1
             v = max(-1, min(1, v))
             allegro_angles[4*i+j+1] = np.arccos(v)
-        allegro_angles[4*i+1] *= 1.2
-            
+        allegro_angles[4*i+1] = (allegro_angles[4*i+1]-0.35) * 1.5
+
 
     # Thumb
     thumb_meta = np.dot(hand_pose_frame["wrist"][:3,:3].T, hand_pose_frame["thumb_metacarpal"][:3,:3])

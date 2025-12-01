@@ -592,34 +592,6 @@ class InspireHandRH56DFTP:
         except Exception as e:
             raise CommandError(f"Error getting status: {e}")
 
-    def _read_tactile_section(self, start_addr: int, register_count: int) -> List[int]:
-        """
-        Read a section of tactile sensor data.
-        
-        Args:
-            start_addr: Starting register address
-            register_count: Number of registers (points) to read
-            
-        Returns:
-            List of 16-bit integer values
-        """
-        values = []
-        # Max registers per read (Modbus limit is typically around 125)
-        chunk_size = 100
-        
-        for i in range(0, register_count, chunk_size):
-            count = min(chunk_size, register_count - i)
-            addr = start_addr + i
-            
-            # Read registers (1 register = 1 point)
-            regs = self.modbus.read_holding_registers(addr, count)
-            if regs is None:
-                raise CommandError(f"Failed to read tactile data at {addr}")
-            
-            values.extend(regs)
-            
-        return values
-
     def read_tactile_data(self) -> Dict[str, any]:
         """
         Read all tactile sensor data.

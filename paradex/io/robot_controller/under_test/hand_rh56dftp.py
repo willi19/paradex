@@ -305,27 +305,6 @@ class InspireHandRH56DFTP:
             raise CommandError(f"Error reading error: {e}")
 
 
-    def read_contact(self) -> List[int]:
-        """
-        Read the current contact flag of the hand.
-        
-        Returns:
-            List of contact flags for all joints
-            
-        Raises:
-            ConnectionError: If not connected
-            CommandError: If command fails
-        """
-        self._check_connection()
-        try:
-            contact_flags_data = self.modbus.read_holding_registers(RegisterRH56DFTP.CONTACT_FLAG, 6)
-            if contact_flags_data is None:
-                raise CommandError("Failed to read contact flags from hand")
-            return contact_flags_data
-        except Exception as e:
-            raise CommandError(f"Error reading contact flags: {e}")
-
-
     def write_pose_by_id(self, id: int, pose: int) -> None:
         """
         Write/execute a pose for all joints.
@@ -487,92 +466,6 @@ class InspireHandRH56DFTP:
         except Exception as e:
             raise CommandError(f"Error setting joint angle: {e}")
     
-    # Contact information reading functions
-    
-    def read_contact_info(self) -> ContactStatus:
-        """
-        Read contact information from the hand.
-        
-        This function reads which fingers are in contact and their contact forces.
-        
-        Returns:
-            ContactStatus object containing contact flags and forces
-            
-        Raises:
-            ConnectionError: If not connected
-            CommandError: If command fails
-        """
-        self._check_connection()
-        
-        try:
-            # Read contact status flags
-            contact_flags_data = self.modbus.read_holding_registers(
-                RegisterRH56DFTP.CONTACT_STATUS, 1
-            )
-            if contact_flags_data is None:
-                raise CommandError("Failed to read contact status from hand")
-            
-            contact_flags = contact_flags_data[0] if contact_flags_data else 0
-            
-            # Read contact force values
-            contact_forces = self.modbus.read_holding_registers(
-                RegisterRH56DFTP.CONTACT_FORCE, 6
-            )
-            if contact_forces is None:
-                raise CommandError("Failed to read contact forces from hand")
-            
-            return ContactStatus(contact_flags, contact_forces)
-            
-        except Exception as e:
-            raise CommandError(f"Error reading contact info: {e}")
-    
-    def is_finger_in_contact(self, finger_id: int) -> bool:
-        """
-        Check if a specific finger is in contact.
-        
-        Args:
-            finger_id: Finger ID (0-5)
-            
-        Returns:
-            True if finger is in contact, False otherwise
-            
-        Raises:
-            ConnectionError: If not connected
-            CommandError: If command fails
-        """
-        contact_info = self.read_contact_info()
-        return contact_info.is_contact(finger_id)
-    
-    def get_contact_force(self, finger_id: int) -> int:
-        """
-        Get contact force for a specific finger.
-        
-        Args:
-            finger_id: Finger ID (0-5)
-            
-        Returns:
-            Contact force value for the finger
-            
-        Raises:
-            ConnectionError: If not connected
-            CommandError: If command fails
-        """
-        contact_info = self.read_contact_info()
-        return contact_info.get_contact_force(finger_id)
-    
-    def get_all_contact_status(self) -> Dict[int, bool]:
-        """
-        Get contact status for all fingers.
-        
-        Returns:
-            Dictionary mapping finger ID to contact status
-            
-        Raises:
-            ConnectionError: If not connected
-            CommandError: If command fails
-        """
-        contact_info = self.read_contact_info()
-        return contact_info.get_all_contacts()
     
     # Additional utility functions
     
@@ -691,7 +584,7 @@ class InspireHandRH56DFTP:
                 'pose': self.read_pose(),
                 'angles': self.read_angles(),
                 'forces': self.get_forces(),
-                'contact_info': self.read_contact_info(),
+                'contact_info': self.read_tactile_data()
             }
             return status
         except Exception as e:

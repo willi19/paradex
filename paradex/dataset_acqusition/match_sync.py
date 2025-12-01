@@ -1,30 +1,18 @@
+import numpy as np
 
-def fill_framedrop(cam_timestamp):
-    frameID = cam_timestamp["frameID"]
-    real_start = -1
-    for i, fi in enumerate(frameID):
-        if fi > 5:
-            real_start = i
-            break
+td = 2 / 30
+def fill_framedrop(frame_id, pc_time):
+    real_start = 10 # skip first 10 frames to avoid startup issues
     
-    frameID = frameID[real_start:]
-    pc_time = np.array(cam_timestamp["pc_time"])[real_start:]
-    timestamp = np.array(cam_timestamp["timestamps"])
-    time_delta = (pc_time[-1] - pc_time[0]) / (frameID[-1] - frameID[0])
-    offset = np.mean(pc_time - (np.array(frameID)-1)*time_delta)
-    pc_time_nodrop = []
-    frameID_nodrop = []
-
-    time_delta_new = 1 / 30
+    frame_id = frame_id[real_start:]
+    pc_time = np.array(pc_time)[real_start:]
     
-    if time_delta / time_delta_new > 1.01:
-        return None, None
-    
-    for i in range(1, frameID[-1] + 10):
-        frameID_nodrop.append(i)
-        pc_time_nodrop.append((i-1)*time_delta_new+offset - td)
-    
-    return pc_time_nodrop, frameID_nodrop
+    time_delta = (pc_time[-1] - pc_time[0]) / (frame_id[-1] - frame_id[0])
+    offset = np.mean(pc_time - (np.array(frame_id)-1)*time_delta)
+    import pdb; pdb.set_trace()
+    frame_id_nodrop = np.arange(1, frame_id[-1] + 10)
+    pc_time_nodrop = (frame_id_nodrop - 1) * time_delta + offset - td
+    return pc_time_nodrop, frame_id_nodrop
 
 def get_synced_data(pc_times, data, data_times):
     """

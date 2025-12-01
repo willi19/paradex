@@ -397,8 +397,8 @@ class ImageDict:
             proj_points[serial] = img_points
         
         return proj_points
-    
-    def project_mesh(self, object):
+
+    def project_mesh(self, object, color=(0, 255, 0), alpha=0.5):
         if self._cache.get('proj_mtx') is None:
             self._cache['proj_mtx'] = get_cammtx(self.intrinsic, self.extrinsic)
         
@@ -416,8 +416,8 @@ class ImageDict:
         
         images = {}
         for serial, m in mask.items():
-            images[serial] = overlay_mask(self.images[serial], m, color=(0,255,0), alpha=0.5)
-        
+            images[serial] = overlay_mask(self.images[serial], m, color=color, alpha=alpha)
+
         new_img_dict = ImageDict(images, self.intrinsic, self.extrinsic, self.path)
         return new_img_dict
         

@@ -57,20 +57,22 @@ class RegisterRH56DFTP:
     TF_TOUCH = 4480         # Thumb tactile sensor
     PALM_TOUCH = 4900       # Palm tactile sensor
     
-    # Tactile sensor data lengths (in bytes/registers)
-    # Tip: 3*3*2 = 18 bytes
-    # Nail: 12*8*2 = 192 bytes
-    # Pad: 10*8*2 = 160 bytes (Thumb Pad is 12*8*2 = 192 bytes)
-    # Thumb Middle: 3*3*2 = 18 bytes
-    # Palm: 8*14*2 = 224 bytes
+    # Tactile sensor data lengths (in registers/points)
+    # Each point is 1 register (2 bytes)
+    # Address range is 2x the number of points (likely due to byte addressing in map vs word addressing in Modbus)
+    # Tip: 3*3 = 9 points
+    # Nail: 12*8 = 96 points
+    # Pad: 10*8 = 80 points (Thumb Pad is 12*8 = 96 points)
+    # Thumb Middle: 3*3 = 9 points
+    # Palm: 8*14 = 112 points
     
     TACTILE_LENS = {
-        'tip': 18,
-        'nail': 192,
-        'pad': 160,
-        'thumb_mid': 18,
-        'thumb_pad': 192,
-        'palm': 224
+        'tip': 9,
+        'nail': 96,
+        'pad': 80,
+        'thumb_pad': 96,
+        'thumb_mid': 9,
+        'palm': 112
     }
 
 class FingerID(IntEnum):
@@ -590,13 +592,13 @@ class InspireHandRH56DFTP:
         except Exception as e:
             raise CommandError(f"Error getting status: {e}")
 
-    def _read_tactile_section(self, start_addr: int, byte_count: int) -> List[int]:
+    def _read_tactile_section(self, start_addr: int, register_count: int) -> List[int]:
         """
         Read a section of tactile sensor data.
         
         Args:
             start_addr: Starting register address
-            byte_count: Number of bytes (registers) to read
+            register_count: Number of registers (points) to read
             
         Returns:
             List of 16-bit integer values
@@ -605,98 +607,90 @@ class InspireHandRH56DFTP:
         # Max registers per read (Modbus limit is typically around 125)
         chunk_size = 100
         
-        for i in range(0, byte_count, chunk_size):
-            count = min(chunk_size, byte_count - i)
+        for i in range(0, register_count, chunk_size):
+            count = min(chunk_size, register_count - i)
             addr = start_addr + i
             
-            # Read registers (assuming 1 register = 1 byte of data)
+            # Read registers (1 register = 1 point)
             regs = self.modbus.read_holding_registers(addr, count)
             if regs is None:
                 raise CommandError(f"Failed to read tactile data at {addr}")
             
             values.extend(regs)
             
-        # Combine bytes into 16-bit integers (Little-Endian)
-        # Data Point = Low Byte + High Byte * 256
-        # regs[0] is Low Byte, regs[1] is High Byte
-        tactile_values = []
-        for i in range(0, len(values), 2):
-            if i + 1 < len(values):
-                low_byte = values[i]
-                high_byte = values[i+1]
-                val = low_byte | (high_byte << 8)
-                tactile_values.append(val)
-                
-        return tactile_values
+        return values
 
     def read_tactile_data(self) -> Dict[str, any]:
         """
         Read all tactile sensor data.
+        Reads the full range (3000-5123) to ensure data consistency.
         
         Returns:
             Dictionary containing tactile data for all fingers and palm.
-            Structure:
-            {
-                'little': {'tip': [], 'nail': [], 'pad': []},
-                'ring': {'tip': [], 'nail': [], 'pad': []},
-                'middle': {'tip': [], 'nail': [], 'pad': []},
-                'index': {'tip': [], 'nail': [], 'pad': []},
-                'thumb': {'tip': [], 'nail': [], 'mid': [], 'pad': []},
-                'palm': []
-            }
         """
         self._check_connection()
         
         try:
+            # Read full range 3000-5123 (2124 registers)
+            start_addr = RegisterRH56DFTP.LF_TOUCH
+            end_addr = RegisterRH56DFTP.PALM_TOUCH + RegisterRH56DFTP.TACTILE_LENS['palm'] - 1
+            all_registers = []
+            
+            chunk_size = 100
+            for addr in range(start_addr, end_addr + 1, chunk_size):
+                count = min(chunk_size, end_addr - addr + 1)
+                regs = self.modbus.read_holding_registers(addr, count)
+                if regs is None:
+                    raise CommandError(f"Failed to read tactile data at {addr}")
+                all_registers.extend(regs)
+                
+            # Helper to extract data from the full buffer
+            def get_data(addr, length):
+                offset = addr - start_addr
+                return all_registers[offset : offset + length]
+
             data = {}
             
             # Little Finger
-            lf_base = RegisterRH56DFTP.LF_TOUCH
             data['little'] = {
-                'tip': self._read_tactile_section(lf_base, RegisterRH56DFTP.TACTILE_LENS['tip']),
-                'nail': self._read_tactile_section(lf_base + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
-                'pad': self._read_tactile_section(lf_base + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
+                'tip': get_data(RegisterRH56DFTP.LF_TOUCH, RegisterRH56DFTP.TACTILE_LENS['tip']),
+                'nail': get_data(RegisterRH56DFTP.LF_TOUCH + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
+                'pad': get_data(RegisterRH56DFTP.LF_TOUCH + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
             }
             
             # Ring Finger
-            rf_base = RegisterRH56DFTP.RF_TOUCH
             data['ring'] = {
-                'tip': self._read_tactile_section(rf_base, RegisterRH56DFTP.TACTILE_LENS['tip']),
-                'nail': self._read_tactile_section(rf_base + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
-                'pad': self._read_tactile_section(rf_base + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
+                'tip': get_data(RegisterRH56DFTP.RF_TOUCH, RegisterRH56DFTP.TACTILE_LENS['tip']),
+                'nail': get_data(RegisterRH56DFTP.RF_TOUCH + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
+                'pad': get_data(RegisterRH56DFTP.RF_TOUCH + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
             }
             
             # Middle Finger
-            mf_base = RegisterRH56DFTP.MF_TOUCH
             data['middle'] = {
-                'tip': self._read_tactile_section(mf_base, RegisterRH56DFTP.TACTILE_LENS['tip']),
-                'nail': self._read_tactile_section(mf_base + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
-                'pad': self._read_tactile_section(mf_base + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
+                'tip': get_data(RegisterRH56DFTP.MF_TOUCH, RegisterRH56DFTP.TACTILE_LENS['tip']),
+                'nail': get_data(RegisterRH56DFTP.MF_TOUCH + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
+                'pad': get_data(RegisterRH56DFTP.MF_TOUCH + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
             }
             
             # Index Finger
-            if_base = RegisterRH56DFTP.IF_TOUCH
             data['index'] = {
-                'tip': self._read_tactile_section(if_base, RegisterRH56DFTP.TACTILE_LENS['tip']),
-                'nail': self._read_tactile_section(if_base + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
-                'pad': self._read_tactile_section(if_base + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
+                'tip': get_data(RegisterRH56DFTP.IF_TOUCH, RegisterRH56DFTP.TACTILE_LENS['tip']),
+                'nail': get_data(RegisterRH56DFTP.IF_TOUCH + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
+                'pad': get_data(RegisterRH56DFTP.IF_TOUCH + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['pad'])
             }
             
             # Thumb
-            tf_base = RegisterRH56DFTP.TF_TOUCH
             data['thumb'] = {
-                'tip': self._read_tactile_section(tf_base, RegisterRH56DFTP.TACTILE_LENS['tip']),
-                'nail': self._read_tactile_section(tf_base + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
-                'mid': self._read_tactile_section(tf_base + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['thumb_mid']),
-                'pad': self._read_tactile_section(tf_base + 18 + 192 + 18, RegisterRH56DFTP.TACTILE_LENS['thumb_pad'])
+                'tip': get_data(RegisterRH56DFTP.TF_TOUCH, RegisterRH56DFTP.TACTILE_LENS['tip']),
+                'nail': get_data(RegisterRH56DFTP.TF_TOUCH + 18, RegisterRH56DFTP.TACTILE_LENS['nail']),
+                'mid': get_data(RegisterRH56DFTP.TF_TOUCH + 18 + 192, RegisterRH56DFTP.TACTILE_LENS['thumb_mid']),
+                'pad': get_data(RegisterRH56DFTP.TF_TOUCH + 18 + 192 + 18, RegisterRH56DFTP.TACTILE_LENS['thumb_pad'])
             }
             
             # Palm
-            palm_base = RegisterRH56DFTP.PALM_TOUCH
-            data['palm'] = self._read_tactile_section(palm_base, RegisterRH56DFTP.TACTILE_LENS['palm'])
+            data['palm'] = get_data(RegisterRH56DFTP.PALM_TOUCH, RegisterRH56DFTP.TACTILE_LENS['palm'])
             
             return data
             
         except Exception as e:
             raise CommandError(f"Error reading tactile data: {e}")
-

@@ -8,6 +8,8 @@ import sys
 import time
 import argparse
 import os
+import numpy as np
+import matplotlib.pyplot as plt
 
 # Add parent directory to import path
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -269,14 +271,95 @@ def full_demo(hand: InspireHandRH56DFTP):
 
 
 def tactile_demo(hand: InspireHandRH56DFTP):
-    """Demonstrate tactile information reading."""
+    """Demonstrate tactile information reading with visualization."""
     print("\n=== Tactile Information Demo ===")
     print("\n1. Opening hand...")
     hand.write_pose([0, 0, 0, 0, 0, 0])
-    while True:
-        tactile_info = hand.read_tactile_data()
-        print(f"   Tactile info: {tactile_info}")
-        time.sleep(0.5)
+    
+    # Sensor shapes (rows, cols)
+    SENSOR_SHAPES = {
+        'little': {'tip': (3, 3), 'nail': (12, 8), 'pad': (10, 8)},
+        'ring':   {'tip': (3, 3), 'nail': (12, 8), 'pad': (10, 8)},
+        'middle': {'tip': (3, 3), 'nail': (12, 8), 'pad': (10, 8)},
+        'index':  {'tip': (3, 3), 'nail': (12, 8), 'pad': (10, 8)},
+        'thumb':  {'tip': (3, 3), 'nail': (12, 8), 'mid': (3, 3), 'pad': (12, 8)},
+        'palm':   (8, 14)
+    }
+    
+    # Setup plot
+    plt.ion()
+    fig, axs = plt.subplots(5, 4, figsize=(16, 20))
+    axs = axs.flatten()
+    
+    # Map plot index to sensor part
+    # We have 5 fingers * 3 parts + thumb extra + palm = 15 + 1 + 1 = 17 parts?
+    # Let's flatten the structure to map to subplots
+    plot_mapping = []
+    
+    fingers = ['little', 'ring', 'middle', 'index', 'thumb']
+    for finger in fingers:
+        parts = ['tip', 'nail', 'pad']
+        if finger == 'thumb':
+            parts = ['tip', 'nail', 'mid', 'pad']
+            
+        for part in parts:
+            plot_mapping.append((finger, part))
+            
+    plot_mapping.append(('palm', 'palm'))
+    
+    # Initialize images
+    im_list = []
+    for i, (finger, part) in enumerate(plot_mapping):
+        if i >= len(axs): break
+        
+        ax = axs[i]
+        
+        if finger == 'palm':
+            rows, cols = SENSOR_SHAPES['palm']
+            # Palm is transposed in visualization logic
+            shape = (cols, rows) 
+        else:
+            shape = SENSOR_SHAPES[finger][part]
+            
+        dummy = np.zeros(shape)
+        im = ax.imshow(dummy, cmap='viridis', vmin=0, vmax=4095)
+        ax.set_title(f"{finger} {part}")
+        plt.colorbar(im, ax=ax, shrink=0.8)
+        im_list.append(im)
+        
+    plt.tight_layout()
+    
+    print("Starting visualization loop. Press Ctrl+C to stop.")
+    try:
+        while True:
+            data = hand.read_tactile_data()
+            
+            for i, (finger, part) in enumerate(plot_mapping):
+                if i >= len(im_list): break
+                
+                if finger == 'palm':
+                    raw_data = data['palm']
+                    rows, cols = SENSOR_SHAPES['palm']
+                    # Palm logic from visualize_contact.py:
+                    # array = np.array(raw, dtype=np.uint16).reshape(rows, cols)
+                    # array = array[::-1].T
+                    array = np.array(raw_data, dtype=np.uint32).reshape(rows, cols)
+                    array = array[::-1].T
+                else:
+                    raw_data = data[finger][part]
+                    rows, cols = SENSOR_SHAPES[finger][part]
+                    array = np.array(raw_data, dtype=np.uint32).reshape(rows, cols)
+                
+                im_list[i].set_data(array)
+            
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+            # plt.pause(0.01) # pause can be slow, flush_events is often better for loops
+            time.sleep(0.01)
+            
+    except KeyboardInterrupt:
+        print("\nVisualization stopped by user")
+        plt.close(fig)
 
 
 

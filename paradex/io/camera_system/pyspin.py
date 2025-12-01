@@ -205,7 +205,8 @@ class PyspinCamera():
         assert mode in ["single", "continuous"]
         
         self._read_current_state()
-        print(self.syncMode)
+        self._configureThroughPut()
+        
         if syncMode:
             print("Configuring camera for hardware sync mode.")
             self.syncMode = syncMode
@@ -314,7 +315,6 @@ class PyspinCamera():
     def _init_configure(self) -> None:
         """configure camera settings based on initialization parameters."""
         self._configureGain()
-        self._configureThroughPut()
 
         self._configurePacketSize()
         # self._configurePacketDelay()
@@ -606,6 +606,8 @@ class PyspinTimestampMonitor():
         """
         Start image acquisition.
         """
+        
+        self._configureThroughPut()
         self.cam.BeginAcquisition()
         return
     
@@ -677,7 +679,6 @@ class PyspinTimestampMonitor():
             self._configureAcquisition()
         
         self._configureGain()
-        self._configureThroughPut()
 
         self._configurePacketSize()
         # self._configurePacketDelay()

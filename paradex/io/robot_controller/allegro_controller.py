@@ -62,7 +62,7 @@ class AllegroController:
             if self.save_event.is_set():
                 self.data["action"].append(action.copy())
                 self.data["time"].append(time.time())
-                self.data["joint_value"].append(joint_value.copy())
+                self.data["position"].append(joint_value.copy())
 
             elapsed = time.perf_counter() - start_time
             time_to_wait = max(0.0, 0.01 - elapsed)
@@ -73,7 +73,7 @@ class AllegroController:
         self.data = {
             "action": [],
             "time": [],
-            "joint_value": []
+            "position": []
         }
         
         self.save_event.set()

@@ -132,7 +132,7 @@ class XArmController:
                 self.data["position"].append(np.array(state[0])[:6])
                 self.data["velocity"].append(np.array(state[1])[:6])
                 self.data["torque"].append(np.array(state[2])[:6])
-                self.data["time"].append(np.array(start_time))
+                self.data["time"].append(time.time())
                 self.data["action"].append(cart)
                 
                 self.data["action_qpos"].append(qpos[:6])

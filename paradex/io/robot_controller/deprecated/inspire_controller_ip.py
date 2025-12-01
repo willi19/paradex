@@ -4,17 +4,19 @@ import time
 
 import numpy as np
 from threading import Thread, Event, Lock
-
+#  interface Modbus TCP + CAN2.0 or Modbus TCP + RS485
 import os
 import json
-from paradex.utils.file_io import config_dir
+from paradex.utils.system import config_dir
 
 action_dof = 6
 regdict = {
     'ID': 1000,
     'baudrate': 1001,
     'clearErr': 1004,
+    'save': 1005,
     'forceClb': 1009,
+    'posSet': 1474,
     'angleSet': 1486,
     'forceSet': 1498,
     'speedSet': 1522,
@@ -27,10 +29,19 @@ regdict = {
     'actionRun': 2322
 }
 
+tactile = {
+    'little':3000,
+    'ring': 3370,
+    'middle':3740,
+    'fore': 4110,
+    'thumb': 4480,
+    'palm': 4900
+}
+
 
 class InspireController:
     def __init__(self, ):
-        network_config = json.load(open(os.path.join(config_dir, "environment/network.json"), "r"))
+        network_config = json.load(open(os.path.join(config_dir, "network.json"), "r"))
         self.ip = network_config["inspire"]["ip"]
         self.port = network_config["inspire"]["port"]
         self.capture_path = None

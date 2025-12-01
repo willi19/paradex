@@ -8,8 +8,8 @@ from typing import List, Optional, Dict, Tuple
 import time
 from contextlib import contextmanager
 
-from .modbus import ModbusClient
-from .exceptions import InspireHandError, ConnectionError, CommandError
+from modbus import ModbusClient
+from exceptions import InspireHandError, ConnectionError, CommandError
 
 
 class RegisterRH56DFTP:
@@ -21,14 +21,18 @@ class RegisterRH56DFTP:
     """
     # System information registers
     HAND_ID = 1000        # Dexterous Hand ID
+    BAUD_RATE = 1002      # Baud Rate
     CLEAR_ERROR = 1004    # Error clearance
     SAVE = 1005           # Saving data in Flash
     RESET_PARA = 1006     # Restoring factory defaults
     FORCE_SENSOR_CALIB = 1009  # Force sensor calibration
     
+    DEFAULT_SPEED_SET = 1032 # Set value of power-on speed for each DOF
+    DEFAULT_FORCE_SET = 1033 # Set value of power-on force control threshold for each DOF
+
     # Control registers - Pose/Position setting
     # These addresses need to be verified from the manual
-    POSE_SET = 1474       # Pose/Position set values (for all joints)
+    POS_SET = 1474        # Pose/Position set values (for all joints)
     ANGLE_SET = 1486      # Angle set values (for all joints)
     FORCE_SET = 1498      # Force control threshold values
     SPEED_SET = 1522      # Speed values
@@ -49,6 +53,12 @@ class RegisterRH56DFTP:
     CONTACT_FORCE = 1630  # Contact force values for each finger
     CONTACT_STATUS = 1636 # Contact status flags
 
+    LF_TOUCH = 3000         # Little finger tactile sensor
+    RF_TOUCH = 3370         # Ring finger tactile sensor
+    MF_TOUCH = 3740         # Middle finger tactile sensor
+    IF_TOUCH = 4110         # Index finger tactile sensor
+    TF_TOUCH = 4480         # Thumb tactile sensor
+    PALM_TOUCH = 4900       # Palm tactile sensor
 
 class FingerID(IntEnum):
     """Finger IDs for the Inspire Hand RH56DFTP."""
@@ -147,12 +157,18 @@ class InspireHandRH56DFTP:
         Args:
             port: Serial port path
             baudrate: Serial baudrate
+                    0: 115200 (R485 Inferface)
+                    0: 1000 (CAN Interface)
             slave_id: Modbus slave ID of the hand
             debug: Whether to print debug information
         """
         self.modbus = ModbusClient(port, baudrate, slave_id)
         self.modbus.debug = debug
         self._connected = False
+
+        with self.connect():
+            self.force_calibration()
+
     
     @contextmanager
     def connect(self):
@@ -274,7 +290,7 @@ class InspireHandRH56DFTP:
         
         try:
             # Write pose values to registers
-            success = self.modbus.write_multiple_registers(RegisterRH56DFTP.POSE_SET, pose)
+            success = self.modbus.write_multiple_registers(RegisterRH56DFTP.POS_SET, pose)
             if not success:
                 raise CommandError("Failed to write pose to hand")
         except Exception as e:
@@ -457,7 +473,15 @@ class InspireHandRH56DFTP:
                 raise CommandError("Failed to set speed")
         except Exception as e:
             raise CommandError(f"Error setting speed: {e}")
-    
+        
+    def force_calibration(self):
+        try:
+            success = self.modbus.write_single_register(RegisterRH56DFTP.FORCE_SENSOR_CALIB, 1)
+            if not success:
+                raise CommandError("Failes to calibrate force sensor")
+        except Exception as e:
+            raise CommandError(f"Error during calibration force sensor: {e}")
+
     def set_force_threshold(self, force: int) -> None:
         """
         Set the force threshold for all joints.

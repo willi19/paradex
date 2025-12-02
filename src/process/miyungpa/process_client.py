@@ -177,6 +177,10 @@ def upload_output(demo_path):
     rsync_copy(os.path.join(root_dir, "merged.mp4"), os.path.join(shared_dir, demo_path, "merged.mp4"), checksum=True, resume=True, verbose=False)
     
 def process_demo(demo_path):
+    if os.path.exists(os.path.join(shared_dir, demo_path, "merged.mp4")):
+        print("Already processed.")
+        return
+    
     download_dir(demo_path)
     match_sync(demo_path)
     overlay(demo_path)

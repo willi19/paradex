@@ -7,6 +7,7 @@ import numpy as np
 import cv2
 import json
 import os
+import time
 
 from paradex.calibration.utils import load_camparam, load_current_camparam, get_cammtx
 from paradex.image.undistort import apply_undistort_map, precomute_undistort_map, undistort_img
@@ -408,16 +409,16 @@ class ImageDict:
                 self.intrinsic,
                 self.extrinsic
             )
-            
         renderer = self._cache['render']
         # if type(object) == list:
         #     return renderer.render_multi(object) # color_dict, mask_dict, depth_dict, id_dict
         _, mask, _ =  renderer.render(object) # color_dict, mask_dict, depth_dict
         
+        start_time = time.time()
         images = {}
         for serial, m in mask.items():
             images[serial] = overlay_mask(self.images[serial], m, color=color, alpha=alpha)
-
+        
         new_img_dict = ImageDict(images, self.intrinsic, self.extrinsic, self.path)
         return new_img_dict
         

@@ -3,6 +3,7 @@ import shutil
 import numpy as np
 import cv2
 import tqdm
+import time
 
 from paradex.utils.path import shared_dir, home_path
 from paradex.dataset_acqusition.match_sync import get_synced_data, fill_framedrop
@@ -82,6 +83,8 @@ def overlay(demo_path):
     idx = 0
 
     for idx in tqdm.tqdm(range(max_length)):
+        elapsed_time_dict = {}
+        start_time = time.time()
         frame_dict = {}
         for video_name, cap in video_cap.items():
             if not video_open[video_name]:
@@ -96,16 +99,22 @@ def overlay(demo_path):
             
         if not frame_dict:
             break
+        elapsed_time_dict['read_frame'] = time.time() - start_time
         
         part_intrinsics = {name: intrinsics[name] for name in frame_dict.keys()}
         part_extrinsics = {name: extrinsics[name] for name in frame_dict.keys()}
         
         imgdict = ImageDict(frame_dict, part_intrinsics, part_extrinsics, path=None)
+        
+        elapsed_time_dict['create_imgdict'] = time.time() - start_time - elapsed_time_dict['read_frame']
         rm.update_cfg(np.concatenate([arm_state[idx], hand_state[idx]]))
         robot_mesh = rm.get_robot_mesh()
         robot_mesh.apply_transform(c2r)
+        elapsed_time_dict['get_robot_mesh'] = time.time() - start_time - elapsed_time_dict['read_frame'] - elapsed_time_dict['create_imgdict']
         
         overlayed_dict = imgdict.project_mesh(robot_mesh, color=(0,255,0))
+        elapsed_time_dict['project_mesh'] = time.time() - start_time - elapsed_time_dict['read_frame'] - elapsed_time_dict['create_imgdict'] - elapsed_time_dict['get_robot_mesh']
+        
         for video_name, out in out_cap.items():
             if video_open[video_name]:
                 out.write(overlayed_dict.images[video_name])  
@@ -172,7 +181,7 @@ def process_demo(demo_path):
 
 
 demo_root_path = os.path.join(shared_dir, "capture/miyungpa")
-for obj_name in os.listdir(demo_root_path):
+for obj_name in os.listdir(demo_root_path)[-2:]:
     index_list = os.listdir(os.path.join(demo_root_path, obj_name))
     for index in index_list:
         demo_path = os.path.join("capture/miyungpa", obj_name, index)

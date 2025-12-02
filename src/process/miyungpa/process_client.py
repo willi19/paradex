@@ -58,7 +58,16 @@ def overlay(demo_path):
     if not os.path.exists(os.path.join(root_dir, "videos")):
         return
     
+        
     video_cap = {video_name.split(".")[0] : cv2.VideoCapture(os.path.join(root_dir, "videos", video_name)) for video_name in os.listdir(os.path.join(root_dir, "videos"))}
+    
+    if os.path.exists(os.path.join(root_dir, "merged.avi")):
+        process_length = int(cv2.VideoCapture(os.path.join(root_dir, "merged.avi")).get(cv2.CAP_PROP_FRAME_COUNT))
+        max_length = max([int(cv2.VideoCapture(os.path.join(root_dir, "videos", video_name)).get(cv2.CAP_PROP_FRAME_COUNT)) for video_name in os.listdir(os.path.join(root_dir, "videos"))])
+        if process_length == max_length:
+            for cap in video_cap.values():
+                cap.release()
+            return
     
     for name in list(video_cap.keys()):
         length = int(video_cap[name].get(cv2.CAP_PROP_FRAME_COUNT))
@@ -127,8 +136,7 @@ def overlay(demo_path):
     #convert avi to mp4
     convert_avi_to_mp4(os.path.join(root_dir, "merged.avi"), os.path.join(root_dir, "merged.mp4"))
     
-    rsync_copy(os.path.join(root_dir, "overlay") + "/", os.path.join(root_dir, "videos") + "/", checksum=True, resume=True, verbose=False)
-    rsync_copy(os.path.join(root_dir, "merged.mp4"), os.path.join(root_dir, "videos", "merged.mp4"), checksum=True, resume=True, verbose=False)
+    
 
 # def make_thumbnail(root_dir):
 #     #merged image of all videos initial frame
@@ -159,34 +167,28 @@ def download_dir(demo_path):
     rsync_copy(video_dir + "/", download_dir + "/", checksum=True, resume=True, verbose=False)
 
 def upload_output(demo_path):
-    overlay_dir = os.path.join(home_path, "paradex_download", demo_path, "overlay")
-    if not os.path.exists(overlay_dir):
-        return
-    
+    root_dir = os.path.join(home_path, "paradex_download", demo_path)
     upload_dir = os.path.join(shared_dir, demo_path, "overlay")
     os.makedirs(os.path.dirname(upload_dir), exist_ok=True)
     
-    rsync_copy(overlay_dir + "/", upload_dir + "/", checksum=True, resume=True, verbose=False)
+    rsync_copy(os.path.join(root_dir, "overlay") + "/", os.path.join(shared_dir, demo_path, "videos") + "/", checksum=True, resume=True, verbose=False)
+    rsync_copy(os.path.join(root_dir, "merged.mp4"), os.path.join(shared_dir, demo_path, "merged.mp4"), checksum=True, resume=True, verbose=False)
     
 def process_demo(demo_path):
     download_dir(demo_path)
     match_sync(demo_path)
     overlay(demo_path)
-    upload_output(demo_path)
-
-
+    # upload_output(demo_path)
 
 def client():
     ctx = zmq.Context()
     
-    # Main PC에 연결
     socket = ctx.socket(zmq.REP)
     socket.bind("tcp://*:5555")
     
     print("Client ready, waiting for tasks...")
     
     while True:
-        # Main PC로부터 명령 받기
         msg = socket.recv_string()
         
         if msg == "quit":
@@ -198,11 +200,7 @@ def client():
             
             try:
                 print(f"Processing: {demo_path}")
-                socket.send_string(f"started:{demo_path}")
-                
-                # 실제 처리
                 process_demo(demo_path)
-                
                 print(f"Done: {demo_path}")
                 socket.send_string(f"done:{demo_path}")
                 

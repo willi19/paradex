@@ -17,6 +17,7 @@ from paradex.robot.utils import get_robot_urdf_path
 from paradex.image.merge import merge_image
 from paradex.utils.upload_file import rsync_copy
 from paradex.video.util import convert_avi_to_mp4
+from paradex.robot.inspire import parse_inspire
 
 def match_sync(demo_path):
     root_dir = os.path.join(shared_dir, demo_path)
@@ -90,6 +91,7 @@ def overlay(demo_path):
     c2r = load_c2r(os.path.join(shared_dir, demo_path))
     rm = RobotModule(get_robot_urdf_path(arm_name="xarm", hand_name="inspire"))
     hand_state = np.load(os.path.join(shared_dir, demo_path, "hand", "position.npy"))
+    hand_state = parse_inspire(hand_state)
     arm_state = np.load(os.path.join(shared_dir, demo_path, "arm", "position.npy"))
 
     idx = 0
@@ -171,7 +173,7 @@ def upload_output(demo_path):
     upload_dir = os.path.join(shared_dir, demo_path, "overlay")
     os.makedirs(os.path.dirname(upload_dir), exist_ok=True)
     
-    rsync_copy(os.path.join(root_dir, "overlay") + "/", os.path.join(shared_dir, demo_path, "videos") + "/", checksum=True, resume=True, verbose=False)
+    rsync_copy(os.path.join(root_dir, "overlay") + "/", os.path.join(shared_dir, demo_path) + "/", checksum=True, resume=True, verbose=False)
     rsync_copy(os.path.join(root_dir, "merged.mp4"), os.path.join(shared_dir, demo_path, "merged.mp4"), checksum=True, resume=True, verbose=False)
     
 def process_demo(demo_path):

@@ -28,11 +28,11 @@ class ProcessorMain:
         Thread(target=self._distribute, daemon=True).start()
     
     def _distribute(self):
-        while self.process_list:
+        while self.process_list or any(self.pc_busy.values()):
             for pc_name in self.pc_list:
                 if not self.pc_busy[pc_name] and self.process_list:
                     task = self.process_list.pop(0)
-                    self._process_task(pc_name, task)  # Thread 제거, 직접 실행
+                    Thread(target=self._process_task, args=(pc_name, task), daemon=True).start()
             
             time.sleep(0.5)
         

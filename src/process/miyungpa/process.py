@@ -14,6 +14,7 @@ from paradex.robot.utils import get_robot_urdf_path
 from paradex.image.merge import merge_image
 from paradex.utils.upload_file import rsync_copy
 from paradex.video.util import convert_avi_to_mp4
+from paradex.robot.inspire import parse_inspire
 
 def match_sync(demo_path):
     root_dir = os.path.join(shared_dir, demo_path)
@@ -65,7 +66,7 @@ def overlay(demo_path):
             
     video_open = {name:True for name in video_cap.keys()}
     max_length = max([int(video_cap[name].get(cv2.CAP_PROP_FRAME_COUNT)) for name in video_cap.keys()])
-    print(f"Overlaying {len(video_cap)} videos with max length {max_length}")
+    print(f"Overlaying {len(video_cap)} videos with max length {max_length} for {demo_path}")
     os.makedirs(os.path.join(root_dir, "overlay"), exist_ok=True)
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
     frame_shape = (int(video_cap[list(video_cap.keys())[0]].get(cv2.CAP_PROP_FRAME_WIDTH)), int(video_cap[list(video_cap.keys())[0]].get(cv2.CAP_PROP_FRAME_HEIGHT)))
@@ -78,6 +79,7 @@ def overlay(demo_path):
     c2r = load_c2r(os.path.join(shared_dir, demo_path))
     rm = RobotModule(get_robot_urdf_path(arm_name="xarm", hand_name="inspire"))
     hand_state = np.load(os.path.join(shared_dir, demo_path, "hand", "position.npy"))
+    hand_state = parse_inspire(hand_state)
     arm_state = np.load(os.path.join(shared_dir, demo_path, "arm", "position.npy"))
 
     idx = 0

@@ -178,7 +178,7 @@ def process_demo(demo_path):
     download_dir(demo_path)
     match_sync(demo_path)
     overlay(demo_path)
-    # upload_output(demo_path)
+    upload_output(demo_path)
 
 def client():
     ctx = zmq.Context()

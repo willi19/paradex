@@ -1,8 +1,13 @@
 from threading import Thread
 import os
+import time
 
 from paradex.io.camera_system.camera import Camera
 from paradex.utils.path import home_path, capture_path_list
+from paradex.utils.system import get_camera_list
+
+RETRY_COUNT = 5
+RETRY_DELAY = 2  # seconds
 
 class CameraLoader:
     def __init__(self, types=["pyspin"]):
@@ -21,6 +26,15 @@ class CameraLoader:
         if serial_list is None:
             serial_list = get_serial_list()
         
+        if len(serial_list) != len(get_camera_list()):
+            print(f"[Warning] Configured camera count ({len(get_camera_list())}) does not match detected camera count ({len(serial_list)}). Using detected cameras.")
+            for _ in range(RETRY_COUNT):
+                time.sleep(RETRY_DELAY)
+                serial_list = get_serial_list()
+                if len(serial_list) == len(get_camera_list()):
+                    print("[Info] Camera count matched after retry.")
+                    break
+                
         self.cameralist = [Camera("pyspin", serial) for serial in serial_list]
         self.camera_names = self.camera_names + serial_list
     

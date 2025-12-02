@@ -108,6 +108,15 @@ class remote_camera_controller:
         self.exit_event.set()        
         self.run_thread.join()
         
+    def reload_cameras(self):
+        cmd = {'action': 'reload'}
+        response = self.send_command(cmd)
+        
+        for pc, resp in response.items():
+            if resp['status'] == 'error':
+                print(f"{pc}: {resp['msg']}")
+                self.error_event.set()
+        
     def run(self):
         self.initialize()
         

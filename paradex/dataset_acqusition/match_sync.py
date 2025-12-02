@@ -9,8 +9,7 @@ def fill_framedrop(frame_id, pc_time):
     
     time_delta = (pc_time[-1] - pc_time[0]) / (frame_id[-1] - frame_id[0])
     offset = np.mean(pc_time - (np.array(frame_id)-1)*time_delta)
-    import pdb; pdb.set_trace()
-    frame_id_nodrop = np.arange(1, frame_id[-1] + 10)
+    frame_id_nodrop = np.arange(1, frame_id[-1] + 500)
     pc_time_nodrop = (frame_id_nodrop - 1) * time_delta + offset - td
     return pc_time_nodrop, frame_id_nodrop
 

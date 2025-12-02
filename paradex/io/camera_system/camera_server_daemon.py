@@ -24,6 +24,13 @@ class camera_server_daemon:
         threading.Thread(target=self.monitor_thread, daemon=True).start()
         threading.Thread(target=self.command_thread, daemon=True).start()
 
+    def reload_cameras(self):
+        self.camera_loader.end()
+        time.sleep(1)
+        
+        self.camera_loader = CameraLoader()
+        print("[Info] Camera loader reloaded.")
+        
     def pingpong_thread(self):
         self.ping_socket = self.ctx.socket(zmq.REP)
         self.ping_socket.setsockopt(zmq.LINGER, 0)
@@ -108,6 +115,13 @@ class camera_server_daemon:
             else:
                 return {"status":"error", "msg":"camera errors detected"}
 
+        if action == "reload":
+            try:
+                self.reload_cameras()
+                return {"status":"ok", "msg":"cameras reloaded"}
+            except:
+                return {"status":"error", "msg":"reload failed"}
+            
         return {"status":"error", "msg":"unknown action"}
 
 

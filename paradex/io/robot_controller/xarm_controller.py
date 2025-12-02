@@ -100,19 +100,19 @@ class XArmController:
                 if is_joint_value:
                     self._last_pose = np.array(self.arm.get_position(is_radian=True)[1])[:3]
                     self._target_pose = np.array(self.arm.get_forward_kinematics(action.tolist(), input_is_radian=True, return_is_radian=True)[1])[:3]
-                    if np.linalg.norm(self._last_pose - self._target_pose) > 7:
-                        print("too large delta pose, skip servo command\n")
-                        continue
+                    # if np.linalg.norm(self._last_pose - self._target_pose) > 7:
+                    #     print("too large delta pose, skip servo command\n")
+                    #     continue
                     
                     self.arm.set_servo_angle_j(angles=action.tolist(), is_radian=True)
                 else:
                     self._last_pose = np.array(self.arm.get_position(is_radian=True)[1])[:3]
                     aa = homo2aa(action)
                     # print(np.linalg.norm(self._last_pose - aa[3:]), "delta pose")
-                    if np.linalg.norm(self._last_pose - aa[:3]) > 7:
-                        print(np.linalg.norm(self._last_pose - aa[:3]))
-                        print("too large delta pose, skip servo command\n")
-                        continue
+                    # if np.linalg.norm(self._last_pose - aa[:3]) > 7:
+                    #     print(np.linalg.norm(self._last_pose - aa[:3]))
+                    #     print("too large delta pose, skip servo command\n")
+                    #     continue
                     
                     self.arm.set_servo_cartesian_aa(aa, is_radian=True)
             

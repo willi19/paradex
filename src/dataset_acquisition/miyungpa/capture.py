@@ -10,7 +10,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--device', choices=['xsens', 'occulus'])
 parser.add_argument('--arm', type=str, default=None)
 parser.add_argument('--hand', type=str, default=None)
-parser.add_argument('--name', type=str)
+parser.add_argument('--name', type=str, required=True)
 
 args = parser.parse_args()
 

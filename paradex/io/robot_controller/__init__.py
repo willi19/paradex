@@ -9,9 +9,9 @@ def get_arm(arm_name):
         return XArmController(**network_info[arm_name]["param"])
 
 def get_hand(hand_name):
-    # if hand_name == "inspire":
-    #     from .inspire_controller import InspireController
-    #     return InspireController()
+    if hand_name == "inspire":
+        from .inspire_controller import InspireController
+        return InspireController(**network_info["inspire_usb"]["param"])
     
     if hand_name == "allegro":
         from .allegro_controller import AllegroController

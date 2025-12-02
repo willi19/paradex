@@ -1,5 +1,9 @@
-# processor.py (ProcessorMain 클래스)
+import os
+import time
+import argparse
 
+from paradex.utils.path import shared_dir
+from paradex.io.capture_pc.ssh import run_script
 import zmq
 import time
 from threading import Thread
@@ -66,3 +70,19 @@ class ProcessorMain:
         
         finally:
             self.pc_busy[pc_name] = False
+
+process_list = []
+demo_root_path = os.path.join(shared_dir, "capture/miyungpa")
+for obj_name in os.listdir(demo_root_path):
+    index_list = os.listdir(os.path.join(demo_root_path, obj_name))
+    for index in index_list:
+        demo_path = os.path.join("capture/miyungpa", obj_name, index)
+        print(f"Processing {obj_name} - {index}")
+        process_list.append(demo_path)
+        
+run_script(f"python src/process/miyungpa/process_client.py")
+
+pc = ProcessorMain(process_list)
+while not pc.finish:
+    time.sleep(1)
+print("All processing done.")

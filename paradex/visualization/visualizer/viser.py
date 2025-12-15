@@ -386,8 +386,146 @@ class ViserViewer():
         )
         self.server.scene.enable_default_lights(True)
         
+    def add_contact_module(self, robot_name, obj_name):
+        from scipy.spatial import cKDTree
+        
+        self.contact_line_segments = [] 
+        self.contact_point_segments = []
+        
+        with self.server.gui.add_folder("Contact", expand_by_default=False):
+            compute_contact_button = self.server.gui.add_button("Compute Contact", disabled=False)
+            clear_contact_button = self.server.gui.add_button("Clear Contact", disabled=False)
+            drawing_arrow = self.server.gui.add_checkbox("Draw Arrow", True)
 
+            contact_thres = self.server.gui.add_number(
+                "Contact Thres",
+                initial_value=0.02,
+                step=0.005,
+            )
+        
+        @compute_contact_button.on_click        
+        def _(_) -> None:
+            # Get NN at point
+            current_timestep = self.gui_timestep.value
+            
+            link_T =  self.robot_dict[robot_name].get_link_vertices()
+            obj = self.obj_dict[obj_name]['mesh']
+            obj_vertices = obj.vertices
+            robot_vertices = self.robot_dict[robot_name].get_link_vertices()
+            
+            obj_tree = cKDTree(obj_vertices)
+            
+            
+        
+        @clear_contact_button.on_click
+        def _(_) -> None:
+            for line in contact_line_segments:
+                line.remove()
+            contact_line_segments = []
+            for point in contact_point_segments:
+                point.remove()
+            contact_point_segments = []
+            
+    def add_camera(self, name, extrinsic, intrinsic, color=(0, 255, 0), size=0.1):
+        """
+        Add a camera frustum visualization to the scene
+        
+        Args:
+            name: Unique name for the camera
+            extrinsic: 4x4 or 3x4 camera extrinsic matrix (cam_from_world or world_from_cam)
+            intrinsic: Camera intrinsic parameters dict with keys 'fx', 'fy', 'cx', 'cy', 'width', 'height'
+                    OR 3x3 intrinsic matrix
+            color: RGB tuple (0-255)
+            size: Size of the frustum (depth from camera center)
+        """
+        # Handle extrinsic matrix format
+        if extrinsic.shape == (3, 4):
+            extrinsic_4x4 = np.concatenate([extrinsic, np.array([[0, 0, 0, 1]])], axis=0)
+        else:
+            extrinsic_4x4 = extrinsic
+        
+        # Convert to world_from_cam if it's cam_from_world
+        # Assuming extrinsic is cam_from_world (COLMAP convention), invert it
+        world_from_cam = extrinsic_4x4#3 np.linalg.inv(extrinsic_4x4)
+        
+        # Extract camera position and rotation in world frame
+        cam_pos = world_from_cam[:3, 3]
+        cam_rot = world_from_cam[:3, :3]
+        
+        # Parse intrinsic parameters
+        if isinstance(intrinsic, dict):
+            if 'intrinsics_undistort' in intrinsic:
+                K = np.array(intrinsic['intrinsics_undistort'])
+                fx, fy = K[0, 0], K[1, 1]
+                cx, cy = K[0, 2], K[1, 2]
+            else:
+                fx = intrinsic.get('fx')
+                fy = intrinsic.get('fy')
+                cx = intrinsic.get('cx')
+                cy = intrinsic.get('cy')
+            width = intrinsic.get('width', 640)
+            height = intrinsic.get('height', 480)
+        else:  # Assume 3x3 matrix
+            fx = intrinsic[0, 0]
+            fy = intrinsic[1, 1]
+            cx = intrinsic[0, 2]
+            cy = intrinsic[1, 2]
+            width = cx * 2
+            height = cy * 2
+        
+        # Create camera frame
+        frame_handle = self.server.scene.add_frame(
+            f"/cameras/{name}_frame",
+            position=cam_pos,
+            wxyz=R.from_matrix(cam_rot).as_quat()[[3, 0, 1, 2]],
+            show_axes=True,
+            axes_length=size * 0.5,
+            axes_radius=size * 0.01,
+        )
+        
+        # Calculate frustum corners in camera space
+        # Calculate frustum corners in camera space
+        frustum_depth = size
+        corners_cam = np.array([
+            [(0 - cx) / fx * frustum_depth, (0 - cy) / fy * frustum_depth, frustum_depth],  # top-left
+            [(width - cx) / fx * frustum_depth, (0 - cy) / fy * frustum_depth, frustum_depth],  # top-right
+            [(width - cx) / fx * frustum_depth, (height - cy) / fy * frustum_depth, frustum_depth],  # bottom-right
+            [(0 - cx) / fx * frustum_depth, (height - cy) / fy * frustum_depth, frustum_depth],  # bottom-left
+        ])
 
+        # Draw frustum edges (from camera center to corners) - in CAMERA FRAME coordinates
+        color_normalized = tuple(c / 255.0 for c in color)
+        camera_origin = np.array([0, 0, 0])  # Origin in camera frame
+
+        for i, corner in enumerate(corners_cam):
+            self.server.scene.add_spline_catmull_rom(
+                f"/cameras/{name}_frame/edge_{i}",
+                positions=np.array([camera_origin, corner]),  # Use camera frame coordinates
+                color=color_normalized,
+                line_width=2.0
+            )
+
+        # Draw frustum rectangle (connecting corners) - in CAMERA FRAME coordinates
+        for i in range(4):
+            self.server.scene.add_spline_catmull_rom(
+                f"/cameras/{name}_frame/rect_{i}",
+                positions=np.array([corners_cam[i], corners_cam[(i + 1) % 4]]),
+                color=color_normalized,
+                line_width=2.0
+            )
+
+        # Optionally add a small sphere at camera center
+        self.server.scene.add_icosphere(
+            f"/cameras/{name}_frame/center",
+            radius=size * 0.05,
+            color=color_normalized,
+            position=camera_origin  # At origin of camera frame
+        )
+
+        
+        return frame_handle
+        
+            
 class ViserRobotModule():
     def __init__(self, target,#: viser.ViserServer | viser.ClientHandle,
                  urdf_path, 
@@ -538,6 +676,73 @@ class ViserRobotModule():
                 mesh=mesh
             )
         return root_frame
+    
+    def get_link_vertices(self, link_name: str = None) -> Dict[str, np.ndarray]:
+        """
+        Get vertices of link meshes in world coordinates
+        
+        Args:
+            link_name: Specific link name to get vertices from. If None, returns all links.
+            
+        Returns:
+            Dictionary mapping link names to their vertices (N, 3) in world coordinates
+        """
+        vertices_dict = {}
+        
+        # Iterate through all meshes
+        for mesh_name, mesh_handle in self._meshes.items():
+            # Extract actual link name from the viser mesh name
+            # Example: "/robot/arm/visual/link1" -> "link1"
+            actual_link_name = mesh_name.split("/")[-1]
+            
+            # If specific link requested, filter
+            if link_name is not None and actual_link_name != link_name:
+                continue
+            
+            # Get the mesh from the handle
+            # Note: viser doesn't directly expose vertex data after adding,
+            # so we need to get it from the original URDF scene
+            if self._load_meshes and self._urdf.scene is not None:
+                if actual_link_name in self._urdf.scene.geometry:
+                    mesh = self._urdf.scene.geometry[actual_link_name]
+                    
+                    # Get current transform for this link
+                    T = self._urdf.get_transform(
+                        actual_link_name, 
+                        self._urdf.scene.graph.base_frame,
+                        collision_geometry=False
+                    )
+                    
+                    # Transform vertices to world coordinates
+                    vertices = mesh.vertices.copy()
+                    vertices_homogeneous = np.hstack([vertices, np.ones((len(vertices), 1))])
+                    vertices_world = (T @ vertices_homogeneous.T).T[:, :3]
+                    
+                    # Apply scale
+                    vertices_world = vertices_world * self._scale
+                    
+                    vertices_dict[actual_link_name.split(".")[0]] = vertices_world
+        
+        return vertices_dict
+
+
+    def get_all_vertices(self) -> np.ndarray:
+        """
+        Get all vertices from all links concatenated together
+        
+        Returns:
+            (N, 3) array of all vertices in world coordinates
+        """
+        all_vertices = []
+        vertices_dict = self.get_link_vertices()
+        
+        for vertices in vertices_dict.values():
+            all_vertices.append(vertices)
+        
+        if len(all_vertices) == 0:
+            return np.array([]).reshape(0, 3)
+        
+        return np.vstack(all_vertices)
     # def apply_mesh_color_override(mesh_color_override):
         # elif len(mesh_color_override) == 3:
         #     self._meshes.append(

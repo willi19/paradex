@@ -677,7 +677,7 @@
   <joint name="arm_to_hand" type="fixed">
     <parent link="link6"/>
     <child link="wrist"/>
-    <origin rpy="3.14159 0.00000 0.00000" xyz="0.00000 0.00000 0.0250"/>
+    <origin rpy="3.14159 0.00000 0.00000" xyz="0.00000 0.00000 0.0350"/>
   </joint>
 </robot>
 

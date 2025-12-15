@@ -423,7 +423,7 @@ class ImageDict:
         return new_img_dict
         
             
-    def merge(self, image_text: Optional[Dict[str, str]] = None) -> np.ndarray:
+    def merge(self, image_text: Optional[Dict[str, str]] = {}) -> np.ndarray:
         """Merge all images into a grid layout"""
         return merge_image(self.images, image_text)
     

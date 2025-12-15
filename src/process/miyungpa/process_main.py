@@ -12,7 +12,7 @@ from paradex.utils.system import get_pc_list, get_pc_ip
 class ProcessorMain:
     def __init__(self, process_list):
         self.process_list = process_list.copy()
-        self.pc_list = get_pc_list()
+        self.pc_list = ['capture13', 'capture14', 'capture15', 'capture16','capture18']
         self.finish = False
         
         self.ctx = zmq.Context()

@@ -22,6 +22,7 @@ def undistort_and_detect_charuco(name):
     index_list = sorted(os.listdir(root_dir))
     
     for index in tqdm.tqdm(index_list, desc="Undistort and detect charuco"):
+        print(f"Processing index {index}...")
         if os.path.exists(os.path.join(root_dir, index, "charuco_3d_ids.npy")) and \
            os.path.exists(os.path.join(root_dir, index, "charuco_3d_corners.npy")):
             continue
@@ -48,7 +49,7 @@ def undistort_and_detect_charuco(name):
             detection[serial] = merge_charuco_detection(charuco_2d[serial])['checkerCorner']
         
         detectionDict = undistort_img_dict.draw_keypoint(detection, color=(0,255,0))
-        
+        print(charuco_3d['checkerCorner'].shape)
         projected_dict = undistort_img_dict.project_pointcloud(charuco_3d['checkerCorner'])
         detectionDict = detectionDict.draw_keypoint(projected_dict, color=(255,0,0))
         detectionDict.save(os.path.join(root_dir, index, "detection"))

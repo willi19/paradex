@@ -376,11 +376,16 @@ paradex.egg-info/SOURCES.txt
 paradex.egg-info/dependency_links.txt
 paradex.egg-info/top_level.txt
 paradex/calibration/Tsai_Lenz.py
+paradex/calibration/__init__.py
 paradex/calibration/colmap.py
 paradex/calibration/utils.py
+<<<<<<< HEAD
 paradex/dataset_acqusition/capture.py
+=======
+>>>>>>> 478a8beff79d440ff7d46c547ff8f12e6cb50fa1
 paradex/dataset_acqusition/match_sync.py
 paradex/image/README.md
+paradex/image/__init__.py
 paradex/image/aruco.py
 paradex/image/image_dict.py
 paradex/image/merge.py
@@ -400,11 +405,14 @@ paradex/io/camera_system/templates/monitor.html
 paradex/io/capture_pc/__init__.py
 paradex/io/capture_pc/command_sender.py
 paradex/io/capture_pc/data_sender.py
+<<<<<<< HEAD
+=======
+paradex/io/capture_pc/processor.py
+>>>>>>> 478a8beff79d440ff7d46c547ff8f12e6cb50fa1
 paradex/io/capture_pc/ssh.py
 paradex/io/robot_controller/__init__.py
 paradex/io/robot_controller/allegro_controller.py
 paradex/io/robot_controller/xarm_controller.py
-paradex/io/robot_controller/deprecated/inspire_controller.py
 paradex/io/robot_controller/deprecated/inspire_controller_ip.py
 paradex/io/robot_controller/under_test/hand_rh56dftp.py
 paradex/io/robot_controller/under_test/modbus.py
@@ -413,13 +421,13 @@ paradex/io/teleop/deprecated/occulus/receiver.py
 paradex/io/teleop/occulus/receiver.py
 paradex/io/teleop/xsens/__init__.py
 paradex/io/teleop/xsens/receiver.py
-paradex/process/visual_hull.py
 paradex/retargetor/__init__.py
 paradex/retargetor/hand_regargetor.py
 paradex/retargetor/state.py
 paradex/retargetor/unimanual.py
 paradex/robot/__init__.py
 paradex/robot/curobo.py
+paradex/robot/inspire.py
 paradex/robot/mimic_joint.py
 paradex/robot/robot_wrapper.py
 paradex/robot/robot_wrapper_updating.py
@@ -427,6 +435,7 @@ paradex/robot/urdf.py
 paradex/robot/utils.py
 paradex/simulator/__init__.py
 paradex/simulator/isaac.py
+paradex/transforms/__init__.py
 paradex/transforms/conversion.py
 paradex/transforms/coordinate.py
 paradex/transforms/triangulate.py
@@ -963,8 +972,11 @@ script/signal_generator.txt
 src/calibration/extrinsic/calculate.py
 src/calibration/extrinsic/capture.py
 src/calibration/extrinsic/client.py
+<<<<<<< HEAD
 src/calibration/handeye/calculate.py
 src/calibration/handeye/capture.py
+=======
+>>>>>>> 478a8beff79d440ff7d46c547ff8f12e6cb50fa1
 src/camera/monitor_daemon.py
 src/camera/server_daemon.py
 src/capture/camera/image.py
@@ -975,6 +987,7 @@ src/capture/camera/stream_remote.py
 src/capture/camera/video.py
 src/capture/camera/video_remote.py
 src/capture/robot/teleop_real.py
+<<<<<<< HEAD
 src/capture/robot/xarm_teaching.py
 src/dataset_acquisition/hri/capture.py
 src/dataset_acquisition/minungpa/capture.py
@@ -988,6 +1001,10 @@ src/util/robot/visualize.py
 src/util/upload_video/client.py
 src/util/upload_video/process.py
 src/util/upload_video/templates/video_monitor.html
+=======
+src/inference/env_aware_geo_con_grasp/sim/isaac.py
+src/util/marker/generate_charuco.py
+>>>>>>> 478a8beff79d440ff7d46c547ff8f12e6cb50fa1
 src/validate/camera_system/camera.py
 src/validate/camera_system/camera_loader.py
 src/validate/camera_system/camera_reader.py
@@ -1003,11 +1020,14 @@ src/validate/command_sender/stream_client.py
 src/validate/command_sender/stream_remote.py
 src/validate/data_sender/client.py
 src/validate/data_sender/main.py
+<<<<<<< HEAD
 src/validate/robot_controller/xarm_test.py
 src/validate/teleop/io_connection.py
 src/validate/teleop/xsens_body.py
 src/validate/upload_raw_video/test_func.py
 src/validate/upload_raw_video/upload_local.py
+=======
+>>>>>>> 478a8beff79d440ff7d46c547ff8f12e6cb50fa1
 src/validate/visualizer/franka.py
 system/README.md
 system/paradex1/charuco_info.json

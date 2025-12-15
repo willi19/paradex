@@ -40,7 +40,13 @@ boardinfo_dict = json.load(open(os.path.join(config_dir, "charuco_info.json"), "
 
 _aruco_detector_cache = {}
 _charuco_detector_cache = {}
-_charuco_board_cache = {}
+_charuco_board_cache = {name:aruco.CharucoBoard(
+                (boardinfo["numX"], boardinfo["numY"]),
+                boardinfo["checkerLength"],
+                boardinfo["markerLength"],
+                aruco_dict[boardinfo["dict_type"]],
+                np.array(boardinfo["markerIDs"])
+            ) for name, boardinfo in boardinfo_dict.items()}
 
 
 def get_aruco_detector(dict_type: str):
@@ -218,3 +224,14 @@ def find_common_indices(ids1, ids2):
     idx2 = np.array([id_to_idx2[id] for id in common_ids])
     
     return idx1, idx2
+
+def get_board_cor():
+    board_cors = {}
+    offset = 0
+    for b_id, cfg in boardinfo_dict.items():
+        board = _charuco_board_cache[b_id]
+        obj_pts = board.getChessboardCorners().reshape(-1, 3)  # (N, 3)
+        board_cors[b_id] = {}
+        board_cors[b_id]['checkerIDs'] = np.array(range(len(obj_pts)))
+        board_cors[b_id]['checkerCorner'] = obj_pts * 0.05  # scale to meters
+    return board_cors

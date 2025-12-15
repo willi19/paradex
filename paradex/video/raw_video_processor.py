@@ -118,8 +118,9 @@ def undistort_raw_video(video_path, progress_dict, video_id):
         ret, frame = cap.read()
         if not ret:
             break
-            
-        frame = apply_undistort_map(frame, mapx, mapy)
+
+        if (frame[:30, 30][::2, ::2] == 255).all():
+            frame = apply_undistort_map(frame, mapx, mapy)
         out.write(frame)
         last_frame += 1
         

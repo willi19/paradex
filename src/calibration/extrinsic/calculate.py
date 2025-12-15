@@ -185,11 +185,11 @@ def undistort(name):
     
     img_dict = None
     for index in tqdm.tqdm(index_list, desc="Undistorting images"):
-        # if os.path.exists(os.path.join(extrinsic_dir, name, index, "undistort", "images")) \
-        #     and len(os.listdir(os.path.join(extrinsic_dir, name, index, "undistort", "images"))) == \
-        #         len(os.listdir(os.path.join(extrinsic_dir, name, index, "images"))):
+        if os.path.exists(os.path.join(extrinsic_dir, name, index, "undistort", "images")) \
+            and len(os.listdir(os.path.join(extrinsic_dir, name, index, "undistort", "images"))) == \
+                len(os.listdir(os.path.join(extrinsic_dir, name, index, "images"))):
             
-        #     continue
+            continue
         
         if img_dict is None:
             img_dict = ImageDict.from_path(os.path.join(extrinsic_dir, name, index))
@@ -374,7 +374,7 @@ if __name__ == "__main__":
     new_extrinsics = {}
     for serial_num, extrinsic in extrinsics.items():
         new_extrinsic = np.array(extrinsic)
-        new_extrinsic[:3, 3] *= (0.025 / np.mean(length))
+        new_extrinsic[:3, 3] *= (0.05 / np.mean(length))
         new_extrinsics[serial_num] = new_extrinsic.tolist()
 
     os.makedirs(os.path.join(cam_param_dir, name), exist_ok=True)

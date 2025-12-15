@@ -35,8 +35,8 @@ while not exit_event.is_set():
 
     for camera_name, (image, frame_id) in images_data.items():
         if frame_id > last_frame_ids[camera_name] and frame_id > 0:
-            
-            detect_result = detect_charuco(image)
+            cur_image = image.copy()
+            detect_result = detect_charuco(cur_image)
             merged_detect_result = merge_charuco_detection(detect_result)
             
             if save_event.is_set():
@@ -51,14 +51,14 @@ while not exit_event.is_set():
                 np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), merged_detect_result["checkerCorner"])
                 np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), merged_detect_result["checkerIDs"])
 
-                cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), image)
+                cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), cur_image)
                 print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
                 save_remain -= 1
-        
-        
-            image = cv2.resize(image, (image.shape[1]//8, image.shape[0]//8))
+
+
+            cur_image = cv2.resize(cur_image, (cur_image.shape[1]//8, cur_image.shape[0]//8))
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
-            success, encoded_image = cv2.imencode('.jpg', image, encode_param)
+            success, encoded_image = cv2.imencode('.jpg', cur_image, encode_param)
             merged_detect_result["checkerCorner"] = (merged_detect_result["checkerCorner"] / 8).astype(np.int16)
             
             if success:

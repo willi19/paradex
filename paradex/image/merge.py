@@ -33,8 +33,8 @@ def merge_image(image_dict, image_text={}, put_text=True):
         if put_text:
             target_width = int(img.shape[1] * 0.5)
             thickness = max(1, img.shape[1] // 500)  # 이미지 크기에 비례하는 두께
-            font_scale = get_optimal_font_scale(txt, target_width, thickness=thickness)
             txt = f"{img_name}"
+            font_scale = get_optimal_font_scale(txt, target_width, thickness=thickness)
             if img_name in image_text:
                 txt += f" {image_text[img_name]}"
             # 텍스트 크기 계산

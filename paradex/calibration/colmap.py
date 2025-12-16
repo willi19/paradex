@@ -58,8 +58,11 @@ def load_colmap_camparam(path, orig_size=(2048, 1536)):
 
         extrinsics[serialnum] = dict()
         
-        cam_pose = images[imid].cam_from_world.matrix()
-        
+        try:
+            cam_pose = images[imid].cam_from_world().matrix()
+        except:
+            cam_pose = images[imid].cam_from_world.matrix()
+            
         extrinsics[serialnum] = cam_pose.tolist()
     
     return intrinsics, extrinsics

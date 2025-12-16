@@ -185,11 +185,11 @@ def undistort(name):
     
     img_dict = None
     for index in tqdm.tqdm(index_list, desc="Undistorting images"):
-        if os.path.exists(os.path.join(extrinsic_dir, name, index, "undistort", "images")) \
-            and len(os.listdir(os.path.join(extrinsic_dir, name, index, "undistort", "images"))) == \
-                len(os.listdir(os.path.join(extrinsic_dir, name, index, "images"))):
+        # if os.path.exists(os.path.join(extrinsic_dir, name, index, "undistort", "images")) \
+        #     and len(os.listdir(os.path.join(extrinsic_dir, name, index, "undistort", "images"))) == \
+        #         len(os.listdir(os.path.join(extrinsic_dir, name, index, "images"))):
             
-            continue
+        #     continue
         
         if img_dict is None:
             img_dict = ImageDict.from_path(os.path.join(extrinsic_dir, name, index))
@@ -230,12 +230,11 @@ def get_length(name):
         
         for id, cor in zip(kypt_3d_ids, kypt_3d_cor):
             kypt_3d[id] = cor
-        
         for mid in kypt_3d.keys():
             for adj_id in adj_ids[mid]:
                 if adj_id in kypt_3d:
                     length_list.append(np.linalg.norm(kypt_3d[mid] - kypt_3d[adj_id]))
-                    
+    
     print("Length mean:", np.mean(length_list))
     print("Length std:", np.std(length_list))
     print("Max length:", np.max(length_list))
@@ -374,7 +373,7 @@ if __name__ == "__main__":
     new_extrinsics = {}
     for serial_num, extrinsic in extrinsics.items():
         new_extrinsic = np.array(extrinsic)
-        new_extrinsic[:3, 3] *= (0.05 / np.mean(length))
+        new_extrinsic[:3, 3] *= (0.025 / np.mean(length))
         new_extrinsics[serial_num] = new_extrinsic.tolist()
 
     os.makedirs(os.path.join(cam_param_dir, name), exist_ok=True)

@@ -12,11 +12,11 @@ class RobotGUIController:
             robot_controller: XArmController 또는 유사한 인터페이스를 가진 로봇 컨트롤러
             hand_controller: Hand controller
             predefined_poses: dict, 미리 정의된 포즈들 (선택사항)
-            grasp_pose: dict with 'start' and 'grasp' keys containing hand poses
+            grasp_pose: dict with 'start', 'pregrasp', 'grasp', 'squeezed' keys containing hand poses
         """
         
         self.predefined_poses = predefined_poses
-        self.predefined_hand_traj = grasp_pose  # {'start': pose, 'grasp': pose}
+        self.predefined_hand_traj = grasp_pose  # {'start': pose, 'pregrasp': pose, 'grasp': pose, 'squeezed': pose}
         self.robot = robot_controller
         self.hand = hand_controller
         
@@ -25,9 +25,10 @@ class RobotGUIController:
         self.cart_delta = 1.0    # cartesian 위치 변화량 (mm)
         self.angle_delta = 0.01  # orientation 변화량 (radian)
         
-        # Hand grasp parameters
+        # Hand grasp parameters - now with 4 stages
         self.hand_grasp_speed = 0.005  # trajectory interpolation step (0~1)
-        self.hand_grasp_progress = 0.0  # current progress along trajectory (0~1)
+        self.hand_grasp_progress = 0.0  # current progress along trajectory (0~3)
+        # 0~1: start->pregrasp, 1~2: pregrasp->grasp, 2~3: grasp->squeezed
         
         # Button states
         self.button_states = {}
@@ -174,13 +175,13 @@ class RobotGUIController:
             btn.pack(side=tk.LEFT, padx=5)
     
     def _build_hand_grasp_frame(self):
-        """Hand grasp trajectory control frame"""
+        """Hand grasp trajectory control frame with 4 stages"""
         hand_frame = tk.LabelFrame(self.root, text="Hand Grasp Control", font=("Arial", 12))
         hand_frame.pack(pady=10, padx=10, fill="both")
         
-        # Progress label
+        # Progress label with stage info
         self.hand_progress_label = tk.Label(hand_frame, 
-                                           text=f"Progress: {self.hand_grasp_progress:.2f}", 
+                                           text=self._get_progress_text(), 
                                            font=("Arial", 10))
         self.hand_progress_label.pack(pady=5)
         
@@ -188,7 +189,7 @@ class RobotGUIController:
         button_frame = tk.Frame(hand_frame)
         button_frame.pack(pady=5)
         
-        # Start -> Grasp button
+        # Start -> Squeezed button
         btn_to_grasp = tk.Button(button_frame, text="Hand Grasp →", width=20, 
                                  bg="lightcoral", font=("Arial", 10, "bold"))
         btn_name_to_grasp = "hand_grasp_forward"
@@ -199,7 +200,7 @@ class RobotGUIController:
                          lambda e, name=btn_name_to_grasp: self._on_button_release(name))
         btn_to_grasp.pack(side=tk.LEFT, padx=10)
         
-        # Grasp -> Start button
+        # Squeezed -> Start button
         btn_to_start = tk.Button(button_frame, text="← Hand Release", width=20, 
                                 bg="lightseagreen", font=("Arial", 10, "bold"))
         btn_name_to_start = "hand_grasp_backward"
@@ -209,6 +210,24 @@ class RobotGUIController:
         btn_to_start.bind('<ButtonRelease-1>', 
                          lambda e, name=btn_name_to_start: self._on_button_release(name))
         btn_to_start.pack(side=tk.LEFT, padx=10)
+    
+    def _get_progress_text(self):
+        """Get progress text with current stage"""
+        progress = self.hand_grasp_progress
+        if progress < 1.0:
+            stage = "Start → Pregrasp"
+            stage_progress = progress
+        elif progress < 2.0:
+            stage = "Pregrasp → Grasp"
+            stage_progress = progress - 1.0
+        elif progress < 3.0:
+            stage = "Grasp → Squeezed"
+            stage_progress = progress - 2.0
+        else:
+            stage = "Squeezed"
+            stage_progress = 1.0
+        
+        return f"Progress: {progress:.2f}/3.0 | Stage: {stage} ({stage_progress:.2f})"
     
     def _on_button_press(self, button_name):
         self.button_states[button_name] = True
@@ -224,30 +243,59 @@ class RobotGUIController:
         print(f">>> Control Mode: {self.control_mode.upper()}")
     
     def _handle_hand_grasp_control(self, pressed_buttons):
-        """Handle hand grasp trajectory execution"""
+        """Handle hand grasp trajectory execution with 4 stages"""
         if self.predefined_hand_traj is None:
             return
         
         start_pose = self.predefined_hand_traj['start']
+        pregrasp_pose = self.predefined_hand_traj['pregrasp']
         grasp_pose = self.predefined_hand_traj['grasp']
+        squeezed_pose = self.predefined_hand_traj['squeezed']
         
-        # Forward direction (start -> grasp)
+        # Forward direction (start -> pregrasp -> grasp -> squeezed)
         if 'hand_grasp_forward' in pressed_buttons:
-            if self.hand_grasp_progress < 1.0:
-                self.hand_grasp_progress = min(1.0, self.hand_grasp_progress + self.hand_grasp_speed)
-                # Linear interpolation
-                current_pose = start_pose + (grasp_pose - start_pose) * self.hand_grasp_progress
+            if self.hand_grasp_progress < 3.0:
+                self.hand_grasp_progress = min(3.0, self.hand_grasp_progress + self.hand_grasp_speed)
+                
+                # Determine current stage and interpolate
+                progress = self.hand_grasp_progress
+                if progress <= 1.0:
+                    # Stage 1: start -> pregrasp
+                    print(start_pose.shape, pregrasp_pose.shape)
+                    current_pose = start_pose + (pregrasp_pose - start_pose) * progress
+                elif progress <= 2.0:
+                    # Stage 2: pregrasp -> grasp
+                    stage_progress = progress - 1.0
+                    current_pose = pregrasp_pose + (grasp_pose - pregrasp_pose) * stage_progress
+                else:
+                    # Stage 3: grasp -> squeezed
+                    stage_progress = progress - 2.0
+                    current_pose = grasp_pose + (squeezed_pose - grasp_pose) * stage_progress
+                
                 self.hand.move(current_pose)
-                self.hand_progress_label.config(text=f"Progress: {self.hand_grasp_progress:.2f}")
+                self.hand_progress_label.config(text=self._get_progress_text())
         
-        # Backward direction (grasp -> start)
+        # Backward direction (squeezed -> grasp -> pregrasp -> start)
         elif 'hand_grasp_backward' in pressed_buttons:
             if self.hand_grasp_progress > 0.0:
                 self.hand_grasp_progress = max(0.0, self.hand_grasp_progress - self.hand_grasp_speed)
-                # Linear interpolation
-                current_pose = start_pose + (grasp_pose - start_pose) * self.hand_grasp_progress
+                
+                # Determine current stage and interpolate
+                progress = self.hand_grasp_progress
+                if progress <= 1.0:
+                    # Stage 1: start -> pregrasp
+                    current_pose = start_pose + (pregrasp_pose - start_pose) * progress
+                elif progress <= 2.0:
+                    # Stage 2: pregrasp -> grasp
+                    stage_progress = progress - 1.0
+                    current_pose = pregrasp_pose + (grasp_pose - pregrasp_pose) * stage_progress
+                else:
+                    # Stage 3: grasp -> squeezed
+                    stage_progress = progress - 2.0
+                    current_pose = grasp_pose + (squeezed_pose - grasp_pose) * stage_progress
+                
                 self.hand.move(current_pose)
-                self.hand_progress_label.config(text=f"Progress: {self.hand_grasp_progress:.2f}")
+                self.hand_progress_label.config(text=self._get_progress_text())
     
     def _handle_pose_control(self, pressed_buttons):
         """ Move to predefined poses """

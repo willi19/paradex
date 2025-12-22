@@ -2,6 +2,7 @@ import os
 import numpy as np
 import trimesh
 from datetime import datetime
+import transforms3d
 
 from paradex.robot.robot_wrapper import RobotWrapper
 from paradex.visualization.visualizer.viser import ViserViewer
@@ -21,7 +22,7 @@ def get_object_6d(obj_name, filename):
     img_dict = ImageDict.from_path(os.path.join(shared_dir, "inference", "grasp_eval", filename))
     marker_2d, marker_3d = img_dict.triangulate_markers()
     
-    marker_offset = np.load(os.path.join(shared_dir, "object", "marker_offset", obj_name, "0", "marker_offset.npy"), allow_pickle=True).item()
+    marker_offset = np.load("marker_offset.npy", allow_pickle=True).item()
     marker_id = list(marker_offset.keys())
     A = []
     B = []
@@ -61,14 +62,29 @@ obj_mesh = trimesh.load(obj_path)
 obj_T = np.linalg.inv(c2r) @ obj_T
 print("Object 6D pose:\n", obj_T)
 
-index = 6
+index = 1
 
 vis = ViserViewer()
 
-wrist_6d = np.load(f"dexgraspnet/results/pringles/{index}/wrist_6d.npy")
+data = np.load(f"bodex/scale010_grasp.npy",allow_pickle=True).item()
+qpos = data['robot_pose'][0, index]
+
+trans = qpos[0][:3]
+quat = qpos[0][3:7]
+rotmat = transforms3d.quaternions.quat2mat(quat) 
+
+q_delta = np.array([0, 1, 0, 1], dtype=np.float64)
+q_delta = q_delta / np.linalg.norm(q_delta)
+R_delta = transforms3d.quaternions.quat2mat(q_delta)
+# rotmat = rotmat @ np.linalg.inv(R_delta            )
+
+wrist_6d = np.eye(4)
+wrist_6d[:3, :3] = rotmat
+wrist_6d[:3, 3] = trans
 
 wrist_6d = obj_T @ wrist_6d
-qpos_tmp = np.load(f"dexgraspnet/results/pringles/{index}/qpos.npy")
+print(wrist_6d)
+qpos_tmp = qpos[1, 7:]
 
 qpos = np.zeros(16)
 qpos[0:4] = qpos_tmp[12:16]

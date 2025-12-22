@@ -3,6 +3,7 @@ from datetime import datetime
 import os
 import numpy as np
 import trimesh
+import transforms3d
 
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
 from paradex.image.image_dict import ImageDict
@@ -10,7 +11,7 @@ from paradex.image.aruco import detect_aruco
 from paradex.utils.path import shared_dir
 from paradex.calibration.utils import save_current_camparam, load_current_C2R
 from paradex.transforms.conversion import SOLVE_XA_B
-from paradex.io.robot_controller.gui_controller_prev import RobotGUIController
+from paradex.io.robot_controller.gui_controller import RobotGUIController
 from paradex.io.robot_controller import get_arm, get_hand
 from paradex.utils.path import rsc_path
 from paradex.robot.robot_wrapper import RobotWrapper
@@ -22,7 +23,7 @@ def get_object_6d(obj_name, filename):
     img_dict = ImageDict.from_path(os.path.join(shared_dir, "inference", "grasp_eval", filename))
     marker_2d, marker_3d = img_dict.triangulate_markers()
     
-    marker_offset = np.load(os.path.join(shared_dir, "object", "marker_offset", obj_name, "0", "marker_offset.npy"), allow_pickle=True).item()
+    marker_offset = np.load("marker_offset.npy", allow_pickle=True).item()
     marker_id = list(marker_offset.keys())
     A = []
     B = []
@@ -55,7 +56,7 @@ def normalize_cylinder(obj_6D):
     
     return ret
 
-for index in [6]:
+for index in [1]:
     c2r = load_current_C2R()
     
     filename = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -85,17 +86,28 @@ for index in [6]:
 
     obj_T = np.linalg.inv(c2r) @ obj_T
     
-    qpos = np.load(f"dexgraspnet/results/pringles/{index}/qpos.npy")
-    # qpos = np.zeros(16)
-    # qpos[12:16] = qpos_tmp[0:4]
-    # qpos[0:12] = qpos_tmp[4:16]
+    data = np.load(f"bodex/scale010_grasp.npy",allow_pickle=True).item()
+    qpos_tmp = data['robot_pose'][0, index]
     
-    wrist_6d = np.load(f"dexgraspnet/results/pringles/{index}/wrist_6d.npy")
+    trans = qpos_tmp[0][:3]
+    quat = qpos_tmp[0][3:7]
+    rotmat = transforms3d.quaternions.quat2mat(quat) 
+    wrist_6d = np.eye(4)
+    wrist_6d[:3, :3] = rotmat
+    wrist_6d[:3, 3] = trans
+            
+    qpos = np.zeros((3, 16))
+    qpos_tmp = qpos_tmp[:, 7:]
+    qpos[:, :4] = qpos_tmp[:, 12:]
+    qpos[:, 4:] = qpos_tmp[:, :12]
+    
+    # wrist_6d = np.load(f"dexgraspnet/results/pringles/{index}/wrist_6d.npy")
     wrist_6d = obj_T @ wrist_6d
     
     robot = RobotWrapper(get_robot_urdf_path(arm_name="xarm", hand_name="allegro"))
     q, succ = robot.solve_ik(wrist_6d, "palm_link")
     pick_action = robot.compute_forward_kinematics(q, ["link6"])["link6"]
 
-    rgc = RobotGUIController(get_arm("xarm"), get_hand("allegro"), {"grasp":pick_action}, {"start": np.zeros(16), "grasp": qpos})
+    squeezed_qpos = qpos[1, :] * 8 - qpos[0, :] * 7
+    rgc = RobotGUIController(get_arm("xarm"), get_hand("allegro"), {"grasp":pick_action}, {"start": np.zeros(16), "pregrasp": qpos[0], "grasp": qpos[1], 'squeezed': squeezed_qpos})
     rgc.run()

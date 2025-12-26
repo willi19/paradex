@@ -25,13 +25,13 @@ root_name = find_latest_directory(extrinsic_dir)
 root_dir = os.path.join(extrinsic_dir, root_name)
 
 save_remain = len(reader.camera_names)
+save_id = {name:0 for name in reader.camera_names}
 
 while not exit_event.is_set():
     images_data = reader.get_images(copy=False)
     
     meta_data = []
     binary_data = []
-
 
     for camera_name, (image, frame_id) in images_data.items():
         if frame_id > last_frame_ids[camera_name] and frame_id > 0:
@@ -41,7 +41,6 @@ while not exit_event.is_set():
             
             if save_event.is_set():
                 save_name = find_latest_directory(root_dir)
-                print(save_name)
                 save_path = os.path.join(root_dir, save_name)
                 
                 if os.path.exists(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy")):
@@ -54,7 +53,7 @@ while not exit_event.is_set():
                 cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), cur_image)
                 print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
                 save_remain -= 1
-
+                save_id[camera_name] += 1
 
             cur_image = cv2.resize(cur_image, (cur_image.shape[1]//8, cur_image.shape[0]//8))
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
@@ -66,6 +65,7 @@ while not exit_event.is_set():
                     'type': 'image',  # 데이터 타입
                     'name': camera_name,
                     'frame_id': int(frame_id),
+                    'save_id': save_id[camera_name],
                     'shape': tuple(int(x) for x in image.shape),
                     'data_index': len(binary_data)
                 })

@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
 
-from paradex.geometry.conversion import project
-
 
 def draw_rectangle(image, rect_corners, color=(0, 255, 0), thickness=2):
     """

@@ -33,3 +33,4 @@ if args.image_path is None:
     img_dict.undistort(os.path.join(shared_dir, args.save_path))
 
     # img is saved under os.path.join(shared_dir, args.save_path, "images")
+rcc.end()

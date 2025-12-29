@@ -1,9 +1,11 @@
 .DS_Store
 .gitignore
 README.md
+marker_offset.npy
 setup.py
 .vscode/launch_prev.json
 .vscode/settings.json
+bodex/scale010_grasp.npy
 docs/.nojekyll
 docs/Makefile
 docs/conf.py
@@ -374,6 +376,24 @@ inspire_motion/action.npy
 inspire_motion/force.npy
 inspire_motion/position.npy
 inspire_motion/time.npy
+lookup/pringles/0/refined_pick_action.npy
+lookup/pringles/0/refined_pick_hand.npy
+lookup/pringles/0/refined_pick_state.npy
+lookup/pringles/0/refined_place_action.npy
+lookup/pringles/0/refined_place_hand.npy
+lookup/pringles/0/refined_place_state.npy
+lookup/pringles/1/refined_pick_action.npy
+lookup/pringles/1/refined_pick_hand.npy
+lookup/pringles/1/refined_pick_state.npy
+lookup/pringles/1/refined_place_action.npy
+lookup/pringles/1/refined_place_hand.npy
+lookup/pringles/1/refined_place_state.npy
+lookup/pringles/32/refined_pick_action.npy
+lookup/pringles/32/refined_pick_hand.npy
+lookup/pringles/32/refined_pick_state.npy
+lookup/pringles/32/refined_place_action.npy
+lookup/pringles/32/refined_place_hand.npy
+lookup/pringles/32/refined_place_state.npy
 paradex/__init__.py
 paradex.egg-info/PKG-INFO
 paradex.egg-info/SOURCES.txt
@@ -393,6 +413,7 @@ paradex/image/merge.py
 paradex/image/overlay.py
 paradex/image/projection.py
 paradex/image/undistort.py
+paradex/io/__init__.py
 paradex/io/camera_system/camera.py
 paradex/io/camera_system/camera_loader.py
 paradex/io/camera_system/camera_reader.py
@@ -410,7 +431,9 @@ paradex/io/capture_pc/processor.py
 paradex/io/capture_pc/ssh.py
 paradex/io/robot_controller/__init__.py
 paradex/io/robot_controller/allegro_controller.py
+paradex/io/robot_controller/gui_controller copy.py
 paradex/io/robot_controller/gui_controller.py
+paradex/io/robot_controller/gui_controller_prev.py
 paradex/io/robot_controller/inspire_controller.py
 paradex/io/robot_controller/xarm_controller.py
 paradex/io/robot_controller/deprecated/inspire_controller_ip.py
@@ -455,6 +478,7 @@ paradex/utils/upload_file.py
 paradex/video/__init__.py
 paradex/video/raw_video_processor.py
 paradex/video/util.py
+paradex/visualization/__init__.py
 paradex/visualization/robot.py
 paradex/visualization/visual_hull.py
 paradex/visualization/deprecated/contact_graph.py
@@ -1000,6 +1024,7 @@ rsc/robot/xarm/meshes/link6.obj
 rsc/robot/xarm/meshes/link6.stl
 rsc/robot/xarm/meshes/link6.stl.convex.stl
 script/allegro.txt
+script/allegro_ros2.txt
 script/build_docs.sh
 script/set_system.sh
 script/signal_generator.txt
@@ -1022,10 +1047,16 @@ src/capture/robot/xarm_teaching.py
 src/dataset_acquisition/hri/capture.py
 src/dataset_acquisition/miyungpa/capture.py
 src/dataset_acquisition/object_turntable/capture.py
+src/inference/bodex/object6d.py
+src/inference/bodex/visualize.py
 src/inference/grasp_eval/real/asdf.py
 src/inference/grasp_eval/real/grasp_test.py
 src/inference/grasp_eval/real/object6d.py
 src/inference/grasp_eval/real/visualize.py
+src/inference/pringles_test/asdf.py
+src/inference/pringles_test/grasp.py
+src/object6d/image_remote.py
+src/object6d/loftr_client.py
 src/process/miyungpa/compute_tactile.py
 src/process/miyungpa/make_final_image.ipynb
 src/process/miyungpa/process.py
@@ -1146,7 +1177,7 @@ system/paradex1/hecalib/xarm/8_aa.npy
 system/paradex1/hecalib/xarm/8_qpos.npy
 system/paradex1/hecalib/xarm/9_aa.npy
 system/paradex1/hecalib/xarm/9_qpos.npy
-system/paradex2/camera_config.json
+system/paradex2/camera.json
 system/paradex2/charuco_info.json
 system/paradex2/network.json
 system/paradex2/pc.json

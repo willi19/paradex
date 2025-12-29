@@ -1,7 +1,6 @@
 
 from datetime import datetime
 import os
-import cv2
 import numpy as np
 import trimesh
 import transforms3d
@@ -84,9 +83,31 @@ for index in [1]:
     img_dict = ImageDict.from_path(os.path.join(shared_dir, "inference", "grasp_eval", filename))
     img_dict.project_mesh(obj_mesh, color=(0,255,0))
     img_dict.save(os.path.join(shared_dir, "inference", "grasp_eval", filename, "projected"))
-    vis = img_dict.merge()
-    cv2.imshow("projected", vis)
-    cv2.waitKey(0)
 
     obj_T = np.linalg.inv(c2r) @ obj_T
-    np.save(os.path.join(shared_dir, "inference", "grasp_eval", filename, "obj_T.npy"), obj_T)
+    
+    data = np.load(f"bodex/scale010_grasp.npy",allow_pickle=True).item()
+    qpos_tmp = data['robot_pose'][0, index]
+    
+    trans = qpos_tmp[0][:3]
+    quat = qpos_tmp[0][3:7]
+    rotmat = transforms3d.quaternions.quat2mat(quat) 
+    wrist_6d = np.eye(4)
+    wrist_6d[:3, :3] = rotmat
+    wrist_6d[:3, 3] = trans
+            
+    qpos = np.zeros((3, 16))
+    qpos_tmp = qpos_tmp[:, 7:]
+    qpos[:, :4] = qpos_tmp[:, 12:]
+    qpos[:, 4:] = qpos_tmp[:, :12]
+    
+    # wrist_6d = np.load(f"dexgraspnet/results/pringles/{index}/wrist_6d.npy")
+    wrist_6d = obj_T @ wrist_6d
+    
+    robot = RobotWrapper(get_robot_urdf_path(arm_name="xarm", hand_name="allegro"))
+    q, succ = robot.solve_ik(wrist_6d, "palm_link")
+    pick_action = robot.compute_forward_kinematics(q, ["link6"])["link6"]
+
+    squeezed_qpos = qpos[1, :] * 8 - qpos[0, :] * 7
+    rgc = RobotGUIController(get_arm("xarm"), get_hand("allegro"), {"grasp":pick_action}, {"start": np.zeros(16), "pregrasp": qpos[0], "grasp": qpos[1], 'squeezed': squeezed_qpos})
+    rgc.run()

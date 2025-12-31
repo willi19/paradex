@@ -455,6 +455,7 @@ paradex/utils/upload_file.py
 paradex/video/__init__.py
 paradex/video/raw_video_processor.py
 paradex/video/util.py
+paradex/visualization/__init__.py
 paradex/visualization/robot.py
 paradex/visualization/visual_hull.py
 paradex/visualization/deprecated/contact_graph.py
@@ -1146,7 +1147,6 @@ system/paradex1/hecalib/xarm/8_aa.npy
 system/paradex1/hecalib/xarm/8_qpos.npy
 system/paradex1/hecalib/xarm/9_aa.npy
 system/paradex1/hecalib/xarm/9_qpos.npy
-system/paradex2/camera_config.json
 system/paradex2/charuco_info.json
 system/paradex2/network.json
 system/paradex2/pc.json

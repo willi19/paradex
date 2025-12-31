@@ -69,9 +69,14 @@ def get_charuco_detector():
                 aruco_dict[boardinfo["dict_type"]],
                 np.array(boardinfo["markerIDs"])
             )
+            if "setLegacyPattern" in boardinfo and boardinfo["setLegacyPattern"]:
+                print(f"Setting legacy pattern for board {key}")
+                board.setLegacyPattern(True)
+            else:
+                board.setLegacyPattern(False)
+
             _charuco_board_cache[key] = board
             _charuco_detector_cache[key] = aruco.CharucoDetector(board)
-
     return _charuco_detector_cache
 
 # --------------------------------------------------------------
@@ -108,7 +113,6 @@ def detect_charuco(img):
             "checkerCorner": img_pts,
             "checkerIDs": checkerIDs[:, 0],
         }
-    
     return detection_results
 
 def get_adjecent_ids():

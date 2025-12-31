@@ -33,7 +33,7 @@ if __name__ == "__main__":
     rcc = remote_camera_controller("handeye_calibration")
     save_current_camparam(os.path.join(root_dir, "0"))
     file_list = [file_name for file_name in os.listdir(get_handeye_calib_traj(args.arm)) if "_qpos" in file_name]
-    
+    file_list.sort(key=lambda x: int(x.split("_")[0]))
     for idx, file_name in enumerate(file_list):
         os.makedirs(os.path.join(root_dir, str(idx)), exist_ok=True)
         action = np.load(os.path.join(get_handeye_calib_traj(args.arm), file_name))

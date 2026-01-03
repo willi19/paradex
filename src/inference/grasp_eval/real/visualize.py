@@ -12,7 +12,7 @@ from paradex.image.aruco import detect_aruco
 from paradex.utils.path import shared_dir
 from paradex.calibration.utils import save_current_camparam, load_current_C2R
 from paradex.transforms.conversion import SOLVE_XA_B
-from paradex.io.robot_controller.gui_controller import RobotGUIController
+from paradex.io.robot_controller.gui_controller_prev import RobotGUIController
 from paradex.io.robot_controller import get_arm, get_hand
 from paradex.utils.path import rsc_path
 

@@ -38,8 +38,7 @@ def load_camera(serialnum):
     
     if serialnum in cam_info:
         gain = cam_info[serialnum]["gain"]
-        exposure = cam_info[serialnum]["exposure_time"]
-
+        exposure = cam_info[serialnum]["exposure"]
     else:
         gain = 3.0
         exposure = 2500.0

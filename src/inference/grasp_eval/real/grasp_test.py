@@ -5,7 +5,7 @@ from threading import Thread
 from scipy.spatial.transform import Rotation
 
 from paradex.io.robot_controller import get_arm, get_hand
-from paradex.io.robot_controller.gui_controller import RobotGUIController
+from paradex.io.robot_controller.gui_controller_prev import RobotGUIController
 
 arm = get_arm("xarm")
 rgc = RobotGUIController(arm)

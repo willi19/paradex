@@ -51,7 +51,7 @@ class ViserViewer():
             def _(_) -> None:
                 client.camera.far = far_slider.value
 
-    def add_robot(self, name, urdf_path):
+    def add_robot(self, name, urdf_path, pose=None):
         robot = ViserRobotModule(
             target=self.server,
             urdf_path=urdf_path,
@@ -60,10 +60,10 @@ class ViserViewer():
             load_meshes=True,
             load_collision_meshes=False,
         )
-        # if "0" in name:
-        #     robot.change_color(
-        #         [f"/robot/{name}/visual/base_link"], (0.8, 0.2, 0.2)
-        #     )
+        if pose is not None:
+            if hasattr(robot, '_visual_root_frame'):
+                robot._visual_root_frame.position = pose[:3, 3]
+                robot._visual_root_frame.wxyz = R.from_matrix(pose[:3, :3]).as_quat()[[3, 0, 1, 2]]
         
         self.robot_dict[name] = robot
 
@@ -102,7 +102,6 @@ class ViserViewer():
         
         self.frame_nodes[name] = frame_handle
 
-
     def add_traj(self, name, robot_traj: Dict, obj_traj: Dict = {}):
         if len(robot_traj) == 0:
             return
@@ -126,97 +125,39 @@ class ViserViewer():
         self.num_frames += traj_len
         self.gui_timestep.max = self.num_frames - 1
         print(traj_len, self.num_frames)
-
-    def add_grid_lines(self, height=0.0, size=5.0):
-        """Add grid lines separately using line segments"""
-        grid_spacing = 0.1  # 0.5m grid spacing
-        lines_added = 0
-        # X direction lines (parallel to X axis)
-        for y in np.arange(-size, size + grid_spacing, grid_spacing):
-            self.server.scene.add_spline_catmull_rom(
-                f"grid_x_{lines_added}",
-                positions=np.array([[-size, y, height], [size, y, height]]),
-                color=(0.4, 0.4, 0.4),
-                line_width=1.0
-            )
-            lines_added += 1
-            
-        # Y direction lines (parallel to Y axis) 
-        for x in np.arange(-size, size + grid_spacing, grid_spacing):
-            self.server.scene.add_spline_catmull_rom(
-                f"grid_y_{lines_added}",
-                positions=np.array([[x, -size, height], [x, size, height]]),
-                color=(0.4, 0.4, 0.4),
-                line_width=1.0
-            )
-            lines_added += 1
     
     def add_floor(self, height=0.0):
-        """Update floor visibility and appearance"""
         self.floor_size = 1.0
-        try:
-            # Remove existing floor and grid elements
-            try:
-                self.server.scene.remove_by_name("floor")
-            except:
-                pass
-            
-            # Remove existing grid lines  
-            for i in range(100):
-                try:
-                    self.server.scene.remove_by_name(f"grid_x_{i}")
-                    self.server.scene.remove_by_name(f"grid_y_{i}")
-                except:
-                    pass
-
-            if True:  # self.floor_visible.value:
-                # size = self.floor_size.value
-                size = self.floor_size
+        size = self.floor_size
                 
-                # Create a simple box as floor (very thin)
-                self.server.scene.add_box(
-                    name="floor",
-                    dimensions=(size * 2, size * 2, 0.02),  # width, height, thickness
-                    position=(0.0, 0.0, height-0.01),  # Position slightly below z=0
-                    color=(0.7, 0.7, 0.7)
-                )
-                
-                # Add grid lines if enabled
-                if True: #self.grid_visible.value:
-                    try:
-                        self.add_grid_lines(height, size=size)
-                    except Exception as e:
-                        print(f"❌ Grid lines failed: {e}")
-            else:
-                print("🚫 Floor hidden")
-                
-        except Exception as e:
-            print(f"❌ Floor update failed: {e}")
-            import traceback
-            traceback.print_exc()
-
-    def create_floor_mesh(self, size=5.0):
-        """Create a simple floor mesh"""
-        # Create floor plane - make sure vertices are in correct order for proper normals
-        floor_vertices = np.array([
-            [-size, -size, 0],
-            [size, -size, 0], 
-            [size, size, 0],
-            [-size, size, 0]
-        ], dtype=np.float32)
+        # self.floor_box_handle = self.server.scene.add_box(
+        #     name="floor/floor_box",
+        #     dimensions=(size * 2, size * 2, 0.02),  # width, height, thickness
+        #     position=(0.0, 0.0, height-0.01),  # Position slightly below z=0
+        #     color=(0.7, 0.7, 0.7)
+        # )
         
-        # Make sure faces have correct winding order (counter-clockwise when viewed from above)
-        floor_faces = np.array([
-            [0, 1, 2],  # First triangle
-            [0, 2, 3]   # Second triangle
-        ])
-        
-        # Create mesh and ensure normals point upward
-        floor_mesh = trimesh.Trimesh(vertices=floor_vertices, faces=floor_faces)
-        floor_mesh.fix_normals()  # Fix normal directions
-        
-        return floor_mesh
+        # Use viser's built-in grid
+        self.grid_handles = self.server.scene.add_grid(
+            name="floor/grid",
+            width=size * 2,
+            height=size * 2,
+            plane="xy",  # Assuming XY plane at given height
+            position=(0.0, 0.0, height),
+            cell_size = 0.1
+        )
     
+    def update_floor(self):
+        # Toggle floor visibility
+        if hasattr(self, 'floor_box_handle'):
+            self.floor_box_handle.visible = self.floor_visible.value
+        
+        # Toggle grid visibility
+        if hasattr(self, 'grid_handles'):
+            for handle in self.grid_handles:
+                handle.visible = self.grid_visible.value
+        
+
     def update_scene(self, timestep):
         # 현재 timestep이 속한 trajectory 찾기
         cumulative_frames = 0
@@ -354,12 +295,16 @@ class ViserViewer():
         def _(_) -> None:
             self.render_full_video()
 
-    def add_frame(self, name):
+    def add_frame(self, name, T):
         self.frame_nodes[name] = self.server.scene.add_frame(
             name=f"/{name}/frame",
             show_axes=True,
-            axis_length=0.1,
-            axis_radius=0.002,
+            # axis_length=0.1,
+            # axis_radius=0.002,
+            axes_length=0.05,
+            axes_radius=0.002,
+            position=T[:3, 3],
+            wxyz=R.from_matrix(T[:3, :3]).as_quat()[[3, 0, 1, 2]],
         )
 
     def add_lights(self):
@@ -524,8 +469,46 @@ class ViserViewer():
 
         
         return frame_handle
+
+    def change_color(self, name, color):
+        """Change the color of a robot's visualized URDF."""
+        if name in self.robot_dict:
+            self.robot_dict[name].change_color([], color)
+        elif name in self.obj_dict:
+            mesh_handle = self.obj_dict[name]['handle']
+            mesh_handle.color = tuple(int(c * 255) for c in color)
+        else:
+            print(f"Robot '{name}' not found.")    
+    
+    def add_sphere(self, name, position, radius=0.05, color=(1.0,0,0)):
+        self.server.scene.add_icosphere(
+            name=f"/spheres/{name}",
+            radius=radius,
+            color=tuple(int(c * 255) for c in color),
+            position=position
+        )
+
+    def add_arrow(self, name, start, end, color=(0,255,0), shaft_radius=0.01, head_radius=0.02, head_length=0.5):
+        """
+        Add an arrow visualization
         
-            
+        Args:
+            name: Unique name for the arrow
+            start: Starting position [x, y, z]
+            end: Ending position [x, y, z]
+            color: RGB color (0-255 range)
+            shaft_radius: Radius of arrow shaft
+            head_radius: Radius of arrow head
+            head_length: Length of arrow head
+        """
+        print(start, end)
+        self.server.scene.add_spline_catmull_rom(
+            name=f"/arrows/{name}",
+            positions=np.array([start, end]),
+            color=tuple(c / 255.0 for c in color),
+            line_width=shaft_radius * 1000  # Convert to line width
+        )
+
 class ViserRobotModule():
     def __init__(self, target,#: viser.ViserServer | viser.ClientHandle,
                  urdf_path, 
@@ -565,10 +548,16 @@ class ViserRobotModule():
     def change_color(self, name_list, color: Tuple[float, float, float]) -> None:
         """Change the color of the visualized URDF."""
         name_list = list(self._meshes.keys())
+        if len(color) == 4:
+            opacity = color[3]
+        else:
+            opacity = 1.0
+
         color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
         for name in name_list:
             self._meshes[name].color = color
-    
+            self._meshes[name].opacity = opacity
+
     @property
     def show_visual(self) -> bool:
         """Returns whether the visual meshes are currently visible."""
@@ -667,14 +656,14 @@ class ViserRobotModule():
             mesh.apply_scale(self._scale)
             mesh.apply_transform(T_parent_child)
 
-            # vertices = mesh.vertices
-            # faces = mesh.faces
-            # color = np.array(mesh.visual.vertex_colors[0, :3])
-            # self._meshes[name] = (self._target.scene.add_mesh_simple(name, vertices, faces, color=color))
-            self._meshes[name] = self._target.scene.add_mesh_trimesh(
-                name=name,
-                mesh=mesh
-            )
+            vertices = mesh.vertices
+            faces = mesh.faces
+            color = np.array(mesh.visual.vertex_colors[0, :3])
+            self._meshes[name] = (self._target.scene.add_mesh_simple(name, vertices, faces, color=color))
+            # self._meshes[name] = self._target.scene.add_mesh_trimesh(
+            #     name=name,
+            #     mesh=mesh
+            # )
         return root_frame
     
     def get_link_vertices(self, link_name: str = None) -> Dict[str, np.ndarray]:

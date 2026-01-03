@@ -37,14 +37,21 @@ cur_state = {}#serial_num:(np.array([]), np.array([]), 0) for serial_num in seri
 img_dict = {}
 img_text = {}
 
+save_num = 0
+
 while True:
+    waiting_save = False
     all_data = dc.get_data()
     for item_name, item_data in all_data.items():
         # Only process image type data
         if item_data.get('type') == 'image':
             image_bytes = item_data.get('data')
             frame_id = item_data.get('frame_id', 0)
-            
+            save_id = item_data.get('save_id', 0)
+
+            if save_id < save_num:
+                waiting_save = True
+
             if image_bytes:
                 # Decode JPEG
                 nparr = np.frombuffer(image_bytes, np.uint8)
@@ -53,6 +60,7 @@ while True:
                 if image is not None:
                     img_dict[item_name] = image
                     img_text[item_name] = str(frame_id)
+                
         
         elif item_data.get('type') == 'charuco_detection':
             data = item_data.get('data')
@@ -76,6 +84,9 @@ while True:
                 draw_charuco(display_dict[serial_num], corners, BOARD_COLORS[1], 1, -1)
 
         merged_image = merge_image(display_dict, img_text)
+        if waiting_save:
+            cv2.putText(merged_image, "Saving...", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+            
         cv2.imshow("Merged Stream", merged_image)
         key = cv2.waitKey(1)
 
@@ -95,7 +106,7 @@ while True:
         os.makedirs(os.path.join(extrinsic_dir, filename, str(capture_idx), "images"), exist_ok=True)
         
         cs.send_command("save", True)
-        
+        save_num += 1
         for serial_num in cur_state.keys():
             corners, frame = cur_state[serial_num]
             if corners.shape[0] > 0:

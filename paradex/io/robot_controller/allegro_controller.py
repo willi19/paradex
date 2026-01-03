@@ -1,148 +1,144 @@
 import time
+import os
 import numpy as np
 from threading import Thread, Event, Lock
 
-import os
+import rclpy
+rclpy.init()
 
-import rospy
+from rclpy.node import Node
+
 from sensor_msgs.msg import JointState
+from std_msgs.msg import Float64MultiArray
 
-from copy import deepcopy as copy
+JOINT_STATE_TOPIC = '/joint_states'
+COMMAND_TOPIC = '/allegro_hand_position_controller/commands'
 
-# List of all ROS Topics
-JOINT_STATE_TOPIC = '/allegroHand/joint_states' 
-GRAV_COMP_TOPIC = '/allegroHand/grav_comp_torques' 
-COMM_JOINT_STATE_TOPIC = '/allegroHand/commanded_joint_states' 
-JOINT_COMM_TOPIC = '/allegroHand/joint_cmd'
-
-# Maximum permitted values
 MAX_ANGLE = 2.1
-MAX_TORQUE = 0.3
-
-DEFAULT_VAL = None
 action_dof = 16
 
-class AllegroController:
+DEFAULT_VAL = None
+
+class AllegroController(Node):
     def __init__(self):
-        
+        super().__init__('allegro_hand_node')
+
         self.current_joint_pose = DEFAULT_VAL
-        self.grav_comp = DEFAULT_VAL
-        self.cmd_joint_state = DEFAULT_VAL
-        
-        rospy.init_node('allegro_hand_node')
-        
+
         self.save_event = Event()
         self.exit_event = Event()
         self.connection_event = Event()
-        
-        self.lock = Lock()       
-        self.thread = Thread(target=self.control_loop)
-        self.thread.start()
-        
-        self.connection_event.wait()
-        
-    def control_loop(self):
-        rospy.Subscriber(JOINT_STATE_TOPIC, JointState, self._sub_callback_joint_state)
-        rospy.Subscriber(GRAV_COMP_TOPIC, JointState, self._sub_callback_grav_comp)
-        rospy.Subscriber(COMM_JOINT_STATE_TOPIC, JointState, self._sub_callback_cmd__joint_state)
 
-        self.joint_comm_publisher = rospy.Publisher(JOINT_COMM_TOPIC, JointState, queue_size=-1)
-        self.connection_event.wait()
-        
-        while not self.exit_event.is_set():
+        self.lock = Lock()
+
+        self.sub_js = self.create_subscription(JointState, JOINT_STATE_TOPIC, self._sub_callback_joint_state, 10)
+        self.pub_cmd = self.create_publisher(Float64MultiArray, COMMAND_TOPIC, 10)
+
+        self.action = np.zeros(action_dof, dtype=float)
+        self.joint_value = np.zeros(action_dof, dtype=float)
+
+        self.thread = Thread(target=self.control_loop, daemon=True)
+        self.thread.start()
+
+    def control_loop(self):
+        # wait first joint state
+        while rclpy.ok() and not self.connection_event.is_set():
+            rclpy.spin_once(self, timeout_sec=0.01)  # 필수!
+            time.sleep(0.01)
+
+        rate_hz = 100.0
+        dt = 1.0 / rate_hz
+
+        while rclpy.ok() and not self.exit_event.is_set():
             start_time = time.perf_counter()
-            joint_value = np.asarray(self.current_joint_pose.position)
-            
+
             with self.lock:
                 action = self.action.copy()
-                joint_value = joint_value.copy()
+                joint_value = self.joint_value.copy()
 
             self._publish_action(action, absolute=True)
-            
+
             if self.save_event.is_set():
                 self.data["action"].append(action.copy())
                 self.data["time"].append(time.time())
                 self.data["position"].append(joint_value.copy())
 
             elapsed = time.perf_counter() - start_time
-            time_to_wait = max(0.0, 0.01 - elapsed)
-            time.sleep(time_to_wait)
+            time.sleep(max(0.0, dt - elapsed))
 
     def start(self, save_path):
         self.capture_path = save_path
-        self.data = {
-            "action": [],
-            "time": [],
-            "position": []
-        }
-        
+        self.data = {"action": [], "time": [], "position": []}
         self.save_event.set()
 
     def stop(self):
         self.save_event.clear()
-        
         os.makedirs(self.capture_path, exist_ok=True)
-        for name, value in self.data.items():                     
+        for name, value in self.data.items():
             np.save(os.path.join(self.capture_path, f"{name}.npy"), np.array(value))
-                    
         self.capture_path = None
-        
+
     def end(self):
         self.exit_event.set()
-        self.thread.join()
-        
+        self.thread.join(timeout=1.0)
         if self.save_event.is_set():
             self.stop()
-        
-    def get_data(self):
-        ret = {}
-        with self.lock:
-            ret["action"] = self.action.copy()
-            ret["joint_value"] = self.joint_value.copy()
-            ret["time"] = time.time()
-            
-        return ret
-        
+
     def move(self, action):
+        action = np.asarray(action, dtype=float)
+        assert action.shape[0] == action_dof
         with self.lock:
             self.action = action.copy()
-    
-    def _sub_callback_joint_state(self, data):
-        if not self.connection_event.is_set():
-            with self.lock:
-                self.action = np.asarray(data.position)
-                self.joint_value = np.asarray(data.position)
-                self.connection_event.set()
-                
-        self.current_joint_pose = data
 
-    def _sub_callback_grav_comp(self, data):
-        self.grav_comp = data
-
-    def _sub_callback_cmd__joint_state(self, data):
-        self.cmd_joint_state = data
-    
-    def _clip(self, action, value):
-        return np.clip(action, -value, value)
-    
-    def _publish_action(self, desired_action = np.zeros(action_dof), absolute = True):
-        if self.current_joint_pose == DEFAULT_VAL:
-            print('No joint data received!')
+    def _sub_callback_joint_state(self, msg: JointState):
+        # JointState order must match controller's joint order.
+        # Usually it does if the controller config uses same joint list.
+        if len(msg.position) >= action_dof:
+            pos = np.asarray(msg.position[:action_dof], dtype=float)
+        else:
+            # If not enough joints, ignore
             return
 
-        action = self._clip(desired_action, MAX_ANGLE)
-        current_angles = self.current_joint_pose.position
-        
-        if absolute is True:
-            desired_angles = np.array(action)
-        else:
-            desired_angles = np.array(action) + np.array(current_angles)
-        
-        desired_js = copy(self.current_joint_pose)
-        desired_js.position = list(desired_angles)
-        desired_js.effort = list([])
+        with self.lock:
+            self.joint_value = pos.copy()
+            if self.current_joint_pose is DEFAULT_VAL:
+                self.action = pos.copy()
+                self.connection_event.set()
 
-        self.joint_comm_publisher.publish(desired_js)
-    
-    def is_error(self):
-        return False
+        self.current_joint_pose = msg
+
+    def _clip(self, action, value):
+        return np.clip(action, -value, value)
+
+    def _publish_action(self, desired_action, absolute=True):
+        if self.current_joint_pose is DEFAULT_VAL:
+            self.get_logger().warn('No joint data received yet!')
+            return
+
+        action = self._clip(np.asarray(desired_action, dtype=float), MAX_ANGLE)
+
+        # ForwardCommandController expects absolute positions in correct joint order
+        if not absolute:
+            with self.lock:
+                current = self.joint_value.copy()
+            action = action + current
+
+        msg = Float64MultiArray()
+        msg.data = action.tolist()
+        self.pub_cmd.publish(msg)
+
+    def get_data(self):
+        """
+        Get current hand state
+        
+        Returns:
+            dict: Dictionary containing:
+                - 'qpos': Current joint positions (16,)
+                - 'action': Current target action (16,)
+        """
+        with self.lock:
+            return {
+                'qpos': self.joint_value.copy(),
+                'action': self.action.copy(),
+                'time': time.time()
+            }

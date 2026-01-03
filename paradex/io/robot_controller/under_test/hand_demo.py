@@ -177,7 +177,7 @@ def contact_demo(hand: InspireHandRH56DFTP):
         for i in range(300):
             print(f"\n--- Reading {i+1}/10 ---")
             print_contact_info(hand)
-            time.sleep(0.5)
+            
     except KeyboardInterrupt:
         print("\nMonitoring stopped by user")
 
@@ -333,29 +333,30 @@ def tactile_demo(hand: InspireHandRH56DFTP):
     try:
         while True:
             data = hand.read_tactile_data()
+            print(data)
             
-            for i, (finger, part) in enumerate(plot_mapping):
-                if i >= len(im_list): break
+            # for i, (finger, part) in enumerate(plot_mapping):
+            #     if i >= len(im_list): break
                 
-                if finger == 'palm':
-                    raw_data = data['palm']
-                    rows, cols = SENSOR_SHAPES['palm']
-                    # Palm logic from visualize_contact.py:
-                    # array = np.array(raw, dtype=np.uint16).reshape(rows, cols)
-                    # array = array[::-1].T
-                    array = np.array(raw_data, dtype=np.uint32).reshape(rows, cols)
-                    array = array[::-1].T
-                else:
-                    raw_data = data[finger][part]
-                    rows, cols = SENSOR_SHAPES[finger][part]
-                    array = np.array(raw_data, dtype=np.uint32).reshape(rows, cols)
+            #     if finger == 'palm':
+            #         raw_data = data['palm']
+            #         rows, cols = SENSOR_SHAPES['palm']
+            #         # Palm logic from visualize_contact.py:
+            #         # array = np.array(raw, dtype=np.uint16).reshape(rows, cols)
+            #         # array = array[::-1].T
+            #         array = np.array(raw_data, dtype=np.uint32).reshape(rows, cols)
+            #         array = array[::-1].T
+            #     else:
+            #         raw_data = data[finger][part]
+            #         rows, cols = SENSOR_SHAPES[finger][part]
+            #         array = np.array(raw_data, dtype=np.uint32).reshape(rows, cols)
                 
-                im_list[i].set_data(array)
+            #     im_list[i].set_data(array)
             
-            fig.canvas.draw()
-            fig.canvas.flush_events()
-            # plt.pause(0.01) # pause can be slow, flush_events is often better for loops
-            time.sleep(0.01)
+            # fig.canvas.draw()
+            # fig.canvas.flush_events()
+            # # plt.pause(0.01) # pause can be slow, flush_events is often better for loops
+            # time.sleep(0.01)
             
     except KeyboardInterrupt:
         print("\nVisualization stopped by user")

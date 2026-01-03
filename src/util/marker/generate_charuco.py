@@ -17,9 +17,9 @@ def generate_charuco_board_pdf(board_number=1, marker_id_offset=0):
         marker_id_offset: Starting marker ID offset for this board
     """
     # ChArUco board parameters
-    squares_x = 4  # number of squares in X direction
-    squares_y = 5  # number of squares in Y direction
-    square_length = 50  # in mm
+    squares_x = 5  # number of squares in X direction
+    squares_y = 6  # number of squares in Y direction
+    square_length = 60  # in mm
     marker_length = 40  # in mm (should be smaller than square_length)
     
     # A4 dimensions in mm
@@ -130,6 +130,7 @@ def generate_charuco_board_pdf(board_number=1, marker_id_offset=0):
     # Add title with actual marker ID information
     plt.savefig(output_filename, format='pdf', dpi=300, 
                 bbox_inches='tight', pad_inches=0)
+    plt.savefig("test.png")
     plt.close()
     
     print(f"  ✓ Saved to: {output_filename}")
@@ -163,7 +164,7 @@ if __name__ == "__main__":
     print("Generating 4 ChArUco Boards with Non-Overlapping Marker IDs")
     print("="*70)
     
-    num_boards = 6
+    num_boards = 1
     current_marker_id = 0
     
     for i in range(1, num_boards + 1):

@@ -31,6 +31,7 @@ img_text = {}
 
 while not exit_event.is_set():        
     all_data = dc.get_data()
+    print(all_data.keys())
     for item_name, item_data in all_data.items():
         # Only process image type data
         if item_data.get('type') != 'image':

@@ -29,27 +29,27 @@ class ViserViewer():
 
     def load_server(self):
         self.server = viser.ViserServer()
-        self.server.gui.configure_theme(dark_mode=False)
+        self.server.gui.configure_theme(dark_mode=True)
 
         self.server.scene.set_up_direction(self.up_direction)
         self.server.scene.world_axes
 
-        @self.server.on_client_connect
-        def _(client: viser.ClientHandle) -> None:
-            near_slider = client.gui.add_slider(
-                "Near", min=0.01, max=10.0, step=0.001, initial_value=client.camera.near
-            )
-            far_slider = client.gui.add_slider(
-                "Far", min=1, max=1000.0, step=0.001, initial_value=client.camera.far
-            )
+        # @self.server.on_client_connect
+        # def _(client: viser.ClientHandle) -> None:
+        #     near_slider = client.gui.add_slider(
+        #         "Near", min=0.01, max=10.0, step=0.001, initial_value=client.camera.near
+        #     )
+        #     far_slider = client.gui.add_slider(
+        #         "Far", min=1, max=1000.0, step=0.001, initial_value=client.camera.far
+        #     )
 
-            @near_slider.on_update
-            def _(_) -> None:
-                client.camera.near = near_slider.value
+        #     @near_slider.on_update
+        #     def _(_) -> None:
+        #         client.camera.near = near_slider.value
 
-            @far_slider.on_update
-            def _(_) -> None:
-                client.camera.far = far_slider.value
+        #     @far_slider.on_update
+        #     def _(_) -> None:
+        #         client.camera.far = far_slider.value
 
     def add_robot(self, name, urdf_path, pose=None):
         robot = ViserRobotModule(
@@ -87,10 +87,15 @@ class ViserViewer():
         )
         
         # Add mesh to the frame (at origin relative to frame)
-        mesh_handle = self.server.scene.add_mesh_trimesh(
+        # mesh_handle = self.server.scene.add_mesh_trimesh(
+        #         name=f"/objects/{name}_frame/{name}",
+        #         mesh=obj
+        #     )
+        mesh_handle = self.server.scene.add_mesh_simple(
                 name=f"/objects/{name}_frame/{name}",
-                mesh=obj
-            )
+                vertices=obj.vertices,
+                faces=obj.faces
+        )
         
         # Store in object dictionary
         self.obj_dict[name] = {
@@ -103,9 +108,9 @@ class ViserViewer():
         self.frame_nodes[name] = frame_handle
 
     def add_traj(self, name, robot_traj: Dict, obj_traj: Dict = {}):
-        if len(robot_traj) == 0:
-            return
-        traj_len = robot_traj[list(robot_traj.keys())[0]].shape[0]
+        # if len(robot_traj) == 0:
+        #     return
+        traj_len = max([traj.shape[0] for traj in list(robot_traj.values())] + [traj.shape[0] for traj in list(obj_traj.values())])
         new_traj_dict = {"robot":{}, "object":{}}
         for robot_name in list(self.robot_dict.keys()):
             if robot_name in robot_traj:
@@ -124,18 +129,18 @@ class ViserViewer():
         self.traj_list.append((name, new_traj_dict, traj_len))
         self.num_frames += traj_len
         self.gui_timestep.max = self.num_frames - 1
-        print(traj_len, self.num_frames)
+        # print(traj_len, self.num_frames)
     
     def add_floor(self, height=0.0):
         self.floor_size = 1.0
         size = self.floor_size
                 
-        # self.floor_box_handle = self.server.scene.add_box(
-        #     name="floor/floor_box",
-        #     dimensions=(size * 2, size * 2, 0.02),  # width, height, thickness
-        #     position=(0.0, 0.0, height-0.01),  # Position slightly below z=0
-        #     color=(0.7, 0.7, 0.7)
-        # )
+        self.floor_box_handle = self.server.scene.add_box(
+            name="floor/floor_box",
+            dimensions=(size * 2, size * 2, 0.02),  # width, height, thickness
+            position=(0.0, 0.0, height-0.01),  # Position slightly below z=0
+            color=(0.7, 0.7, 0.7)
+        )
         
         # Use viser's built-in grid
         self.grid_handles = self.server.scene.add_grid(
@@ -150,12 +155,11 @@ class ViserViewer():
     def update_floor(self):
         # Toggle floor visibility
         if hasattr(self, 'floor_box_handle'):
-            self.floor_box_handle.visible = self.floor_visible.value
+            self.floor_box_handle.visible = not self.floor_visible.value
         
         # Toggle grid visibility
         if hasattr(self, 'grid_handles'):
-            for handle in self.grid_handles:
-                handle.visible = self.grid_visible.value
+            self.grid_handles.visible = not self.grid_visible.value
         
 
     def update_scene(self, timestep):
@@ -225,7 +229,7 @@ class ViserViewer():
             )
             self.gui_next_frame = self.server.gui.add_button("Next Frame", disabled=True)
             self.gui_prev_frame = self.server.gui.add_button("Prev Frame", disabled=True)
-            self.gui_playing = self.server.gui.add_checkbox("Playing", True)
+            self.gui_playing = self.server.gui.add_checkbox("Playing", False)
             self.render_png = self.server.gui.add_checkbox("Render to PNG", False)
             self.gui_framerate = self.server.gui.add_slider(
                 "FPS", min=1, max=120, step=0.1, initial_value=10
@@ -477,6 +481,8 @@ class ViserViewer():
         elif name in self.obj_dict:
             mesh_handle = self.obj_dict[name]['handle']
             mesh_handle.color = tuple(int(c * 255) for c in color)
+            if len(color) == 4:
+                mesh_handle.opacity = color[3]
         else:
             print(f"Robot '{name}' not found.")    
     
@@ -501,7 +507,6 @@ class ViserViewer():
             head_radius: Radius of arrow head
             head_length: Length of arrow head
         """
-        print(start, end)
         self.server.scene.add_spline_catmull_rom(
             name=f"/arrows/{name}",
             positions=np.array([start, end]),
@@ -624,6 +629,7 @@ class ViserRobotModule():
         root_frame = self._target.scene.add_frame(
             prefixed_root_node_name, show_axes=False
         )
+        
         # Add coordinate frame for each joint.
         for joint in self._urdf.joint_map.values():
             assert isinstance(joint, yourdfpy.Joint)
@@ -714,6 +720,10 @@ class ViserRobotModule():
         
         return vertices_dict
 
+    def set_visibility(self, visible: bool) -> None:
+        """Set visibility of all meshes."""
+        for mesh in self._meshes.values():
+            mesh.visible = visible
 
     def get_all_vertices(self) -> np.ndarray:
         """

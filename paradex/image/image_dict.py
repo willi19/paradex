@@ -308,6 +308,10 @@ class ImageDict:
 
         marker_3d = {id: triangulation(np.array(marker_2d[id]["2d"]), np.array(marker_2d[id]["cammtx"]))
                      for id in marker_2d}
+        for id in marker_2d:
+            if marker_3d[id] is None:
+                del marker_3d[id]
+                
         return marker_2d, marker_3d
 
     def triangulate_charuco(self) -> Dict[str, np.ndarray]:

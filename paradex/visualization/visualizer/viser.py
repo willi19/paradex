@@ -8,6 +8,7 @@ import trimesh
 from typing import List, Tuple, Dict
 import time
 import viser.transforms as tf
+import threading
 
 from paradex.visualization.robot import RobotModule  
 
@@ -211,12 +212,16 @@ class ViserViewer():
             
         time.sleep(1.0 / self.gui_framerate.value)
     
-    def start_viewer(self):
-        try:
-            while True:
-                self.update()
-        except KeyboardInterrupt:
-            pass
+    def start_viewer(self, use_thread=False):
+        if use_thread:
+            thread = threading.Thread(target=self._viewer_loop, daemon=True)
+            thread.start()
+        else:
+            self._viewer_loop()
+
+    def _viewer_loop(self):
+        while True:
+            self.update()
     
     def add_player(self):
         with self.server.gui.add_folder("Playback"):

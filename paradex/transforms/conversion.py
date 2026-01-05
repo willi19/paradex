@@ -42,7 +42,7 @@ def SOLVE_XA_B(A, B):
         T @ A = B
     """
     assert A.shape == B.shape, "Input matrices must have the same shape."
-
+    assert A.shape[-1] == 3, "Input points must be 3-dimensional."
     # Compute centroids
     centroid_A = np.mean(A, axis=0)
     centroid_B = np.mean(B, axis=0)

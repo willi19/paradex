@@ -1215,3 +1215,4 @@ system/robothome/camera_config.json
 system/robothome/charuco_info.json
 system/robothome/network.json
 system/robothome/pc.json
+test/test_insys.py

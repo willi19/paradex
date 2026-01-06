@@ -4,6 +4,8 @@ import argparse
 from threading import Event
 import time
 
+from paradex.utils.file_io import find_latest_index
+from paradex.utils.path import shared_dir
 from paradex.dataset_acqusition.capture import CaptureSession
 from paradex.utils.keyboard_listener import listen_keyboard
 
@@ -26,20 +28,26 @@ cs = CaptureSession(
 )
 
 name = args.name
+
+save_dir = os.path.join("shared_data", args.name)
+
+last_idx = int(find_latest_index(os.path.join(shared_dir, args.name)))
 while not exit_event.is_set():
     if not save_event.is_set():
         stop_event.clear()
         continue
     
-    index = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # index = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    last_idx += 1
     
-    cs.start(os.path.join("capture", "hri_mingi", name, index))
+    cs.start(os.path.join("capture", "hri", name, str(last_idx)))
     print("Starting new recording session:", name)
     while not stop_event.is_set() and not exit_event.is_set():
         time.sleep(0.02)
         
     cs.stop()
     print("Stopped recording session:", name)
+
     save_event.clear()
     stop_event.clear()
 

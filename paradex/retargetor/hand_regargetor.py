@@ -77,7 +77,7 @@ def inspire(hand_pose_frame):
             tip_direction  = tip_direction / np.linalg.norm(tip_direction)
             tip_direction[1] *= -1
             tip_direction[2] *= -1
-            if tip_direction[0] > 0:
+            if tip_direction[0] < 0:
                 inspire_angles[5] = 1000 - np.arctan(-tip_direction[2] / abs(tip_direction[0])) / np.pi * 2000
                 inspire_angles[4] = np.arccos(-tip_direction[1]) * 2000 - 1000 # no divide by pi for better range
             else:

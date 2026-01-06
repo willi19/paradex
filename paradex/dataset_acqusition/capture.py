@@ -129,9 +129,9 @@ class CaptureSession():
 
         while True:
             data = self.teleop_device.get_data()
-            if data["Right"] is None:
+            if data["Left"] is None:
                 continue
-            state = self.state_extractor.get_state(data['Left'])
+            state = self.state_extractor.get_state(data['Right'])
             if self.save_path is not None:
                 self.state_hist.append(state)
                 self.state_time.append(time.time())

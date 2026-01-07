@@ -29,7 +29,6 @@ cs = CaptureSession(
 
 name = args.name
 
-save_dir = os.path.join("shared_data", args.name)
 
 last_idx = int(find_latest_index(os.path.join(shared_dir, args.name)))
 while not exit_event.is_set():

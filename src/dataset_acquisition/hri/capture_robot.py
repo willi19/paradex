@@ -39,6 +39,7 @@ while True:
     
     cs.start(os.path.join("capture", "hri_inspire_left", args.name, str(last_idx)))
     print("Starting new recording session:", name)
+    print("Capturing index:", last_idx)
     state = cs.teleop()
     cs.stop()
     print("Stopped recording session:", name)

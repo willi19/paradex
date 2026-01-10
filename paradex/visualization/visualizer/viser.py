@@ -658,7 +658,11 @@ class ViserRobotModule():
 
             vertices = mesh.vertices
             faces = mesh.faces
-            color = np.array(mesh.visual.vertex_colors[0, :3])
+            if hasattr(mesh.visual, "vertex_colors"):
+                color = np.array(mesh.visual.vertex_colors[0, :3])
+            else:
+                # fall back to per-face color or a neutral gray
+                color = np.array([200, 200, 200])
             self._meshes[name] = (self._target.scene.add_mesh_simple(name, vertices, faces, color=color))
             # self._meshes[name] = self._target.scene.add_mesh_trimesh(
             #     name=name,

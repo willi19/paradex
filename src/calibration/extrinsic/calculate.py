@@ -373,7 +373,7 @@ if __name__ == "__main__":
     new_extrinsics = {}
     for serial_num, extrinsic in extrinsics.items():
         new_extrinsic = np.array(extrinsic)
-        new_extrinsic[:3, 3] *= (0.06/ np.mean(length))
+        new_extrinsic[:3, 3] *= (0.05/ np.mean(length))
         new_extrinsics[serial_num] = new_extrinsic.tolist()
 
     os.makedirs(os.path.join(cam_param_dir, name), exist_ok=True)

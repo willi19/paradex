@@ -10,6 +10,9 @@ from paradex.utils.system import network_info
 from paradex.io.robot_controller import get_arm
 from paradex.visualization.visualizer.viser import ViserViewer
 
+from paradex.utils.path import rsc_path
+
+
 parser = argparse.ArgumentParser()
 parser.add_argument("--arm", type=str, required=True)
 parser.add_argument("--hand", type=str, required=True)
@@ -24,7 +27,8 @@ if __name__ == "__main__":
     print(qpos)
     action = np.concatenate([qpos, np.zeros(hand_dof)])
 
-    vis.add_robot("robot", get_robot_urdf_path(args.arm, args.hand))
+    urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_left.urdf")
+    # vis.add_robot("robot", get_robot_urdf_path(args.arm, args.hand))
     vis.add_traj("traj", {"robot":np.array([action])})
     arm.end(set_break=True)
     vis.start_viewer()

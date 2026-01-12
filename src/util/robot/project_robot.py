@@ -28,6 +28,11 @@ def load_series(data_dir: str, candidates: Tuple[str, ...]) -> Tuple[np.ndarray,
                 t = np.load(time_path)
             else:
                 t = np.arange(data.shape[0], dtype=float)
+            # Align lengths if off-by-one between data and time.
+            if len(t) != data.shape[0]:
+                n = min(len(t), data.shape[0])
+                data = data[:n]
+                t = t[:n]
             return data, t
     raise FileNotFoundError(f"No data found in {data_dir} for {candidates}")
 
@@ -104,7 +109,7 @@ def main():
     parser.add_argument(
         "--output-dir",
         type=str,
-        default="tmp/robot_projection",
+        default="/home/temp_id/shared_data/capture/hri_inspire_left",
         help="Output directory for projected masks/overlays.",
     )
     parser.add_argument("--device", type=str, default="cuda:0")
@@ -113,9 +118,17 @@ def main():
         action="store_true",
         help="Project the robot origin (0,0,0) into each camera image for debugging (logged for first frame).",
     )
+    parser.add_argument(
+        "--overlay-option",
+        type=str,
+        choices=["action", "position"],
+        default="position",
+        help="Whether to overlay using hand action or hand position data.",
+    )
     args = parser.parse_args()
 
     capture_root = os.path.join("/home/temp_id/shared_data/capture/hri_inspire_left", args.object, str(args.episode))
+    # output_dir = capture_root if args.output_dir is None else args.output_dir
 
     raw_root = os.path.join(capture_root, "raw")
     arm_dir = os.path.join(raw_root, "arm")
@@ -124,7 +137,13 @@ def main():
     # Load recorded trajectories (arm: angles, hand: raw action)
     arm_qpos, arm_time = load_series(arm_dir, ("position.npy", "action_qpos.npy", "action.npy"))
     # hand_action, hand_time = load_series(hand_dir, ("action.npy", "position.npy"))
-    hand_action, hand_time = load_series(hand_dir, ("action.npy",))
+    
+    if args.overlay_option == "action":
+        hand_action, hand_time = load_series(hand_dir, ("action.npy",)) 
+    else:
+        hand_action, hand_time = load_series(hand_dir, ("position.npy",))
+        
+        
     hand_action = resample_to(hand_time, hand_action, arm_time)
     if args.hand == "inspire":
         hand_qpos = inspire_action_to_qpos(hand_action)
@@ -164,7 +183,10 @@ def main():
     c2r = np.load(os.path.join(capture_root, "C2R.npy"))
     # world_from_robot = c2r
 
-    output_dir = os.path.join(args.output_dir, args.object, str(args.episode))
+    if args.overlay_option == "action":
+        output_dir = os.path.join(args.output_dir, f"{args.object}", f"{args.episode}", "overlay_action")
+    else:
+        output_dir = os.path.join(args.output_dir, f"{args.object}", f"{args.episode}", "overlay_position")
     os.makedirs(output_dir, exist_ok=True)
     image_dir = os.path.join(capture_root, "video_extracted")
 
@@ -198,16 +220,16 @@ def main():
     import cv2
 
     writers_overlay = {}
-    writers_mask = {}
+    # writers_mask = {}
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
     for cam_id, info in cam_info.items():
         h, w = info["height"], info["width"]
         writers_overlay[cam_id] = cv2.VideoWriter(
-            os.path.join(output_dir, f"{cam_id}_overlay.mp4"), fourcc, 10, (w, h)
+            os.path.join(output_dir, f"{cam_id}_overlay.mp4"), fourcc, 30, (w, h)
         )
-        writers_mask[cam_id] = cv2.VideoWriter(
-            os.path.join(output_dir, f"{cam_id}_mask.mp4"), fourcc, 10, (w, h), isColor=False
-        )
+        # writers_mask[cam_id] = cv2.VideoWriter(
+        #     os.path.join(output_dir, f"{cam_id}_mask.mp4"), fourcc, 10, (w, h), isColor=False
+        # )
 
     image_dir = os.path.join(capture_root, "video_extracted")
 
@@ -257,12 +279,12 @@ def main():
                     )
 
             writers_overlay[cam_id].write(cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
-            writers_mask[cam_id].write((mask * 255).astype(np.uint8))
+            # writers_mask[cam_id].write((mask * 255).astype(np.uint8))
 
     for w in writers_overlay.values():
         w.release()
-    for w in writers_mask.values():
-        w.release()
+    # for w in writers_mask.values():
+    #     w.release()
 
 
 if __name__ == "__main__":

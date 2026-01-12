@@ -258,7 +258,7 @@ class InspireHandRH56DFTP:
         try:
             # Read actual pose values from registers
             # Adjust the number of registers based on the actual number of joints
-            pose_values = self.modbus.read_holding_registers(RegisterRH56DFTP.POSE_ACT, 6)
+            pose_values = self.modbus.read_holding_registers(RegisterRH56DFTP.POSE_ACT, 12)
             if pose_values is None:
                 raise CommandError("Failed to read pose from hand")
             return pose_values

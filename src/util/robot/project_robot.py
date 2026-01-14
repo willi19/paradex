@@ -1,7 +1,8 @@
 import argparse
+import math
 import os
 import sys
-from typing import Tuple
+from typing import List, Tuple
 
 import numpy as np
 import torch
@@ -91,6 +92,24 @@ def overlay_mask(image: np.ndarray, mask: np.ndarray, color=(0, 255, 0), alpha=0
     return overlay.astype(np.uint8)
 
 
+def make_image_grid(images: List[np.ndarray]) -> np.ndarray:
+    # Tile images (RGB) into a nearly square grid.
+    if not images:
+        return np.zeros((1, 1, 3), dtype=np.uint8)
+    base_h, base_w = images[0].shape[:2]
+    cols = int(math.ceil(math.sqrt(len(images))))
+    rows = int(math.ceil(len(images) / cols))
+    grid = np.zeros((rows * base_h, cols * base_w, 3), dtype=np.uint8)
+    for idx, img in enumerate(images):
+        if img.shape[:2] != (base_h, base_w):
+            import cv2
+
+            img = cv2.resize(img, (base_w, base_h))
+        r, c = divmod(idx, cols)
+        grid[r * base_h : (r + 1) * base_h, c * base_w : (c + 1) * base_w] = img
+    return grid
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--arm", type=str, required=True)
@@ -124,6 +143,13 @@ def main():
         choices=["action", "position"],
         default="position",
         help="Whether to overlay using hand action or hand position data.",
+    )
+    parser.add_argument(
+        "--output-type",
+        type=str,
+        choices=["video", "grid"],
+        default="video",
+        help="Output overlaid result as videos (per camera) or as tiled grid images per frame.",
     )
     args = parser.parse_args()
 
@@ -171,7 +197,7 @@ def main():
         raise ValueError(f"Invalid frame range: start={start}, end={end}, total={total_frames}")
     frame_indices = list(range(start, end, max(1, args.stride)))
 
-    urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_left.urdf")
+    urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_left_new.urdf")
     robot = RobotModule(urdf_path)
     # Prepare face indices once (topology is fixed across frames)
     robot.update_cfg(full_qpos[0])
@@ -220,16 +246,20 @@ def main():
     import cv2
 
     writers_overlay = {}
-    # writers_mask = {}
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    for cam_id, info in cam_info.items():
-        h, w = info["height"], info["width"]
-        writers_overlay[cam_id] = cv2.VideoWriter(
-            os.path.join(output_dir, f"{cam_id}_overlay.mp4"), fourcc, 30, (w, h)
-        )
-        # writers_mask[cam_id] = cv2.VideoWriter(
-        #     os.path.join(output_dir, f"{cam_id}_mask.mp4"), fourcc, 10, (w, h), isColor=False
-        # )
+    grid_dir = None
+    if args.output_type == "video":
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+        for cam_id, info in cam_info.items():
+            h, w = info["height"], info["width"]
+            writers_overlay[cam_id] = cv2.VideoWriter(
+                os.path.join(output_dir, f"{cam_id}_overlay.mp4"), fourcc, 30, (w, h)
+            )
+            # writers_mask[cam_id] = cv2.VideoWriter(
+            #     os.path.join(output_dir, f"{cam_id}_mask.mp4"), fourcc, 10, (w, h), isColor=False
+            # )
+    else:
+        grid_dir = os.path.join(output_dir, "grid")
+        os.makedirs(grid_dir, exist_ok=True)
 
     image_dir = os.path.join(capture_root, "video_extracted")
 
@@ -247,7 +277,9 @@ def main():
             "col_idx": faces,
         }
 
-        for cam_id, renderer in renderer_dict.items():
+        overlays_for_grid = []
+        for cam_id in sorted(renderer_dict.keys()):
+            renderer = renderer_dict[cam_id]
             info = cam_info[cam_id]
             K = info["K"]
             extr = info["extr"]
@@ -278,8 +310,19 @@ def main():
                         thickness=2,
                     )
 
-            writers_overlay[cam_id].write(cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
+            if args.output_type == "video":
+                writers_overlay[cam_id].write(cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
+            else:
+                overlays_for_grid.append(overlay)
             # writers_mask[cam_id].write((mask * 255).astype(np.uint8))
+
+        if args.output_type == "grid" and overlays_for_grid:
+            grid_img = make_image_grid(overlays_for_grid)
+            frame_name = int(video_frame_ids[fidx])
+            cv2.imwrite(
+                os.path.join(grid_dir, f"frame_{frame_name:05d}.png"),
+                cv2.cvtColor(grid_img, cv2.COLOR_RGB2BGR),
+            )
 
     for w in writers_overlay.values():
         w.release()

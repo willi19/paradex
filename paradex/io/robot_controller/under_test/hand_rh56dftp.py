@@ -278,7 +278,7 @@ class InspireHandRH56DFTP:
         """
         self._check_connection()
         try:
-            angle_values = self.modbus.read_holding_registers(RegisterRH56DFTP.ANGLE_ACT, 6)
+            angle_values = self.modbus.read_holding_registers(RegisterRH56DFTP.ANGLE_ACT, 12)
             if angle_values is None:
                 raise CommandError("Failed to read angles from hand")
             return angle_values

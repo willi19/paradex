@@ -18,13 +18,16 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--arm", type=str, required=True)
     parser.add_argument("--hand", type=str, required=True)
+    parser.add_argument("--hand_path", type=str, required=True)
     parser.add_argument("--left", action='store_true', help="Generate left hand URDF if set; right hand otherwise.")
     
     args = parser.parse_args()
     
     arm_urdf_path = get_robot_urdf_path(args.arm)
     # hand_urdf_path = get_robot_urdf_path(args.hand)
-    hand_urdf_path = os.path.join(rsc_path, "robot", f"{args.hand}_left.urdf") if args.left else os.path.join(rsc_path, "robot", f"{args.hand}_float.urdf")
+    # hand_urdf_path = os.path.join(rsc_path, "robot", f"{args.hand}_left.urdf") if args.left else os.path.join(rsc_path, "robot", f"{args.hand}_float.urdf")
+
+    hand_urdf_path = args.hand_path
 
     arm_model = RobotWrapper(arm_urdf_path)
     parent_link = arm_model.get_end_links()[0]
@@ -35,10 +38,10 @@ if __name__ == "__main__":
     xacro_path = os.path.join(rsc_path, "robot", "robot_combined.urdf.xacro")
     
     if args.left:
-        output_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_left.urdf")
+        output_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_left_new.urdf")
     else:
-        output_path = os.path.join(rsc_path, "robot",  f"{args.arm}_{args.hand}_right.urdf")
-    
+        output_path = os.path.join(rsc_path, "robot",  f"{args.arm}_{args.hand}_right_new.urdf")
+
     arm2global = DEVICE2WRIST[args.arm]
     hand2global = DEVICE2WRIST[args.hand]
     

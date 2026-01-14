@@ -4,11 +4,13 @@ import numpy as np
 import copy
 import viser
 import time
+import trimesh
 
 from pymodbus.client import ModbusTcpClient
 from paradex.io.robot_controller.under_test.visualize_contact import read_modbus_data
 from paradex.io.robot_controller.under_test.inspire_contact_info import contact_tg, sensororder
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot.robot_module import robot_info
+from paradex.robot.robot_wrapper_deprecated import RobotWrapper
 
 
 
@@ -19,21 +21,40 @@ from hand_rh56dftp import InspireHandRH56DFTP
 from paradex.utils.path import shared_dir
 from paradex.io.robot_controller import  get_hand
 
+URDF_PATH = "/home/temp_id/paradex/rsc/robot/inspire_left.urdf"
+BASE_T = np.eye(4)
 
-# def forward_kinematic(self, robot_wrapper: RobotWrapper, state: np.ndarray = None):
-#     robot_wrapper.compute_forward_kinematics(state)
+def forward_kinematic(robot_wrapper: RobotWrapper, state: np.ndarray = None):
+    robot_wrapper.compute_forward_kinematics(state)
         
 
-def get_mesh(self, robot_wrapper, state, base_T=np.eye(4), mesh_tg = 'all'):
+def get_mesh(robot_wrapper, state, base_T=np.eye(4), mesh_tg = 'all'):
 
-    self.forward_kinematic(robot_wrapper, state)
+    forward_kinematic(robot_wrapper, state)
+    robot_obj = robot_info(URDF_PATH, down_sample=True)
+    
+    link_list = []
+    for link_nm, mesh_items in robot_obj.mesh_dict.items():
+        if mesh_items!=[]:
+            link_list.append(link_nm)
 
     vis_list = []
-    for link_nm in self.link_list:
+    
+    for link_nm in link_list:
         link_pose = base_T@robot_wrapper.get_link_pose(robot_wrapper.get_link_index(link_nm))
         # print(f'{link_nm}: {link_pose}')
-        for mesh in self.robot_obj.mesh_dict[link_nm]:
-            vis_list.append(copy.deepcopy(mesh).transform(link_pose))
+        for o3d_mesh in robot_obj.mesh_dict[link_nm]:
+            mesh = copy.deepcopy(o3d_mesh)
+            mesh.transform(link_pose)
+
+            tm = trimesh.Trimesh(
+                vertices=np.asarray(mesh.vertices),
+                faces=np.asarray(mesh.triangles),
+                process=False,
+            )
+            
+            
+            vis_list.append((link_nm, tm))
 
     return vis_list
 
@@ -91,8 +112,7 @@ def get_mesh(self, robot_wrapper, state, base_T=np.eye(4), mesh_tg = 'all'):
 #     print(data)
 
 
-URDF_PATH = "/home/temp_id/paradex/rsc/robot/inspire_left.urdf"
-BASE_T = np.eye(4)
+
 
 # -------------------------
 # Utility
@@ -123,13 +143,19 @@ def visualize_robot_once(
     #         mesh_vis = copy.deepcopy(mesh)
     #         mesh_vis.apply_transform(link_T)
 
-    mesh_vis = get_mesh(robot_wrapper, state=qpos)
-    server.scene.add_mesh(
-        name=f"inpisre_hand",
-        vertices=mesh_vis.vertices,
-        faces=mesh_vis.faces,
-        color=(180, 180, 180),
-    )
+    mesh_vis = get_mesh(robot_wrapper, qpos)
+
+
+    for i, (link_name, tm) in enumerate(mesh_vis):
+        print(link_name)
+        server.scene.add_mesh_trimesh(
+            name=f"inspire_hand/{link_name}_{i}",
+            mesh=tm,
+            scale=1.0,
+            wxyz=(1.0, 0.0, 0.0, 0.0),   # 이미 pose bake됨
+            position=(0.0, 0.0, 0.0),
+            visible=True,
+        )
 
 # -------------------------
 # Main
@@ -152,7 +178,7 @@ if __name__ == "__main__":
     hand.open() # Ensure connected
     
     print("Testing read_tactile_data()...")
-    data = hand.read_pose()
+    data = hand.read_angles()
     data = np.array(data, dtype=np.float32)
 
     print(data)

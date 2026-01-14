@@ -1,1 +1,1 @@
-from .robot_wrapper import RobotWrapper
+from .robot_wrapper_deprecated import RobotWrapper

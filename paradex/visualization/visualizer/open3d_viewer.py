@@ -9,7 +9,7 @@ import imageio.v3 as iio
 import open3d as o3d
 import yourdfpy
 
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot.robot_wrapper_deprecated import RobotWrapper
 
 class Open3DVideoRenderer:
     def __init__(

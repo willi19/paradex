@@ -5,8 +5,10 @@ from scipy.spatial.transform import Rotation as R
 from trimesh import Scene
 import viser
 import trimesh
-from typing import List, Tuple, Dict
+from typing import List, Tuple, Dict, Optional
+from pathlib import Path
 import time
+import cv2
 import viser.transforms as tf
 
 from paradex.visualization.robot import RobotModule  
@@ -32,6 +34,7 @@ class ViserViewer():
         self.server.gui.configure_theme(dark_mode=False)
 
         self.server.scene.set_up_direction(self.up_direction)
+        # self.server.scene.set_background_color((0, 0, 0))
         self.server.scene.world_axes
 
         @self.server.on_client_connect
@@ -294,6 +297,82 @@ class ViserViewer():
         @self.render_video_btn.on_click
         def _(_) -> None:
             self.render_full_video()
+
+    def render_current_frame(self, timestep, render_dir: Optional[Path] = None):
+        """Render the current frame to a PNG/JPEG using the first connected client."""
+        if render_dir is None:
+            render_dir = Path("rendered")
+        render_dir.mkdir(exist_ok=True)
+
+        clients = list(self.server.get_clients().values())
+        if not clients:
+            print("No clients connected for rendering.")
+            return
+        client = clients[0]
+
+        try:
+            rendered_img = client.get_render(
+                height=int(self.video_height.value),
+                width=int(self.video_width.value),
+            )
+            output_path = render_dir / f"{timestep:05d}.jpeg"
+            cv2.imwrite(str(output_path), rendered_img)
+        except Exception as e:
+            print(f"Failed to render frame {timestep}: {e}")
+
+    def render_full_video(self):
+        """Render all frames to a video using the current GUI render settings."""
+        if self.num_frames <= 0:
+            print("No frames to render.")
+            return
+
+        clients = list(self.server.get_clients().values())
+        if not clients:
+            print("No clients connected for rendering.")
+            return
+        client = clients[0]
+
+        width = int(self.video_width.value)
+        height = int(self.video_height.value)
+        fps = int(self.video_fps.value)
+
+        render_dir = Path("rendered_video")
+        frames_dir = render_dir / "frames"
+        render_dir.mkdir(exist_ok=True)
+        frames_dir.mkdir(exist_ok=True)
+
+        video_path = render_dir / "rendered.mp4"
+        writer = cv2.VideoWriter(
+            str(video_path),
+            cv2.VideoWriter_fourcc(*"mp4v"),
+            fps,
+            (width, height),
+        )
+        if not writer.isOpened():
+            print(f"Failed to open video writer: {video_path}")
+            return
+
+        prev_playing = self.gui_playing.value
+        prev_render_png = self.render_png.value
+        self.gui_playing.value = False
+        self.render_png.value = False
+
+        try:
+            for t in range(self.num_frames):
+                self.update_scene(t)
+                try:
+                    rendered_img = client.get_render(height=height, width=width)
+                except Exception as e:
+                    print(f"Failed to render frame {t}: {e}")
+                    continue
+                cv2.imwrite(str(frames_dir / f"{t:05d}.jpeg"), rendered_img)
+                writer.write(rendered_img)
+        finally:
+            writer.release()
+            self.gui_playing.value = prev_playing
+            self.render_png.value = prev_render_png
+
+        print(f"Saved video to: {video_path}")
 
     def add_frame(self, name, T):
         self.frame_nodes[name] = self.server.scene.add_frame(

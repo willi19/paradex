@@ -7,7 +7,7 @@ from pathlib import Path
 import yaml
 
 from paradex.utils.file_io import rsc_path, get_robot_urdf_path
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot.robot_wrapper_deprecated import RobotWrapper
 from paradex.robot.curobo import to_quat
 
 from curobo.geom.types import Capsule, Cuboid, Cylinder, Mesh, Sphere, WorldConfig

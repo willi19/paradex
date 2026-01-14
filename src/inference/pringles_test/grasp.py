@@ -12,7 +12,7 @@ from paradex.transforms.conversion import SOLVE_XA_B
 from paradex.io.robot_controller.gui_controller_prev import RobotGUIController
 from paradex.io.robot_controller import get_arm, get_hand
 from paradex.utils.path import rsc_path
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot.robot_wrapper_deprecated import RobotWrapper
 from paradex.robot.utils import get_robot_urdf_path
 
 rcc = remote_camera_controller("object6d")

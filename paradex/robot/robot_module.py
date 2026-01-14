@@ -14,23 +14,59 @@ from pathlib import Path
 PROJECT_PATH = Path(__file__).absolute().parent.parent
 sys.path.append(str(PROJECT_PATH))
 
-from robot.robot_wrapper import RobotWrapper
-from utils.renderer_utils import extract_mesh, combine_mesh_features
-from utils.geometry import rotation_matrix_from_vectors
-from utils.vis_utils import cmap
+from paradex.robot.robot_wrapper_deprecated import RobotWrapper
+# from utils.renderer_utils import extract_mesh, combine_mesh_features
+# from utils.geometry import rotation_matrix_from_vectors
+# from utils.vis_utils import cmap
 
 # robot_name = 'xarm6'
-robot_asset_dir = PROJECT_PATH/'robot'
-arm_robot = 'xarm'
-hand_robot = 'inspire'
-robot_asset_file = robot_asset_dir/f"{arm_robot}_{hand_robot}.urdf"
+# robot_asset_dir = PROJECT_PATH/'robot'
+# arm_robot = 'xarm'
+# hand_robot = 'inspire'
+# robot_asset_file = robot_asset_dir/f"{arm_robot}_{hand_robot}.urdf"
 
-if 'allegro' in hand_robot:
-    from robot.robot_asset import inspire_contact_info as contact_info
-else:
-    from robot.robot_asset import allegro_contact_info as contact_info
+# from paradex.io.robot_controller.under_test import inspire_contact_info as contact_info
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+def rotation_matrix_from_vectors(v1, v2):
+    """
+    Returns the rotation matrix that aligns v1 to v2.
+    v1 and v2 are 3-element vectors.
+    """
+    v1 = np.array(v1, dtype=float)
+    v2 = np.array(v2, dtype=float)
+    v1 /= np.linalg.norm(v1)
+    v2 /= np.linalg.norm(v2)
+
+    # Cross product and dot product
+    cross = np.cross(v1, v2)
+    dot = np.dot(v1, v2)
+
+    # Check for special cases
+    if np.allclose(dot, 1.0):
+        return np.eye(3)  # No rotation needed
+    if np.allclose(dot, -1.0):
+        # 180 degree rotation around any axis perpendicular to v1
+        orthogonal = np.array([1, 0, 0]) if not np.allclose(v1, [1, 0, 0]) else np.array([0, 1, 0])
+        axis = np.cross(v1, orthogonal)
+        axis /= np.linalg.norm(axis)
+        K = np.array([
+            [0, -axis[2], axis[1]],
+            [axis[2], 0, -axis[0]],
+            [-axis[1], axis[0], 0]
+        ])
+        return np.eye(3) + 2 * (K @ K)  # since sin(π)=0, (1 - cos(π)) = 2
+
+    # Rodrigues' formula
+    K = np.array([
+        [0, -cross[2], cross[1]],
+        [cross[2], 0, -cross[0]],
+        [-cross[1], cross[0], 0]
+    ])
+
+    R = np.eye(3) + K + K @ K * ((1 - dot) / (np.linalg.norm(cross) ** 2))
+    return R
 
 class Mesh_Object:
     def __init__(self, obj_path):
@@ -136,11 +172,29 @@ class robot_info(Mesh_Object):
 
                 mesh_subpath = visual.getElementsByTagName("geometry")[0].getElementsByTagName("mesh")[0].getAttribute("filename")
                 mesh_path = str(self.scene_path/mesh_subpath)
-                if len(visual.getElementsByTagName("material")[0].getElementsByTagName("color")) > 0:
-                    mesh_color = np.array(visual.getElementsByTagName("material")[0].getElementsByTagName("color")[0].getAttribute("rgba").split(), dtype=np.float64)
-                else:
-                    mesh_color = self.materialcolor[visual.getElementsByTagName("material")[0].getAttribute("name").lower()]
+                materials = visual.getElementsByTagName("material")
 
+                if len(materials) > 0:
+                    material = materials[0]
+
+                    colors = material.getElementsByTagName("color")
+                    if len(colors) > 0:
+                        # case 1: <material><color .../>
+                        mesh_color = np.array(
+                            colors[0].getAttribute("rgba").split(),
+                            dtype=np.float64
+                        )
+                    else:
+                        # case 2: <material name="xxx"/>
+                        mat_name = material.getAttribute("name").lower()
+                        if mat_name in self.materialcolor:
+                            mesh_color = self.materialcolor[mat_name]
+                        else:
+                            # fallback
+                            mesh_color = np.array([0.7, 0.7, 0.7, 1.0])
+                else:
+                    # case 3: material 자체가 없음
+                    mesh_color = np.array([0.7, 0.7, 0.7, 1.0])
                 o3d_mesh = o3d.io.read_triangle_mesh(mesh_path, enable_post_processing=self.mesh_processing)
                 # part_mesh.transform(self.init_transf)
                 o3d_mesh.compute_vertex_normals()
@@ -203,20 +257,20 @@ class robot_info(Mesh_Object):
         #         o3d_mesh = o3d_mesh.transform(self.default_T[link_name])
         #         print(f'{link_name} use default T for mesh transformation')
         
-        for link_nm in contact_info.contact_tg:
-            mesh = self.mesh_dict[link_nm]
-            contact_pts_list, contact_normal_list = contact_info.get_contact_ctr(link_nm, np.array(mesh[0].vertices), np.array(mesh[0].triangles),  \
-                                                                                 np.array(mesh[0].vertex_normals), np.array(mesh[0].triangle_normals))
-            self.link2contact_info[link_nm] = (contact_pts_list, contact_normal_list)
-            self.link2contact_arrows[link_nm] = {}
+        # for link_nm in contact_info.contact_tg:
+        #     mesh = self.mesh_dict[link_nm]
+        #     contact_pts_list, contact_normal_list = contact_info.get_contact_ctr(link_nm, np.array(mesh[0].vertices), np.array(mesh[0].triangles),  \
+        #                                                                          np.array(mesh[0].vertex_normals), np.array(mesh[0].triangle_normals))
+        #     self.link2contact_info[link_nm] = (contact_pts_list, contact_normal_list)
+        #     self.link2contact_arrows[link_nm] = {}
             
-            for cidx in range(len(contact_normal_list)):
-                contact_point, contact_normal = contact_pts_list[cidx], contact_normal_list[cidx]
-                rotmat2normal = rotation_matrix_from_vectors(np.array([0,0,1]), contact_normal)
-                initial_T = np.eye(4)
-                initial_T[:3,:3] = rotmat2normal
-                initial_T[:3,3] = contact_point
-                self.link2contact_arrows[link_nm][f'{link_nm}_{cidx}'] = initial_T
+        #     for cidx in range(len(contact_normal_list)):
+        #         contact_point, contact_normal = contact_pts_list[cidx], contact_normal_list[cidx]
+        #         rotmat2normal = rotation_matrix_from_vectors(np.array([0,0,1]), contact_normal)
+        #         initial_T = np.eye(4)
+        #         initial_T[:3,:3] = rotmat2normal
+        #         initial_T[:3,3] = contact_point
+        #         self.link2contact_arrows[link_nm][f'{link_nm}_{cidx}'] = initial_T
 
 
     def get_link_mesh(self, link_name, mesh_type='o3d'):
@@ -236,187 +290,3 @@ class robot_info(Mesh_Object):
             outlst += mlist
         return outlst
     
-
-class Robot_Module:
-    def __init__(self, urdf_file:str=str(robot_asset_file),  mesh_tg ='all', state:np.ndarray=None, contact:np.ndarray=None):
-        self.robot_obj = robot_info(urdf_file, down_sample=True)
-        self.robot_wrapper = RobotWrapper(urdf_file)
-        self.mesh_tg = mesh_tg
-
-        self.state = state
-        if self.state is not None:
-            self.length = self.state.shape[0]
-        else:
-            self.length = None # for real time
-
-        all_link_names = list(self.robot_obj.mesh_dict.keys())
-        self.link_names = {'all': all_link_names, \
-                        'hand': [link_nm for link_nm in all_link_names if link_nm.split("_")[0] in \
-                            ['thumb','index','middle','ring','palm']],
-                        'arm': [link_nm for link_nm in all_link_names if link_nm.split("_")[0] not in \
-                            ['thumb','index','middle','ring','palm']],
-                 }
-        self.link_list = []
-        for link_nm, mesh_items in self.robot_obj.mesh_dict.items():
-            if mesh_items!=[] and link_nm in self.link_names[self.mesh_tg]:
-                self.link_list.append(link_nm)
-
-
-        self.mesh_info = {}
-        for link_name in self.link_list:
-            o3d_mesh = self.robot_obj.get_link_mesh(link_name, mesh_type='o3d')
-            vertices, faces, textures = extract_mesh(o3d_mesh[0], device=device)
-            self.mesh_info[link_name] = (vertices, faces, textures)
-        _, self.combined_faces, self.combined_textures, self.link2vertex_mapping = combine_mesh_features(self.link_list, self.mesh_info)
-
-        self.contact = contact # Sensor value from soft contact sensor
-
-    
-    def forward_kinematic(self, fidx, state_realtime=None):
-        if state_realtime is None:
-            self.robot_wrapper.compute_forward_kinematics(self.state[fidx])
-        else:
-            self.robot_wrapper.compute_forward_kinematics(state_realtime)
-            
-
-    def get_mesh(self, fidx, base_T=np.eye(4), mesh_tg = 'all', state_realtime=None):
-
-        self.forward_kinematic(fidx, state_realtime=state_realtime)
-
-        vis_list = []
-        for link_nm in self.link_list:
-            link_pose = base_T@self.robot_wrapper.get_link_pose(self.robot_wrapper.get_link_index(link_nm))
-            # print(f'{link_nm}: {link_pose}')
-            for mesh in self.robot_obj.mesh_dict[link_nm]:
-                vis_list.append(copy.deepcopy(mesh).transform(link_pose))
-
-        return vis_list
-    
-
-    def get_T_dict(self, fidx, base_T=np.eye(4), state_realtime=None):
-        self.forward_kinematic(fidx, state_realtime=state_realtime)
-
-        T_dict = {}
-        for link_nm in self.link_list:
-            link_pose = base_T@self.robot_wrapper.get_link_pose(self.robot_wrapper.get_link_index(link_nm))
-            T_dict[link_nm] = link_pose
-        return T_dict
-    
-
-    def get_vertices(self, fidx, base_T=np.eye(4), mesh_tg = 'all', state_realtime=None):
-        
-        # make mapping to link_nm vertex_index
-        self.forward_kinematic(fidx, state_realtime=state_realtime)
-
-        vertices_list = []
-        for link_nm in self.link_list:
-            link_pose = base_T@self.robot_wrapper.get_link_pose(self.robot_wrapper.get_link_index(link_nm))
-            transformed_vertices = ((link_pose[:3,:3]@self.mesh_info[link_nm][0].T).T)+link_pose[:3,3]
-            vertices_list.append(transformed_vertices)
-
-        return vertices_list
-    
-
-    def get_combined_trimesh(self, fidx, base_T=np.array(4), mesh_tg = 'all', down_sample=True, state_realtime=None):
-        vertices_list = self.get_vertices(fidx, base_T, mesh_tg, state_realtime=state_realtime)
-
-        vertices_arr = np.vstack(vertices_list)
-        combined_trimesh = trimesh.Trimesh(
-            vertices=vertices_arr,
-            faces=self.combined_faces, vertex_colors=self.combined_textures, process=down_sample)
-        
-        return combined_trimesh, vertices_arr
-
-
-    def set_combined_features(self):
-        return self.combined_faces, self.combined_textures
-    
-
-    def get_contact_arrow(self, fidx, base_T=np.array(4), mesh_type='trimesh', down_sample=True):
-        '''
-            return trimesh
-        '''
-        mesh_list = []
-        for link_nm in self.robot_obj.link2contact_arrows:
-            link_pose = base_T@self.robot_wrapper.get_link_pose(self.robot_wrapper.get_link_index(link_nm))
-            for contact_part_nm in self.robot_obj.link2contact_arrows[link_nm]:
-                contact_value = self.contact[fidx][contact_info.sensor2idx[contact_part_nm]]/np.max(self.contact)*2 # normalized
-                arrow = o3d.geometry.TriangleMesh.create_arrow(cylinder_radius=0.002, cone_radius=0.004, \
-                                                            cylinder_height=0.02*contact_value, cone_height=0.01*contact_value).compute_vertex_normals()
-                initial_T = self.robot_obj.link2contact_arrows[link_nm][contact_part_nm]
-                arrow.transform(initial_T).transform(link_pose)
-                color = cmap(contact_value)
-                arrow.paint_uniform_color(np.array(color[:3]))
-                if mesh_type=='trimesh':
-                    trimesh_mesh = trimesh.Trimesh(
-                        vertices=np.asarray(arrow.vertices),
-                        faces=np.asarray(arrow.triangles), 
-                        vertex_colors=(np.asarray(arrow.vertex_colors)*255).astype(np.uint8), process=down_sample)
-                    mesh_list.append(trimesh_mesh)
-                else:
-                    mesh_list.append(arrow)
-
-        return mesh_list
-        
-
-def get_trajectory(capture_dir):
-    hand_action = np.load(capture_dir/'hand'/'action.npy') # FX16
-    hand_state = np.load(capture_dir/'hand'/'state.npy') # FX16
-    arm_action = np.load(capture_dir/'arm'/'action.npy') # FX6
-    arm_state = np.load(capture_dir/'arm'/'state.npy') # FX6
-
-    robot_traj = np.concatenate([arm_state, hand_state], axis=1) # FX22
-
-    return robot_traj
-
-
-if __name__ == "__main__":
-    robot_obj = robot_info(str(robot_asset_file), mesh_processing=False) # parsed urdf
-    # load action and state
-    capture_dir = Path('/home/jisoo/teserract_nas/processed/spray/1')
-    hand_action = np.load(capture_dir/'hand'/'action.npy') # FX16
-    hand_state = np.load(capture_dir/'hand'/'state.npy') # FX16
-    arm_action = np.load(capture_dir/'arm'/'action.npy') # FX6
-    arm_state = np.load(capture_dir/'arm'/'state.npy') # FX6
-
-    robot_traj = np.concatenate([arm_state, hand_state], axis=1) # FX22
-    zero_traj = np.zeros_like(robot_traj)
-
-    # save zero posed mesh
-
-    robot_by_robotwrapper = RobotWrapper(str(robot_asset_file))
-    fidx = 0
-    robot_by_robotwrapper.compute_forward_kinematics(robot_traj[fidx])
-    link_list = [ link_nm for link_nm, mesh_items in robot_obj.mesh_dict.items() if mesh_items!=[] ] # 28
-
-    save_mesh_path = './debug_contact'
-    # TODO: save all mesh
-
-    # draw arrow if exist
-    vis_list = []
-    arrow_list = []
-    for link_nm in link_list:
-        link_pose = robot_by_robotwrapper.get_link_pose(robot_by_robotwrapper.get_link_index(link_nm))
-        print(f'{link_nm}: {link_pose}')
-        for mesh in robot_obj.mesh_dict[link_nm]:
-            transformed_mesh = copy.deepcopy(mesh).transform(link_pose)
-            vis_list.append(transformed_mesh)
-            o3d.io.write_triangle_mesh(os.path.join(save_mesh_path,f'{link_nm}.obj'), transformed_mesh)
-            # Get Arrow if exist and add arrow to 3D visualizer 
-            if link_nm in robot_obj.link2contact_info:
-                contact_pts_list, contact_normal_list = robot_obj.link2contact_info[link_nm]
-                for cidx in range(len(contact_normal_list)):
-                    contact_point, contact_normal = contact_pts_list[cidx], contact_normal_list[cidx]
-                    arrow = o3d.geometry.TriangleMesh.create_arrow(0.2, 0.4, 2, 1).compute_vertex_normals()
-                    scale_matrix = np.eye(4)
-                    scale_matrix[:3,:3]*=0.01
-                    rotmat2normal = rotation_matrix_from_vectors(np.array([0,0,1]), contact_normal)
-                    initial_T = np.eye(4)
-                    initial_T[:3,:3] = rotmat2normal
-                    initial_T[:3,3] = contact_point
-
-                    arrow.transform(scale_matrix).transform(initial_T).transform(link_pose)
-                    vis_list.append(arrow)
-                    arrow_list.append(arrow)
-
-    o3d.visualization.draw_geometries(vis_list)

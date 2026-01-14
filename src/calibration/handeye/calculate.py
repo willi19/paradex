@@ -10,7 +10,7 @@ from paradex.utils.file_io import find_latest_directory
 from paradex.calibration.utils import handeye_calib_path, load_camparam
 from paradex.calibration.Tsai_Lenz import solve_ax_xb, solve_axb_cpu    
 from paradex.robot.utils import get_robot_urdf_path
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot.robot_wrapper_deprecated import RobotWrapper
 from paradex.image.image_dict import ImageDict
 from paradex.image.aruco import merge_charuco_detection, find_common_indices, detect_charuco
 from paradex.transforms.conversion import SOLVE_XA_B

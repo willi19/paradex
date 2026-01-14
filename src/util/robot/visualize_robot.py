@@ -80,7 +80,7 @@ def main():
 
     full_qpos = np.concatenate([arm_qpos, hand_qpos], axis=1)
 
-    urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_left.urdf")
+    urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_left_new.urdf")
     vis = ViserViewer()
     vis.add_floor(height=0.0)
     vis.add_robot("robot", urdf_path)

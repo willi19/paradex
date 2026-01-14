@@ -4,7 +4,7 @@ import trimesh
 from datetime import datetime
 import transforms3d
 
-from paradex.robot.robot_wrapper import RobotWrapper
+from paradex.robot.robot_wrapper_deprecated import RobotWrapper
 from paradex.visualization.visualizer.viser import ViserViewer
 from paradex.robot.utils import get_robot_urdf_path
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller

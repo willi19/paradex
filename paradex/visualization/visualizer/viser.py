@@ -132,6 +132,12 @@ class ViserViewer():
         self.gui_timestep.max = self.num_frames - 1
         # print(traj_len, self.num_frames)
     
+    def clear_traj(self):
+        self.traj_list = []
+        self.num_frames = 0
+        self.gui_timestep.max = 1
+        self.gui_timestep.value = 0
+    
     def add_floor(self, height=0.0):
         self.floor_size = 1.0
         size = self.floor_size

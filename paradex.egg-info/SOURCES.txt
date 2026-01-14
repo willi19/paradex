@@ -393,6 +393,7 @@ paradex/image/merge.py
 paradex/image/overlay.py
 paradex/image/projection.py
 paradex/image/undistort.py
+paradex/io/__init__.py
 paradex/io/camera_system/camera.py
 paradex/io/camera_system/camera_loader.py
 paradex/io/camera_system/camera_reader.py
@@ -410,7 +411,9 @@ paradex/io/capture_pc/processor.py
 paradex/io/capture_pc/ssh.py
 paradex/io/robot_controller/__init__.py
 paradex/io/robot_controller/allegro_controller.py
+paradex/io/robot_controller/gui_controller copy.py
 paradex/io/robot_controller/gui_controller.py
+paradex/io/robot_controller/gui_controller_prev.py
 paradex/io/robot_controller/inspire_controller.py
 paradex/io/robot_controller/xarm_controller.py
 paradex/io/robot_controller/deprecated/inspire_controller_ip.py

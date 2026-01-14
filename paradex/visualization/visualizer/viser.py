@@ -1,4 +1,4 @@
-from distro import name
+
 import numpy as np
 import yourdfpy
 from scipy.spatial.transform import Rotation as R

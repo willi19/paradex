@@ -37,7 +37,10 @@ def undistort_and_detect_charuco(name):
             img_dict = ImageDict.from_path(os.path.join(root_dir, index))
         else:
             img_dict.update_path(os.path.join(root_dir, index))
-            
+        
+        print(f"Undistorting and detecting charuco for index {index}...")
+        if index=='21' or '22':
+            print
         undistort_img_dict = img_dict.undistort(save_path=os.path.join(root_dir, index, "undistort"))
         
         charuco_3d = undistort_img_dict.triangulate_charuco()
@@ -50,6 +53,9 @@ def undistort_and_detect_charuco(name):
         
         detectionDict = undistort_img_dict.draw_keypoint(detection, color=(0,255,0))
         print(charuco_3d['checkerCorner'].shape)
+        if len(charuco_3d['checkerCorner'])==0:
+            print(f"No charuco corners detected for index {index}, skipping saving detections.")
+            continue
         projected_dict = undistort_img_dict.project_pointcloud(charuco_3d['checkerCorner'])
         detectionDict = detectionDict.draw_keypoint(projected_dict, color=(255,0,0))
         detectionDict.save(os.path.join(root_dir, index, "detection"))
@@ -71,16 +77,39 @@ def compute_fk(name, arm):
         eef = robot_wrapper.compute_forward_kinematics(qpos, link_list=["link6"])['link6']
         np.save(os.path.join(root_dir, index, "eef_fk.npy"), eef)
 
+def get_valid_indices(root_dir):
+    """Get indices that have valid charuco detection files with actual points."""
+    index_list = sorted(os.listdir(root_dir))
+    valid_indices = []
+    for index in index_list:
+        index_path = os.path.join(root_dir, index)
+        if not os.path.isdir(index_path):
+            continue
+        ids_path = os.path.join(index_path, "charuco_3d_ids.npy")
+        corners_path = os.path.join(index_path, "charuco_3d_corners.npy")
+        if os.path.exists(ids_path) and os.path.exists(corners_path):
+            # Check if files have actual points (not empty)
+            ids = np.load(ids_path)
+            if len(ids) == 0:
+                print(f"Skipping index {index}: empty charuco detection")
+                continue
+            valid_indices.append(index)
+        else:
+            print(f"Skipping index {index}: missing charuco detection files")
+    return valid_indices
+
 def compute_motion(name):
     motion_wrt_cam = []
     motion_wrt_robot = []
-    
+
     root_dir = os.path.join(handeye_calib_path, name)
-    index_list = os.listdir(root_dir)
-    index_list.sort()
-    
+    index_list = get_valid_indices(root_dir)
+
+    if len(index_list) < 2:
+        raise ValueError(f"Need at least 2 valid indices for motion computation, got {len(index_list)}")
+
     eef_list = [np.load(os.path.join(root_dir, index, "eef_fk.npy")) for index in index_list]
-    
+
     charuco_id_list = [np.load(os.path.join(root_dir, index, "charuco_3d_ids.npy")) for index in index_list]
     charuco_cor_list = [np.load(os.path.join(root_dir, index, "charuco_3d_corners.npy")) for index in index_list]
     
@@ -108,8 +137,7 @@ def compute_motion(name):
 def debug(name, arm):
     root_dir = os.path.join(handeye_calib_path, name)
 
-    index_list = os.listdir(root_dir)
-    index_list.sort()
+    index_list = get_valid_indices(root_dir)
 
     robot_wrt_cam = np.load(os.path.join(root_dir, index_list[0], "C2R.npy")) # cam_wrt_robot
     marker_pos = {}
@@ -195,16 +223,16 @@ if args.name is None:
 
 name = args.name
 root_path = os.path.join(handeye_calib_path, name)
-index_list = os.listdir(root_path)
 intrinsic, extrinsic = load_camparam(os.path.join(root_path, "0"))
 
 undistort_and_detect_charuco(name)
 compute_fk(name, args.arm)
 motion_wrt_cam, motion_wrt_robot = compute_motion(name)
-robot_wrt_cam = solve_ax_xb(motion_wrt_cam, motion_wrt_robot, verbose=True) 
+robot_wrt_cam = solve_ax_xb(motion_wrt_cam, motion_wrt_robot, verbose=True)
 cam_wrt_robot = np.linalg.inv(robot_wrt_cam)
 
-for i in range(len(index_list)-1):
+valid_index_list = get_valid_indices(root_path)
+for i in range(len(valid_index_list)-1):
     diff = (motion_wrt_cam[i] @ robot_wrt_cam) - (robot_wrt_cam @ motion_wrt_robot[i])
     trans_error = np.linalg.norm(diff[:3, 3]) * 1000
 
@@ -212,7 +240,7 @@ for i in range(len(index_list)-1):
     R_error = diff[:3, :3]
     angle_error = 0#np.arccos((np.trace(R_error) - 1) / 2) * 180 / np.pi
     print(f"Motion {i}: trans={trans_error:.2f}mm, rot={angle_error:.2f}deg")
-    
-np.save(os.path.join(root_path, index_list[0], "C2R.npy"), robot_wrt_cam)
+
+np.save(os.path.join(root_path, valid_index_list[0], "C2R.npy"), robot_wrt_cam)
 
 debug(name, args.arm)

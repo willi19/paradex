@@ -8,6 +8,7 @@ import json
 
 action_dof = 6
 hand_id = 1
+BAUDRATE_REG_ADDR = 1002
 command = {
     'setpos':[0xEB, 0x90, hand_id, 0x0F, 0x12, 0xC2, 0x05],
     'setangle':[0xEB, 0x90, hand_id, 0x0F, 0x12, 0xCE, 0x05],
@@ -18,7 +19,8 @@ command = {
     'getsetpower':[0xEB, 0x90, hand_id, 0x04, 0x11, 0xDA, 0x05, 0x0C],
     'getactpos':[0xEB, 0x90, hand_id, 0x04, 0x11, 0xFE, 0x05, 0x0C],
     'getactangle':[0xEB, 0x90, hand_id, 0x04, 0x11, 0x0A, 0x06, 0x0C],
-    'getactforce':[0xEB, 0x90, hand_id, 0x04, 0x11, 0x2E, 0x06, 0x0C],
+    'getactforce':[0xEB, 0x90, hand_id, 0x04, 0x11, 0x2E, 0x06, 0x0C], 
+    'setbaudrate':[0xEB, 0x90, hand_id, 0x04, 0x12, 0xEA, 0x03],
 }
 
 TOUCH_SENSOR_BASE_ADDR = 3000
@@ -109,7 +111,7 @@ def crc16(data: bytes):
 
 
 class InspireController:
-    def __init__(self, addr):
+    def __init__(self, addr, tactile = False, baud_rate = 115200):
         self.home_pose = np.zeros(action_dof) + 800
         
         self.save_event = Event()
@@ -122,12 +124,19 @@ class InspireController:
         self.action = np.zeros(action_dof) + 800
         self.joint_value = np.zeros(action_dof) + 800
         self.addr = addr
+        self.tactile = tactile
+        self.default_baud = 115200
+        self.desired_baud = baud_rate
         
         self.tactile_index, self.tactile_dim = self.build_tactile_index()
 
         
-        
-        self.open_serial()
+        self.open_serial(baud=self.default_baud)
+        if self.desired_baud != self.default_baud:
+            success = self.set_baud_rate(self.desired_baud)
+            if not success:
+                print(f"[Inspire] Baud change to {self.desired_baud} failed, reverting to {self.default_baud}")
+                self.desired_baud = self.default_baud
         
         self.write6('setspeed', [1000, 1000, 1000, 1000, 1000, 1000])
         self.write6('setpower', [400, 400, 400, 400, 400, 400])
@@ -135,16 +144,17 @@ class InspireController:
         
         self.connection_event.set()
         
+        self.latest_tactile = None
+        self.latest_tactile_time = None
+        
         self.control_thread = Thread(target=self.control_loop)
         self.control_thread.daemon = True
         self.control_thread.start()
         
-        self.latest_tactile = None
-        self.latest_tactile_time = None
         
-        self.tactile_thread = Thread(target=self.tactile_loop)
-        self.tactile_thread.daemon = True
-        self.tactile_thread.start()
+        # self.tactile_thread = Thread(target=self.tactile_loop)
+        # self.tactile_thread.daemon = True
+        # self.tactile_thread.start()
         
         
         self.connection_event.wait()
@@ -190,15 +200,24 @@ class InspireController:
             data = resp[3:-2]
             regs = []
             for i in range(0, len(data), 2):
+                # Device returns high byte first (Modbus RTU convention). Keep this
+                # low-first decoding for legacy tactile parsing; use the _be variant
+                # when you need the canonical big-endian interpretation.
                 regs.append(data[i] | (data[i + 1] << 8))
 
             return np.array(regs, dtype=np.int32)
+
+    def serial_read_registers_be(self, start_addr: int, count: int):
+        """
+        Big-endian variant (hi byte first -> canonical Modbus value).
+        """
+        raw = self.serial_read_registers(start_addr, count)
+        return np.array([(v >> 8) | ((v & 0xFF) << 8) for v in raw], dtype=np.int32)
     
     
 
     def control_loop(self):
-        self.fps = 100
-
+        self.fps = 30
         
         while not self.exit_event.is_set():
             start_time = time.time()
@@ -208,24 +227,49 @@ class InspireController:
             
             self.write6('setangle', action)
 
-            current_hand_angles = np.asarray(self.read6('getactangle'))
-            current_force = np.asarray(self.read6('getactforce'))
-            # current_tactile = np.asarray(self.read_all_tactile())
+            try:
+                current_hand_angles = np.asarray(self.read6('getactangle'))
+
+            except Exception as exc:
+                print(f"[Inspire] Control loop read failed: {exc}")
+                time.sleep(0.05)
+                continue
+      
+            if self.save_event.is_set():
+                self.data["time"].append(time.time())
+
+            try:
+                
+                current_hand_angles = np.asarray(self.read6('getactangle'))
+                current_force = np.asarray(self.read6('getactforce'))
+                
+                if self.tactile:
+                    current_tactile = np.asarray(self.read_all_tactile())
+            except Exception as exc:
+                print(f"[Inspire] Control loop read failed: {exc}")
+                time.sleep(0.05)
+                continue
             
             with self.lock:
                 self.joint_value = current_hand_angles.copy()
+                
+                if self.tactile:
+                    self.latest_tactile = current_tactile
+                    self.latest_tactile_time = start_time
             
             if self.save_event.is_set():
                 self.data["position"].append(current_hand_angles.copy())
-                self.data["time"].append(time.time())
+
                 self.data["action"].append(action.copy())
                 self.data["force"].append(current_force.copy())
-                # self.data["tactile"].append(current_tactile.copy())
+                if self.tactile:
+                    self.data["tactile"].append(current_tactile.copy())
             
             end_time = time.time()
             time.sleep(max(0, 1 / self.fps - (end_time - start_time)))
-            
-            
+            # print("current loop took: ", end_time - start_time, "sleep time: ", max(0, 1 / self.fps - (end_time - start_time)))
+
+
     def tactile_loop(self):
         tactile_fps = 1.0
         interval = 1.0 / tactile_fps
@@ -268,17 +312,126 @@ class InspireController:
         self.exit_event.set()
         
         self.control_thread.join()
-        self.tactile_thread.join()
+        # self.tactile_thread.join()
         
         if self.save_event.is_set():
             self.stop()
         
         print("Inspire Exiting...")
                     
-    def open_serial(self):
-        self.ser = serial.Serial(self.addr, 115200)
-        return 
-        
+    def open_serial(self, baud=115200):
+        if hasattr(self, "ser") and self.ser is not None and self.ser.is_open:
+            self.ser.close()
+        self.ser = serial.Serial(self.addr, baud, timeout=0.1)
+        self.current_baud = baud
+        # Clear any stale buffers after open.
+        try:
+            self.ser.reset_input_buffer()
+            self.ser.reset_output_buffer()
+        except Exception:
+            pass
+        return
+
+    def _baud_to_reg_value(self, baud_rate: int) -> int:
+        if baud_rate == 115200:
+            return 0
+        if baud_rate == 921600:
+            return 3
+        raise ValueError(f"Unsupported baud rate {baud_rate}. Only 115200 or 921600 are supported.")
+
+    def set_baud_rate(self, baud_rate: int):
+        """
+        Update the Inspire hand baud rate using the native (0xEB 0x90) protocol,
+        then reopen the serial port at the requested baud.
+        """
+        baud_value = self._baud_to_reg_value(baud_rate)
+        try:
+            self._write_baud_native(baud_value)
+        except Exception as exc:
+            print(f"[Inspire] Failed to send baud change (native): {exc}")
+            return False
+
+        # Give the device time to switch its UART clock.
+        time.sleep(1.0)
+        self.open_serial(baud_rate)
+        time.sleep(0.2)
+        # Verify the new baud by attempting a read; if it fails, revert.
+        try:
+            self.read6('getactangle')
+        except Exception as exc:
+            self.open_serial(self.default_baud)
+            time.sleep(0.2)
+            try:
+                self.read6('getactangle')
+            except Exception as exc_fallback:
+                print(f"[Inspire] Baud verify failed (new and default): {exc} / {exc_fallback}")
+                return False
+            return False
+        return True
+
+    def _write_baud_native(self, baud_value: int):
+        """
+        Native protocol write to baud register (addr 1002) with 1-byte payload.
+        Packet: EB 90 | ID | len(0x04) | flag(0x12) | addrL | addrH | data | checksum
+        """
+        addr = BAUDRATE_REG_ADDR
+        packet = [
+            0xEB, 0x90, hand_id,
+            0x04,  # length: flag(1) + addr(2) + data(1)
+            0x12,  # write register flag per Inspire protocol
+            addr & 0xFF, (addr >> 8) & 0xFF,
+            baud_value,
+            0x00,  # checksum placeholder
+        ]
+        packet[-1] = checknum(packet)
+        frame = data2str(packet)
+
+        with self.serial_lock:
+            try:
+                self.ser.reset_input_buffer()
+                self.ser.reset_output_buffer()
+            except Exception:
+                pass
+            self.ser.write(frame)
+            resp = self.ser.read(9)
+
+        if len(resp) == 0:
+            raise RuntimeError("No response to baud change command")
+        return resp
+
+    def serial_write_registers(self, start_addr: int, values):
+        """
+        RS485 multi-register write (Modbus RTU style, function code 0x10)
+        """
+        with self.serial_lock:
+            device_id = hand_id
+            function = 0x10  # Write Multiple Registers
+            count = len(values)
+            byte_count = count * 2
+            frame = bytearray([
+                device_id,
+                function,
+                (start_addr >> 8) & 0xFF,
+                start_addr & 0xFF,
+                (count >> 8) & 0xFF,
+                count & 0xFF,
+                byte_count
+            ])
+            for v in values:
+                frame.append((v >> 8) & 0xFF)
+                frame.append(v & 0xFF)
+
+            crc = crc16(frame)
+            frame += crc.to_bytes(2, byteorder="little")
+
+            self.ser.write(frame)
+
+            expected = 8  # Echo of the request header with CRC
+            resp = self.ser.read(expected)
+
+            if len(resp) != expected:
+                raise RuntimeError(f"Serial multi-write failed for addr {start_addr}")
+    
     def write6(self, command_name, value):
         with self.serial_lock:
             datanum = command[command_name][3]
@@ -311,6 +464,10 @@ class InspireController:
             self.ser.write(putdata)
             
             getdata = self.ser.read(20)
+            expected_len = 19  # minimum bytes needed for parsing indices up to 18
+            if len(getdata) < expected_len:
+                raise RuntimeError(f"read6 {command_name} returned {len(getdata)} bytes, expected at least {expected_len}")
+            # print("getdata:", getdata)
             ret = np.zeros(6)
             
             for i in range(6):
@@ -319,6 +476,33 @@ class InspireController:
                 else:
                     ret[i] = getdata[i*2+7] + (getdata[i*2+8]<<8)
             return ret
+
+    def serial_write_register(self, address: int, value: int):
+        """
+        RS485 single-register write (Modbus RTU style, function code 0x06)
+        """
+        with self.serial_lock:
+            device_id = hand_id
+            function = 0x06  # Write Single Register
+            frame = bytearray([
+                device_id,
+                function,
+                (address >> 8) & 0xFF,
+                address & 0xFF,
+                (value >> 8) & 0xFF,
+                value & 0xFF,
+            ])
+
+            crc = crc16(frame)
+            frame += crc.to_bytes(2, byteorder="little")
+
+            self.ser.write(frame)
+
+            expected = 8  # Echo of the request with CRC
+            resp = self.ser.read(expected)
+
+            if len(resp) != expected:
+                raise RuntimeError(f"Serial write failed for addr {address}")
     
     def read_tactile(self, name: str):
         """

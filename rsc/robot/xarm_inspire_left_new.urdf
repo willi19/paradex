@@ -258,7 +258,7 @@
         <mesh filename="inspire/meshes_left/left_thumb_1.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.047 0.173 0.333 1.0"/>
       </material>
     </visual>
     <collision>
@@ -287,7 +287,7 @@
         <mesh filename="inspire/meshes_left/left_thumb_2.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.047 0.173 0.333 1.0"/>
       </material>
     </visual>
     <collision>
@@ -316,7 +316,7 @@
         <mesh filename="inspire/meshes_left/left_thumb_3.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.047 0.173 0.333 1.0"/>
       </material>
     </visual>
     <collision>
@@ -332,7 +332,9 @@
     <child link="left_thumb_3"/>
     <axis xyz="0 0 1"/>
     <limit effort="10" lower="0" upper="3.14" velocity="1"/>
-    <mimic joint="left_thumb_2_joint" multiplier="0.60" offset="0"/>
+    <!-- <mimic joint="left_thumb_2_joint" multiplier="0.60" offset="0"/> -->
+    <!-- <mimic joint="left_thumb_2_joint" multiplier="1.334" offset="0"/> -->
+    <mimic joint="left_thumb_2_joint" multiplier="1.114" offset="0"/>
   </joint>
   <link name="left_thumb_4">
     <inertial>
@@ -346,7 +348,7 @@
         <mesh filename="inspire/meshes_left/left_thumb_4.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.047 0.173 0.333 1.0"/>
       </material>
     </visual>
     <collision>
@@ -362,7 +364,8 @@
     <child link="left_thumb_4"/>
     <axis xyz="0 0 1"/>
     <limit effort="10" lower="0" upper="3.14" velocity="1"/>
-    <mimic joint="left_thumb_2_joint" multiplier="0.8" offset="0"/>
+    <!-- <mimic joint="left_thumb_2_joint" multiplier="0.8" offset="0"/> -->
+    <mimic joint="left_thumb_2_joint" multiplier="0.62" offset="0"/>
   </joint>
   <link name="left_index_1">
     <inertial>
@@ -376,7 +379,7 @@
         <mesh filename="inspire/meshes_left/left_index_1.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.161 0.388 0.455 1.0"/>
       </material>
     </visual>
     <collision>
@@ -405,7 +408,7 @@
         <mesh filename="inspire/meshes_left/left_index_2.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.161 0.388 0.455 1.0"/>
       </material>
     </visual>
     <collision>
@@ -421,7 +424,10 @@
     <child link="left_index_2"/>
     <axis xyz="0 0 1"/>
     <limit effort="10" lower="0" upper="3.14" velocity="1"/>
-    <mimic joint="left_index_1_joint" multiplier="1.05" offset="0"/>
+    <!-- <mimic joint="left_index_1_joint" multiplier="1.05" offset="0"/> -->
+    <!-- <mimic joint="left_index_1_joint" multiplier="1.06399" offset="-0.04545"/> -->
+    <mimic joint="left_index_1_joint" multiplier="0.67" offset="0.22"/>
+
   </joint>
   <link name="left_middle_1">
     <inertial>
@@ -435,7 +441,7 @@
         <mesh filename="inspire/meshes_left/left_middle_1.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.384 0.624 0.678 1.0"/>
       </material>
     </visual>
     <collision>
@@ -464,7 +470,7 @@
         <mesh filename="inspire/meshes_left/left_middle_2.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.384 0.624 0.678 1.0"/>
       </material>
     </visual>
     <collision>
@@ -480,7 +486,7 @@
     <child link="left_middle_2"/>
     <axis xyz="0 0 1"/>
     <limit effort="10" lower="0" upper="3.14" velocity="1"/>
-    <mimic joint="left_middle_1_joint" multiplier="1.05" offset="0"/>
+    <mimic joint="left_middle_1_joint" multiplier="0.88" offset="0.15"/>
   </joint>
   <link name="left_ring_1">
     <inertial>
@@ -494,7 +500,7 @@
         <mesh filename="inspire/meshes_left/left_ring_1.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.929 0.929 0.808 1.0"/>
       </material>
     </visual>
     <collision>
@@ -523,7 +529,7 @@
         <mesh filename="inspire/meshes_left/left_ring_2.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.929 0.929 0.808 1.0"/>
       </material>
     </visual>
     <collision>
@@ -553,7 +559,7 @@
         <mesh filename="inspire/meshes_left/left_little_1.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.369 0.451 0.314 1.0"/>
       </material>
     </visual>
     <collision>
@@ -582,7 +588,7 @@
         <mesh filename="inspire/meshes_left/left_little_2.STL"/>
       </geometry>
       <material name="">
-        <color rgba="0.792156862745098 0.819607843137255 0.933333333333333 1"/>
+        <color rgba="0.369 0.451 0.314 1.0"/>
       </material>
     </visual>
     <collision>
@@ -597,13 +603,18 @@
     <parent link="left_little_1"/>
     <child link="left_little_2"/>
     <axis xyz="0 0 1"/>
-    <limit effort="10" lower="0" upper="3.14" velocity="1"/>
-    <mimic joint="left_little_1_joint" multiplier="1.18" offset="0"/>
+    <!-- <limit effort="10" lower="0" upper="3.14" velocity="1"/> -->
+    <!-- <mimic joint="left_little_1_joint" multiplier="1.18" offset="0"/> -->
+    <limit lower="-0.04545" upper="1.56" effort="1" velocity="0.5"/>
+    <!-- <mimic joint="left_little_1_joint" multiplier="1.06399" offset="-0.04545"/> -->
+    <mimic joint="left_little_1_joint" multiplier="0.9889" offset="-0.03126"/>
+
   </joint>
   <joint name="arm_to_hand" type="fixed">
     <parent link="link6"/>
     <child link="wrist"/>
-    <origin rpy="3.14159 0.00000 0.00000" xyz="0.00000 0.00000 0.0380"/>
+    <!-- <origin rpy="3.128 0.00000 0.0000" xyz="0.00450 0.00000 0.0350"/> -->
+    <origin rpy="3.11 0.00000 0.0000" xyz="0.00450 0.00000 0.0350"/>
   </joint>
 </robot>
 

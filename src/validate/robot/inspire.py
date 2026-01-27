@@ -3,15 +3,15 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from paradex.utils.system import network_info
-from paradex.io.robot_controller.inspire_controller import InspireController, SENSOR_LAYOUT
+from paradex.io.robot_controller.inspire_controller import InspireController
 
 ic = InspireController(**network_info['inspire_usb']['param'])
 ic.start("inspire_motion")
-# start_time = time.time()    
-# while time.time() - start_time < 10.0:
-#     ic.move(np.zeros(6) + 500 + 100 * np.sin((time.time() - start_time) * 2 * np.pi * 0.2))
-#     time.sleep(0.01)
-# ic.end()
+start_time = time.time()    
+while time.time() - start_time < 10.0:
+    ic.move(np.zeros(6) + 500 + 100 * np.sin((time.time() - start_time) * 2 * np.pi * 0.2))
+    time.sleep(0.01)
+ic.end()
 
 ic.end()
 

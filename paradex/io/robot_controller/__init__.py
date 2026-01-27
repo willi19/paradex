@@ -8,11 +8,15 @@ def get_arm(arm_name):
         from .xarm_controller import XArmController
         return XArmController(**network_info[arm_name]["param"])
 
-def get_hand(hand_name):
+def get_hand(hand_name, tactile = False, ip = False):
     if hand_name == "inspire":
-        from .inspire_controller import InspireController
-        return InspireController(**network_info["inspire_usb"]["param"])
-    
+        if ip:
+            from .deprecated.inspire_controller_ip import InspireControllerIP
+            return InspireControllerIP(**network_info["inspire_ip"]["param"], tactile=tactile)
+        else:
+            from .inspire_controller import InspireController
+            return InspireController(**network_info["inspire_usb"]["param"], tactile=tactile)
+
     if hand_name == "allegro":
         from .allegro_controller import AllegroController
         return AllegroController(**network_info[hand_name]["param"])

@@ -14,6 +14,8 @@ parser.add_argument('--device', choices=['xsens', 'occulus'])
 parser.add_argument('--arm', type=str, default=None)
 parser.add_argument('--hand', type=str, default=None)
 parser.add_argument('--name', type=str, required=True)
+parser.add_argument('--tactile', action='store_true', help='Whether to record tactile data from the Inspire hand.')
+parser.add_argument('--ip', action='store_true', help='Use IP connection for Inspire hand controller.')
 
 args = parser.parse_args()
 
@@ -21,7 +23,9 @@ cs = CaptureSession(
     camera=True,
     arm=args.arm,
     hand=args.hand,
-    teleop=args.device
+    teleop=args.device,
+    tactile=args.tactile,
+    ip=args.ip
 )
 
 name = args.name
@@ -31,8 +35,8 @@ last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", "hri_inspir
 while True:
     # index = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")   
     last_idx += 1
-    
-    print("Prepare to record new session:", name)
+
+    print("Prepare to record new session:", name, "episode:", last_idx)
     state = cs.teleop()
     if state == "exit":
         break

@@ -39,7 +39,9 @@ while not exit_event.is_set():
     # index = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     last_idx += 1
     
-    cs.start(os.path.join("capture", "hri", name, str(last_idx)))
+    # cs.start(os.path.join("capture", "hri_bimanual", name, str(last_idx)))
+    cs.start(os.path.join("depth_test", "videos", name, str(last_idx)))
+
     print("Starting new recording session:", name)
     while not stop_event.is_set() and not exit_event.is_set():
         time.sleep(0.02)

@@ -73,6 +73,7 @@ class ImageDict:
         
         if calib_dir:
             intrinsic, extrinsic = load_camparam(calib_dir)
+        
             
         ret =  cls(images, intrinsic, extrinsic, path)
         return ret
@@ -267,6 +268,8 @@ class ImageDict:
         
         undistort_image = {}
         for serial in self.images.keys():
+            if serial == "23029839":
+                continue
             undistort_image[serial] = apply_undistort_map(
                 self.images[serial],
                 self._cache['undistort_map'][serial][1],

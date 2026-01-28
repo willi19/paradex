@@ -610,13 +610,57 @@
     <!-- <mimic joint="left_little_1_joint" multiplier="0.9889" offset="-0.03126"/> -->
 
   </joint>
-  <joint name="arm_to_hand" type="fixed">
+  <!-- <joint name="arm_to_hand" type="fixed">
     <parent link="link6"/>
-    <child link="wrist"/>
-    <!-- <origin rpy="3.128 0.00000 0.0000" xyz="0.00450 0.00000 0.0350"/> -->
-    <!-- <origin rpy="3.13 0.00000 0.0000" xyz="0.0018 0.002 0.0350"/> -->
-    <!-- <origin rpy="3.12 0.00000 0.0000" xyz="0.0018 -0.002 0.0350"/> -->
+    <child link="wrist"/>\
     <origin rpy="3.141592 0.00000 0.0000" xyz="0.0000 0.00000 0.0350"/>
-  </joint>
-</robot>
+  </joint> -->
+  <link name="arm_to_hand_x"/>
+  <link name="arm_to_hand_y"/>
+  <link name="arm_to_hand_z"/>
+  <link name="arm_to_hand_roll"/>
+  <link name="arm_to_hand_pitch"/>
+  <link name="arm_to_hand_yaw"/>
 
+  <joint name="arm_to_hand_x" type="prismatic">
+    <parent link="link6"/>
+    <child link="arm_to_hand_x"/>
+    <origin xyz="0 0 0.0350" rpy="3.141592 0 0"/>
+    <axis xyz="1 0 0"/>
+    <limit lower="-0.05" upper="0.05" effort="1" velocity="1"/>
+  </joint>
+
+  <joint name="arm_to_hand_y" type="prismatic">
+    <parent link="arm_to_hand_x"/>
+    <child link="arm_to_hand_y"/>
+    <axis xyz="0 1 0"/>
+    <limit lower="-0.05" upper="0.05" effort="1" velocity="1"/>
+  </joint>
+
+  <joint name="arm_to_hand_z" type="prismatic">
+    <parent link="arm_to_hand_y"/>
+    <child link="arm_to_hand_z"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.05" upper="0.05" effort="1" velocity="1"/>
+  </joint>
+
+  <joint name="arm_to_hand_roll" type="continuous">
+    <parent link="arm_to_hand_z"/>
+    <child link="arm_to_hand_roll"/>
+    <axis xyz="1 0 0"/>
+  </joint>
+
+  <joint name="arm_to_hand_pitch" type="continuous">
+    <parent link="arm_to_hand_roll"/>
+    <child link="arm_to_hand_pitch"/>
+    <axis xyz="0 1 0"/>
+  </joint>
+
+  <joint name="arm_to_hand_yaw" type="continuous">
+    <parent link="arm_to_hand_pitch"/>
+    <child link="wrist"/>
+    <axis xyz="0 0 1"/>
+  </joint>
+
+
+</robot>

@@ -34,6 +34,7 @@ from paradex.image.projection import BatchRenderer
 def project_robot_and_object(
     arm, 
     hand,
+    hand_type,
     object,
     capture_root,           # hri_inspire_left
     capture_ep,             # Projection의 background가 되는 image들이 촬영된 episode
@@ -119,8 +120,11 @@ def project_robot_and_object(
             video_frame_ids = np.arange(1, full_qpos.shape[0] + 1, dtype=int)
             qpos_video = full_qpos
         
-        # Load robot urdf and mesh
-        urdf_path = os.path.join(rsc_path, "robot", f"{arm}_{hand}_left_new_copy.urdf")
+        if hand_type=='left':
+            # Load robot urdf and mesh
+            urdf_path = os.path.join(rsc_path, "robot", f"{arm}_{hand}_left_new_copy.urdf")
+        else:
+            urdf_path = os.path.join(rsc_path, "robot", f"{arm}_{hand}.urdf")
         robot = RobotModule(urdf_path)
         
         
@@ -391,58 +395,295 @@ def project_robot_and_object(
     return    
 
 
+def project_robot_to_images(
+    arm,
+    hand,
+    hand_type,
+    root_dir,
+    output_dir=None,
+):
+    """
+    Project robot onto static images from a capture directory.
+
+    Args:
+        arm: Robot arm type (e.g., "xarm")
+        hand: Robot hand type (e.g., "inspire")
+        root_dir: Root directory containing cam_param/, raw/images/, raw/arm/, raw/hand/, C2R.npy
+        output_dir: Output directory for projected images. Defaults to root_dir/overlay/
+    """
+
+    # Load camera parameters
+    intrinsic, extrinsic_from_camparam = load_camparam(root_dir)
+
+    # Load C2R (camera to robot transformation)
+    c2r = np.load(os.path.join(root_dir, "C2R.npy"))
+
+    # Load robot state
+    arm_dir = os.path.join(root_dir, "raw", "arm")
+    hand_dir = os.path.join(root_dir, "raw", "hand")
+
+    arm_state = np.load(os.path.join(arm_dir, "state.npy"))
+    hand_state = np.load(os.path.join(hand_dir, "state.npy"))
+
+    # Convert hand state to qpos
+    if hand == "inspire":
+        hand_qpos = inspire_action_to_qpos_dof12(hand_state.reshape(1, -1))[0]
+    else:
+        hand_qpos = hand_state
+
+    full_qpos = np.concatenate([arm_state, hand_qpos])
+
+    # Load robot URDF
+    if hand_type == 'left':
+        urdf_path = os.path.join(rsc_path, "robot", f"{arm}_{hand}_left_new_copy.urdf")
+    else:
+        urdf_path = os.path.join(rsc_path, "robot", f"{arm}_{hand}.urdf")
+    robot = RobotModule(urdf_path)
+
+    print("=== Robot joint order (qpos order) ===")
+    for i, name in enumerate(robot.joint_names):
+        print(i, name)
+
+    robot_dof = robot.get_num_joints()
+    robot.update_cfg(full_qpos[:robot_dof])
+    robot.get_robot_mesh()
+
+    # Only apply finger colors for left hand
+    if hand_type == 'left':
+        finger_prefix_map = {
+            "left_thumb_": "thumb",
+            "left_index_": "index",
+            "left_middle_": "middle",
+            "left_ring_": "ring",
+            "left_little_": "pinky",
+        }
+        finger_colors = {
+            "thumb": (255, 140, 0),
+            "index": (0, 200, 255),
+            "middle": (0, 255, 100),
+            "ring": (255, 0, 200),
+            "pinky": (255, 220, 0),
+        }
+    else:
+        # No finger colors for right hand
+        finger_prefix_map = {}
+        finger_colors = {}
+
+    # Setup output directory
+    if output_dir is None:
+        output_dir = os.path.join(root_dir, "overlay")
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Image directory
+    image_dir = os.path.join(root_dir, "raw", "images")
+
+    # Get available images
+    available_images = {}
+    for img_file in os.listdir(image_dir):
+        if img_file.endswith(('.png', '.jpg', '.jpeg')):
+            cam_id = os.path.splitext(img_file)[0]
+            available_images[cam_id] = os.path.join(image_dir, img_file)
+
+    # Filter cameras to only those with images
+    cam_ids = [cam_id for cam_id in intrinsic.keys() if cam_id in available_images]
+    print(f"Found {len(cam_ids)} cameras with images: {cam_ids}")
+
+    # Build camera info and extrinsics
+    cam_info = {}
+    render_extrinsics = {}
+    undistort_maps = {}
+
+    for cam_id in cam_ids:
+        intr = intrinsic[cam_id]
+        K = intr["intrinsics_undistort"]
+        height = intr["height"]
+        width = intr["width"]
+
+        cam_from_world = np.eye(4)
+        cam_from_world[:3, :] = extrinsic_from_camparam[cam_id]
+        cam_from_robot = cam_from_world @ c2r
+
+        render_extrinsics[cam_id] = cam_from_robot[:3, :]
+        cam_info[cam_id] = {"K": K, "extr": cam_from_robot[:3, :], "width": width, "height": height}
+        _, mapx, mapy = precomute_undistort_map(intr)
+        undistort_maps[cam_id] = (mapx, mapy)
+
+    # Create renderer with only available cameras
+    filtered_intrinsic = {cam_id: intrinsic[cam_id] for cam_id in cam_ids}
+    renderer = BatchRenderer(filtered_intrinsic, render_extrinsics)
+
+    # Update robot configuration
+    robot.update_cfg(full_qpos[:robot_dof])
+    scene = robot.scene
+
+    robot_color = (40, 200, 40)
+    robot_alpha = 0.35
+    finger_alpha = 0.55
+
+    # Build link label map
+    link_label_map = {}
+    for link_name in scene.geometry.keys():
+        label = None
+        for prefix, name in finger_prefix_map.items():
+            if link_name.startswith(prefix):
+                label = name
+                break
+        link_label_map[link_name] = label
+
+    # Collect meshes
+    render_meshes = []
+    mesh_colors = []
+    mesh_alphas = []
+
+    for link_name, mesh in scene.geometry.items():
+        transform = scene.graph.get(link_name)[0]
+        link_mesh = mesh.copy()
+        link_mesh.apply_transform(transform)
+        render_meshes.append(link_mesh)
+
+        label = link_label_map.get(link_name)
+        if label is None:
+            mesh_colors.append(robot_color)
+            mesh_alphas.append(robot_alpha)
+        else:
+            mesh_colors.append(finger_colors[label])
+            mesh_alphas.append(finger_alpha)
+
+    # Render
+    id_dict = None
+    if render_meshes:
+        _, _, _, id_dict = renderer.render_multi(render_meshes)
+
+    # Process each camera
+    overlays_for_grid = []
+    for cam_id in sorted(cam_ids):
+        info = cam_info[cam_id]
+        width = info["width"]
+        height = info["height"]
+
+        img_path = available_images[cam_id]
+        print(f"Processing {cam_id}: {img_path}")
+
+        image_bgr = cv2.imread(img_path)
+        if image_bgr is None:
+            print(f"Warning: Could not read image {img_path}")
+            image_bgr = np.zeros((height, width, 3), dtype=np.uint8)
+
+        if image_bgr.shape[0] != height or image_bgr.shape[1] != width:
+            image_bgr = cv2.resize(image_bgr, (width, height))
+
+        mapx, mapy = undistort_maps[cam_id]
+        image_bgr = apply_undistort_map(image_bgr, mapx, mapy)
+        image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
+
+        overlay = image
+        if id_dict is not None:
+            id_map = id_dict[cam_id][..., 0]
+            ids = np.rint(id_map).astype(np.int32)
+            if len(render_meshes) > 0:
+                ids = np.clip(ids, 0, len(render_meshes))
+                color_lut = np.zeros((len(render_meshes) + 1, 3), dtype=np.float32)
+                alpha_lut = np.zeros((len(render_meshes) + 1,), dtype=np.float32)
+                color_lut[1:] = np.asarray(mesh_colors, dtype=np.float32)
+                alpha_lut[1:] = np.asarray(mesh_alphas, dtype=np.float32)
+                colors = color_lut[ids]
+                alphas = alpha_lut[ids][..., None]
+                overlay = image.astype(np.float32) * (1.0 - alphas) + colors * alphas
+                overlay = overlay.astype(np.uint8)
+
+        # Save individual overlay
+        output_path = os.path.join(output_dir, f"{cam_id}_overlay.png")
+        cv2.imwrite(output_path, cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
+        print(f"Saved: {output_path}")
+
+        overlays_for_grid.append(overlay)
+
+    # Save grid image
+    if overlays_for_grid:
+        grid_img = make_image_grid(overlays_for_grid)
+        grid_path = os.path.join(output_dir, "grid_overlay.png")
+        cv2.imwrite(grid_path, cv2.cvtColor(grid_img, cv2.COLOR_RGB2BGR))
+        print(f"Saved grid: {grid_path}")
+
+    print(f"Done! Output saved to: {output_dir}")
+    return
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--arm", type=str, default="xarm")
-    parser.add_argument("--hand", type=str, default="inspire")
-    parser.add_argument("--object", type=str, required=True)
-    parser.add_argument("--capture-ep", type=str, default="0")
-    parser.add_argument("--replay-ep", type=str, default=None)
-    parser.add_argument("--object-mesh-name", type=str, help="Path to object mesh (e.g., .obj/.stl).")
-    parser.add_argument("--capture-root", type=str, default="hri_inspire_left", help="Capture root directory name.")
-    # parser.add_argument("--object-trajectory", type=str, help="Path to trajectory pickle/npy/npz (or directory containing it).",)
-    parser.add_argument("--project-object", action="store_true", help="Project the tracked object mesh in addition to the robot.")
-    parser.add_argument("--project-robot", action="store_true", help="Project the robot mesh.")
-    parser.add_argument("--start-frame", type=int, default=0, help="Start frame index (inclusive).")
-    parser.add_argument("--end-frame", type=int, default=None, help="End frame index (exclusive). Defaults to full length.")
-    parser.add_argument("--stride", type=int, default=1, help="Frame stride.")
-    parser.add_argument("--output-dir", type=str, default=None, help="Output directory for projected masks/overlays.")
-    parser.add_argument("--device", type=str, default="cuda:0")
-    parser.add_argument("--overlay-option", type=str, choices=["action", "position"], default="position", help="Whether to overlay using hand action or hand position data.")
-    parser.add_argument("--output-type", type=str, choices=["video", "grid"], default="grid", help="Output overlaid result as videos (per camera) or as tiled grid images per frame.",)
-    parser.add_argument("--overlay-to-other-video", action="store_true", help="Overlay the projected masks onto another video.")
-    parser.add_argument("--frame-offset", type=int, default=0, help="Shift overlay target video frames by this offset.")
-    parser.add_argument("--arm-time-offset", type=float, default=0.0, help="Shift arm timestamps by this many seconds (positive delays arm).")
-    parser.add_argument("--hand-time-offset", type=float, default=0.0, help="Shift hand timestamps by this many seconds (positive delays hand).")
-    
+    subparsers = parser.add_subparsers(dest="mode", help="Mode of operation")
+
+    # Subparser for video/episode mode (original functionality)
+    video_parser = subparsers.add_parser("video", help="Project robot onto video frames")
+    video_parser.add_argument("--arm", type=str, default="xarm")
+    video_parser.add_argument("--hand", type=str, default="inspire")
+    video_parser.add_argument("--hand-type", type=str, default="right")
+    video_parser.add_argument("--object", type=str, required=True)
+    video_parser.add_argument("--capture-ep", type=str, default="0")
+    video_parser.add_argument("--replay-ep", type=str, default=None)
+    video_parser.add_argument("--object-mesh-name", type=str, help="Path to object mesh (e.g., .obj/.stl).")
+    video_parser.add_argument("--capture-root", type=str, default="hri_inspire_left", help="Capture root directory name.")
+    video_parser.add_argument("--project-object", action="store_true", help="Project the tracked object mesh in addition to the robot.")
+    video_parser.add_argument("--project-robot", action="store_true", help="Project the robot mesh.")
+    video_parser.add_argument("--start-frame", type=int, default=0, help="Start frame index (inclusive).")
+    video_parser.add_argument("--end-frame", type=int, default=None, help="End frame index (exclusive). Defaults to full length.")
+    video_parser.add_argument("--stride", type=int, default=1, help="Frame stride.")
+    video_parser.add_argument("--output-dir", type=str, default=None, help="Output directory for projected masks/overlays.")
+    video_parser.add_argument("--device", type=str, default="cuda:0")
+    video_parser.add_argument("--overlay-option", type=str, choices=["action", "position"], default="position", help="Whether to overlay using hand action or hand position data.")
+    video_parser.add_argument("--output-type", type=str, choices=["video", "grid"], default="grid", help="Output overlaid result as videos (per camera) or as tiled grid images per frame.")
+    video_parser.add_argument("--overlay-to-other-video", action="store_true", help="Overlay the projected masks onto another video.")
+    video_parser.add_argument("--frame-offset", type=int, default=0, help="Shift overlay target video frames by this offset.")
+    video_parser.add_argument("--arm-time-offset", type=float, default=0.0, help="Shift arm timestamps by this many seconds (positive delays arm).")
+    video_parser.add_argument("--hand-time-offset", type=float, default=0.0, help="Shift hand timestamps by this many seconds (positive delays hand).")
+
+    # Subparser for image mode (new functionality)
+    image_parser = subparsers.add_parser("image", help="Project robot onto static images")
+    image_parser.add_argument("--arm", type=str, default="xarm")
+    image_parser.add_argument("--hand", type=str, default="inspire")
+    image_parser.add_argument("--hand-type", type=str, default="right")
+    image_parser.add_argument("--root-dir", type=str, required=True, help="Root directory containing cam_param/, raw/, C2R.npy")
+    image_parser.add_argument("--output-dir", type=str, default=None, help="Output directory for projected images.")
 
     args = parser.parse_args()
 
-    if args.replay_ep is None:
-        args.replay_ep = args.capture_ep
+    if args.mode == "video":
+        if args.replay_ep is None:
+            args.replay_ep = args.capture_ep
 
-    project_robot_and_object(
-        arm=args.arm,
-        hand=args.hand,
-        object=args.object,
-        capture_root=args.capture_root,
-        capture_ep=args.capture_ep,
-        replay_ep=args.replay_ep,
-        overlay_to_other_video=args.overlay_to_other_video,
-        object_mesh_name=args.object_mesh_name,
-        project_robot=args.project_robot,
-        project_object=args.project_object,
-        start_frame=args.start_frame,
-        end_frame=args.end_frame,
-        stride=args.stride,
-        output_dir=args.output_dir,
-        overlay_option=args.overlay_option,
-        output_type=args.output_type,
-        device=args.device,
-        frame_offset=args.frame_offset,
-        arm_time_offset=args.arm_time_offset,
-        hand_time_offset=args.hand_time_offset,
-    )
+        project_robot_and_object(
+            arm=args.arm,
+            hand=args.hand,
+            hand_type=args.hand_type,
+            object=args.object,
+            capture_root=args.capture_root,
+            capture_ep=args.capture_ep,
+            replay_ep=args.replay_ep,
+            overlay_to_other_video=args.overlay_to_other_video,
+            object_mesh_name=args.object_mesh_name,
+            project_robot=args.project_robot,
+            project_object=args.project_object,
+            start_frame=args.start_frame,
+            end_frame=args.end_frame,
+            stride=args.stride,
+            output_dir=args.output_dir,
+            overlay_option=args.overlay_option,
+            output_type=args.output_type,
+            device=args.device,
+            frame_offset=args.frame_offset,
+            arm_time_offset=args.arm_time_offset,
+            hand_time_offset=args.hand_time_offset,
+        )
+    elif args.mode == "image":
+        project_robot_to_images(
+            arm=args.arm,
+            hand=args.hand,
+            hand_type=args.hand_type,
+            root_dir=args.root_dir,
+            output_dir=args.output_dir,
+        )
+    else:
+        parser.print_help()
 
 
 if __name__ == "__main__":

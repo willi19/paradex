@@ -205,6 +205,7 @@ class XArmController:
     
     def get_data(self):
         with self.lock:
+            current_time = time.time()
             qpos = np.array(self.arm.get_joint_states(is_radian=True)[1][0])[:6]
             cart = np.array(self.arm.get_position(is_radian=True)[1])
 
@@ -212,7 +213,7 @@ class XArmController:
         return {
             "qpos": qpos,
             "position": pos,
-            "time": time.time()
+            "time": current_time
         }
     
     def is_error(self):

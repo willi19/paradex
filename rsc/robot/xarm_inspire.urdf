@@ -233,7 +233,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/base_link.STL"/>
+        <mesh filename="inspire/meshes_right/base_link.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -242,7 +242,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/base_link.STL"/>
+        <mesh filename="inspire/meshes_right/base_link.STL"/>
       </geometry>
     </collision>
   </link>
@@ -255,7 +255,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_1.STL"/>
+        <mesh filename="inspire/meshes_right/right_thumb_1.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -264,7 +264,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_1.STL"/>
+        <mesh filename="inspire/meshes_right/right_thumb_1.STL"/>
       </geometry>
     </collision>
   </link>
@@ -284,7 +284,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_2.STL"/>
+        <mesh filename="inspire/meshes_right/right_thumb_2.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -293,7 +293,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_2.STL"/>
+        <mesh filename="inspire/meshes_right/right_thumb_2.STL"/>
       </geometry>
     </collision>
   </link>
@@ -313,7 +313,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_3.STL"/>
+        <mesh filename="inspire/meshes_right/right_thumb_3.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -322,7 +322,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_3.STL"/>
+        <mesh filename="inspire/meshes_right/right_thumb_3.STL"/>
       </geometry>
     </collision>
   </link>
@@ -343,7 +343,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_4.STL"/>
+        <mesh filename="inspire/meshes_right/right_thumb_4.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -352,7 +352,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_4.STL"/>
+        <mesh filename="inspire/meshes_right/right_thumb_4.STL"/>
       </geometry>
     </collision>
   </link>
@@ -373,7 +373,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_index_1.STL"/>
+        <mesh filename="inspire/meshes_right/right_index_1.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -382,7 +382,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_index_1.STL"/>
+        <mesh filename="inspire/meshes_right/right_index_1.STL"/>
       </geometry>
     </collision>
   </link>
@@ -402,7 +402,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_index_2.STL"/>
+        <mesh filename="inspire/meshes_right/right_index_2.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -411,7 +411,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_index_2.STL"/>
+        <mesh filename="inspire/meshes_right/right_index_2.STL"/>
       </geometry>
     </collision>
   </link>
@@ -432,7 +432,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_middle_1.STL"/>
+        <mesh filename="inspire/meshes_right/right_middle_1.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -441,7 +441,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_middle_1.STL"/>
+        <mesh filename="inspire/meshes_right/right_middle_1.STL"/>
       </geometry>
     </collision>
   </link>
@@ -461,7 +461,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_middle_2.STL"/>
+        <mesh filename="inspire/meshes_right/right_middle_2.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -470,7 +470,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_middle_2.STL"/>
+        <mesh filename="inspire/meshes_right/right_middle_2.STL"/>
       </geometry>
     </collision>
   </link>
@@ -491,7 +491,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_ring_1.STL"/>
+        <mesh filename="inspire/meshes_right/right_ring_1.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -500,7 +500,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_ring_1.STL"/>
+        <mesh filename="inspire/meshes_right/right_ring_1.STL"/>
       </geometry>
     </collision>
   </link>
@@ -520,7 +520,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_ring_2.STL"/>
+        <mesh filename="inspire/meshes_right/right_ring_2.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -529,7 +529,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_ring_2.STL"/>
+        <mesh filename="inspire/meshes_right/right_ring_2.STL"/>
       </geometry>
     </collision>
   </link>
@@ -550,7 +550,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_little_1.STL"/>
+        <mesh filename="inspire/meshes_right/right_little_1.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -559,7 +559,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_little_1.STL"/>
+        <mesh filename="inspire/meshes_right/right_little_1.STL"/>
       </geometry>
     </collision>
   </link>
@@ -579,7 +579,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_little_2.STL"/>
+        <mesh filename="inspire/meshes_right/right_little_2.STL"/>
       </geometry>
       <material name="">
         <color rgba="1 1 1 1"/>
@@ -588,7 +588,7 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0"/>
       <geometry>
-        <mesh filename="inspire/meshes/right_little_2.STL"/>
+        <mesh filename="inspire/meshes_right/right_little_2.STL"/>
       </geometry>
     </collision>
   </link>
@@ -677,7 +677,7 @@
   <joint name="arm_to_hand" type="fixed">
     <parent link="link6"/>
     <child link="wrist"/>
-    <origin rpy="3.14159 0.00000 0.00000" xyz="0.00000 0.00000 -0.03500"/>
+    <origin rpy="3.14159 0.00000 0.00000" xyz="0.00000 0.00000 0.03500"/>
   </joint>
 </robot>
 

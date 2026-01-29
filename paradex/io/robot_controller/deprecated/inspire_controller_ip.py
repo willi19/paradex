@@ -262,16 +262,17 @@ class InspireControllerIP:
             # current_action = np.asarray(self.read6('angleSet'))
             with self.lock:
                 if self.capture_path is not None:
+                    self.data["time"].append(time.time())
                     self.data["position"].append(current_hand_angles.copy())
-                    self.data["time"].append(start_time)
+                    # self.data["time"].append(start_time)
                     self.data["action"].append(action.copy())
                     self.data["force"].append(current_force.copy())
                     if self.tactile:
                         self.data["tactile"].append(current_tactile.copy())
 
-                if self.tactile:
-                    self.latest_tactile = current_tactile
-                    self.latest_tactile_time = start_time
+                # if self.tactile:
+                #     self.latest_tactile = current_tactile
+                #     self.latest_tactile_time = time.time()
             
             end_time = time.time()
             time.sleep(max(0, 1 / self.fps - (end_time - start_time)))

@@ -447,8 +447,8 @@ def save_debug_compare_grid(
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--base-dir", type=str, default=os.path.join(shared_dir, "inspire_pinky_calibration"))
-    parser.add_argument("--ep", type=str, default="0")
-    parser.add_argument("--gd-steps", type=int, default=200)
+    parser.add_argument("--ep", type=str, default="1000")
+    parser.add_argument("--gd-steps", type=int, default=5000)
     parser.add_argument("--gd-lr-float", type=float, default=5e-3)
     parser.add_argument("--render-scale", type=float, default=0.5)
     parser.add_argument("--debug-every", type=int, default=100)

@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation
 
 class RobotGUIController:
     def __init__(self, robot_controller, hand_controller, predefined_poses=None, grasp_pose=None, 
-                 approach_traj=None, lift_distance=100.0, place_distance=40.0):
+             approach_traj=None, lift_distance=100.0, place_distance=40.0):
         """
         Args:
             robot_controller: XArmController 또는 유사한 인터페이스를 가진 로봇 컨트롤러
@@ -17,9 +17,10 @@ class RobotGUIController:
             lift_distance: float, lift distance in mm (default: 100mm)
             place_distance: float, place down distance in mm (default: 40mm)
         """
+        print(">>> Initializing Robot GUI Controller...")
         self.predefined_poses = predefined_poses
-        self.predefined_hand_traj = grasp_pose  # {'start': pose, 'pregrasp': pose, 'grasp': pose, 'squeezed': pose}
-        self.approach_traj = approach_traj  # [N, 22]
+        self.predefined_hand_traj = grasp_pose
+        self.approach_traj = approach_traj
         self.lift_distance = lift_distance
         self.place_distance = place_distance
         
@@ -27,31 +28,40 @@ class RobotGUIController:
         self.hand = hand_controller
         
         # Control parameters
-        self.joint_delta = 0.01  # 관절 각도 변화량 (radian)
-        self.cart_delta = 1.0  # cartesian 위치 변화량 (mm)
-        self.angle_delta = 0.01  # orientation 변화량 (radian)
+        self.joint_delta = 0.03
+        self.hand_joint_delta = 0.05
+        self.cart_delta = 1.0
+        self.angle_delta = 0.01
         
-        # Hand grasp parameters - now with 4 stages
-        self.hand_grasp_speed = 0.005  # trajectory interpolation step (0~1)
-        self.hand_grasp_progress = 0.0  # current progress along trajectory (0~3)
-        # 0~1: start->pregrasp, 1~2: pregrasp->grasp, 2~3: grasp->squeezed
+        # Progress trackers
+        self.approach_progress = 0.0
+        self.hand_grasp_speed = 0.005
+        self.hand_grasp_progress = 0.0
         
-        # Place/Release sequence state
-        self.place_state = 0  # 0: idle, 1: lowering, 2: releasing hand, 3: going to base
-        self.release_state = 0  # 0: idle, 1: releasing hand, 2: going to base
+        # Height trackers
+        self.lift_start_z = None
+        self.place_start_z = None
+        
+        # State machines
+        self.place_state = 0
+        self.release_state = 0
         
         # Button states
         self.button_states = {}
-        self.control_mode = 'cartesian'  # 'joint' or 'cartesian'
+        self.control_mode = 'cartesian'
         self.running = True
         
         # Control loop start
+        print(">>> Starting control thread...")
         self.control_thread = Thread(target=self._control_loop, daemon=True)
         self.control_thread.start()
+        print(">>> Control thread started.")
         
         # GUI
+        print(">>> Creating GUI...")
         self.root = tk.Tk()
         self._build_gui()
+        print(">>> GUI created.")
     
     def _build_gui(self):
         self.root.title("Robot GUI Controller")
@@ -78,6 +88,9 @@ class RobotGUIController:
         
         # Hand Grasp Control
         self._build_hand_grasp_frame()
+        
+        # Hand Joint Control (개별 관절 제어)
+        self._build_hand_joint_frame()
         
         # Place/Release Control
         self._build_place_release_frame()
@@ -253,6 +266,38 @@ class RobotGUIController:
         btn_to_start.bind('<ButtonRelease-1>', lambda e, name=btn_name_to_start: self._on_button_release(name))
         btn_to_start.pack(side=tk.LEFT, padx=10)
     
+    def _build_hand_joint_frame(self):
+        """Allegro hand 각 joint 를 개별적으로 제어하는 버튼 프레임"""
+        hand_joint_frame = tk.LabelFrame(self.root, text="Hand Joint Control", font=("Arial", 12))
+        hand_joint_frame.pack(pady=10, padx=10, fill="both")
+        
+        # 16개 joint 를 4x4 그리드로 배치
+        joints_per_row = 4
+        for idx in range(16):
+            row = idx // joints_per_row
+            col = idx % joints_per_row
+            
+            frame = tk.Frame(hand_joint_frame)
+            frame.grid(row=row, column=col, padx=5, pady=5, sticky="w")
+            
+            tk.Label(frame, text=f"H{idx}").pack()
+            
+            # - 버튼
+            btn_minus = tk.Button(frame, text="-", width=4)
+            btn_name_minus = f"Hand {idx} -"
+            self.button_states[btn_name_minus] = False
+            btn_minus.bind('<ButtonPress-1>', lambda e, name=btn_name_minus: self._on_button_press(name))
+            btn_minus.bind('<ButtonRelease-1>', lambda e, name=btn_name_minus: self._on_button_release(name))
+            btn_minus.pack(side=tk.LEFT)
+            
+            # + 버튼
+            btn_plus = tk.Button(frame, text="+", width=4)
+            btn_name_plus = f"Hand {idx} +"
+            self.button_states[btn_name_plus] = False
+            btn_plus.bind('<ButtonPress-1>', lambda e, name=btn_name_plus: self._on_button_press(name))
+            btn_plus.bind('<ButtonRelease-1>', lambda e, name=btn_name_plus: self._on_button_release(name))
+            btn_plus.pack(side=tk.LEFT)
+    
     def _build_place_release_frame(self):
         """Place/Release sequence 버튼 프레임"""
         frame = tk.LabelFrame(self.root, text="Place & Release", font=("Arial", 12))
@@ -301,15 +346,6 @@ class RobotGUIController:
     def _on_button_release(self, button_name):
         self.button_states[button_name] = False
         
-        # Place/Release 버튼 release 시 상태 리셋
-        if button_name == "place":
-            self.place_state = 0
-            print("Place sequence stopped")
-        elif button_name == "release":
-            self.release_state = 0
-            print("Release sequence stopped")
-        else:
-            print(f"{button_name} released")
     
     def _toggle_mode(self):
         self.control_mode = 'cartesian' if self.control_mode == 'joint' else 'joint'
@@ -322,51 +358,41 @@ class RobotGUIController:
             print("No approach trajectory loaded!")
             return
         
-        current_qpos = self.robot.get_data()['qpos'].copy()  # [6] for xarm
-        current_hand_qpos = self.hand.get_qpos().copy()  # [16] for hand
-        current_full_qpos = np.concatenate([current_qpos, current_hand_qpos])  # [22]
+        # 이미 trajectory 완료
+        if self.approach_progress >= len(self.approach_traj):
+            print("Approach already complete!")
+            return
         
-        target_qpos = self.approach_traj[0]  # First waypoint
+        current_qpos = self.robot.get_data()['qpos'].copy()
+        current_hand_qpos = self.hand.get_qpos().copy()
+        current_full_qpos = np.concatenate([current_qpos, current_hand_qpos])
         
-        # Calculate distance to first waypoint
-        distance_to_start = np.linalg.norm(current_full_qpos - target_qpos)
+        # 현재 목표 waypoint
+        target_idx = int(self.approach_progress)
+        target_qpos = self.approach_traj[target_idx]
+        self.hand.move(target_qpos[6:])
         
-        # Phase 1: Current -> traj[0]
-        if distance_to_start > 0.01:  # 충분히 가까워질 때까지
-            # Linear interpolation
-            delta = target_qpos - current_full_qpos
+        # Calculate distance
+        distance = np.linalg.norm(current_qpos - target_qpos[:6])
+        
+        if distance > 0.01:  # Not reached yet
+            delta = target_qpos[:6] - current_qpos
             
-            # Limit velocity
-            max_delta = self.joint_delta
-            delta = np.clip(delta, -max_delta, max_delta)
+            # Normalize and limit velocity
+            delta_norm = np.linalg.norm(delta)
+            if delta_norm > 0:
+                delta = delta / delta_norm * min(self.joint_delta, delta_norm)
             
-            new_qpos = current_full_qpos + delta
-            
-            # Send command
-            self.robot.move(new_qpos[:6], is_servo=True)
-            # self.hand.move(new_qpos[6:])
-            
-        # Phase 2: Follow trajectory
+            new_qpos = current_qpos + delta
+            self.robot.move(new_qpos, is_servo=True)
         else:
-            # Find nearest waypoint in trajectory
-            distances = np.linalg.norm(self.approach_traj - current_full_qpos, axis=1)
-            nearest_idx = np.argmin(distances)
-            
-            # If not at end, move to next waypoint
-            if nearest_idx < len(self.approach_traj) - 1:
-                next_waypoint = self.approach_traj[nearest_idx + 1]
-                
-                delta = next_waypoint - current_full_qpos
-                max_delta = self.joint_delta
-                delta = np.clip(delta, -max_delta, max_delta)
-                
-                new_qpos = current_full_qpos + delta
-                
-                self.robot.move(new_qpos[:6], is_servo=True)
-                # self.hand.move(new_qpos[6:])
-            else:
+            # Reached current waypoint, move to next
+            self.approach_progress += 1
+            if self.approach_progress >= len(self.approach_traj):
                 print("Approach trajectory complete!")
-    
+            else:
+                print(f"Waypoint {target_idx} reached, moving to {int(self.approach_progress)}")
+
     def _execute_grasp(self):
         """Grasp sequence 실행 (누르고 있는 동안 자동 진행)"""
         if self.predefined_hand_traj is None:
@@ -395,28 +421,32 @@ class RobotGUIController:
                 stage_progress = progress - 2.0
                 current_pose = grasp_pose + (squeezed_pose - grasp_pose) * stage_progress
             
-            # self.hand.move(current_pose)
+            self.hand.move(current_pose)
             self.hand_progress_label.config(text=self._get_progress_text())
         else:
             print("Grasp sequence complete!")
     
     def _execute_lift(self):
-        """Lift 실행"""
-        current_pose = self.robot.get_data()['position'].copy()  # 4x4 matrix
+        """Lift 실행 - lift_distance만큼만 올라감"""
+        current_pose = self.robot.get_data()['position'].copy()
         
-        # Z+ 방향으로 이동
-        target_z = current_pose[2, 3] + self.lift_distance / 1000.0  # mm to m
+        # 처음 버튼 누르면 시작 높이 저장
+        if self.lift_start_z is None:
+            self.lift_start_z = current_pose[2, 3]
         
-        # 아직 목표에 도달하지 않았으면
+        # 목표 높이
+        target_z = self.lift_start_z + self.lift_distance / 1000.0
+        
+        # 아직 목표에 도달 안 했으면 계속 올라감
         if current_pose[2, 3] < target_z - 0.001:  # 1mm threshold
             new_pose = current_pose.copy()
-            new_pose[2, 3] += self.cart_delta / 1000.0  # mm to m
+            new_pose[2, 3] += self.cart_delta / 1000.0
             self.robot.move(new_pose, is_servo=True)
         else:
             print("Lift complete!")
     
     def _execute_place(self):
-        """Place sequence 실행 (성공 시): Z- 4cm → hand release → base pose"""
+        """Place sequence 실행 (성공 시): Z- place_distance → hand release → base pose"""
         if 'base' not in self.predefined_poses:
             print("No 'base' pose defined!")
             return
@@ -425,70 +455,32 @@ class RobotGUIController:
             print("No hand trajectory loaded!")
             return
         
-        # State 1: Lower down
+        current_pose = self.robot.get_data()['position'].copy()
+        
+        # State 0: Lower down by place_distance
         if self.place_state == 0:
-            current_pose = self.robot.get_data()['position'].copy()
-            target_z = current_pose[2, 3] - self.place_distance / 1000.0
+            if self.place_start_z is None:
+                self.place_start_z = current_pose[2, 3]
             
-            if current_pose[2, 3] > target_z + 0.001:  # 1mm threshold
+            target_z = self.place_start_z - self.place_distance / 1000.0
+            
+            if current_pose[2, 3] > target_z + 0.001:  # Still lowering
                 new_pose = current_pose.copy()
                 new_pose[2, 3] -= self.cart_delta / 1000.0
                 self.robot.move(new_pose, is_servo=True)
             else:
-                print("Place: Lowering complete, releasing hand...")
+                print("Place: Lowering complete")
                 self.place_state = 1
         
-        # State 2: Release hand
+        # State 1: Release hand
         elif self.place_state == 1:
             start_pose = self.predefined_hand_traj['start']
-            current_hand_qpos = self.hand.get_qpos().copy()
-            
-            # # Check if hand is close to start pose
-            # if np.linalg.norm(current_hand_qpos - start_pose) > 0.01:
-            #     # self.hand.move(start_pose)
-            # else:
-            print("Place: Hand released, going to base...")
-            self.place_state = 2
-        
-        # State 3: Go to base pose
-        elif self.place_state == 2:
-            current_pose = self.robot.get_data()['position'].copy()
-            target_pose = self.predefined_poses['base'].copy()
-            
-            # Translation delta
-            t_delta = target_pose[:3, 3] - current_pose[:3, 3]
-            t_distance = np.linalg.norm(t_delta)
-            
-            # Rotation delta
-            current_rot = Rotation.from_matrix(current_pose[:3, :3])
-            target_rot = Rotation.from_matrix(target_pose[:3, :3])
-            delta_rot = target_rot * current_rot.inv()
-            r_delta = delta_rot.as_rotvec()
-            r_distance = np.linalg.norm(r_delta)
-            
-            # 충분히 가까우면 완료
-            if t_distance < 0.001 and r_distance < 0.01:
-                print("Place sequence complete!")
-                self.place_state = 0  # Reset for next time
-                return
-            
-            # 새로운 pose 계산
-            new_pose = current_pose.copy()
-            
-            # Translation 보간
-            if t_distance > 0.001:
-                t_step_size = min(self.cart_delta / 1000, t_distance)
-                new_pose[:3, 3] = current_pose[:3, 3] + (t_delta / t_distance) * t_step_size
-            
-            # Rotation 보간
-            if r_distance > 0.01:
-                r_step_size = min(self.angle_delta, r_distance)
-                partial_rot = Rotation.from_rotvec((r_delta / r_distance) * r_step_size)
-                new_rot = partial_rot * current_rot
-                new_pose[:3, :3] = new_rot.as_matrix()
-            
-            self.robot.move(new_pose, is_servo=True)
-    
+            self.hand.move(start_pose)
+            reached = self._move_to_pose(self.predefined_poses['base'])
+            if reached:
+                print("Place: Complete!")
+                self.place_state = 2
+
     def _execute_release(self):
         """Release sequence 실행 (실패 시): hand release → base pose"""
         if 'base' not in self.predefined_poses:
@@ -499,56 +491,51 @@ class RobotGUIController:
             print("No hand trajectory loaded!")
             return
         
-        # State 1: Release hand
-        if self.release_state == 0:
+        if self.release_state == 0: 
             start_pose = self.predefined_hand_traj['start']
-            current_hand_qpos = self.hand.get_qpos().copy()
+            self.hand.move(start_pose)
             
-            # Check if hand is close to start pose
-            # if np.linalg.norm(current_hand_qpos - start_pose) > 0.01:
-            #     # self.hand.move(start_pose)
-            # else:
-            print("Release: Hand released, going to base...")
-            self.release_state = 1
+            reached = self._move_to_pose(self.predefined_poses['base'])
+            if reached:
+                self.release_state = 1
+                print("Release: Complete!")
+            
     
-        # State 2: Go to base pose
-        elif self.release_state == 1:
-            current_pose = self.robot.get_data()['position'].copy()
-            target_pose = self.predefined_poses['base'].copy()
-            
-            # Translation delta
-            t_delta = target_pose[:3, 3] - current_pose[:3, 3]
-            t_distance = np.linalg.norm(t_delta)
-            
-            # Rotation delta
-            current_rot = Rotation.from_matrix(current_pose[:3, :3])
-            target_rot = Rotation.from_matrix(target_pose[:3, :3])
-            delta_rot = target_rot * current_rot.inv()
-            r_delta = delta_rot.as_rotvec()
-            r_distance = np.linalg.norm(r_delta)
-            
-            # 충분히 가까우면 완료
-            if t_distance < 0.001 and r_distance < 0.01:
-                print("Release sequence complete!")
-                self.release_state = 0  # Reset for next time
-                return
-            
-            # 새로운 pose 계산
-            new_pose = current_pose.copy()
-            
-            # Translation 보간
-            if t_distance > 0.001:
-                t_step_size = min(self.cart_delta / 1000, t_distance)
-                new_pose[:3, 3] = current_pose[:3, 3] + (t_delta / t_distance) * t_step_size
-            
-            # Rotation 보간
-            if r_distance > 0.01:
-                r_step_size = min(self.angle_delta, r_distance)
-                partial_rot = Rotation.from_rotvec((r_delta / r_distance) * r_step_size)
-                new_rot = partial_rot * current_rot
-                new_pose[:3, :3] = new_rot.as_matrix()
-            
-            self.robot.move(new_pose, is_servo=True)
+    def _move_to_pose(self, target_pose):
+        """Helper function to move to a target pose"""
+        current_pose = self.robot.get_data()['position'].copy()
+        
+        # Translation delta
+        t_delta = target_pose[:3, 3] - current_pose[:3, 3]
+        t_distance = np.linalg.norm(t_delta)
+        
+        # Rotation delta
+        current_rot = Rotation.from_matrix(current_pose[:3, :3])
+        target_rot = Rotation.from_matrix(target_pose[:3, :3])
+        delta_rot = target_rot * current_rot.inv()
+        r_delta = delta_rot.as_rotvec()
+        r_distance = np.linalg.norm(r_delta)
+        
+        if t_distance < 0.001 and r_distance < 0.01:
+            return True  # Reached
+        
+        # 새로운 pose 계산
+        new_pose = current_pose.copy()
+        
+        # Translation 보간
+        if t_distance > 0.001:
+            t_step_size = min(self.cart_delta / 1000, t_distance)
+            new_pose[:3, 3] = current_pose[:3, 3] + (t_delta / t_distance) * t_step_size
+        
+        # Rotation 보간
+        if r_distance > 0.01:
+            r_step_size = min(self.angle_delta, r_distance)
+            partial_rot = Rotation.from_rotvec((r_delta / r_distance) * r_step_size)
+            new_rot = partial_rot * current_rot
+            new_pose[:3, :3] = new_rot.as_matrix()
+        
+        self.robot.move(new_pose, is_servo=True)
+        return False
     
     def _handle_hand_grasp_control(self, pressed_buttons):
         """Handle hand grasp trajectory execution with 4 stages"""
@@ -579,7 +566,7 @@ class RobotGUIController:
                     stage_progress = progress - 2.0
                     current_pose = grasp_pose + (squeezed_pose - grasp_pose) * stage_progress
                 
-                # self.hand.move(current_pose)
+                self.hand.move(current_pose)
                 self.hand_progress_label.config(text=self._get_progress_text())
         
         # Backward direction (squeezed -> grasp -> pregrasp -> start)
@@ -601,7 +588,7 @@ class RobotGUIController:
                     stage_progress = progress - 2.0
                     current_pose = grasp_pose + (squeezed_pose - grasp_pose) * stage_progress
                 
-                # self.hand.move(current_pose)
+                self.hand.move(current_pose)
                 self.hand_progress_label.config(text=self._get_progress_text())
     
     def _handle_pose_control(self, pressed_buttons):
@@ -677,6 +664,32 @@ class RobotGUIController:
             new_qpos = current_qpos + delta
             self.robot.move(new_qpos, is_servo=True)
     
+    def _handle_hand_joint_control(self, pressed_buttons):
+        """Allegro hand joint qpos 를 개별적으로 제어"""
+        current_qpos = self.hand.get_qpos().copy()
+        delta = np.zeros_like(current_qpos)
+        
+        for button in pressed_buttons:
+            # 버튼 이름 형식: "Hand {idx} -" 또는 "Hand {idx} +"
+            if not button.startswith("Hand "):
+                continue
+            try:
+                parts = button.split()
+                idx = int(parts[1])
+                sign = parts[2]
+            except Exception:
+                continue
+            
+            if 0 <= idx < len(delta):
+                if sign == "-":
+                    delta[idx] = -self.hand_joint_delta
+                elif sign == "+":
+                    delta[idx] = self.hand_joint_delta
+        
+        if np.any(delta != 0):
+            new_qpos = current_qpos + delta
+            self.hand.move(new_qpos)
+    
     def _handle_cartesian_control(self, pressed_buttons):
         current_pose = self.robot.get_data()['position'].copy()
         t_delta = np.zeros(3)
@@ -722,7 +735,11 @@ class RobotGUIController:
     
     def _control_loop(self):
         """눌린 버튼 상태를 계속 확인하는 루프"""
+        iteration = 0
+        
         while self.running:
+            iteration += 1
+            
             pressed_buttons = [name for name, state in self.button_states.items() if state]
             
             if pressed_buttons:
@@ -745,6 +762,10 @@ class RobotGUIController:
                 elif any('hand_grasp' in name for name in pressed_buttons):
                     hand_grasp_pressed = [name for name in pressed_buttons if 'hand_grasp' in name]
                     self._handle_hand_grasp_control(hand_grasp_pressed)
+                # Hand joint 버튼 체크 (알레그로 개별 관절)
+                elif any(name.startswith("Hand ") for name in pressed_buttons):
+                    hand_joint_pressed = [name for name in pressed_buttons if name.startswith("Hand ")]
+                    self._handle_hand_joint_control(hand_joint_pressed)
                 # Pose 버튼 체크
                 else:
                     pose_pressed = [name for name in pressed_buttons if name in self.predefined_poses]
@@ -756,12 +777,14 @@ class RobotGUIController:
                         self._handle_cartesian_control(pressed_buttons)
             
             time.sleep(0.01)  # 100Hz
+        
+        print(">>> Control loop exited")
     
     def _on_exit(self):
         print("종료 중...")
         self.running = False
         try:
-            self.robot.end(set_break=True)
+            self.robot.end()
             self.hand.end()
         except:
             pass

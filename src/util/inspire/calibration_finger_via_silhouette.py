@@ -420,7 +420,7 @@ def save_debug_compare_grid(
         overlay = overlay_mask(canvas, gt_mask, color=(255, 0, 0), alpha=0.6)
         overlay = overlay_mask(overlay, pred_mask, color=(0, 255, 0), alpha=0.4)
         out_path = os.path.join(out_dir, f"{tag}_{cam_id}.png")
-        cv2.imwrite(out_path, cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
+        # cv2.imwrite(out_path, cv2.cvtColor(overlay, cv2.COLOR_RGB2BGR))
         overlays.append(overlay)
     if overlays:
         grid = make_image_grid(overlays)
@@ -430,15 +430,27 @@ def save_debug_compare_grid(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-dir", type=str, default=os.path.join(shared_dir, "inspire_pinky_calibration"))
+    parser.add_argument("--base-dir", type=str, default=os.path.join(shared_dir, "inspire_pinky_calibration_2"))
     parser.add_argument("--ep", type=str, default="0")
-    parser.add_argument("--gd-steps", type=int, default=80)
+    parser.add_argument("--gd-steps", type=int, default=5000)
     parser.add_argument("--gd-lr1", type=float, default=0.05)
     parser.add_argument("--gd-lr2", type=float, default=0.05)
     parser.add_argument("--render-scale", type=float, default=0.5)
-    parser.add_argument("--debug-every", type=int, default=100)
-    parser.add_argument("--debug-dir", type=str, default="raw/debug")
+    parser.add_argument("--debug-every", type=int, default=500)
+    parser.add_argument("--debug-dir", type=str, default="debug")
     parser.add_argument("--out-json", type=str, default=None)
+    parser.add_argument(
+        "--hand-json",
+        type=str,
+        default=None,
+        help="Path to lookup_arm_to_hand.json; when set, fix floating arm_to_hand joints to this pose.",
+    )
+    parser.add_argument(
+        "--hand-state-key",
+        type=str,
+        default=None,
+        help="Key to use in hand-json (defaults to --ep if present, or the only entry).",
+    )
     parser.add_argument(
         "--cam-ids",
         nargs="*",
@@ -469,14 +481,51 @@ def main() -> None:
     if hand_state.shape[0] >= 6:
         hand_state[1:] = 1000
     hand_qpos = inspire_state_to_qpos_sil(hand_state)
-    full_qpos = np.concatenate([arm_state.reshape(1, -1), hand_qpos.reshape(1, -1)], axis=1)[0]
+    full_qpos = np.concatenate([arm_state.reshape(1, -1), hand_qpos.reshape(1, -1), np.zeros(6, dtype=float).reshape(1, -1)], axis=1)[0]
 
-    urdf_path = os.path.join(rsc_path, "robot", "xarm_inspire_left_new_copy.urdf")
+    # urdf_path = os.path.join(rsc_path, "robot", "xarm_inspire_left_new_copy.urdf")
+
+    urdf_path = os.path.join(rsc_path, "robot", "xarm_inspire_left_new_floating.urdf")
+
     robot = RobotModule(urdf_path)
 
     robot_dof = robot.get_num_joints()
     if full_qpos.shape[0] != robot_dof:
         raise ValueError(f"qpos length mismatch: {full_qpos.shape[0]} vs {robot_dof}")
+
+    joint_names = robot.get_joint_names()
+    if args.hand_json:
+        with open(args.hand_json, "r") as f:
+            hand_data = json.load(f)
+        if not isinstance(hand_data, dict) or not hand_data:
+            raise ValueError(f"Invalid hand-json content: {args.hand_json}")
+        if args.hand_state_key is not None:
+            state_key = args.hand_state_key
+        elif str(args.ep) in hand_data:
+            state_key = str(args.ep)
+        elif len(hand_data) == 1:
+            state_key = next(iter(hand_data.keys()))
+        else:
+            raise KeyError(
+                f"hand-json has multiple keys; specify --hand-state-key. keys={list(hand_data.keys())}"
+            )
+        state_entry = hand_data.get(state_key, {})
+        arm_to_hand = state_entry.get("arm_to_hand", None)
+        if arm_to_hand is None or len(arm_to_hand) != 6:
+            raise ValueError(f"hand-json missing arm_to_hand[6] for key={state_key}")
+        float_joints = [
+            "arm_to_hand_x",
+            "arm_to_hand_y",
+            "arm_to_hand_z",
+            "arm_to_hand_roll",
+            "arm_to_hand_pitch",
+            "arm_to_hand_yaw",
+        ]
+        for jn, val in zip(float_joints, arm_to_hand):
+            if jn not in joint_names:
+                raise KeyError(f"Joint '{jn}' not found in robot joint names")
+            full_qpos[joint_names.index(jn)] = float(val)
+        print(f"Fixed arm_to_hand from {args.hand_json} (key={state_key})")
 
     # Camera transforms and undistort maps.
     render_extrinsics = {}
@@ -511,7 +560,6 @@ def main() -> None:
     }
     urdf_kin = TorchUrdfKinematics(urdf_path, device=device)
 
-    joint_names = robot.get_joint_names()
     idx_little_1 = joint_names.index("left_little_1_joint")
     idx_little_2 = joint_names.index("left_little_2_joint")
 

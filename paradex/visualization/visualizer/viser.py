@@ -13,7 +13,7 @@ import threading
 from paradex.visualization.robot import RobotModule  
 
 class ViserViewer():
-    def __init__(self, up_direction=np.array([0,0,1])):
+    def __init__(self, up_direction=np.array([0,0,1]), port_number=8080):
         self.frame_nodes: dict[str, viser.FrameHandle] = {}
 
         self.up_direction = up_direction
@@ -29,7 +29,7 @@ class ViserViewer():
         # self.add_lights()
 
     def load_server(self):
-        self.server = viser.ViserServer()
+        self.server = viser.ViserServer(host="0.0.0.0", port=8080)
         self.server.gui.configure_theme(dark_mode=True)
 
         self.server.scene.set_up_direction(self.up_direction)
@@ -68,7 +68,7 @@ class ViserViewer():
         
         self.robot_dict[name] = robot
 
-    def add_object(self, name, obj: trimesh.Trimesh, obj_T):
+    def add_object(self, name, obj: trimesh.Trimesh, obj_T, show_axes=False):
         """
         Add an object mesh to the scene
         
@@ -82,7 +82,7 @@ class ViserViewer():
             f"/objects/{name}_frame",
             position=obj_T[:3, 3],
             wxyz=R.from_matrix(obj_T[:3, :3]).as_quat()[[3, 0, 1, 2]],
-            show_axes=True,
+            show_axes=show_axes,
             axes_length=0.05,
             axes_radius=0.002,
         )
@@ -107,6 +107,7 @@ class ViserViewer():
         }
         
         self.frame_nodes[name] = frame_handle
+        return frame_handle
 
     def add_traj(self, name, robot_traj: Dict, obj_traj: Dict = {}):
         # if len(robot_traj) == 0:
@@ -117,7 +118,7 @@ class ViserViewer():
             if robot_name in robot_traj:
                 new_traj_dict["robot"][robot_name] = robot_traj[robot_name]
             else:
-                new_traj_dict["robot"][robot_name] = np.tile(self.robot_dict[robot_name].urdf.get_cfg(), (traj_len, 1))
+                new_traj_dict["robot"][robot_name] = np.tile(self.robot_dict[robot_name].urdf.urdf.zero_cfg, (traj_len, 1))
 
         for obj_name in list(self.obj_dict.keys()):
             if obj_name in obj_traj:
@@ -304,14 +305,14 @@ class ViserViewer():
         def _(_) -> None:
             self.render_full_video()
 
-    def add_frame(self, name, T):
+    def add_frame(self, name, T, scale=0.05):
         self.frame_nodes[name] = self.server.scene.add_frame(
             name=f"/{name}/frame",
             show_axes=True,
             # axis_length=0.1,
             # axis_radius=0.002,
-            axes_length=0.05,
-            axes_radius=0.002,
+            axes_length=scale,
+            axes_radius=scale*0.04,
             position=T[:3, 3],
             wxyz=R.from_matrix(T[:3, :3]).as_quat()[[3, 0, 1, 2]],
         )

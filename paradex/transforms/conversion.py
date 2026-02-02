@@ -44,6 +44,7 @@ def SOLVE_XA_B(A, B):
     assert A.shape == B.shape, "Input matrices must have the same shape."
 
     # Compute centroids
+    
     centroid_A = np.mean(A, axis=0)
     centroid_B = np.mean(B, axis=0)
 

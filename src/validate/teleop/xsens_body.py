@@ -5,6 +5,7 @@ import time
 import argparse
 
 from paradex.visualization.skeleton.hand import HandVisualizer
+from paradex.utils.system import network_info
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -14,9 +15,10 @@ if __name__ == "__main__":
 
     if args.device == 'xsens': 
         from paradex.io.teleop import XSensReceiver, xsens_joint_name, xsens_joint_parent_name
-        receiver = XSensReceiver()
+        receiver = XSensReceiver(**network_info["xsens"]["param"])
         skeleton_info = {child:parent for child, parent in zip(xsens_joint_name, xsens_joint_parent_name)}
         joint_name_list = xsens_joint_name
+        print(joint_name_list)
 
     if args.device =='occulus':
         from paradex.io.teleop import OculusReceiver, occulus_hand_joint_name, occulus_hand_joint_parent_name

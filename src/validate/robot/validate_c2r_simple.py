@@ -28,27 +28,37 @@ from paradex.utils.path import rsc_path, shared_dir
 from paradex.utils.load_data import load_series, resample_to
 
 
-def load_images_from_episode(episode_path, frame_idx=0):
+def load_images_from_episode(episode_path, frame_idx=0, data_type='video'):
     """Load images from video_extracted directory."""
-    image_dir = os.path.join(episode_path, "video_extracted")
-    if not os.path.exists(image_dir):
-        raise FileNotFoundError(f"video_extracted directory not found: {image_dir}")
+    if data_type=='video':
+        image_dir = os.path.join(episode_path, "video_extracted")
+        if not os.path.exists(image_dir):
+            raise FileNotFoundError(f"video_extracted directory not found: {image_dir}")
+        images = {}
+        cam_dirs = [d for d in os.listdir(image_dir) if os.path.isdir(os.path.join(image_dir, d))]
 
-    images = {}
-    cam_dirs = [d for d in os.listdir(image_dir) if os.path.isdir(os.path.join(image_dir, d))]
+        for cam_serial in cam_dirs:
+            cam_dir = os.path.join(image_dir, cam_serial)
+            img_files = sorted(glob.glob(os.path.join(cam_dir, "*.jpg")))
+            if not img_files:
+                img_files = sorted(glob.glob(os.path.join(cam_dir, "*.png")))
 
-    for cam_serial in cam_dirs:
-        cam_dir = os.path.join(image_dir, cam_serial)
-        img_files = sorted(glob.glob(os.path.join(cam_dir, "*.jpg")))
-        if not img_files:
-            img_files = sorted(glob.glob(os.path.join(cam_dir, "*.png")))
-
-        if img_files and frame_idx < len(img_files):
-            img_path = img_files[frame_idx]
+            if img_files and frame_idx < len(img_files):
+                img_path = img_files[frame_idx]
+                img = cv2.imread(img_path)
+                if img is not None:
+                    images[cam_serial] = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                    print(f"  Loaded {cam_serial}: {img.shape} from {os.path.basename(img_path)}")
+    else:
+        image_dir = os.path.join(episode_path, "raw/images")
+        images = {}
+        for img_nm in os.listdir(image_dir):
+            img_path = os.path.join(image_dir, img_nm)
             img = cv2.imread(img_path)
             if img is not None:
-                images[cam_serial] = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                print(f"  Loaded {cam_serial}: {img.shape} from {os.path.basename(img_path)}")
+                cam_id = img_nm.split('_')[0]  # Assuming filename format: <cam_serial>_frameXXXX.jpg
+                images[cam_id] = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                print(f"  Loaded {cam_id}: {img.shape} from {img_nm}")
 
     return images
 
@@ -88,7 +98,8 @@ def validate_c2r_from_episode(
     hand_name="inspire",
     frame_idx=0,
     device="cuda:0",
-    output_dir=None
+    output_dir=None,
+    data_type='video'
 ):
     """
     Validate C2R by projecting robot onto captured images.
@@ -120,7 +131,7 @@ def validate_c2r_from_episode(
 
     # Load images
     print(f"\n[2] Loading images (frame {frame_idx})...")
-    images = load_images_from_episode(capture_path, frame_idx)
+    images = load_images_from_episode(capture_path, frame_idx, data_type=data_type)
     if not images:
         raise RuntimeError("No images found!")
 
@@ -205,6 +216,8 @@ def main():
     parser.add_argument("--frame", type=int, default=0, help="Frame index to use")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--output-dir", type=str, default=None)
+    parser.add_argument("--data_type", type=str, choices=['video', 'images'], default='video',
+                        help="Type of data storage: 'video' for video_extracted, 'raw' for raw/images")
 
     args = parser.parse_args()
 
@@ -226,7 +239,8 @@ def main():
         hand_name=args.hand,
         frame_idx=args.frame,
         device=args.device,
-        output_dir=args.output_dir
+        output_dir=args.output_dir,
+        data_type=args.data_type
     )
 
 

@@ -260,15 +260,15 @@ class ImageDict:
             if 'undistort_map' not in self._cache:
                 self._cache['undistort_map'] = {}
                 for serial in self.images.keys():
-                    if serial != "23029839":
+                    if serial != "23029839" and serial != '22684253':
                         self._cache['undistort_map'][serial] = precomute_undistort_map(self.intrinsic[serial])
-            if serial != "23029839":
+            if serial != "23029839" and serial != '22684253':
                 if serial not in self.intrinsic:
                     raise ValueError(f"Intrinsic parameters not found for serial {serial}")
         
         undistort_image = {}
         for serial in self.images.keys():
-            if serial == "23029839":
+            if serial == "23029839" or serial == '22684253':
                 continue
             undistort_image[serial] = apply_undistort_map(
                 self.images[serial],

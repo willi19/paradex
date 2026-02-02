@@ -334,19 +334,20 @@ class TorchUrdfKinematics:
             faces = torch.tensor(mesh.faces, dtype=torch.int32, device=device)
             self.link_meshes[link_name] = (verts, faces)
 
-    def forward(self, qpos: torch.Tensor) -> list:
+    def forward(self, qpos: torch.Tensor, exclude = []) -> list:
         if qpos.dim() == 1:
             qpos = qpos[None, :]
         fk = self.chain.forward_kinematics(qpos)
         meshes = []
         for link_name, (verts, faces) in self.link_meshes.items():
-            tf = fk.get(link_name, None)
-            if tf is None:
-                continue
-            T = tf.get_matrix()[0]
-            v = torch.cat([verts, torch.ones((verts.shape[0], 1), device=self.device)], dim=1)
-            v_w = (v @ T.T)[:, :3]
-            meshes.append({"verts": v_w, "faces": faces})
+            if link_name not in exclude:
+                tf = fk.get(link_name, None)
+                if tf is None:
+                    continue
+                T = tf.get_matrix()[0]
+                v = torch.cat([verts, torch.ones((verts.shape[0], 1), device=self.device)], dim=1)
+                v_w = (v @ T.T)[:, :3]
+                meshes.append({"verts": v_w, "faces": faces})
         return meshes
 
 
@@ -455,8 +456,9 @@ def main() -> None:
         "--cam-ids",
         nargs="*",
         default=[
-            "22645029",
-            "22684210",
+            # "22645029",
+            "22641023",
+            # "22684210",
             "22684737",
             "22684755",
             "23022639",
@@ -566,6 +568,7 @@ def main() -> None:
     base_qpos = full_qpos.copy()
     init_theta_1 = base_qpos[idx_little_1]
     init_theta_2 = base_qpos[idx_little_2]
+    
 
     print(f"Using {len(available_cam_ids)} view(s): {available_cam_ids}")
     print(f"Initial pinky_1: {init_theta_1:.6f} rad")
@@ -608,7 +611,7 @@ def main() -> None:
         qpos_step = qpos_base.clone()
         qpos_step[idx_chain_l1] = theta1_t
         qpos_step[idx_chain_l2] = theta2_fixed
-        meshes = urdf_kin.forward(qpos_step)
+        meshes = urdf_kin.forward(qpos_step, exclude=["left_little_2"])
         _, mask_pred = renderer.render_multi(meshes)
         loss = compute_loss_torch(mask_pred, target_masks_torch)
         loss.backward()

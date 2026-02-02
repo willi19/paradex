@@ -11,7 +11,7 @@ for ep_dir in "$BASE_DIR"/*; do
     python src/util/inspire/calibration_finger_via_silhouette.py \
       --base-dir "$BASE_DIR" \
       --ep "$ep" \
-      --gd-steps 3000 \
+      --gd-steps 1000 \
       --debug-every 1000 \
       --hand-json "$HAND_JSON" \
       --hand-state-key "$HAND_STATE_KEY"

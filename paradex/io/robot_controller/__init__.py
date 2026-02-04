@@ -7,6 +7,9 @@ def get_arm(arm_name):
     if arm_name == "xarm":
         from .xarm_controller import XArmController
         return XArmController(**network_info[arm_name]["param"])
+    if arm_name == "openarm":
+        from .openarm_state_receiver import OpenArmStateReceiver
+        return OpenArmStateReceiver()
 
 def get_hand(hand_name, tactile = False, ip = False):
     if hand_name == "inspire":

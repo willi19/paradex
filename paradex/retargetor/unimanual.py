@@ -19,7 +19,7 @@ class Retargetor(): # Input is only from Xsens
             self.hand_retargetor = allegro
         else:
             self.hand_retargetor = None
-
+        
         if self.arm_name is not None:
             self.device2wrist = DEVICE2WRIST[self.arm_name].copy()
             self.device2global = DEVICE2GLOBAL[self.arm_name].copy()

@@ -43,13 +43,17 @@ class CaptureSession():
             
         if teleop is not None:
             if teleop == "xsens":
+                # if arm == "openarm":
                 from paradex.io.teleop.xsens.receiver import XSensReceiver
                 self.teleop_device = XSensReceiver(**network_info["xsens"]["param"])
-            
+                
             # elif teleop == "occulus":
             #     from paradex.io.teleop.oculus.receiver import OculusReceiver
             #     self.teleop_device = OculusReceiver()
-            self.retargetor = Retargetor(arm_name=arm, hand_name=hand)
+            if arm == 'openarm':
+                self.retargetor = Retargetor(arm_name=None, hand_name=hand)
+            else:
+                self.retargetor = Retargetor(arm_name=arm, hand_name=hand)
             self.state_extractor = HandStateExtractor()
             
         else:

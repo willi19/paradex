@@ -27,10 +27,10 @@ def undistort_and_detect_charuco(name):
            os.path.exists(os.path.join(root_dir, index, "charuco_3d_corners.npy")):
             continue
 
-        if os.path.exists(os.path.join(root_dir, index, "undistort", "images")) and \
-            len(os.listdir(os.path.join(root_dir, index, "undistort", "images"))) == \
-            len(os.listdir(os.path.join(root_dir, index, "images"))):
-            continue
+        # if os.path.exists(os.path.join(root_dir, index, "undistort", "images")) and \
+        #     len(os.listdir(os.path.join(root_dir, index, "undistort", "images"))) == \
+        #     len(os.listdir(os.path.join(root_dir, index, "images"))):
+        #     continue
         
         os.makedirs(os.path.join(root_dir, index, "undistort", "images"), exist_ok=True)
         if img_dict is None:
@@ -50,6 +50,8 @@ def undistort_and_detect_charuco(name):
         
         detectionDict = undistort_img_dict.draw_keypoint(detection, color=(0,255,0))
         print(charuco_3d['checkerCorner'].shape)
+        if len(charuco_3d['checkerCorner'])<=0:
+            continue
         projected_dict = undistort_img_dict.project_pointcloud(charuco_3d['checkerCorner'])
         detectionDict = detectionDict.draw_keypoint(projected_dict, color=(255,0,0))
         detectionDict.save(os.path.join(root_dir, index, "detection"))

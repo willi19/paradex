@@ -86,8 +86,8 @@ def save_current_camparam(save_path):
     camparam_dir = os.path.join(shared_dir, "cam_param")
     camparam_name = find_latest_directory(camparam_dir)
     camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
-
-    shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"), dirs_exist_ok=True)
+    if not os.path.exists(save_path):
+        shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"), dirs_exist_ok=True)
     
 def load_current_C2R():
     name = find_latest_directory(handeye_calib_path)

@@ -1,3 +1,8 @@
+from pathlib import Path
+import sys
+sys.path.append(str(Path(__file__).parents[3]))
+print(sys.path)
+
 from threading import Event
 import time
 import argparse
@@ -8,8 +13,9 @@ from paradex.io.camera_system.remote_camera_controller import remote_camera_cont
 
 from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.utils.path import shared_dir
+from paradex.image.image_dict import ImageDict
 
-from paradex.calibration.utils import save_current_camparam, save_current_C2R
+from paradex.calibration.utils import save_current_camparam
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--save_path', required=True)
@@ -32,10 +38,13 @@ try:
 
         date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         save_current_camparam(os.path.join(shared_dir, args.save_path, date_str))
-        save_current_C2R(os.path.join(shared_dir, args.save_path, date_str))
         print(f"Capturing image to {args.save_path}/{date_str}")
         rcc.start("image", False, f'shared_data/{args.save_path}/{date_str}/raw')
         rcc.stop()
+
+        img_dict = ImageDict.from_path(os.path.join(shared_dir, args.save_path))
+        img_dict.undistort(os.path.join(shared_dir, args.save_path))
+
         save_event.clear()
         
 finally:

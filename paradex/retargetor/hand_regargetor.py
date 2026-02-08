@@ -86,3 +86,15 @@ def inspire(hand_pose_frame):
     # print(inspire_angles)
     return inspire_angles
         
+
+## Retargetor for gripper only
+def gripper(hand_pose_frame):
+    gripper_width = 0.0
+
+    ## Need to be modified later -- doesn't make sense at the moment
+    left_finger_tip = (np.linalg.inv(hand_pose_frame["wrist"]) @ hand_pose_frame["left_index_distal"])[:3, 3]
+    right_finger_tip = (np.linalg.inv(hand_pose_frame["wrist"]) @ hand_pose_frame["right_index_distal"])[:3, 3]
+
+
+    gripper_width = np.linalg.norm(left_finger_tip - right_finger_tip)
+    return gripper_width

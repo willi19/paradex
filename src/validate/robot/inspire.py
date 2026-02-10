@@ -3,9 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from paradex.utils.system import network_info
-from paradex.io.robot_controller.inspire_controller import InspireController
+# from paradex.io.robot_controller.inspire_controller import InspireController
+from paradex.io.robot_controller.deprecated.inspire_controller_ip import InspireControllerIP
 
-ic = InspireController(**network_info['inspire_usb']['param'])
+
+ic = InspireControllerIP(**network_info['inspire_ip']['param'])
 ic.start("inspire_motion")
 start_time = time.time()    
 while time.time() - start_time < 10.0:

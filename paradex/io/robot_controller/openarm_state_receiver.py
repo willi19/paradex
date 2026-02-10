@@ -7,6 +7,7 @@ import numpy as np
 from threading import Event, Lock, Thread
 
 import rclpy
+from rclpy.executors import SingleThreadedExecutor
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 
@@ -27,12 +28,17 @@ class OpenArmStateReceiver(Node):
 
         super().__init__("openarm_state_receiver")
 
+        # Use a private attribute to avoid collisions with Node.executor internals.
+        self._executor = SingleThreadedExecutor()
+        self._executor.add_node(self)
+
         self.topic = topic
         self.save_path = None
 
         self.lock = Lock()
         self.save_event = Event()
         self.error_event = Event()
+        self.exit_event = Event()
 
         self.data = None
         self.last_state = {
@@ -56,7 +62,7 @@ class OpenArmStateReceiver(Node):
 
     def _spin(self):
         try:
-            rclpy.spin(self)
+            self._executor.spin()
         except Exception:
             self.error_event.set()
 
@@ -114,11 +120,11 @@ class OpenArmStateReceiver(Node):
 
     def stop(self):
         with self.lock:
-            self.save_event.clear()
             data = self.data
             save_path = self.save_path
             self.data = None
             self.save_path = None
+            self.save_event.clear()
 
         if data is None or save_path is None:
             return
@@ -136,9 +142,9 @@ class OpenArmStateReceiver(Node):
         )
 
     def end(self):
-        if self.save_event.is_set():
-            self.stop()
-
+        self.exit_event.set()
+        self._executor.remove_node(self)
+        self._executor.shutdown()
         self.destroy_node()
         if self._owns_rclpy:
             rclpy.shutdown()

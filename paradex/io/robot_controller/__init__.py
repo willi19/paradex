@@ -19,7 +19,13 @@ def get_hand(hand_name, tactile = False, ip = False):
         else:
             from .inspire_controller import InspireController
             return InspireController(**network_info["inspire_usb"]["param"], tactile=tactile)
-
+        
+    if hand_name == "inspire_f1":
+            # from .inspire_f1_controller import InspireF1Controller
+            # return InspireF1Controller(**network_info["inspire_f1"]["param"], tactile=tactile)
+        from .inspire_f1_state_receiver import InspireF1StateReceiver
+        return InspireF1StateReceiver(hand_side="both")
+        
     if hand_name == "allegro":
         from .allegro_controller import AllegroController
         return AllegroController(**network_info[hand_name]["param"])

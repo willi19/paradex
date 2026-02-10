@@ -1,6 +1,6 @@
 import numpy as np
 from paradex.transforms.coordinate import DEVICE2WRIST,  DEVICE2GLOBAL
-from paradex.retargetor.hand_regargetor import inspire, allegro
+from paradex.retargetor.hand_regargetor import inspire, allegro, inspire_f1
 
 class Retargetor(): # Input is only from Xsens
     def __init__(self, arm_name=None, hand_name=None, hand_side="Right"):
@@ -9,7 +9,7 @@ class Retargetor(): # Input is only from Xsens
         
         if arm_name not in [None, "xarm", "franka"]:
             raise ValueError("Invalid arm name")
-        if hand_name not in [None, "inspire", "allegro"]:
+        if hand_name not in [None, "inspire", "allegro", "inspire_f1"]:
             raise ValueError("Invalid hand name")
         
         if hand_side not in ["Right", "Left", "Bimanual"]:
@@ -25,6 +25,8 @@ class Retargetor(): # Input is only from Xsens
             self.hand_retargetor = inspire
         elif self.hand_name == "allegro":
             self.hand_retargetor = allegro
+        elif self.hand_name == "inspire_f1":
+            self.hand_retargetor = inspire_f1
         else:
             self.hand_retargetor = None
 

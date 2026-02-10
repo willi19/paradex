@@ -1,5 +1,5 @@
 import time
-from pymodbus.client import ModbusTcpClient  # pip3 install pymodbus==2.5.3
+from pymodbus.client.sync import ModbusTcpClient  # pip3 install pymodbus==2.5.3
 import time
 
 import numpy as np

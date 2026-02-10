@@ -48,6 +48,7 @@ def project_robot_and_object(
     output_dir,
     overlay_option,
     output_type,
+    grid_scale,
     device,
     frame_offset,
     arm_time_offset,
@@ -349,6 +350,12 @@ def project_robot_and_object(
 
         if output_type == "grid" and overlays_for_grid:
             grid_img = make_image_grid(overlays_for_grid)
+            if grid_scale != 1.0:
+                if grid_scale <= 0.0:
+                    raise ValueError(f"grid_scale must be > 0, got {grid_scale}")
+                new_w = max(1, int(round(grid_img.shape[1] * grid_scale)))
+                new_h = max(1, int(round(grid_img.shape[0] * grid_scale)))
+                grid_img = cv2.resize(grid_img, (new_w, new_h), interpolation=cv2.INTER_AREA)
             frame_name = int(video_frame_ids[fidx])
             cv2.imwrite(
                 os.path.join(grid_dir, f"frame_{frame_name:05d}.png"),
@@ -410,6 +417,7 @@ def main():
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--overlay-option", type=str, choices=["action", "position"], default="position", help="Whether to overlay using hand action or hand position data.")
     parser.add_argument("--output-type", type=str, choices=["video", "grid"], default="grid", help="Output overlaid result as videos (per camera) or as tiled grid images per frame.",)
+    parser.add_argument("--grid-scale", type=float, default=1.0, help="Downscale factor for saved grid frames before writing PNG (e.g., 0.5 halves width/height).")
     parser.add_argument("--overlay-to-other-video", action="store_true", help="Overlay the projected masks onto another video.")
     parser.add_argument("--frame-offset", type=int, default=0, help="Shift overlay target video frames by this offset.")
     parser.add_argument("--arm-time-offset", type=float, default=0.0, help="Shift arm timestamps by this many seconds (positive delays arm).")
@@ -438,6 +446,7 @@ def main():
         output_dir=args.output_dir,
         overlay_option=args.overlay_option,
         output_type=args.output_type,
+        grid_scale=args.grid_scale,
         device=args.device,
         frame_offset=args.frame_offset,
         arm_time_offset=args.arm_time_offset,

@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import time
-
+import copy
 def allegro(hand_pose_frame):
     hand_joint_angle = np.zeros((20,3))
     allegro_angles = np.zeros(16)
@@ -84,5 +84,69 @@ def inspire(hand_pose_frame):
                 inspire_angles[5] = 0
                 inspire_angles[4] = np.arcsin(-tip_direction[2]) / np.pi * 2000  * 3.5 - 1000
     # print(inspire_angles)
+    return inspire_angles
+
+def inspire_f1(hand_pose_frame):
+    """
+    Same kinematic mapping as inspire(), but scale each DOF to Inspire F1 raw range.
+    """
+    # inspire_angles = inspire(hand_pose_frame)
+    # f1_ranges = np.array([
+    #     [900, 1740],
+    #     [900, 1740],
+    #     [900, 1740],
+    #     [900, 1740],
+    #     [1100, 1350],
+    #     [600, 1800],
+    # ], dtype=np.float64)
+
+    # # Clamp to [0, 1000] then scale to per-DOF range
+    # inspire_angles = np.clip(inspire_angles, 0.0, 1000.0)
+    # mins = f1_ranges[:, 0]
+    # maxs = f1_ranges[:, 1]
+    # scaled = mins + (inspire_angles / 1000.0) * (maxs - mins)
+    # inspire_angles[:4] = [1000.0] * 4
+
+    
+    
+    
+    inspire_angles = np.zeros(6)
+
+    for i, finger_name in enumerate(["thumb", "index", "middle", "ring", "pinky"]):
+        metacarpal = finger_name + "_metacarpal"
+        distal = finger_name + "_distal"
+        
+        tip_pos = (np.linalg.inv(hand_pose_frame["wrist"]) @ hand_pose_frame[distal])
+        
+        if finger_name != "thumb":
+            angle = np.arctan2(tip_pos[2, 1], tip_pos[1, 1])
+            if angle < -np.pi / 2:
+                angle = 2 * np.pi + angle
+            
+            inspire_angles[4-i] = (1-max(0, min(1, angle / np.pi))) * 500 + 500
+
+        else:
+            tip_position = tip_pos[:3, 3]
+            finger_base_position = (np.linalg.inv(hand_pose_frame["wrist"]) @ hand_pose_frame[metacarpal])[:3, 3]
+            tip_direction = tip_position - finger_base_position
+            tip_direction  = tip_direction / np.linalg.norm(tip_direction)
+            tip_direction[1] *= -1
+            tip_direction[2] *= -1
+            
+            print(tip_direction)
+            if tip_direction[0] > 0:
+                inspire_angles[4] = 1000 - np.arctan(-tip_direction[2] / abs(tip_direction[0])) / np.pi * 250
+                inspire_angles[5] = -np.arccos(tip_direction[0]) * 800 + 1500 # no divide by pi for better range
+            else:
+                inspire_angles[4] = 1000 - np.arctan(-tip_direction[2] / abs(tip_direction[0])) / np.pi * 250
+                # inspire_angles[4] = 1000 - np.arctan(-tip_direction[2] / abs(tip_direction[0])) / np.pi * 2000
+                print("asfd")
+                inspire_angles[5] = 300
+    print(inspire_angles)
+
+                
+        # inspire_angles[:4] = 500.0 + inspire_angles[:4] * 0.5
+        
+        
     return inspire_angles
         

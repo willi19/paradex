@@ -53,13 +53,16 @@ class CaptureSession():
         if hand is not None:
             if self.hand_side != "Bimanual":
                 self.hand = get_hand(hand_name = hand, tactile = tactile, ip = ip)
-            else:
-                self.hand_left = get_hand(hand_name = hand, tactile = tactile, ip = ip)
+            # else:
+            #     self.hand_left = get_hand(hand_name = hand, tactile = tactile, ip = ip)
 
                 # self.hand_left = get_hand(hand_name = hand, tactile = tactile, ip = ip)
                 # self.hand_right = get_hand(hand_name = hand, tactile = tactile, ip = ip)
+            else:
+                self.hand = get_hand(hand_name =hand,)
         else:
             self.hand = None
+
         
 
             
@@ -72,9 +75,7 @@ class CaptureSession():
             # elif teleop == "occulus":
             #     from paradex.io.teleop.oculus.receiver import OculusReceiver
             #     self.teleop_device = OculusReceiver()
-            if arm == 'openarm':
-                self.retargetor = Retargetor(arm_name=None, hand_name=hand, hand_side = self.hand_side)
-            else:
+            if arm != 'openarm':
                 self.retargetor = Retargetor(arm_name=arm, hand_name=hand, hand_side = self.hand_side)
                 self.state_extractor = HandStateExtractor()
 
@@ -91,15 +92,15 @@ class CaptureSession():
         if self.arm is not None:
             self.arm.start(os.path.join(shared_dir, save_path, "raw", "arm"))
         
-        if self.hand_side != "Bimanual":
-            if self.hand is not None:
-                self.hand.start(os.path.join(shared_dir, save_path, "raw", "hand"))
-                
-        else:
-            if self.hand_left is not None:
-                self.hand_left.start(os.path.join(shared_dir, save_path, "raw", "hand_left"))
-            # if self.hand_right is not None:
-            #     self.hand_right.start(os.path.join(shared_dir, save_path, "raw", "hand_right"))
+
+        if self.hand is not None:
+            self.hand.start(os.path.join(shared_dir, save_path, "raw", "hand"))
+            
+        # else:
+        #     if self.hand_left is not None:
+        #         self.hand_left.start(os.path.join(shared_dir, save_path, "raw", "hand_left"))
+        #     # if self.hand_right is not None:
+        #     #     self.hand_right.start(os.path.join(shared_dir, save_path, "raw", "hand_right"))
             
         if self.teleop_device is not None:
             self.teleop_device.start(os.path.join(shared_dir, save_path, "raw", "teleop"))
@@ -107,6 +108,7 @@ class CaptureSession():
             self.state_time = []
 
         if self.camera is not None:
+            # self.sync_generator.start(fps=30)
             self.camera.start("video", True, os.path.join(save_path, "raw"))
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.start(os.path.join(shared_dir, save_path, "raw", "timestamps"))
@@ -116,15 +118,14 @@ class CaptureSession():
         if self.arm is not None:
             self.arm.stop()
             
-        if self.hand_side is not "Bimanual":
-            if self.hand is not None:
-                self.hand.stop()
+        if self.hand is not None:
+            self.hand.stop()
                 
-        else:
-            if self.hand_left is not None:
-                self.hand_left.stop()
-            # if self.hand_right is not None:
-            #     self.hand_right.stop()
+        # else:
+        #     if self.hand_left is not None:
+        #         self.hand_left.stop()
+        #     # if self.hand_right is not None:
+        #     #     self.hand_right.stop()
                 
         if self.teleop_device is not None:
             self.teleop_device.stop()
@@ -152,9 +153,9 @@ class CaptureSession():
         if self.hand_side != "Bimanual":
             if self.hand is not None:
                 self.hand.end()
-        else:
-            if self.hand_left is not None:
-                self.hand_left.end()
+        # else:
+        #     if self.hand_left is not None:
+        #         self.hand_left.end()
             # if self.hand_right is not None:
             #     self.hand_right.end()
         if self.teleop_device is not None:
@@ -184,8 +185,11 @@ class CaptureSession():
             
             if self.hand_side != "Bimanual":
                 if data[self.hand_side] is None:
+                    print("No data from teleop device...")
                     continue
+
                 state = self.state_extractor.get_state(data[self.hand_side_opposite])
+
                 if self.save_path is not None:
                     self.state_hist.append(state)
                     self.state_time.append(time.time())
@@ -222,20 +226,20 @@ class CaptureSession():
                     chime.info(sync=True)
                     return "stop"
                 
-            else:
-                if data is None:
-                    continue
-                if self.hand_left is not None:
-                    wrist_pose, hand_action_left, hand_action_right = self.retargetor.get_action(data)
+            # else:
+            #     if data is None:
+            #         continue
+            #     if self.hand_left is not None:
+            #         wrist_pose, hand_action_left, hand_action_right = self.retargetor.get_action(data)
                     
                     
-                    self.hand_left.move(hand_action_left)
-                if self.events["save"].is_set():
-                    return "saving"
-                if self.events["stop"].is_set():
-                    return "stop"
-                if self.events["exit"].is_set():
-                    return "exit"
+            #         self.hand_left.move(hand_action_left)
+            #     if self.events["save"].is_set():
+            #         return "saving"
+            #     if self.events["stop"].is_set():
+            #         return "stop"
+            #     if self.events["exit"].is_set():
+            #         return "exit"
             time.sleep(0.01)
         
     

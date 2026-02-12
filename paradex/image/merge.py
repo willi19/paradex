@@ -19,9 +19,9 @@ def merge_image(image_dict, image_text={}, put_text=True):
     border_px = 10
     
     new_W = 2048 // grid_cols
-    new_H = 1536 // grid_rows
+    new_H = 1200 // grid_rows #1536
     
-    grid_image = np.ones((1536+border_px*(grid_rows-1), new_W*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
+    grid_image = np.ones((1200+border_px*(grid_rows-1), new_W*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
 
     for idx, img_name in enumerate(name_list):
         img = image_dict[img_name].copy()

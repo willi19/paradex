@@ -355,6 +355,7 @@ if __name__ == "__main__":
     err_dict = debug(name)
     with open(os.path.join(extrinsic_dir, name, index_list[0], " reproj_error.txt"), 'w') as f:
         for serial_num, proj in err_dict.items():
+            print(serial_num)
             f.write(f"{serial_num} : mean {np.mean(proj)}, max{np.max(proj)} \n")
     
     new_name = find_latest_directory(extrinsic_dir)

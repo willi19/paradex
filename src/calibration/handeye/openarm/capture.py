@@ -106,12 +106,12 @@ class OpenArmQposCaptureNode(Node):
             self.get_logger().error("stdin is not a TTY; marker confirmation cannot proceed.")
             return False
         while True:
-            answer = input("Marker를 붙였나요? [y/n]: ").strip().lower()
+            answer = input("Is the marker attached? [y/n]: ").strip().lower()
             if answer == "y":
                 return True
             if answer == "n":
                 return False
-            print("y 또는 n으로 입력해주세요.")
+            print("Please enter 'y' or 'n'.")
 
     def _publish_single_joint(self, joint_name: str, position: float, tfs_sec: int = 5) -> None:
         msg = JointTrajectory()
@@ -163,30 +163,36 @@ class OpenArmQposCaptureNode(Node):
         while rclpy.ok() and time.monotonic() < end:
             rclpy.spin_once(self, timeout_sec=0.05)
 
-    def run(self) -> None:
+    def run(self, go_to_starting_position: bool = False, include_right_hand: bool = False) -> None:
         # Give DDS discovery a short warm-up period.
         self._sleep_with_spin(0.5)
 
         # Pre-position sequence: keep behavior before replaying 1_qpos.npy.
-        pre_events = [
-            ("openarm_left_joint2", -1.3),
-            ("openarm_left_joint4", 1.56),
-            ("openarm_right_joint1", -0.05),
-            ("openarm_right_joint2", 0.2),
-            ("openarm_right_joint1", -0.2),
-            ("openarm_right_joint2", 1.3),
-            ("openarm_right_joint1", -0.05),
-            ("openarm_right_joint3", 1.4),
-            ("openarm_right_joint4", 1.56),
-        ]
-        self.get_logger().info(
-            "Starting pre-position sequence (5s move per command, next command after 6s)."
-        )
-        for i, (joint_name, target) in enumerate(pre_events):
-            self._publish_single_joint(joint_name, target, tfs_sec=5)
-            if i < len(pre_events) - 1:
-                self._sleep_with_spin(6.0)
-        self._sleep_with_spin(5.0)
+        if go_to_starting_position:
+            pre_events = [
+                ("openarm_left_joint2", -1.3),
+                ("openarm_left_joint4", 1.56),
+                ("openarm_right_joint1", -0.05),
+                ("openarm_right_joint2", 0.2),
+                ("openarm_right_joint1", -0.2),
+                ("openarm_right_joint2", 1.3),
+                # ("openarm_right_joint1", -0.05),
+                ("openarm_right_joint3", 1.4),
+                ("openarm_right_joint4", 1.56),
+            ]
+            self.get_logger().info(
+                "Starting pre-position sequence (5s move per command, next command after 6s)."
+            )
+            for i, (joint_name, target) in enumerate(pre_events):
+                if target < 0.5:
+                    self._publish_single_joint(joint_name, target, tfs_sec=2)
+                    if i < len(pre_events) - 1:
+                        self._sleep_with_spin(3.0)
+                else:
+                    self._publish_single_joint(joint_name, target, tfs_sec=5)
+                    if i < len(pre_events) - 1:
+                        self._sleep_with_spin(6.0)
+            self._sleep_with_spin(5.0)
 
         if not self._confirm_marker_ready():
             self.get_logger().info("Marker confirmation failed. Stopping capture.")
@@ -219,8 +225,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--arm", type=str, default="openarm")
     parser.add_argument("--qpos-dir", type=str, default="/home/temp_id/paradex/system/current/hecalib/openarm/")
     parser.add_argument("--start-idx", type=int, default=1)
-    parser.add_argument("--end-idx", type=int, default=30)
+    parser.add_argument("--end-idx", type=int, default=100)
     parser.add_argument("--interval-sec", type=float, default=2.0)
+    parser.add_argument("--go-to-starting-position", action="store_true")
+    parser.add_argument("--include-right-hand", action="store_true")
     return parser.parse_args()
 
 
@@ -244,7 +252,7 @@ def main() -> None:
     rclpy.init()
     node = OpenArmQposCaptureNode(args)
     try:
-        node.run()
+        node.run(args.go_to_starting_position, args.include_right_hand)
     finally:
         node.destroy_node()
         if rclpy.ok():

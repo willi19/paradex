@@ -22,6 +22,8 @@ from paradex.image.overlay import overlay_mask
 from paradex.image.grid import make_image_grid
 from paradex.image.undistort import precomute_undistort_map, apply_undistort_map
 from paradex.object.utils import load_object_trajectory, load_object_mesh, apply_transform
+from paradex.robot.utils import get_robot_urdf_path
+
 
 # PROCESSING_REPO = "/home/temp_id/paradex_processing_latest"
 # if PROCESSING_REPO not in sys.path:
@@ -56,7 +58,8 @@ def project_robot_and_object(
 ):
     
     
-    capture_ep_root = os.path.join(shared_dir, "capture", capture_root, object, str(capture_ep))
+    # capture_ep_root = os.path.join(shared_dir, "capture", capture_root, object, str(capture_ep))
+    capture_ep_root = os.path.join(shared_dir, capture_root, object, str(capture_ep))
     replay_ep_root = os.path.join(shared_dir, "capture", capture_root, object, str(replay_ep))
     
     capture_raw_root = os.path.join(capture_ep_root, "raw")
@@ -121,7 +124,8 @@ def project_robot_and_object(
             qpos_video = full_qpos
         
         # Load robot urdf and mesh
-        urdf_path = os.path.join(rsc_path, "robot", f"{arm}_{hand}_left_new_copy.urdf")
+        # urdf_path = os.path.join(rsc_path, "robot", f"{arm}_{hand}_left_new_copy.urdf")
+        urdf_path = get_robot_urdf_path(arm, hand)
         robot = RobotModule(urdf_path)
         
         

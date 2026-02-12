@@ -96,8 +96,17 @@ def load_current_C2R():
     
     return load_c2r(os.path.join(handeye_calib_path, name, index_list[0]))
 
-def save_current_C2R(save_path):
-    c2r = load_current_C2R()
+def load_current_C2R_openarm():
+    name = find_latest_directory(handeye_calib_path_openarm)
+    index_list = sorted(os.listdir(os.path.join(handeye_calib_path_openarm, name)))
+    
+    return load_c2r(os.path.join(handeye_calib_path_openarm, name, index_list[0]))
+
+def save_current_C2R(save_path, arm = "xarm"):
+    if arm == "xarm":
+        c2r = load_current_C2R()
+    elif arm == "openarm":
+        c2r = load_current_C2R_openarm()
     np.save(os.path.join(save_path, "C2R.npy"), c2r)
     
 def load_current_eef():

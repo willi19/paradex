@@ -33,6 +33,7 @@ class CaptureSession():
         
         if arm is not None:
             self.arm = get_arm(arm)
+            self.arm_name = arm
         else:
             self.arm = None
         
@@ -142,8 +143,11 @@ class CaptureSession():
             self.sync_generator.stop()
         
             save_current_camparam(os.path.join(shared_dir, self.save_path))
-            save_current_C2R(os.path.join(shared_dir, self.save_path))
-        
+            if self.arm is not None:
+                if self.arm_name == "xarm":
+                    save_current_C2R(os.path.join(shared_dir, self.save_path))
+                elif self.arm_name == "openarm":
+                    save_current_C2R(os.path.join(shared_dir, self.save_path), arm="openarm")    
         self.save_path = None
 
     def end(self):

@@ -14,6 +14,7 @@ import numpy as np
 import trimesh
 
 from paradex.calibration.utils import load_camparam
+from paradex.robot.utils import get_robot_urdf_path
 from paradex.utils.path import rsc_path, home_path, shared_dir
 from paradex.visualization.robot import RobotModule
 from paradex.robot.inspire import inspire_action_to_qpos
@@ -120,7 +121,7 @@ def project_robot_and_object(
             qpos_video = full_qpos
         
         # Load robot urdf and mesh
-        urdf_path = os.path.join(rsc_path, "robot", f"{arm}_{hand}_left_new.urdf")
+        urdf_path = get_robot_urdf_path(arm, hand)
         robot = RobotModule(urdf_path)
         robot_dof = robot.get_num_joints()
         # Prepare mesh topology once to avoid reloading URDF each frame.

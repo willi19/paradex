@@ -30,7 +30,7 @@ cs = CaptureSession(
 name = args.name
 
 
-last_idx = int(find_latest_index(os.path.join(shared_dir, args.name)))
+last_idx = int(find_latest_index(os.path.join(shared_dir, name)))
 while not exit_event.is_set():
     if not save_event.is_set():
         stop_event.clear()
@@ -40,7 +40,7 @@ while not exit_event.is_set():
     last_idx += 1
     
     # cs.start(os.path.join("capture", "hri_bimanual", name, str(last_idx)))
-    cs.start(os.path.join("0209_test", "videos", name, str(last_idx)))
+    cs.start(os.path.join(name, str(last_idx)))
 
     print("Starting new recording session:", name)
     while not stop_event.is_set() and not exit_event.is_set():

@@ -167,3 +167,18 @@ def inspire_action_to_qpos_dof12(action: np.ndarray) -> np.ndarray:
 
 
     return qpos
+
+
+def inspire_f1_action_to_qpos_dof6(action: np.ndarray) -> np.ndarray:
+    # Map Inspire F1 raw action (little, ring, middle, index, thumb_2, thumb_1) to joint angles.
+    
+    qpos = np.zeros_like(action, dtype=float)
+    qpos[:, 0] = (1800 - action[:, 0]) * 3.14159 / 1800.0
+    qpos[:, 1] = (1350 - action[:, 1]) * 3.14159 / 1800.0
+    qpos[:, 2] = (1740 - action[:, 2]) * 3.14159 / 1800.0
+    qpos[:, 3] = (1740 - action[:, 3]) * 3.14159 / 1800.0
+    qpos[:, 4] = (1740 - action[:, 4]) * 3.14159 / 1800.0
+    qpos[:, 5] = (1740 - action[:, 5]) * 3.14159 / 1800.0
+    print(qpos[0])
+    
+    return qpos

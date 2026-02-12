@@ -19,10 +19,10 @@ def load_series(data_dir: str, candidates: Tuple[str, ...]) -> Tuple[np.ndarray,
     for name in candidates:
         path = os.path.join(data_dir, name)
         if os.path.exists(path):
-            data = np.load(path)
+            data = np.load(path, allow_pickle=True)
             time_path = os.path.join(data_dir, "time.npy")
             if os.path.exists(time_path):
-                t = np.load(time_path)
+                t = np.load(time_path, allow_pickle=True)
             else:
                 t = np.arange(data.shape[0], dtype=float)
             # Align lengths if off-by-one between data and time.
@@ -32,6 +32,8 @@ def load_series(data_dir: str, candidates: Tuple[str, ...]) -> Tuple[np.ndarray,
                 t = t[:n]
             return data, t
     raise FileNotFoundError(f"No data found in {data_dir} for {candidates}")
+
+
 
 # def resample_to(times_src: np.ndarray, data_src: np.ndarray, times_dst: np.ndarray) -> np.ndarray:
 #     # Simple per-joint linear interpolation onto destination timestamps.

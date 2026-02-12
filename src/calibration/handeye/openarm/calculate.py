@@ -16,6 +16,50 @@ from paradex.image.aruco import merge_charuco_detection, find_common_indices, de
 from paradex.transforms.conversion import SOLVE_XA_B
 from paradex.visualization.robot import RobotModule
 
+SOURCE_QPOS_ORDER = [
+    "openarm_right_joint1",
+    "openarm_right_joint4",
+    "openarm_left_joint6",
+    "openarm_left_joint5",
+    "openarm_left_joint2",
+    "openarm_left_joint7",
+    "openarm_left_joint4",
+    "openarm_right_joint5",
+    "openarm_left_joint1",
+    "openarm_right_joint6",
+    "openarm_right_joint3",
+    "openarm_left_joint3",
+    "openarm_right_joint7",
+    "openarm_right_joint2",
+]
+
+TARGET_QPOS_ORDER = [
+    "openarm_left_joint1",
+    "openarm_left_joint2",
+    "openarm_left_joint3",
+    "openarm_left_joint4",
+    "openarm_left_joint5",
+    "openarm_left_joint6",
+    "openarm_left_joint7",
+    "openarm_right_joint1",
+    "openarm_right_joint2",
+    "openarm_right_joint3",
+    "openarm_right_joint4",
+    "openarm_right_joint5",
+    "openarm_right_joint6",
+    "openarm_right_joint7",
+]
+
+def trim_openarm_qpos(qpos):
+    qpos = np.asarray(qpos).reshape(-1)
+    if qpos.shape[0] < 16:
+        raise ValueError(f"Expected at least 16 qpos values, got {qpos.shape[0]}")
+    qpos = qpos[2:16]
+    if qpos.shape[0] != len(SOURCE_QPOS_ORDER):
+        raise ValueError(f"Expected 14 qpos values after trim, got {qpos.shape[0]}")
+    source_map = {joint_name: qpos[idx] for idx, joint_name in enumerate(SOURCE_QPOS_ORDER)}
+    return np.array([source_map[joint_name] for joint_name in TARGET_QPOS_ORDER], dtype=qpos.dtype)
+
 def undistort_and_detect_charuco(name):
     img_dict = None
     root_dir = os.path.join(handeye_calib_path_openarm, name)
@@ -67,14 +111,15 @@ def compute_fk(name, arm):
     root_dir = os.path.join(handeye_calib_path_openarm, name)
     index_list = sorted(os.listdir(root_dir))
 
-    robot_wrapper = RobotWrapper("./rsc/robot/openarm/openarm_bimanual.urdf")
-
+    robot_wrapper = RobotWrapper(get_robot_urdf_path(arm_name=arm))
+    print(robot_wrapper.joint_names)
     for index in index_list:
-        if os.path.exists(os.path.join(root_dir, index, "eef_fk.npy")):
-            continue
-        
+        # if os.path.exists(os.path.join(root_dir, index, "eef_fk.npy")):
+        #     continue
         qpos = np.load(os.path.join(root_dir, index, "qpos.npy"))
-        eef = robot_wrapper.compute_forward_kinematics(qpos, link_list=["openarm_left_joint7"])['openarm_left_joint7']
+        # qpos = trim_openarm_qpos(qpos)
+        print(qpos)
+        eef = robot_wrapper.compute_forward_kinematics(qpos, link_list=["openarm_left_link7"])['openarm_left_link7']
         np.save(os.path.join(root_dir, index, "eef_fk.npy"), eef)
 
 def get_valid_indices(root_dir):
@@ -114,6 +159,7 @@ def compute_motion(name):
     charuco_cor_list = [np.load(os.path.join(root_dir, index, "charuco_3d_corners.npy")) for index in index_list]
     
     for i in range(1, len(index_list)):
+        print(eef_list[i])
         eef = eef_list[i]
         eef_prev = eef_list[i-1]
 
@@ -191,8 +237,9 @@ def debug(name, arm):
         else:
             img_dict.update_path(os.path.join(root_dir, index, "undistort"))
         
-        # qpos = np.load(os.path.join(root_dir, index, "qpos.npy"))
-        qpos = np.load(f"./system/current/hecalib/openarm/{int(index) + 1}_qpos.npy")
+        qpos = np.load(os.path.join(root_dir, index, "qpos.npy"))
+        # qpos = np.load(f"./system/current/hecalib/openarm/temp/{int(index) + 1}_qpos.npy")
+        # qpos = trim_openarm_qpos(qpos)
         eef = np.load(os.path.join(root_dir, index, "eef_fk.npy"))
         
         rm.update_cfg(qpos)
@@ -216,7 +263,7 @@ def debug(name, arm):
                 
 parser = argparse.ArgumentParser()
 parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
-parser.add_argument("--arm", type=str, default="xarm", help="Name of the robot arm.")
+parser.add_argument("--arm", type=str, default="openarm", help="Name of the robot arm.")
 
 args = parser.parse_args()
 if args.name is None:
@@ -227,7 +274,9 @@ root_path = os.path.join(handeye_calib_path_openarm, name)
 intrinsic, extrinsic = load_camparam(os.path.join(root_path, "0"))
 
 undistort_and_detect_charuco(name)
+print("Undistortion and charuco detection completed.")
 compute_fk(name, args.arm)
+print("Forward kinematics computation completed.")
 motion_wrt_cam, motion_wrt_robot = compute_motion(name)
 robot_wrt_cam_world = solve_ax_xb(motion_wrt_cam, motion_wrt_robot, verbose=True)
 cam_world_wrt_robot = np.linalg.inv(robot_wrt_cam_world)

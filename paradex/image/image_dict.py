@@ -256,6 +256,7 @@ class ImageDict:
     
     # Image processing operations
     def undistort(self, save_path: Optional[Union[str, Path]] = None) -> 'ImageDict':
+        # print(self.intrinsic)
         for serial, img in self.images.items():
             if 'undistort_map' not in self._cache:
                 self._cache['undistort_map'] = {}
@@ -423,7 +424,10 @@ class ImageDict:
         start_time = time.time()
         images = {}
         for serial, m in mask.items():
-            images[serial] = overlay_mask(self.images[serial], m, color=color, alpha=alpha)
+            try:
+                images[serial] = overlay_mask(self.images[serial], m, color=color, alpha=alpha)
+            except:
+                continue
             # images[serial] = draw_mask(self.images[serial],m, color=color)
         new_img_dict = ImageDict(images, self.intrinsic, self.extrinsic, self.path)
         return new_img_dict

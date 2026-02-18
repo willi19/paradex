@@ -39,7 +39,16 @@ class RobotModule():
         return link_poses
 
     def update_cfg(self, cfg):
-        self.urdf.update_cfg(cfg)
+        if isinstance(cfg, dict):
+            self.urdf.update_cfg(cfg)
+            return
+        arr = np.asarray(cfg).reshape(-1)
+        if arr.shape[0] == self.num_joints:
+            cfg_map = {name: float(val) for name, val in zip(self.joint_names, arr)}
+            self.urdf.update_cfg(cfg_map)
+            return
+        # Fallback: allow callers that pass "all joints" format.
+        self.urdf.update_cfg(arr)
     
     @property
     def scene(self) -> Scene:

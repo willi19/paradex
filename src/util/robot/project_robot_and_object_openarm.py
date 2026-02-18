@@ -3,6 +3,7 @@ import glob
 import math
 import os
 import pickle
+import re
 import shutil
 import subprocess
 import sys
@@ -145,7 +146,7 @@ def project_robot_and_object(
     robot = None
     robot_dof = None
     link_label_map = None
-    finger_prefix_map = None
+    finger_name_re = None
     finger_colors = None
     
     
@@ -210,13 +211,9 @@ def project_robot_and_object(
         # Prepare mesh topology once to avoid reloading URDF each frame.
         robot.update_cfg(full_qpos[0, :robot_dof])
         robot.get_robot_mesh()
-        finger_prefix_map = {
-            "left_thumb_": "thumb",
-            "left_index_": "index",
-            "left_middle_": "middle",
-            "left_ring_": "ring",
-            "left_little_": "pinky",
-        }
+        # Match finger links robustly across naming variants:
+        # left_hand_index_2, left_index_2, index_tip, index_force_sensor, etc.
+        finger_name_re = re.compile(r"(?:^|_)(thumb|index|middle|ring|little)(?:_|$)")
         finger_colors = {
             "thumb": (255, 140, 0),
             "index": (0, 200, 255),
@@ -351,10 +348,12 @@ def project_robot_and_object(
                 link_label_map = {}
                 for link_name in scene.geometry.keys():
                     label = None
-                    for prefix, name in finger_prefix_map.items():
-                        if link_name.startswith(prefix):
-                            label = name
-                            break
+                    link_name_lower = link_name.lower()
+                    if finger_name_re is not None:
+                        match = finger_name_re.search(link_name_lower)
+                        if match is not None:
+                            token = match.group(1)
+                            label = "pinky" if token == "little" else token
                     link_label_map[link_name] = label
 
             for link_name, mesh in scene.geometry.items():
@@ -475,13 +474,13 @@ def project_robot_and_object(
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--arm", type=str, default="xarm")
-    parser.add_argument("--hand", type=str, default="inspire")
+    parser.add_argument("--arm", type=str, default="openarm")
+    parser.add_argument("--hand", type=str, default="inspire_f1")
     parser.add_argument("--object", type=str, required=True)
     parser.add_argument("--capture-ep", type=str, default="0")
     parser.add_argument("--replay-ep", type=str, default=None)
     parser.add_argument("--object-mesh-name", type=str, help="Path to object mesh (e.g., .obj/.stl).")
-    parser.add_argument("--capture-root", type=str, default="hri_inspire_left", help="Capture root directory name.")
+    parser.add_argument("--capture-root", type=str, default="hri_openarm", help="Capture root directory name.")
     # parser.add_argument("--object-trajectory", type=str, help="Path to trajectory pickle/npy/npz (or directory containing it).",)
     parser.add_argument("--project-object", action="store_true", help="Project the tracked object mesh in addition to the robot.")
     parser.add_argument("--project-robot", action="store_true", help="Project the robot mesh.")

@@ -54,7 +54,7 @@ class ViserViewer():
             def _(_) -> None:
                 client.camera.far = far_slider.value
 
-    def add_robot(self, name, urdf_path, pose=None):
+    def add_robot(self, name, urdf_path, pose=None, include_arm_meshes=True):
         robot = ViserRobotModule(
             target=self.server,
             urdf_path=urdf_path,
@@ -62,6 +62,7 @@ class ViserViewer():
             root_node_name=f"/robot/{name}",
             load_meshes=True,
             load_collision_meshes=False,
+            include_arm_meshes=include_arm_meshes,
         )
         if pose is not None:
             if hasattr(robot, '_visual_root_frame'):
@@ -594,12 +595,14 @@ class ViserRobotModule():
                  scale: float = 1.0,
                  root_node_name: str = "/",
                  load_meshes=True, 
-                 load_collision_meshes=False):
+                 load_collision_meshes=False,
+                 include_arm_meshes=True):
         self._urdf = RobotModule(urdf_path)
         self._target = target
         self._scale = scale
         self._load_meshes = load_meshes
         self._load_collision_meshes = load_collision_meshes
+        self._include_arm_meshes = include_arm_meshes
         self._joint_frames: List[viser.FrameHandle] = []
         self._meshes: Dict[str, viser.MeshHandle] = {}
         num_joints_to_repeat = 0
@@ -622,7 +625,7 @@ class ViserRobotModule():
                     collision_geometry=True
                 )
         self._joint_map_values = [*self._urdf.joint_map.values()] * num_joints_to_repeat
-        self.update_cfg(np.zeros(len(self._urdf.joint_map)))    
+        self.update_cfg(np.zeros(self._urdf.get_num_joints(), dtype=float))
 
     def change_color(self, name_list, color: Tuple[float, float, float]) -> None:
         """Change the color of the visualized URDF."""
@@ -726,6 +729,10 @@ class ViserRobotModule():
                 collision_geometry=collision_geometry,
             )
             name = _viser_name_from_frame(scene, link_name, prefixed_root_node_name)
+            if not self._include_arm_meshes:
+                is_hand_mesh = ("/left_hand_" in name) or ("/right_hand_" in name)
+                if not is_hand_mesh:
+                    continue
             # Scale + transform the mesh. (these will mutate it!)
             #
             # It's important that we use apply_transform() instead of unpacking

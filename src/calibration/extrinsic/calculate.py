@@ -357,6 +357,7 @@ if __name__ == "__main__":
         for serial_num, proj in err_dict.items():
             print(serial_num)
             f.write(f"{serial_num} : mean {np.mean(proj)}, max{np.max(proj)} \n")
+            print(f"{serial_num} : mean {np.mean(proj)}, max{np.max(proj)} \n")
     
     new_name = find_latest_directory(extrinsic_dir)
     index_list = sorted(os.listdir(os.path.join(extrinsic_dir, new_name)))  

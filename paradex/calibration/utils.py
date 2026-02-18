@@ -121,5 +121,5 @@ def get_cammtx(intrinsic, extrinsic):
         cammat[serial_num] = int_mat @ ext_mat
     return cammat
 
-def get_handeye_calib_traj(arm_name: str):
-    return os.path.join(config_dir, "hecalib", arm_name)
+def get_handeye_calib_traj(arm_name: str, side = "left"):
+    return os.path.join(config_dir, "hecalib", arm_name, side)

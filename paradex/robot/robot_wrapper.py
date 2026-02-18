@@ -33,38 +33,56 @@ class RobotWrapper:
         mimic_offset = getattr(self.model, "mimicOffset", [])
         nj = len(self.model.joints)
 
-        # Manual mimic map for Inspire URDF (Pinocchio may not populate mimic_* fields)
+        # Manual mimic map for Inspire URDFs (Pinocchio may not populate mimic_* fields).
+        # Support both naming conventions:
+        # - left_thumb_3_joint / right_thumb_3_joint
+        # - left_hand_thumb_3_joint / right_hand_thumb_3_joint
         manual_mimic = {}
         if "inspire" in urdf_path.lower():
             manual_mimic = {
-                "left_thumb_3_joint": ("left_thumb_2_joint", 0.60, 0.0),
-                "left_thumb_4_joint": ("left_thumb_2_joint", 0.8, 0.0),
-                "left_index_2_joint": ("left_index_1_joint", 1.05, 0.0),
-                "left_middle_2_joint": ("left_middle_1_joint", 1.05, 0.0),
-                "left_ring_2_joint": ("left_ring_1_joint", 1.05, 0.0),
-                "left_little_2_joint": ("left_little_1_joint", 1.18, 0.0),
+                "left_thumb_3_joint": ("left_thumb_2_joint", 1.2953, 0.0),
+                "left_thumb_4_joint": ("left_thumb_3_joint", 0.8962, 0.0),
+                "left_index_2_joint": ("left_index_1_joint", 1.1545, 0.0),
+                "left_middle_2_joint": ("left_middle_1_joint", 1.1545, 0.0),
+                "left_ring_2_joint": ("left_ring_1_joint", 1.1545, 0.0),
+                "left_little_2_joint": ("left_little_1_joint", 1.1545, 0.0),
+                "right_thumb_3_joint": ("right_thumb_2_joint", 1.2953, 0.0),
+                "right_thumb_4_joint": ("right_thumb_3_joint", 0.8962, 0.0),
+                "right_index_2_joint": ("right_index_1_joint", 1.1545, 0.0),
+                "right_middle_2_joint": ("right_middle_1_joint", 1.1545, 0.0),
+                "right_ring_2_joint": ("right_ring_1_joint", 1.1545, 0.0),
+                "right_little_2_joint": ("right_little_1_joint", 1.1545, 0.0),
+                "left_hand_thumb_3_joint": ("left_hand_thumb_2_joint", 1.2953, 0.0),
+                "left_hand_thumb_4_joint": ("left_hand_thumb_3_joint", 0.8962, 0.0),
+                "left_hand_index_2_joint": ("left_hand_index_1_joint", 1.1545, 0.0),
+                "left_hand_middle_2_joint": ("left_hand_middle_1_joint", 1.1545, 0.0),
+                "left_hand_ring_2_joint": ("left_hand_ring_1_joint", 1.1545, 0.0),
+                "left_hand_little_2_joint": ("left_hand_little_1_joint", 1.1545, 0.0),
+                "right_hand_thumb_3_joint": ("right_hand_thumb_2_joint", 1.2953, 0.0),
+                "right_hand_thumb_4_joint": ("right_hand_thumb_3_joint", 0.8962, 0.0),
+                "right_hand_index_2_joint": ("right_hand_index_1_joint", 1.1545, 0.0),
+                "right_hand_middle_2_joint": ("right_hand_middle_1_joint", 1.1545, 0.0),
+                "right_hand_ring_2_joint": ("right_hand_ring_1_joint", 1.1545, 0.0),
+                "right_hand_little_2_joint": ("right_hand_little_1_joint", 1.1545, 0.0),
             }
 
         # Decide mimic detection source
         use_manual_mimic = bool(manual_mimic) and (len(mimic_parent) != nj or all(mp == 0 for mp in mimic_parent))
 
         if "inspire" in urdf_path.lower() and use_manual_mimic:
-            # Force active joints list for Inspire: 6 xArm + 6 Inspire proximal
-            # active_names = [
-            #     "joint1", "joint2", "joint3", "joint4", "joint5", "joint6",
-            #     "thumb_proximal_yaw_joint", "thumb_proximal_pitch_joint",
-            #     "index_proximal_joint", "middle_proximal_joint",
-            #     "ring_proximal_joint", "pinky_proximal_joint",
-            # ]
-            active_names = [
-                "joint1", "joint2", "joint3", "joint4", "joint5", "joint6",
-                "left_thumb_1_joint", "left_thumb_2_joint",
-                "left_index_1_joint", "left_middle_1_joint", 
-                "left_ring_1_joint", "left_little_1_joint",
-            ]
-            for name in active_names:
-                jid = self.model.getJointId(name)
+            # Manual mimic fallback: treat all non-fixed non-mimic joints as active.
+            # This is robust across single-hand and bimanual naming conventions.
+            valid_manual_children = {
+                child for child, (parent, _, _) in manual_mimic.items()
+                if child in self.model.names and parent in self.model.names
+            }
+            for jid in range(nj):
                 j = self.model.joints[jid]
+                if j.nq == 0:
+                    continue
+                jname = self.model.names[jid]
+                if jname in valid_manual_children:
+                    continue
                 self.active_joint_ids.append(jid)
                 self.active_q_spec.append((j.idx_q, j.nq))
                 self.total_active_nq += j.nq
@@ -99,12 +117,16 @@ class RobotWrapper:
             # fill mimic joints
             if use_manual_mimic:
                 for child_name, (parent_name, mult, offset) in manual_mimic.items():
-                    try:
-                        child_id = self.model.getJointId(child_name)
-                        parent_id = self.model.getJointId(parent_name)
-                    except:
+                    if child_name not in self.model.names or parent_name not in self.model.names:
                         continue
-                    if child_id >= len(self.model.joints) or parent_id >= len(self.model.joints):
+                    child_id = self.model.getJointId(child_name)
+                    parent_id = self.model.getJointId(parent_name)
+                    if (
+                        child_id >= len(self.model.joints)
+                        or parent_id >= len(self.model.joints)
+                        or self.model.names[child_id] != child_name
+                        or self.model.names[parent_id] != parent_name
+                    ):
                         continue
                     child_j = self.model.joints[child_id]
                     parent_j = self.model.joints[parent_id]

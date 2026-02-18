@@ -54,7 +54,7 @@ def solve_axb_cpu(A, B):
         M1 = np.dot(beta.reshape(3,1),alpha.reshape(3,1).T)
         M2 = np.dot(beta2.reshape(3,1),alpha2.reshape(3,1).T)
         M3 = np.dot(beta3.reshape(3,1),alpha3.reshape(3,1).T)
-        M = M1+M2+M3
+        M += M1+M2+M3
     theta = np.dot(sqrtm(np.linalg.inv(np.dot(M.T, M))), M.T)
     for i in range(n_data):
         rot_a = A[i][0:3, 0:3]

@@ -76,13 +76,9 @@ class RobotWrapper:
     def compute_forward_kinematics(self, qpos: npt.NDArray, link_list = []):
         pin.forwardKinematics(self.model, self.data, qpos)
         ret = {}
-        print(link_list)
         for link_name in link_list:
             link_id = self.get_link_index(link_name)
-            print(link_id)
             ret[link_name] = self.get_link_pose(link_id)
-            print(ret[link_name])
-            
         return ret
 
     def get_link_pose(self, link_id: int) -> npt.NDArray:

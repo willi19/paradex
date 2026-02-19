@@ -107,6 +107,8 @@ def save_current_C2R(save_path, arm = "xarm"):
         c2r = load_current_C2R()
     elif arm == "openarm":
         c2r = load_current_C2R_openarm()
+    else:
+        raise NameError("Choose either xarm or openarm")
     np.save(os.path.join(save_path, "C2R.npy"), c2r)
     
 def load_current_eef():

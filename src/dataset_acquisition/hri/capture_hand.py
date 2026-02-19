@@ -11,9 +11,9 @@ from paradex.utils.keyboard_listener import listen_keyboard
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--device', choices=['xsens', 'occulus'])
-parser.add_argument('--arm', type=str, default=None)
-parser.add_argument('--hand', type=str, default=None)
+# parser.add_argument('--device', choices=['xsens', 'occulus'])
+# parser.add_argument('--arm', type=str, default=None)
+# parser.add_argument('--hand', type=str, default=None)
 parser.add_argument('--name', type=str)
 
 args = parser.parse_args()

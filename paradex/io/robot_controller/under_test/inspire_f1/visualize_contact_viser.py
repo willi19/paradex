@@ -335,6 +335,7 @@ def _build_sensor_frames(
     local_meshes_by_link: Dict[str, List[trimesh.Trimesh]],
 ) -> Dict[str, SensorFrame]:
     frames: Dict[str, SensorFrame] = {}
+    tangential_flip_zones = {"thumb", "middle", "index"}
 
     finger_zones = ("little", "ring", "middle", "index", "thumb")
     for zone in finger_zones:
@@ -343,6 +344,9 @@ def _build_sensor_frames(
             raise KeyError(f"Required link mesh missing: {link_name}")
         merged = _merge_meshes(local_meshes_by_link[link_name])
         anchor, normal, tx, ty, _ = _estimate_link_surface_frame(merged)
+        if zone in tangential_flip_zones:
+            tx = -tx
+            ty = -ty
         frames[zone] = SensorFrame(link_name, anchor, normal, tx, ty)
 
     palm_link = ZONE_TO_LINK["palm_middle"]

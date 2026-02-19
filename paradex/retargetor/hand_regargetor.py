@@ -86,7 +86,7 @@ def inspire(hand_pose_frame):
     # print(inspire_angles)
     return inspire_angles
 
-def inspire_f1(hand_pose_frame):
+def inspire_f1_deprecated(hand_pose_frame):
     """
     Same kinematic mapping as inspire(), but scale each DOF to Inspire F1 raw range.
     """
@@ -150,3 +150,84 @@ def inspire_f1(hand_pose_frame):
         
     return inspire_angles
         
+
+
+def xsens_hand_to_inspire_f1(hand_pose_frame: Dict[str, np.ndarray], is_right: bool = False) -> np.ndarray | None:
+    required = [
+        "wrist",
+        "thumb_metacarpal",
+        "thumb_distal",
+        "index_distal",
+        "middle_distal",
+        "ring_distal",
+        "pinky_distal",
+    ]
+    if any(k not in hand_pose_frame for k in required):
+        return None
+
+    inspire_angles = np.zeros(6, dtype=np.float64)
+    wrist_inv = np.linalg.inv(hand_pose_frame["wrist"])
+
+    for i, finger_name in enumerate(["thumb", "index", "middle", "ring", "pinky"]):
+        metacarpal = f"{finger_name}_metacarpal"
+        distal = f"{finger_name}_distal"
+
+        tip_pos = wrist_inv @ hand_pose_frame[distal]
+
+        if finger_name != "thumb":
+            angle = np.arctan2(tip_pos[2, 1], tip_pos[1, 1])
+            if angle < -np.pi / 2:
+                angle = 2 * np.pi + angle
+            inspire_angles[4 - i] = (1 - max(0.0, min(1.0, angle / np.pi))) * 840.0 + 900.0
+        else:
+            tip_position = tip_pos[:3, 3]
+            finger_base_position = (wrist_inv @ hand_pose_frame[metacarpal])[:3, 3]
+            tip_direction = tip_position - finger_base_position
+            norm = np.linalg.norm(tip_direction)
+            if norm < 1e-8:
+                return None
+            tip_direction = tip_direction / norm
+            # tip_direction[1] *= -1
+            # tip_direction[2] *= -1
+            # if tip_direction[0] > 0:
+            #     # inspire_angles[5] = 1350 + np.arctan(-tip_direction[2] / abs(tip_direction[0])) / np.pi * 300
+            #     inspire_angles[5] = np.arcsin(-tip_direction[2]) / np.pi * 2000  * 3.5 - 1000
+            #     inspire_angles[4] = -np.arccos(tip_direction[0]) * 800 + 1500
+            # else:
+            #     # inspire_angles[5] = 1350 + np.arctan(-tip_direction[2] / abs(tip_direction[0])) / np.pi * 300
+            #     inspire_angles[5] = np.arccos(-tip_direction[1]) * 2000 - 1000 # no divide by pi for better range
+            #     inspire_angles[4] = 300
+            if is_right:
+                # print(tip_direction, np.arctan(tip_direction[2] / abs(tip_direction[0])))
+
+                inspire_angles[5] = 660 * tip_direction[0] + 700
+                if tip_direction[0] < 0:
+                    # 0.6, 1.4 -> 1100, 1350
+                    # 0.8, 1.4 -> 1100, 1200
+                    # inspire_angles[4] = 300 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 930
+                    inspire_angles[4] = 165 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 968
+                else: 
+                    # -1.3, -0.1 -> 1100, 1350
+                    # inspire_angles[4] = 200 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1370          
+                    inspire_angles[4] = 1350
+            else:
+                inspire_angles[5] = -500 * tip_direction[0] + 850
+                if tip_direction[0] > 0:
+                    # -0.4, -1.4
+                    # -0.6, -1.4 -> 1100, 1200
+                    # inspire_angles[4] = -250 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1000
+                    inspire_angles[4] = -125 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1025
+                else: 
+                    # -1.3, -0.1 -> 1100, 1350
+                    # inspire_angles[4] = 200 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1370          
+                    inspire_angles[4] = 1350
+
+
+            # inspire_angles[4] = 1350
+
+    inspire_angles = np.clip(np.rint(inspire_angles), 0, 1740).astype(np.int32)
+    inspire_angles[5] = np.clip(inspire_angles[5], 600, 1800)
+    inspire_angles[4] = np.clip(inspire_angles[4], 1100, 1350)
+
+    
+    return inspire_angles

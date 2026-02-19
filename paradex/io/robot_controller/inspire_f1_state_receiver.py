@@ -4,7 +4,7 @@ import os
 import time
 import argparse
 from threading import Event, Lock, Thread
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Sequence
 
 import numpy as np
 
@@ -16,10 +16,11 @@ from std_msgs.msg import Float64MultiArray
 from control_msgs.msg import DynamicInterfaceGroupValues
 
 
-class InspireF1StateReceiver(Node):
+class InspireF1Controller(Node):
     """
-    Passive state receiver for Inspire F1 (ROS2).
+    Inspire F1 ROS2 state receiver with optional command publishing.
     - Subscribes to joint_states, position_controller/commands, tactile_sensor_states.
+    - Publishes position_controller/commands via move().
     - Provides InspireF1Controller-like logging interface for CaptureSession.
     """
 
@@ -57,6 +58,7 @@ class InspireF1StateReceiver(Node):
 
         prefix = f"/{namespace.strip('/')}" if namespace else ""
         self.subs = []
+        self.cmd_pubs: Dict[str, object] = {}
         for side in self.hand_sides:
             side_prefix = f"{prefix}/{side}"
             topic_joint = f"{side_prefix}/joint_states"
@@ -73,6 +75,7 @@ class InspireF1StateReceiver(Node):
                     Float64MultiArray, topic_cmd, lambda msg, s=side: self._cmd_cb(s, msg), 50
                 )
             )
+            self.cmd_pubs[side] = self.create_publisher(Float64MultiArray, topic_cmd, 50)
             self.subs.append(
                 self.create_subscription(
                     DynamicInterfaceGroupValues, topic_tactile, lambda msg, s=side: self._tactile_cb(s, msg), 50
@@ -198,8 +201,52 @@ class InspireF1StateReceiver(Node):
             rclpy.shutdown()
         self.spin_thread.join(timeout=2.0)
 
-    def move(self, *_, **__):
-        self.get_logger().warning("InspireF1StateReceiver.move() called, but no control is implemented.")
+    def _pick_default_side(self) -> str:
+        if len(self.hand_sides) == 1:
+            return self.hand_sides[0]
+        latest_side = self.hand_sides[0]
+        latest_time = -1.0
+        with self.lock:
+            for side in self.hand_sides:
+                t = self.latest[side]["time"]
+                if t is not None and t > latest_time:
+                    latest_time = t
+                    latest_side = side
+        return latest_side
+
+    def _publish_hand_command(self, side: str, action: Sequence[float]) -> None:
+        arr = np.asarray(action, dtype=np.float64).reshape(-1)
+        if arr.shape[0] != 6:
+            raise ValueError(f"action must have 6 values, got shape {arr.shape}")
+
+        # Keep the same mapping as openarm_f1_xsens_standalone.py:
+        # input action: [little, ring, middle, index, thumb_1, thumb_2]
+        # command msg : [thumb_2, thumb_1, index, middle, ring, little]
+        msg = Float64MultiArray()
+        msg.data = [
+            float(arr[5]),
+            float(arr[4]),
+            float(arr[3]),
+            float(arr[2]),
+            float(arr[1]),
+            float(arr[0]),
+        ]
+        self.cmd_pubs[side].publish(msg)
+
+        now = time.time()
+        with self.lock:
+            self.latest[side]["commands"] = np.array(msg.data, dtype=np.float64)
+            self.latest[side]["time"] = now
+
+    def move(self, action: Sequence[float], side: Optional[str] = None):
+        if side is not None:
+            if side not in self.cmd_pubs:
+                raise ValueError(f"unknown side: {side}")
+            self._publish_hand_command(side, action)
+            return
+
+        target_side = self._pick_default_side()
+        self._publish_hand_command(target_side, action)
 
     def get_data(self, side: Optional[str] = None):
         side = self.hand_sides[0] if side is None else side

@@ -38,10 +38,6 @@ class Retargetor(): # Input is only from Xsens
             self.device2global = np.eye(4)
 
     def get_action(self, data):
-
-        
-
-
         if self.hand_side == "Bimanual":
             if self.hand_name is not None:
                 hand_action_left = self.hand_retargetor(data["Left"])

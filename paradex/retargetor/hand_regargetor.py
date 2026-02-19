@@ -1,5 +1,7 @@
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+
+from typing import Dict
 import time
 import copy
 def allegro(hand_pose_frame):
@@ -152,7 +154,7 @@ def inspire_f1_deprecated(hand_pose_frame):
         
 
 
-def xsens_hand_to_inspire_f1(hand_pose_frame: Dict[str, np.ndarray], is_right: bool = False) -> np.ndarray | None:
+def inspire_f1(hand_pose_frame: Dict[str, np.ndarray]):
     required = [
         "wrist",
         "thumb_metacarpal",
@@ -187,40 +189,30 @@ def xsens_hand_to_inspire_f1(hand_pose_frame: Dict[str, np.ndarray], is_right: b
             if norm < 1e-8:
                 return None
             tip_direction = tip_direction / norm
-            # tip_direction[1] *= -1
-            # tip_direction[2] *= -1
-            # if tip_direction[0] > 0:
-            #     # inspire_angles[5] = 1350 + np.arctan(-tip_direction[2] / abs(tip_direction[0])) / np.pi * 300
-            #     inspire_angles[5] = np.arcsin(-tip_direction[2]) / np.pi * 2000  * 3.5 - 1000
-            #     inspire_angles[4] = -np.arccos(tip_direction[0]) * 800 + 1500
+            
+            # right hand
+            inspire_angles[5] = 660 * tip_direction[0] + 700
+            if tip_direction[0] < 0:
+                # 0.6, 1.4 -> 1100, 1350
+                # 0.8, 1.4 -> 1100, 1200
+                # inspire_angles[4] = 300 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 930
+                inspire_angles[4] = 165 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 968
+            else: 
+                # -1.3, -0.1 -> 1100, 1350
+                # inspire_angles[4] = 200 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1370          
+                inspire_angles[4] = 1350
+                
             # else:
-            #     # inspire_angles[5] = 1350 + np.arctan(-tip_direction[2] / abs(tip_direction[0])) / np.pi * 300
-            #     inspire_angles[5] = np.arccos(-tip_direction[1]) * 2000 - 1000 # no divide by pi for better range
-            #     inspire_angles[4] = 300
-            if is_right:
-                # print(tip_direction, np.arctan(tip_direction[2] / abs(tip_direction[0])))
-
-                inspire_angles[5] = 660 * tip_direction[0] + 700
-                if tip_direction[0] < 0:
-                    # 0.6, 1.4 -> 1100, 1350
-                    # 0.8, 1.4 -> 1100, 1200
-                    # inspire_angles[4] = 300 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 930
-                    inspire_angles[4] = 165 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 968
-                else: 
-                    # -1.3, -0.1 -> 1100, 1350
-                    # inspire_angles[4] = 200 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1370          
-                    inspire_angles[4] = 1350
-            else:
-                inspire_angles[5] = -500 * tip_direction[0] + 850
-                if tip_direction[0] > 0:
-                    # -0.4, -1.4
-                    # -0.6, -1.4 -> 1100, 1200
-                    # inspire_angles[4] = -250 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1000
-                    inspire_angles[4] = -125 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1025
-                else: 
-                    # -1.3, -0.1 -> 1100, 1350
-                    # inspire_angles[4] = 200 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1370          
-                    inspire_angles[4] = 1350
+            #     inspire_angles[5] = -500 * tip_direction[0] + 850
+            #     if tip_direction[0] > 0:
+            #         # -0.4, -1.4
+            #         # -0.6, -1.4 -> 1100, 1200
+            #         # inspire_angles[4] = -250 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1000
+            #         inspire_angles[4] = -125 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1025
+            #     else: 
+            #         # -1.3, -0.1 -> 1100, 1350
+            #         # inspire_angles[4] = 200 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1370          
+            #         inspire_angles[4] = 1350
 
 
             # inspire_angles[4] = 1350

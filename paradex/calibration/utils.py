@@ -124,4 +124,7 @@ def get_cammtx(intrinsic, extrinsic):
     return cammat
 
 def get_handeye_calib_traj(arm_name: str, side = "left"):
-    return os.path.join(config_dir, "hecalib", arm_name, side)
+    if arm_name == "xarm":
+        return os.path.join(config_dir, "hecalib", arm_name)
+    else:
+        return os.path.join(config_dir, "hecalib", arm_name, side)

@@ -43,6 +43,7 @@ def load_camera(serialnum):
         gain = 3.0
         exposure = 2500.0
     
+    print(gain, exposure)
     cam = PyspinCamera(camPtr, gain, exposure)
     
     cam_list.Clear()

@@ -7,13 +7,13 @@
   <xacro:arg name="xyz" default="0 0 0"/>
   <xacro:arg name="rpy" default="0 0 0"/>
 
-  <xacro:include filename="$(arg arm_file)" />
-  <xacro:include filename="$(arg hand_file)" />
+  <xacro:include filename="${arm_file}" />
+  <xacro:include filename="${hand_file}" />
 
   <joint name="arm_to_hand" type="fixed">
-    <parent link="$(arg parent_link)"/>
-    <child link="$(arg child_link)"/>
-    <origin xyz="$(arg xyz)" rpy="$(arg rpy)"/>
+    <parent link="${parent_link}"/>
+    <child link="${child_link}"/>
+    <origin xyz="${xyz}" rpy="${rpy}"/>
   </joint>
 
 </robot>

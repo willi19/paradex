@@ -14,4 +14,7 @@ def get_robot_urdf_path(arm_name=None, hand_name=None):
     if hand_name == None:
         return os.path.join(rsc_path, "robot", arm_name+".urdf")
     
+    if hand_name == "inspire_f1":
+        return os.path.join(rsc_path, "robot", f"{arm_name}_{hand_name}_right.urdf")
+    
     return os.path.join(rsc_path, "robot", f"{arm_name}_{hand_name}.urdf")

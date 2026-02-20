@@ -8,12 +8,14 @@ from paradex.utils.file_io import find_latest_index
 from paradex.utils.path import shared_dir
 from paradex.dataset_acqusition.capture import CaptureSession
 from paradex.utils.keyboard_listener import listen_keyboard
+from paradex.calibration.utils import save_current_camparam, save_current_C2R
 
 parser = argparse.ArgumentParser()
 
 # parser.add_argument('--device', choices=['xsens', 'occulus'])
 # parser.add_argument('--arm', type=str, default=None)
 # parser.add_argument('--hand', type=str, default=None)
+parser.add_argument('--hand_side', type=str)
 parser.add_argument('--name', type=str)
 
 args = parser.parse_args()
@@ -30,7 +32,7 @@ cs = CaptureSession(
 name = args.name
 
 
-last_idx = int(find_latest_index(os.path.join(shared_dir, name)))
+last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", "hri_taeyun", args.hand_side, name)))
 while not exit_event.is_set():
     if not save_event.is_set():
         stop_event.clear()
@@ -38,15 +40,16 @@ while not exit_event.is_set():
     
     # index = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     last_idx += 1
-    
-    # cs.start(os.path.join("capture", "hri_bimanual", name, str(last_idx)))
-    cs.start(os.path.join(name, str(last_idx)))
+    save_path = os.path.join("capture", "hri_taeyun", args.hand_side, name, str(last_idx))
+    cs.start(save_path)
+    # cs.start(os.path.join(name, str(last_idx)))
 
     print("Starting new recording session:", name)
     while not stop_event.is_set() and not exit_event.is_set():
         time.sleep(0.02)
         
     cs.stop()
+    save_current_C2R(os.path.join(shared_dir, save_path))
     print("Stopped recording session:", name)
 
     save_event.clear()

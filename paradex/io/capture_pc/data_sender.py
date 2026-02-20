@@ -118,12 +118,10 @@ class DataCollector:
     def _collection_loop(self) -> None:
         while self.collecting:
             socks = dict(self.poller.poll(timeout=100))
-            
             for pc_name, socket in self.sockets.items():
                 if socket in socks:
                     try:
                         parts = socket.recv_multipart(flags=zmq.NOBLOCK)
-                        
                         if len(parts) < 2:
                             continue
                         
@@ -147,7 +145,7 @@ class DataCollector:
                                 self.latest_data[item_name] = item
                         
                     except zmq.Again:
-                        pass
+                        continue
                     except Exception as e:
                         print(f"[Collector] Error from {pc_name}: {e}")
         

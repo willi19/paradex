@@ -171,9 +171,14 @@ class CaptureSession():
                 self.timestamp_monitor.end()
             self.sync_generator.end()
     
-    def teleop(self, stop = None):
+    def teleop(self, session_events=None, state_policy="gesture_control"):
         if self.teleop_device is None:
             raise ValueError("No teleop device initialized.")
+        if state_policy not in ["gesture_control", "keyboard_control"]:
+            raise ValueError(f"Unknown state_policy: {state_policy}")
+
+        if session_events is None:
+            session_events = self.events
 
         chime.warning(sync=True)
         exit_counter = 0
@@ -184,12 +189,23 @@ class CaptureSession():
         self.retargetor.start(home_pose)
 
         while True:
+            if session_events is not None and session_events["exit"].is_set():
+                chime.success(sync=True)
+                return "exit"
+
             data = self.teleop_device.get_data()
 
             
             if self.hand_side != "Bimanual":
                 if data[self.hand_side] is None:
                     print("No data from teleop device...")
+                    if session_events is not None:
+                        if self.save_path is None and session_events["save"].is_set():
+                            return "start"
+                        if self.save_path is not None and session_events["stop"].is_set():
+                            chime.info(sync=True)
+                            return "stop"
+                    time.sleep(0.01)
                     continue
 
                 state = self.state_extractor.get_state(data[self.hand_side_opposite])
@@ -206,29 +222,39 @@ class CaptureSession():
                     if self.arm is not None:
                         self.arm.move(wrist_pose.copy())
 
-                if state == 1:
+                if state == 1:   
                     self.retargetor.stop()
                 
                 if state == 2:
                     self.retargetor.stop()
-                    stop_counter += 1
+                    if state_policy == "gesture_control":
+                        stop_counter += 1
                 
-                else:
+                elif state_policy == "gesture_control":
                     stop_counter = 0
                     
                 if state == 3:
-                    exit_counter += 1
+                    if state_policy == "gesture_control":
+                        exit_counter += 1
                 
-                else:
+                elif state_policy == "gesture_control":
                     exit_counter = 0
-                    
-                if exit_counter > 90:
-                    chime.success(sync=True)
-                    return "exit"
-            
-                if stop_counter > 90:
-                    chime.info(sync=True)
-                    return "stop"
+
+                if state_policy == "gesture_control":
+                    if exit_counter > 90:
+                        chime.success(sync=True)
+                        return "exit"
+                
+                    if stop_counter > 90:
+                        chime.info(sync=True)
+                        return "stop"
+
+                if session_events is not None:
+                    if self.save_path is None and session_events["save"].is_set():
+                        return "start"
+                    if self.save_path is not None and session_events["stop"].is_set():
+                        chime.info(sync=True)
+                        return "stop"
                 
             # else:
             #     if data is None:

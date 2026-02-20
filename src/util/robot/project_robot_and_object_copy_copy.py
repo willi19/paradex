@@ -16,7 +16,7 @@ import trimesh
 from paradex.calibration.utils import load_camparam
 from paradex.utils.path import rsc_path, home_path, shared_dir
 from paradex.visualization.robot import RobotModule
-from paradex.robot.inspire import inspire_action_to_qpos, inspire_action_to_qpos_dof12
+from paradex.robot.inspire import inspire_action_to_qpos, inspire_action_to_qpos_dof12, inspire_f1_action_to_qpos_dof6
 from paradex.utils.load_data import load_series, resample_to
 from paradex.image.overlay import overlay_mask
 from paradex.image.grid import make_image_grid
@@ -58,8 +58,8 @@ def project_robot_and_object(
 ):
     
     
-    # capture_ep_root = os.path.join(shared_dir, "capture", capture_root, object, str(capture_ep))
-    capture_ep_root = os.path.join(shared_dir, capture_root, object, str(capture_ep))
+    capture_ep_root = os.path.join(shared_dir, "capture", capture_root, object, str(capture_ep))
+    # capture_ep_root = os.path.join(shared_dir, capture_root, object, str(capture_ep))
     replay_ep_root = os.path.join(shared_dir, "capture", capture_root, object, str(replay_ep))
     
     capture_raw_root = os.path.join(capture_ep_root, "raw")
@@ -90,9 +90,18 @@ def project_robot_and_object(
 
         # Overlay type
         if overlay_option == "action":
-            hand_action, hand_time = load_series(hand_dir, ("action.npy",))
+            hand_action, hand_time = load_series(hand_dir, ("action.npy", "right_joint_states.npy",))
         else:
-            hand_action, hand_time = load_series(hand_dir, ("position.npy",))
+            hand_action, hand_time = load_series(hand_dir, ("position.npy", "right_joint_states.npy",))
+
+        hand_time_path = os.path.join(hand_dir, "time.npy")
+        if not os.path.exists(hand_time_path):
+            # Some datasets only store right_joint_states without hand timestamps.
+            # Avoid collapsing to a constant sample when arm_time is in absolute epoch seconds.
+            if len(arm_time) > 1:
+                hand_time = np.linspace(arm_time[0], arm_time[-1], hand_action.shape[0], dtype=float)
+            else:
+                hand_time = np.arange(hand_action.shape[0], dtype=float)
 
         if arm_time_offset != 0.0:
             arm_time = arm_time + arm_time_offset
@@ -103,6 +112,8 @@ def project_robot_and_object(
         
         if hand == "inspire":
             hand_qpos = inspire_action_to_qpos_dof12(hand_action)
+        elif hand == "inspire_f1":
+            hand_qpos = inspire_f1_action_to_qpos_dof6(hand_action)
         else:
             hand_qpos = hand_action
             
@@ -140,6 +151,21 @@ def project_robot_and_object(
         robot.update_cfg(full_qpos[0, :robot_dof])
         robot.get_robot_mesh()
         finger_prefix_map = {
+            "right_thumb_": "thumb",
+            "right_index_": "index",
+            "right_middle_": "middle",
+            "right_ring_": "ring",
+            "right_little_": "pinky",
+            "thumb_tip": "thumb",
+            "index_tip": "index",
+            "middle_tip": "middle",
+            "ring_tip": "ring",
+            "little_tip": "pinky",
+            "thumb_force_sensor": "thumb",
+            "index_force_sensor": "index",
+            "middle_force_sensor": "middle",
+            "ring_force_sensor": "ring",
+            "little_force_sensor": "pinky",
             "left_thumb_": "thumb",
             "left_index_": "index",
             "left_middle_": "middle",
@@ -405,12 +431,12 @@ def project_robot_and_object(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--arm", type=str, default="xarm")
-    parser.add_argument("--hand", type=str, default="inspire")
+    parser.add_argument("--hand", type=str, default="inspire_f1")
     parser.add_argument("--object", type=str, required=True)
     parser.add_argument("--capture-ep", type=str, default="0")
     parser.add_argument("--replay-ep", type=str, default=None)
     parser.add_argument("--object-mesh-name", type=str, help="Path to object mesh (e.g., .obj/.stl).")
-    parser.add_argument("--capture-root", type=str, default="hri_inspire_left", help="Capture root directory name.")
+    parser.add_argument("--capture-root", type=str, default="hri_xarm_f1", help="Capture root directory name.")
     # parser.add_argument("--object-trajectory", type=str, help="Path to trajectory pickle/npy/npz (or directory containing it).",)
     parser.add_argument("--project-object", action="store_true", help="Project the tracked object mesh in addition to the robot.")
     parser.add_argument("--project-robot", action="store_true", help="Project the robot mesh.")

@@ -35,7 +35,7 @@ def load_camera(serialnum):
         camPtr = cam_list.GetBySerial(serialnum)
     except:
         raise ValueError(f"Camera with serial number {serialnum} not found.")
-    
+    print(cam_info.keys(), serialnum, serialnum in cam_info.keys())
     if serialnum in cam_info:
         gain = cam_info[serialnum]["gain"]
         exposure = cam_info[serialnum]["exposure"]

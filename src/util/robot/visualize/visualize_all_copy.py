@@ -1,7 +1,8 @@
 import argparse
 import copy
 import os
-from typing import Tuple, Dict, Any, Optional
+import re
+from typing import Tuple, Dict, Any
 
 import numpy as np
 import trimesh
@@ -26,10 +27,6 @@ def str2bool(v):
 
 
 
-
-
-
-
 def interpolate_sequence(seq: np.ndarray, target_len: int) -> np.ndarray:
     if len(seq) == target_len:
         return seq
@@ -43,107 +40,6 @@ def interpolate_sequence(seq: np.ndarray, target_len: int) -> np.ndarray:
     return out.reshape((target_len,) + seq.shape[1:])
 
 
-def to_numpy_array(x) -> np.ndarray:
-    if isinstance(x, np.ndarray):
-        return x
-    if hasattr(x, "detach"):
-        return np.asarray(x.detach())
-    return np.asarray(x)
-
-
-def _maybe_stack_array(payload: Any) -> Optional[np.ndarray]:
-    if isinstance(payload, (list, tuple)):
-        return None
-    arr = to_numpy_array(payload)
-    if arr.ndim == 3 and arr.shape[1:] == (4, 4):
-        return arr.astype(float)
-    return None
-
-
-def _build_T_from_frame(frame: Any, idx: int) -> np.ndarray:
-    if isinstance(frame, dict):
-        for k in ("T", "pose", "world_T_obj", "T_world_obj", "T_object_world"):
-            if k in frame:
-                T = to_numpy_array(frame[k])
-                break
-        else:
-            if "obj_R" in frame and "obj_t" in frame:
-                R = to_numpy_array(frame["obj_R"])
-                t = to_numpy_array(frame["obj_t"]).reshape(3)
-                T = np.eye(4, dtype=float)
-                T[:3, :3] = R
-                T[:3, 3] = t
-            else:
-                raise ValueError(f"Frame {idx} missing T/obj_R/obj_t")
-    else:
-        T = to_numpy_array(frame)
-
-    T = np.asarray(T)
-    if T.shape == (4, 4):
-        return T.astype(float)
-    if T.ndim == 3 and T.shape[0] == 1 and T.shape[1:] == (4, 4):
-        return T[0].astype(float)
-    if T.size == 16:
-        return T.reshape(4, 4).astype(float)
-    if T.shape == (3, 4):  # pad last row
-        padded = np.eye(4, dtype=float)
-        padded[:3, :] = T
-        return padded
-    raise ValueError(f"Frame {idx} transform shape {T.shape} cannot be interpreted as 4x4")
-
-
-def load_object_trajectory(track_dir: str) -> np.ndarray:
-    # Load the first pickle/npz/npy in the tracking folder into an array of shape [T, 4, 4].
-    import glob
-    import pickle
-
-    candidates = sorted(
-        glob.glob(os.path.join(track_dir, "*.pickle"))
-        + glob.glob(os.path.join(track_dir, "*.pkl"))
-        + glob.glob(os.path.join(track_dir, "*.npy"))
-        + glob.glob(os.path.join(track_dir, "*.npz"))
-    )
-    if not candidates:
-        raise FileNotFoundError(f"No object trajectory found in {track_dir}")
-
-    path = candidates[0]
-    if path.endswith((".npy", ".npz")):
-        payload = np.load(path, allow_pickle=True)
-    else:
-        with open(path, "rb") as f:
-            payload = pickle.load(f)
-
-    stacked = _maybe_stack_array(payload)
-    if stacked is not None:
-        return stacked
-
-    if isinstance(payload, dict):
-        for key in ("T", "poses", "traj", "trajectory"):
-            if key in payload:
-                stacked = _maybe_stack_array(payload[key])
-                if stacked is not None:
-                    return stacked
-        frames = payload.get("frames", payload)
-        if isinstance(frames, dict):
-            frames = [frames[k] for k in sorted(frames.keys())]
-    else:
-        frames = payload
-
-    if isinstance(frames, np.ndarray):
-        arr = np.asarray(frames)
-        if arr.ndim == 3 and arr.shape[1:] == (4, 4):
-            return arr.astype(float)
-
-    T_list = []
-    for idx, frame in enumerate(frames):
-        T_list.append(_build_T_from_frame(frame, idx))
-
-    if not T_list:
-        raise ValueError("No transforms loaded from object trajectory")
-
-    return np.stack(T_list, axis=0)
-
-
 def load_object_mesh(mesh_path: str) -> trimesh.Trimesh:
     mesh = trimesh.load(mesh_path, force="mesh")
     if isinstance(mesh, trimesh.Trimesh):
@@ -151,6 +47,71 @@ def load_object_mesh(mesh_path: str) -> trimesh.Trimesh:
     if isinstance(mesh, list):
         return trimesh.util.concatenate(mesh)
     raise ValueError(f"Unexpected mesh type: {type(mesh)}")
+
+
+def load_object_world_trajectory_npz(npz_path: str) -> np.ndarray:
+    if not os.path.exists(npz_path):
+        raise FileNotFoundError(f"Object trajectory file not found: {npz_path}")
+
+    payload = np.load(npz_path, allow_pickle=True)
+    arr = None
+    if isinstance(payload, np.lib.npyio.NpzFile):
+        if payload.files:
+            per_frame = []
+            for key in payload.files:
+                v = np.asarray(payload[key])
+                if v.shape == (4, 4):
+                    m = re.search(r"frame_(\d+)", key)
+                    frame_idx = int(m.group(1)) if m else None
+                    per_frame.append((frame_idx, key, v))
+                else:
+                    per_frame = []
+                    break
+
+            if per_frame:
+                if all(idx is not None for idx, _, _ in per_frame):
+                    per_frame.sort(key=lambda x: x[0])
+                else:
+                    per_frame.sort(key=lambda x: x[1])
+                arr = np.stack([v for _, _, v in per_frame], axis=0)
+
+        preferred_keys = (
+            "obj_T_frames",
+            "T",
+            "poses",
+            "trajectory",
+            "traj",
+            "arr_0",
+        )
+        if arr is None:
+            for key in preferred_keys:
+                if key in payload.files:
+                    arr = payload[key]
+                    break
+        if arr is None:
+            if not payload.files:
+                raise ValueError(f"No arrays in {npz_path}")
+            arr = payload[payload.files[0]]
+    else:
+        arr = payload
+
+    arr = np.asarray(arr)
+    if arr.ndim == 2 and arr.shape == (4, 4):
+        arr = arr[None, ...]
+    elif arr.ndim == 2 and arr.shape[1] == 16:
+        arr = arr.reshape(arr.shape[0], 4, 4)
+    elif arr.ndim == 3 and arr.shape[1:] == (3, 4):
+        padded = np.tile(np.eye(4, dtype=float), (arr.shape[0], 1, 1))
+        padded[:, :3, :] = arr
+        arr = padded
+
+    if arr.ndim != 3 or arr.shape[1:] != (4, 4):
+        raise ValueError(
+            f"Unsupported object trajectory shape from {npz_path}: {arr.shape}. "
+            "Expected (N,4,4) world poses."
+        )
+
+    return arr.astype(float)
 
 
 TACTILE_VERTEX_MAP = {
@@ -399,7 +360,7 @@ def main():
     arm_dir = os.path.join(data_root, "arm")
     hand_dir = os.path.join(data_root, "hand")
 
-    object_track_dir = os.path.join(capture_root, "object_tracking")
+    object_traj_path = os.path.join(capture_root, "object_tracking_result", "obj_T_frames.npz")
 
     timestamp_path = os.path.join(data_root, "timestamps", "timestamp.npy")
     frame_id_path = os.path.join(data_root, "timestamps", "frame_id.npy")
@@ -408,7 +369,7 @@ def main():
     c2r_path = os.path.join(capture_root, "C2R.npy")
     
     c2r = np.load(c2r_path)
-    r2c = np.linalg.inv(c2r)
+    robot_from_world = np.linalg.inv(c2r)
 
     arm_qpos, arm_time = load_series(arm_dir, ("position.npy", "action_qpos.npy", "action.npy"))
     # hand_action, hand_time = load_series(hand_dir, ("action.npy", "position.npy"))
@@ -434,8 +395,8 @@ def main():
 
     obj_traj = None
     if args.visualize_object:
-        obj_traj = load_object_trajectory(object_track_dir)
-        print(f"Loaded object trajectory with {obj_traj.shape[0]} frames.")
+        obj_traj = load_object_world_trajectory_npz(object_traj_path)
+        print(f"Loaded object trajectory with {obj_traj.shape[0]} frames from {object_traj_path}")
 
     # Build master timeline from camera timestamps (pc_time) using fill_framedrop logic.
     
@@ -457,14 +418,17 @@ def main():
         qpos_video = shifted
     obj_mesh = None
     if obj_traj is not None:
-        # Snap object trajectory onto the master timeline (assume uniform spacing across its original length).
-        obj_time = np.linspace(video_times[0], video_times[-1], obj_traj.shape[0])
-        obj_traj = resample_to(
-            obj_time,
-            obj_traj.reshape(obj_traj.shape[0], -1),
-            video_times,
-        ).reshape(len(video_times), 4, 4)
-        obj_traj = np.einsum("ij,tjk->tik", r2c, obj_traj)
+        total_frames = len(video_times)
+        if obj_traj.shape[0] == total_frames:
+            obj_traj_video = obj_traj
+        else:
+            obj_time = np.linspace(video_times[0], video_times[-1], obj_traj.shape[0], dtype=float)
+            obj_traj_video = resample_to(
+                obj_time,
+                obj_traj.reshape(obj_traj.shape[0], -1),
+                video_times,
+            ).reshape(total_frames, 4, 4)
+        obj_traj = np.einsum("ij,tjk->tik", robot_from_world, obj_traj_video)
         obj_mesh = load_object_mesh(args.object_mesh)
         mat = getattr(obj_mesh.visual, "material", None)
         if mat is not None:

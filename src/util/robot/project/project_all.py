@@ -1,46 +1,97 @@
 import argparse
 import glob
-import math
 import os
-import pickle
+import re
 import shutil
 import subprocess
-import sys
+
 import cv2
-
-from typing import Any, List, Optional, Tuple
-
 import numpy as np
-import trimesh
 
 from paradex.calibration.utils import load_camparam
-from paradex.utils.path import rsc_path, home_path, shared_dir
+from paradex.utils.path import shared_dir
 from paradex.visualization.robot import RobotModule
-from paradex.robot.inspire import inspire_action_to_qpos, inspire_action_to_qpos_dof12, inspire_f1_action_to_qpos_dof6
+from paradex.robot.inspire import inspire_action_to_qpos_dof12, inspire_f1_action_to_qpos_dof6
 from paradex.utils.load_data import load_series, resample_to
-from paradex.image.overlay import overlay_mask
 from paradex.image.grid import make_image_grid
 from paradex.image.undistort import precomute_undistort_map, apply_undistort_map
-from paradex.object.utils import load_object_trajectory, load_object_mesh, apply_transform
+from paradex.object.utils import load_object_mesh, apply_transform
 from paradex.robot.utils import get_robot_urdf_path
-
-
-# PROCESSING_REPO = "/home/temp_id/paradex_processing_latest"
-# if PROCESSING_REPO not in sys.path:
-#     sys.path.insert(0, PROCESSING_REPO)
-# from utils.vis_utils_nvdiff import BatchRenderer
-
 from paradex.image.projection import BatchRenderer
 
 
+def load_object_world_trajectory_npz(npz_path: str) -> np.ndarray:
+    if not os.path.exists(npz_path):
+        raise FileNotFoundError(f"Object trajectory file not found: {npz_path}")
+
+    payload = np.load(npz_path, allow_pickle=True)
+    arr = None
+    if isinstance(payload, np.lib.npyio.NpzFile):
+        # Case 1: npz contains per-frame 4x4 arrays with keys like frame_35.npy
+        if payload.files:
+            per_frame = []
+            for key in payload.files:
+                v = np.asarray(payload[key])
+                if v.shape == (4, 4):
+                    m = re.search(r"frame_(\d+)", key)
+                    frame_idx = int(m.group(1)) if m else None
+                    per_frame.append((frame_idx, key, v))
+                else:
+                    per_frame = []
+                    break
+
+            if per_frame:
+                if all(idx is not None for idx, _, _ in per_frame):
+                    per_frame.sort(key=lambda x: x[0])
+                else:
+                    per_frame.sort(key=lambda x: x[1])
+                arr = np.stack([v for _, _, v in per_frame], axis=0)
+
+        preferred_keys = (
+            "obj_T_frames",
+            "T",
+            "poses",
+            "trajectory",
+            "traj",
+            "arr_0",
+        )
+        if arr is None:
+            for key in preferred_keys:
+                if key in payload.files:
+                    arr = payload[key]
+                    break
+        if arr is None:
+            if not payload.files:
+                raise ValueError(f"No arrays in {npz_path}")
+            arr = payload[payload.files[0]]
+    else:
+        arr = payload
+
+    arr = np.asarray(arr)
+    if arr.ndim == 2 and arr.shape == (4, 4):
+        arr = arr[None, ...]
+    elif arr.ndim == 2 and arr.shape[1] == 16:
+        arr = arr.reshape(arr.shape[0], 4, 4)
+    elif arr.ndim == 3 and arr.shape[1:] == (3, 4):
+        padded = np.tile(np.eye(4, dtype=float), (arr.shape[0], 1, 1))
+        padded[:, :3, :] = arr
+        arr = padded
+
+    if arr.ndim != 3 or arr.shape[1:] != (4, 4):
+        raise ValueError(
+            f"Unsupported object trajectory shape from {npz_path}: {arr.shape}. "
+            "Expected (N,4,4) world poses."
+        )
+
+    return arr.astype(float)
+
+
 def project_robot_and_object(
-    arm, 
+    arm,
     hand,
     object,
-    capture_root,           # hri_inspire_left
-    capture_ep,             # Projection의 background가 되는 image들이 촬영된 episode
-    replay_ep,              # project되는 것들이 기록된 episode (robot action, object trajectory)
-    overlay_to_other_video, # if false, replay_ep = capture_ep
+    capture_root,
+    capture_ep,
     object_mesh_name,
     project_robot,
     project_object,
@@ -54,50 +105,42 @@ def project_robot_and_object(
     device,
     frame_offset,
     arm_time_offset,
-    hand_time_offset
+    hand_time_offset,
 ):
-    
-    
-    capture_ep_root = os.path.join(shared_dir, "capture", capture_root, object, str(capture_ep))
-    # capture_ep_root = os.path.join(shared_dir, capture_root, object, str(capture_ep))
-    replay_ep_root = os.path.join(shared_dir, "capture", capture_root, object, str(replay_ep))
-    
-    capture_raw_root = os.path.join(capture_ep_root, "raw")
-    replay_raw_root = os.path.join(replay_ep_root, "raw")
-    
-    arm_dir = os.path.join(replay_raw_root, "arm")
-    hand_dir = os.path.join(replay_raw_root, "hand")
-    
-    intrinsic, extrinsic_from_camparam = load_camparam(capture_ep_root)
-    # C2R is world->robot (hand-eye calibration result).
-    c2r = np.load(os.path.join(capture_ep_root, "C2R.npy"))
+    ep_root = os.path.join(shared_dir, "capture", capture_root, object, str(capture_ep))
+    raw_root = os.path.join(ep_root, "raw")
+    arm_dir = os.path.join(raw_root, "arm")
+    hand_dir = os.path.join(raw_root, "hand")
+
+    intrinsic, extrinsic_from_camparam = load_camparam(ep_root)
+    # c2r is robot->world in this pipeline; invert to get world->robot.
+    c2r = np.load(os.path.join(ep_root, "C2R.npy"))
     robot_from_world = np.linalg.inv(c2r)
-    
+
     qpos_video = None
     video_times = None
     video_frame_ids = None
-    
+
     robot = None
     robot_dof = None
     link_label_map = None
     finger_prefix_map = None
     finger_colors = None
-    
-    
-    ## Robot projection
+
+    obj_traj_raw = None
+    obj_mesh = None
+    obj_base_vertices = None
+
     if project_robot:
         arm_qpos, arm_time = load_series(arm_dir, ("position.npy", "action_qpos.npy", "action.npy"))
 
-        # Overlay type
         if overlay_option == "action":
-            hand_action, hand_time = load_series(hand_dir, ("action.npy", "right_joint_states.npy",))
+            hand_action, hand_time = load_series(hand_dir, ("action.npy", "right_joint_states.npy"))
         else:
-            hand_action, hand_time = load_series(hand_dir, ("position.npy", "right_joint_states.npy",))
+            hand_action, hand_time = load_series(hand_dir, ("position.npy", "right_joint_states.npy"))
 
         hand_time_path = os.path.join(hand_dir, "time.npy")
         if not os.path.exists(hand_time_path):
-            # Some datasets only store right_joint_states without hand timestamps.
-            # Avoid collapsing to a constant sample when arm_time is in absolute epoch seconds.
             if len(arm_time) > 1:
                 hand_time = np.linspace(arm_time[0], arm_time[-1], hand_action.shape[0], dtype=float)
             else:
@@ -109,45 +152,31 @@ def project_robot_and_object(
             hand_time = hand_time + hand_time_offset
 
         hand_action = resample_to(hand_time, hand_action, arm_time)
-        
+
         if hand == "inspire":
             hand_qpos = inspire_action_to_qpos_dof12(hand_action)
         elif hand == "inspire_f1":
             hand_qpos = inspire_f1_action_to_qpos_dof6(hand_action)
         else:
             hand_qpos = hand_action
-            
+
         full_qpos = np.concatenate([arm_qpos, hand_qpos], axis=1)
-        # Sync to RGB timestamps if available.
-        ts_dir = os.path.join(capture_raw_root, "timestamps")
+
+        ts_dir = os.path.join(raw_root, "timestamps")
         ts_path = os.path.join(ts_dir, "timestamp.npy")
         frame_id_path = os.path.join(ts_dir, "frame_id.npy")
-        
-        # Resample actions according to video times
         if os.path.exists(ts_path) and os.path.exists(frame_id_path):
             video_times = np.load(ts_path)
-            # video_times = np.load(frame_id_path)
             video_frame_ids = np.load(frame_id_path)
             qpos_video = resample_to(arm_time, full_qpos, video_times)
         else:
             video_times = arm_time
             video_frame_ids = np.arange(1, full_qpos.shape[0] + 1, dtype=int)
             qpos_video = full_qpos
-        
-        # Load robot urdf and mesh
-        # urdf_path = os.path.join(rsc_path, "robot", f"{arm}_{hand}_left_new_copy.urdf")
+
         urdf_path = get_robot_urdf_path(arm, hand)
         robot = RobotModule(urdf_path)
-        
-        
-        print("=== Robot joint order (qpos order) ===")
-        for i, name in enumerate(robot.joint_names):
-            print(i, name)
-
         robot_dof = robot.get_num_joints()
-            
-        robot_dof = robot.get_num_joints()
-        # Prepare mesh topology once to avoid reloading URDF each frame.
         robot.update_cfg(full_qpos[0, :robot_dof])
         robot.get_robot_mesh()
         finger_prefix_map = {
@@ -179,57 +208,33 @@ def project_robot_and_object(
             "ring": (255, 0, 200),
             "pinky": (255, 220, 0),
         }
-        
     else:
-        # If not projecting the robot, fall back to timestamps if they exist; otherwise infer from images later.
-        ts_dir = os.path.join(capture_raw_root, "timestamps")
+        ts_dir = os.path.join(raw_root, "timestamps")
         ts_path = os.path.join(ts_dir, "timestamp.npy")
         frame_id_path = os.path.join(ts_dir, "frame_id.npy")
         if os.path.exists(ts_path) and os.path.exists(frame_id_path):
             video_times = np.load(ts_path)
             video_frame_ids = np.load(frame_id_path)
-    
-    
 
-    ## Object projection
     if project_object:
-        
-        obj_traj_path = os.path.join(replay_ep_root, "object_tracking")
-        obj_traj_raw = load_object_trajectory(obj_traj_path)
-        
-        
+        obj_traj_path = os.path.join(ep_root, "object_tracking_result", "obj_T_frames.npz")
+        obj_traj_raw = load_object_world_trajectory_npz(obj_traj_path)
         print(f"Loaded object trajectory with {obj_traj_raw.shape[0]} frames from {obj_traj_path}")
-        
-        object_mesh_path = os.path.join(shared_dir, "mesh", object_mesh_name, object_mesh_name + ".obj")
-        
+
+        object_mesh_path = os.path.join(shared_dir, "mesh", object_mesh_name, f"{object_mesh_name}.obj")
         obj_mesh = load_object_mesh(object_mesh_path)
         obj_base_vertices = np.asarray(obj_mesh.vertices, dtype=np.float32)
-    
-        # Align object trajectory to video timeline and express in robot frame.
-        obj_time = np.linspace(video_times[0], video_times[-1], obj_traj_raw.shape[0])
-        obj_traj_video = resample_to(
-            obj_time, obj_traj_raw.reshape(obj_traj_raw.shape[0], -1), video_times
-        ).reshape(len(video_times), 4, 4)
-        obj_traj_robot = np.einsum("ij,tjk->tik", robot_from_world, obj_traj_video)
-    
-    ## Overlay Option
-    
-    if output_dir == None:
-        output_dir = os.path.join(capture_ep_root, "overlay_" + overlay_option)
-        
-        
+
+    if output_dir is None:
+        output_dir = os.path.join(ep_root, f"overlay_{overlay_option}")
     os.makedirs(output_dir, exist_ok=True)
-    
-    
-    image_dir = os.path.join(capture_ep_root, "video_extracted")
-    
-    # When robot is projected, timeline comes from qpos_video; otherwisfe rely on loaded timestamps or image count.
+
+    image_dir = os.path.join(ep_root, "video_extracted")
     if qpos_video is not None:
         total_frames = qpos_video.shape[0]
     elif video_frame_ids is not None:
         total_frames = len(video_frame_ids)
     else:
-        # Infer frame count and frame ids from extracted images.
         if not os.path.isdir(image_dir):
             raise ValueError(f"Cannot infer frames: image_dir does not exist ({image_dir}).")
         cam_dirs = [
@@ -246,19 +251,34 @@ def project_robot_and_object(
         total_frames = num_images
         video_frame_ids = np.arange(1, num_images + 1, dtype=int)
         video_times = np.arange(num_images, dtype=float)
-        
+
+    if project_object:
+        if video_times is None:
+            video_times = np.arange(total_frames, dtype=float)
+        if len(video_times) != total_frames:
+            raise ValueError(
+                f"Timeline mismatch: len(video_times)={len(video_times)} vs total_frames={total_frames}"
+            )
+
+        if obj_traj_raw.shape[0] == total_frames:
+            obj_traj_video = obj_traj_raw
+        else:
+            obj_time = np.linspace(video_times[0], video_times[-1], obj_traj_raw.shape[0], dtype=float)
+            obj_traj_video = resample_to(
+                obj_time, obj_traj_raw.reshape(obj_traj_raw.shape[0], -1), video_times
+            ).reshape(total_frames, 4, 4)
+        obj_traj_robot = np.einsum("ij,tjk->tik", robot_from_world, obj_traj_video)
+
     start = max(0, start_frame)
     end = total_frames if end_frame is None else min(end_frame, total_frames)
     if start >= end:
         raise ValueError(f"Invalid frame range: start={start}, end={end}, total={total_frames}")
     frame_indices = list(range(start, end, max(1, stride)))
-    
-    # Build camera info and extrinsics (robot frame -> each camera frame) for BatchRenderer.
+
     cam_info = {}
     render_extrinsics = {}
     undistort_maps = {}
     for cam_id, intr in intrinsic.items():
-        K = intr["intrinsics_undistort"]
         height = intr["height"]
         width = intr["width"]
 
@@ -267,12 +287,12 @@ def project_robot_and_object(
         cam_from_robot = cam_from_world @ c2r
 
         render_extrinsics[cam_id] = cam_from_robot[:3, :]
-        cam_info[cam_id] = {"K": K, "extr": cam_from_robot[:3, :], "width": width, "height": height}
+        cam_info[cam_id] = {"extr": cam_from_robot[:3, :], "width": width, "height": height}
         _, mapx, mapy = precomute_undistort_map(intr)
         undistort_maps[cam_id] = (mapx, mapy)
 
     renderer = BatchRenderer(intrinsic, render_extrinsics)
-    
+
     writers_overlay = {}
     grid_dir = None
     if output_type == "video":
@@ -282,19 +302,17 @@ def project_robot_and_object(
             writers_overlay[cam_id] = cv2.VideoWriter(
                 os.path.join(output_dir, f"{cam_id}_overlay.mp4"), fourcc, 30, (w, h)
             )
-            # writers_mask[cam_id] = cv2.VideoWriter(
-            #     os.path.join(output_dir, f"{cam_id}_mask.mp4"), fourcc, 10, (w, h), isColor=False
-            # )
     else:
         grid_dir = os.path.join(output_dir, "grid")
         os.makedirs(grid_dir, exist_ok=True)
-    
+
     for fidx in frame_indices:
         print(f"Processing frame {fidx} / {total_frames}...")
 
         render_meshes = []
         mesh_colors = []
         mesh_alphas = []
+
         if project_robot:
             robot.update_cfg(qpos_video[fidx, :robot_dof])
             scene = robot.scene
@@ -358,6 +376,7 @@ def project_robot_and_object(
                 image = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
             else:
                 image = np.zeros((height, width, 3), dtype=np.uint8)
+
             overlay = image
             if id_dict is not None:
                 id_map = id_dict[cam_id][..., 0]
@@ -391,12 +410,10 @@ def project_robot_and_object(
                 os.path.join(grid_dir, f"frame_{frame_name:05d}.png"),
                 cv2.cvtColor(grid_img, cv2.COLOR_RGB2BGR),
             )
-    
-    
+
     for w in writers_overlay.values():
         w.release()
-    # for w in writers_mask.values():
-    #     w.release()
+
     if output_type == "grid" and grid_dir is not None:
         if not frame_indices:
             raise ValueError("No frames rendered for grid output; cannot build video.")
@@ -405,7 +422,7 @@ def project_robot_and_object(
         if ffmpeg_path is None:
             raise RuntimeError("ffmpeg not found in PATH; cannot build grid video.")
         input_pattern = os.path.join(grid_dir, "frame_%05d.png")
-        output_path = os.path.join(grid_dir, f"{replay_ep}_to_{capture_ep}_grid_1080p.mp4")
+        output_path = os.path.join(grid_dir, f"grid_overlay.mp4")
         cmd = [
             ffmpeg_path,
             "-y",
@@ -424,8 +441,6 @@ def project_robot_and_object(
             output_path,
         ]
         subprocess.run(cmd, check=True)
-    
-    return    
 
 
 def main():
@@ -434,10 +449,8 @@ def main():
     parser.add_argument("--hand", type=str, default="inspire_f1")
     parser.add_argument("--object", type=str, required=True)
     parser.add_argument("--capture-ep", type=str, default="0")
-    parser.add_argument("--replay-ep", type=str, default=None)
-    parser.add_argument("--object-mesh-name", type=str, help="Path to object mesh (e.g., .obj/.stl).")
+    parser.add_argument("--object-mesh-name", type=str, required=True)
     parser.add_argument("--capture-root", type=str, default="hri_xarm_f1", help="Capture root directory name.")
-    # parser.add_argument("--object-trajectory", type=str, help="Path to trajectory pickle/npy/npz (or directory containing it).",)
     parser.add_argument("--project-object", action="store_true", help="Project the tracked object mesh in addition to the robot.")
     parser.add_argument("--project-robot", action="store_true", help="Project the robot mesh.")
     parser.add_argument("--start-frame", type=int, default=0, help="Start frame index (inclusive).")
@@ -446,18 +459,12 @@ def main():
     parser.add_argument("--output-dir", type=str, default=None, help="Output directory for projected masks/overlays.")
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--overlay-option", type=str, choices=["action", "position"], default="position", help="Whether to overlay using hand action or hand position data.")
-    parser.add_argument("--output-type", type=str, choices=["video", "grid"], default="grid", help="Output overlaid result as videos (per camera) or as tiled grid images per frame.",)
+    parser.add_argument("--output-type", type=str, choices=["video", "grid"], default="grid", help="Output overlaid result as videos (per camera) or as tiled grid images per frame.")
     parser.add_argument("--grid-scale", type=float, default=1.0, help="Downscale factor for saved grid frames before writing PNG (e.g., 0.5 halves width/height).")
-    parser.add_argument("--overlay-to-other-video", action="store_true", help="Overlay the projected masks onto another video.")
     parser.add_argument("--frame-offset", type=int, default=0, help="Shift overlay target video frames by this offset.")
     parser.add_argument("--arm-time-offset", type=float, default=0.0, help="Shift arm timestamps by this many seconds (positive delays arm).")
     parser.add_argument("--hand-time-offset", type=float, default=0.0, help="Shift hand timestamps by this many seconds (positive delays hand).")
-    
-
     args = parser.parse_args()
-
-    if args.replay_ep is None:
-        args.replay_ep = args.capture_ep
 
     project_robot_and_object(
         arm=args.arm,
@@ -465,8 +472,6 @@ def main():
         object=args.object,
         capture_root=args.capture_root,
         capture_ep=args.capture_ep,
-        replay_ep=args.replay_ep,
-        overlay_to_other_video=args.overlay_to_other_video,
         object_mesh_name=args.object_mesh_name,
         project_robot=args.project_robot,
         project_object=args.project_object,

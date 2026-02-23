@@ -88,16 +88,16 @@ def undistort_raw_video(video_path, progress_dict, video_id):
             'message': 'Loading camera parameters...'
         })
         
-    try:
-        intrinsics, _ = load_camparam(os.path.join(shared_dir, root_name))
-        _, mapx, mapy = precomute_undistort_map(intrinsics[serial_num])
+    # try:
+    #     intrinsics, _ = load_camparam(os.path.join(shared_dir, root_name))
+    #     _, mapx, mapy = precomute_undistort_map(intrinsics[serial_num])
 
-    except Exception as e:
-        update_progress(progress_dict, video_id, {
-            'status': 'failed',
-            'message': f'Cannot load camparam: {str(e)}'
-        })
-        return f"{video_path}: cannot load camparam: {str(e)}"
+    # except Exception as e:
+    #     update_progress(progress_dict, video_id, {
+    #         'status': 'failed',
+    #         'message': f'Cannot load camparam: {str(e)}'
+    #     })
+    #     return f"{video_path}: cannot load camparam: {str(e)}"
 
     update_progress(progress_dict, video_id, {
         'status': 'processing',
@@ -119,8 +119,8 @@ def undistort_raw_video(video_path, progress_dict, video_id):
         if not ret:
             break
 
-        if (frame[:30, 30][::2, ::2] == 255).all():
-            frame = apply_undistort_map(frame, mapx, mapy)
+        # if (frame[:30, 30][::2, ::2] == 255).all():
+        #     frame = apply_undistort_map(frame, mapx, mapy)
         out.write(frame)
         last_frame += 1
         

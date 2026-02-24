@@ -16,10 +16,11 @@ from paradex.utils.keyboard_listener import listen_keyboard
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--device', choices=['xsens', 'occulus'], default="xsens")
-parser.add_argument('--arm', type=str, default="xarm")
-parser.add_argument('--hand', type=str, default="inspire_f1")
-parser.add_argument('--capture_root', type=str, default="hri_xarm_f1")
+parser.add_argument('--arm', type=str, default=None)
+parser.add_argument('--hand', type=str, default=None)
 parser.add_argument('--name', type=str, required=True)
+parser.add_argument('--tactile', action='store_true', help='Whether to record tactile data from the Inspire hand.')
+parser.add_argument('--ip', action='store_true', help='Use IP connection for Inspire hand controller.')
 
 args = parser.parse_args()
 
@@ -48,13 +49,15 @@ cs = CaptureSession(
     arm=args.arm,
     hand=args.hand,
     teleop=args.device,
+    tactile=args.tactile,
     hand_side = "right",
+    ip=args.ip,
     events=events,
 )
 
 name = args.name
 
-last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.capture_root, args.name)))
+last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", "hri_xarm_f1", args.name)))
 
 success_count = 0
 fail_count = 0
@@ -70,10 +73,10 @@ while not exit_event.is_set():
 
     last_idx += 1
     print("Prepare to record new session:", name, "episode:", last_idx)
-    episode_rel_path = os.path.join("capture", args.capture_root, args.name, str(last_idx))
+    episode_rel_path = os.path.join("capture", "hri_xarm_f1", args.name, str(last_idx))
     episode_abs_path = os.path.join(shared_dir, episode_rel_path)
     cs.start(episode_rel_path)
-    chime.info(sync=True)
+    # chime.info(sync=True)
     print("Starting new recording session:", name)
     print("Capturing index:", last_idx)
 

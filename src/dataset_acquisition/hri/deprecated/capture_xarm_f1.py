@@ -15,17 +15,15 @@ exit_event = Event()
 
 parser = argparse.ArgumentParser()
 
-# parser.add_argument('--device', choices=['xsens', 'occulus'])
-# parser.add_argument('--arm', type=str, default=None)
-# parser.add_argument('--hand', type=str, default=None)
+
 parser.add_argument('--name', type=str, required=True)
-# parser.add_argument('--tactile', action='store_true', help='Whether to record tactile data from the Inspire hand.')
-# parser.add_argument('--ip', action='store_true', help='Use IP connection for Inspire hand controller.')
+
 
 args = parser.parse_args()
 
 cs = CaptureSession(
     camera=True,
+    realsense=True,
     arm="xarm",
     hand="inspire_f1",
     teleop="xsens",

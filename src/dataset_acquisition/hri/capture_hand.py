@@ -15,8 +15,10 @@ parser = argparse.ArgumentParser()
 # parser.add_argument('--device', choices=['xsens', 'occulus'])
 # parser.add_argument('--arm', type=str, default=None)
 # parser.add_argument('--hand', type=str, default=None)
-parser.add_argument('--hand_side', type=str)
+parser.add_argument('--hand_side', type=str, default='right')
 parser.add_argument('--name', type=str)
+parser.add_argument('--capture_root', default="hri_taeyun")
+parser.add_argument('--realsense', action='store_true')
 
 args = parser.parse_args()
 
@@ -26,13 +28,14 @@ exit_event = Event()
 
 listen_keyboard({"c": save_event, "q": exit_event, "s": stop_event})
 cs = CaptureSession(
-    camera=True
+    camera=True,
+    realsense=args.realsense
 )
 
 name = args.name
 
 
-last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", "hri_taeyun", args.hand_side, name)))
+last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.capture_root, args.hand_side, name)))
 while not exit_event.is_set():
     if not save_event.is_set():
         stop_event.clear()
@@ -40,7 +43,7 @@ while not exit_event.is_set():
     
     # index = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     last_idx += 1
-    save_path = os.path.join("capture", "hri_taeyun", args.hand_side, name, str(last_idx))
+    save_path = os.path.join("capture", args.capture_root, args.hand_side, name, str(last_idx))
     cs.start(save_path)
     # cs.start(os.path.join(name, str(last_idx)))
 

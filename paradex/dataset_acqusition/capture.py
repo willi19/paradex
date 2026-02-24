@@ -5,6 +5,7 @@ import chime
 chime.theme('pokemon')
 
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
+from paradex.io.camera_system.realsense_controller import realsense_controller
 from paradex.io.camera_system.signal_generator import UTGE900
 from paradex.io.camera_system.timestamp_monitor import TimestampMonitor
 from paradex.io.robot_controller import get_arm, get_hand
@@ -15,7 +16,18 @@ from paradex.calibration.utils import save_current_camparam, save_current_C2R
 from paradex.utils.system import network_info
 
 class CaptureSession():
-    def __init__(self, camera=False, arm=None, hand=None, teleop=None, tactile = False, ip = False, hand_side = "right", events = None):
+    def __init__(
+        self,
+        camera=False,
+        arm=None,
+        hand=None,
+        teleop=None,
+        tactile=False,
+        ip=False,
+        hand_side="right",
+        events=None,
+        realsense=False,
+    ):
         if arm is None and hand is None and teleop is not None:
             raise ValueError("Teleop device requires at least one of arm or hand to be specified.")
         
@@ -30,6 +42,11 @@ class CaptureSession():
             self.camera = None
             self.timestamp_monitor = None
             self.sync_generator = None
+
+        if realsense:
+            self.realsense = realsense_controller()
+        else:
+            self.realsense = None
         
         if arm is not None:
             self.arm = get_arm(arm)
@@ -114,6 +131,12 @@ class CaptureSession():
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.start(os.path.join(shared_dir, save_path, "raw", "timestamps"))
             self.sync_generator.start(fps=30)
+        if self.realsense is not None:
+            self.realsense.start(
+                save_path=os.path.join(shared_dir, save_path, "depth_cam"),
+                fps=30,
+                use_depth=True,
+            )
         
     def stop(self):
         if self.arm is not None:
@@ -141,13 +164,16 @@ class CaptureSession():
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.stop()
             self.sync_generator.stop()
-        
+
             save_current_camparam(os.path.join(shared_dir, self.save_path))
             if self.arm is not None:
                 if self.arm_name == "xarm":
                     save_current_C2R(os.path.join(shared_dir, self.save_path))
                 elif self.arm_name == "openarm":
-                    save_current_C2R(os.path.join(shared_dir, self.save_path), arm="openarm")    
+                    save_current_C2R(os.path.join(shared_dir, self.save_path), arm="openarm")
+
+        if self.realsense is not None:
+            self.realsense.stop()
         self.save_path = None
 
     def end(self):
@@ -170,6 +196,8 @@ class CaptureSession():
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.end()
             self.sync_generator.end()
+        if self.realsense is not None:
+            self.realsense.end()
     
     def teleop(self, session_events=None, state_policy="gesture_control"):
         if self.teleop_device is None:

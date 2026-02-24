@@ -14,6 +14,25 @@ from paradex.image.aruco import detect_charuco, merge_charuco_detection, get_adj
 from paradex.calibration.utils import cam_param_dir, extrinsic_dir, load_current_intrinsic
 from paradex.image.image_dict import ImageDict
 
+EXCLUDED_SERIALS = {
+    "25452066",
+    "25452061",
+}
+
+
+def _filter_images_for_calibration(images, intrinsics=None, extrinsics=None):
+    filtered = {}
+    for serial_num, image in images.items():
+        if serial_num in EXCLUDED_SERIALS:
+            continue
+        if intrinsics is not None and serial_num not in intrinsics:
+            continue
+        if extrinsics is not None and serial_num not in extrinsics:
+            continue
+        filtered[serial_num] = image
+    return filtered
+
+
 def process_match(args):
     """ Function to process a single match pair """
     (cam_key1, cam_key2), matches, corners1, corners2, cam_id1, cam_id2 = args
@@ -54,6 +73,8 @@ def load_keypoint(root_dir):
             if "cor" not in f:
                 continue
             serial_num = f.split("_")[0]
+            if serial_num in EXCLUDED_SERIALS:
+                continue
             
             corners = np.load(os.path.join(frame_dir, f))
             if corners.shape[0] == 0:
@@ -151,6 +172,8 @@ def run_calibration(name):
     serial_list = []
     for kypt_dict in keypoint_dict_distort.values():
         for serial_num in kypt_dict.keys():
+            if serial_num in EXCLUDED_SERIALS:
+                continue
             if serial_num not in serial_list:
                 serial_list.append(serial_num)
     num_cameras = len(serial_list)
@@ -193,10 +216,22 @@ def undistort(name):
         
         if img_dict is None:
             img_dict = ImageDict.from_path(os.path.join(extrinsic_dir, name, index))
+            img_dict.images = _filter_images_for_calibration(
+                img_dict.images,
+                intrinsics=intrinsics,
+                extrinsics=extrinsics,
+            )
             img_dict.set_camparam(intrinsics, extrinsics)
         else:
             img_dict.update_path(os.path.join(extrinsic_dir, name, index), reload_images=True)
+            img_dict.images = _filter_images_for_calibration(
+                img_dict.images,
+                intrinsics=intrinsics,
+                extrinsics=extrinsics,
+            )
         # img_dict.set_camparam(intrinsics, extrinsics)
+        if len(img_dict.images) == 0:
+            continue
         img_dict_undistort = img_dict.undistort(save_path=os.path.join(extrinsic_dir, name, index, "undistort"))
     
     return
@@ -211,6 +246,13 @@ def save_kypt_3d(name):
         #     continue
         
         img_dict_undistort = ImageDict.from_path(os.path.join(extrinsic_dir, name, index, "undistort"))
+        img_dict_undistort.images = _filter_images_for_calibration(
+            img_dict_undistort.images,
+            intrinsics=intrinsics,
+            extrinsics=extrinsics,
+        )
+        if len(img_dict_undistort.images) == 0:
+            continue
         img_dict_undistort.set_camparam(intrinsics, extrinsics)
         charuco_3d = img_dict_undistort.triangulate_charuco()
         merged_charuco_3d = merge_charuco_detection(charuco_3d)
@@ -258,6 +300,13 @@ def debug(name, refine=True):
         #     continue
         
         img_dict_undistort = ImageDict.from_path(os.path.join(extrinsic_dir, name, index, "undistort"))
+        img_dict_undistort.images = _filter_images_for_calibration(
+            img_dict_undistort.images,
+            intrinsics=intrinsics,
+            extrinsics=extrinsics,
+        )
+        if len(img_dict_undistort.images) == 0:
+            continue
         img_dict_undistort.set_camparam(intrinsics, extrinsics)
         charuco_2d = img_dict_undistort.apply(detect_charuco, False)
         charuco_2d = {serial_num: merge_charuco_detection(detection) for serial_num, detection in charuco_2d.items()}

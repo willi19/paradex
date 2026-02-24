@@ -21,7 +21,7 @@ BOARD_COLORS = [
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
 
-# run_script("python src/calibration/extrinsic/client.py")
+run_script("python src/calibration/extrinsic/client.py")
 
 rcc = remote_camera_controller("extrinsic_calibration")
 dc = DataCollector()

@@ -18,7 +18,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--device', choices=['xsens', 'occulus'], default="xsens")
 parser.add_argument('--arm', type=str, default="xarm")
 parser.add_argument('--hand', type=str, default="inspire_f1")
-parser.add_argument('--capture_root', type=str, default="hri_xarm_f1")
+parser.add_argument('--capture_root', type=str, default="eccv2026/inspire_f1")
 parser.add_argument('--name', type=str, required=True)
 
 args = parser.parse_args()
@@ -44,7 +44,7 @@ print("In keyboard_control mode, gesture states 2/3 do not control session start
 
 cs = CaptureSession(
     camera=True,
-    realsense=True,
+    realsense=False,
     arm=args.arm,
     hand=args.hand,
     teleop=args.device,
@@ -76,7 +76,8 @@ while not exit_event.is_set():
     chime.info(sync=True)
     print("Starting new recording session:", name)
     print("Capturing index:", last_idx)
-
+    
+    
     state = cs.teleop(session_events=events, state_policy="keyboard_control")
     cs.stop()
     print("Stopped recording session:", name)

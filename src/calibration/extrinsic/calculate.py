@@ -16,7 +16,7 @@ from paradex.image.image_dict import ImageDict
 
 EXCLUDED_SERIALS = {
     "25452066",
-    "25452061",
+    "25452062",
 }
 
 

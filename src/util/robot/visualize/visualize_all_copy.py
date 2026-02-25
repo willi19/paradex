@@ -354,7 +354,7 @@ def main():
     args = parser.parse_args()
     object_name = args.object
 
-    capture_root = os.path.join("/home/temp_id/shared_data/capture/hri_inspire_left", args.object, str(args.ep))
+    capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026/inspire_f1", args.object, str(args.ep))
     data_root = os.path.join(capture_root, "raw")
     
     arm_dir = os.path.join(data_root, "arm")

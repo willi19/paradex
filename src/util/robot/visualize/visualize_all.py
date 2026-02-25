@@ -1,7 +1,10 @@
 import argparse
-import copy
+import logging
 import os
-from typing import Tuple, Dict, Any, Optional
+import re
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from typing import Tuple, Dict, Any, Optional, List
 
 import numpy as np
 import trimesh
@@ -9,10 +12,12 @@ import yourdfpy
 
 from paradex.utils.path import rsc_path
 from paradex.visualization.visualizer.viser import ViserViewer
-from paradex.robot.robot_wrapper import RobotWrapper
-from paradex.robot.robot_module import robot_info
+from paradex.visualization.robot import RobotModule
 from paradex.utils.load_data import load_series, resample_to
 from paradex.robot.inspire import inspire_action_to_qpos, inspire_f1_action_to_qpos_dof6
+
+# Suppress per-frame yourdfpy mimic-chain warnings (thumb_4 -> thumb_3 -> thumb_2).
+logging.getLogger("yourdfpy.urdf").setLevel(logging.ERROR)
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -39,105 +44,70 @@ def interpolate_sequence(seq: np.ndarray, target_len: int) -> np.ndarray:
     return out.reshape((target_len,) + seq.shape[1:])
 
 
-def to_numpy_array(x) -> np.ndarray:
-    if isinstance(x, np.ndarray):
-        return x
-    if hasattr(x, "detach"):
-        return np.asarray(x.detach())
-    return np.asarray(x)
+def load_object_world_trajectory_npz(npz_path: str) -> np.ndarray:
+    if not os.path.exists(npz_path):
+        raise FileNotFoundError(f"Object trajectory file not found: {npz_path}")
 
+    payload = np.load(npz_path, allow_pickle=True)
+    arr = None
+    if isinstance(payload, np.lib.npyio.NpzFile):
+        # Case 1: npz contains per-frame 4x4 arrays with keys like frame_35.npy
+        if payload.files:
+            per_frame = []
+            for key in payload.files:
+                v = np.asarray(payload[key])
+                if v.shape == (4, 4):
+                    m = re.search(r"frame_(\d+)", key)
+                    frame_idx = int(m.group(1)) if m else None
+                    per_frame.append((frame_idx, key, v))
+                else:
+                    per_frame = []
+                    break
 
-def _maybe_stack_array(payload: Any) -> Optional[np.ndarray]:
-    if isinstance(payload, (list, tuple)):
-        return None
-    arr = to_numpy_array(payload)
-    if arr.ndim == 3 and arr.shape[1:] == (4, 4):
-        return arr.astype(float)
-    return None
+            if per_frame:
+                if all(idx is not None for idx, _, _ in per_frame):
+                    per_frame.sort(key=lambda x: x[0])
+                else:
+                    per_frame.sort(key=lambda x: x[1])
+                arr = np.stack([v for _, _, v in per_frame], axis=0)
 
-
-def _build_T_from_frame(frame: Any, idx: int) -> np.ndarray:
-    if isinstance(frame, dict):
-        for k in ("T", "pose", "world_T_obj", "T_world_obj", "T_object_world"):
-            if k in frame:
-                T = to_numpy_array(frame[k])
-                break
-        else:
-            if "obj_R" in frame and "obj_t" in frame:
-                R = to_numpy_array(frame["obj_R"])
-                t = to_numpy_array(frame["obj_t"]).reshape(3)
-                T = np.eye(4, dtype=float)
-                T[:3, :3] = R
-                T[:3, 3] = t
-            else:
-                raise ValueError(f"Frame {idx} missing T/obj_R/obj_t")
+        preferred_keys = (
+            "obj_T_frames",
+            "T",
+            "poses",
+            "trajectory",
+            "traj",
+            "arr_0",
+        )
+        if arr is None:
+            for key in preferred_keys:
+                if key in payload.files:
+                    arr = payload[key]
+                    break
+        if arr is None:
+            if not payload.files:
+                raise ValueError(f"No arrays in {npz_path}")
+            arr = payload[payload.files[0]]
     else:
-        T = to_numpy_array(frame)
+        arr = payload
 
-    T = np.asarray(T)
-    if T.shape == (4, 4):
-        return T.astype(float)
-    if T.ndim == 3 and T.shape[0] == 1 and T.shape[1:] == (4, 4):
-        return T[0].astype(float)
-    if T.size == 16:
-        return T.reshape(4, 4).astype(float)
-    if T.shape == (3, 4):  # pad last row
-        padded = np.eye(4, dtype=float)
-        padded[:3, :] = T
-        return padded
-    raise ValueError(f"Frame {idx} transform shape {T.shape} cannot be interpreted as 4x4")
+    arr = np.asarray(arr)
+    if arr.ndim == 2 and arr.shape == (4, 4):
+        arr = arr[None, ...]
+    elif arr.ndim == 2 and arr.shape[1] == 16:
+        arr = arr.reshape(arr.shape[0], 4, 4)
+    elif arr.ndim == 3 and arr.shape[1:] == (3, 4):
+        padded = np.tile(np.eye(4, dtype=float), (arr.shape[0], 1, 1))
+        padded[:, :3, :] = arr
+        arr = padded
 
+    if arr.ndim != 3 or arr.shape[1:] != (4, 4):
+        raise ValueError(
+            f"Unsupported object trajectory shape from {npz_path}: {arr.shape}. "
+            "Expected (N,4,4) world poses."
+        )
 
-def load_object_trajectory(track_dir: str) -> np.ndarray:
-    # Load the first pickle/npz/npy in the tracking folder into an array of shape [T, 4, 4].
-    import glob
-    import pickle
-
-    candidates = sorted(
-        glob.glob(os.path.join(track_dir, "*.pickle"))
-        + glob.glob(os.path.join(track_dir, "*.pkl"))
-        + glob.glob(os.path.join(track_dir, "*.npy"))
-        + glob.glob(os.path.join(track_dir, "*.npz"))
-    )
-    if not candidates:
-        raise FileNotFoundError(f"No object trajectory found in {track_dir}")
-
-    path = candidates[0]
-    if path.endswith((".npy", ".npz")):
-        payload = np.load(path, allow_pickle=True)
-    else:
-        with open(path, "rb") as f:
-            payload = pickle.load(f)
-
-    stacked = _maybe_stack_array(payload)
-    if stacked is not None:
-        return stacked
-
-    if isinstance(payload, dict):
-        for key in ("T", "poses", "traj", "trajectory"):
-            if key in payload:
-                stacked = _maybe_stack_array(payload[key])
-                if stacked is not None:
-                    return stacked
-        frames = payload.get("frames", payload)
-        if isinstance(frames, dict):
-            frames = [frames[k] for k in sorted(frames.keys())]
-    else:
-        frames = payload
-
-    if isinstance(frames, np.ndarray):
-        arr = np.asarray(frames)
-        if arr.ndim == 3 and arr.shape[1:] == (4, 4):
-            return arr.astype(float)
-
-    T_list = []
-    for idx, frame in enumerate(frames):
-        T_list.append(_build_T_from_frame(frame, idx))
-
-    if not T_list:
-        raise ValueError("No transforms loaded from object trajectory")
-
-    return np.stack(T_list, axis=0)
+    return arr.astype(float)
 
 
 def load_object_mesh(mesh_path: str) -> trimesh.Trimesh:
@@ -147,6 +117,32 @@ def load_object_mesh(mesh_path: str) -> trimesh.Trimesh:
     if isinstance(mesh, list):
         return trimesh.util.concatenate(mesh)
     raise ValueError(f"Unexpected mesh type: {type(mesh)}")
+
+
+def set_mesh_alpha(mesh: trimesh.Trimesh, alpha: float) -> None:
+    a = float(np.clip(alpha, 0.0, 1.0))
+    # Preferred path for textured meshes.
+    mat = getattr(mesh.visual, "material", None)
+    if mat is not None:
+        factor = np.array(getattr(mat, "baseColorFactor", [1, 1, 1, 1]), dtype=float)
+        factor[3] = a
+        mat.baseColorFactor = factor
+        mat.alphaMode = "BLEND"
+        mat.doubleSided = True
+
+    # Fallback for non-textured meshes.
+    vc = getattr(mesh.visual, "vertex_colors", None)
+    if vc is not None:
+        vc_arr = np.asarray(vc).copy()
+        if vc_arr.ndim == 2 and vc_arr.shape[1] >= 4:
+            vc_arr[:, 3] = int(round(a * 255))
+            mesh.visual.vertex_colors = vc_arr
+    fc = getattr(mesh.visual, "face_colors", None)
+    if fc is not None:
+        fc_arr = np.asarray(fc).copy()
+        if fc_arr.ndim == 2 and fc_arr.shape[1] >= 4:
+            fc_arr[:, 3] = int(round(a * 255))
+            mesh.visual.face_colors = fc_arr
 
 
 TACTILE_VERTEX_MAP = {
@@ -193,6 +189,18 @@ TACTILE_LAYOUT = {
     "thumb_pad":     (4708, 12, 8),
     "palm":          (4900, 8, 14),
 }
+
+ZONE_TO_LINK = {
+    "little": "little_force_sensor",
+    "ring": "ring_force_sensor",
+    "middle": "middle_force_sensor",
+    "index": "index_force_sensor",
+    "thumb": "thumb_force_sensor",
+    "palm_right": "plam_force_sensor",
+    "palm_middle": "plam_force_sensor",
+    "palm_left": "plam_force_sensor",
+}
+PALM_ZONES = ("palm_right", "palm_middle", "palm_left")
 
 
 def unpack_tactile_frame(raw, index):
@@ -287,6 +295,278 @@ def normalize_tactile_sequence(payload: Any, layout: Dict[str, Tuple[int, int, i
     raise ValueError(f"Unsupported tactile payload type: {type(payload)}")
 
 
+def normalize_force_dict_sequence(payload: Any) -> List[Dict[str, float]]:
+    # Expected format for inspire_f1: object array of per-frame dicts.
+    if isinstance(payload, np.ndarray) and payload.dtype == object:
+        payload = payload.tolist()
+    if isinstance(payload, dict):
+        return [{k: float(v) for k, v in payload.items()}]
+    if isinstance(payload, (list, tuple)):
+        out = []
+        for item in payload:
+            if isinstance(item, np.ndarray) and item.shape == () and item.dtype == object:
+                item = item.item()
+            if not isinstance(item, dict):
+                continue
+            out.append({k: float(v) for k, v in item.items()})
+        return out
+    raise ValueError(f"Unsupported force payload type: {type(payload)}")
+
+
+def resample_force_dict_sequence(seq: List[Dict[str, float]], target_len: int) -> List[Dict[str, float]]:
+    if target_len <= 0:
+        return []
+    if len(seq) == 0:
+        return [{} for _ in range(target_len)]
+    if len(seq) == target_len:
+        return seq
+    src = np.linspace(0.0, len(seq) - 1, target_len)
+    idx = np.clip(np.round(src).astype(int), 0, len(seq) - 1)
+    return [seq[i] for i in idx]
+
+
+def _extract_zone_force(tactile: Dict[str, float], zone: str) -> Tuple[float, float, float]:
+    normal = float(tactile.get(f"{zone}_normal_force", 0.0))
+    tangent = float(tactile.get(f"{zone}_tangential_force", 0.0))
+    direction_deg = float(tactile.get(f"{zone}_tangential_direction", -1.0))
+    return normal, tangent, direction_deg
+
+
+@dataclass
+class SensorFrame:
+    link_name: str
+    anchor_local: np.ndarray
+    normal_local: np.ndarray
+    tangent_x_local: np.ndarray
+    tangent_y_local: np.ndarray
+
+
+def _safe_normalize(v: np.ndarray, fallback: np.ndarray) -> np.ndarray:
+    n = np.linalg.norm(v)
+    if n < 1e-8:
+        return fallback.copy()
+    return v / n
+
+
+def _estimate_surface_frame(vertices: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    center = vertices.mean(axis=0)
+    centered = vertices - center
+    cov = np.cov(centered.T)
+    eigvals, eigvecs = np.linalg.eigh(cov)
+    order = np.argsort(eigvals)
+    normal = eigvecs[:, order[0]]
+    tangent_x = eigvecs[:, order[-1]]
+    normal = _safe_normalize(normal, np.array([0.0, 0.0, 1.0], dtype=np.float64))
+    tangent_x = tangent_x - np.dot(tangent_x, normal) * normal
+    tangent_x = _safe_normalize(tangent_x, np.array([1.0, 0.0, 0.0], dtype=np.float64))
+
+    proj = vertices @ normal
+    q_high = np.quantile(proj, 0.9)
+    q_low = np.quantile(proj, 0.1)
+    if abs(q_low) > abs(q_high):
+        normal = -normal
+        surf_mask = proj <= q_low
+    else:
+        surf_mask = proj >= q_high
+    if np.count_nonzero(surf_mask) < 4:
+        surf_mask = np.ones(len(vertices), dtype=bool)
+    anchor = vertices[surf_mask].mean(axis=0)
+
+    if np.dot(tangent_x, np.array([1.0, 0.0, 0.0], dtype=np.float64)) < 0:
+        tangent_x = -tangent_x
+    tangent_y = _safe_normalize(
+        np.cross(normal, tangent_x), np.array([0.0, 1.0, 0.0], dtype=np.float64)
+    )
+    tangent_x = _safe_normalize(
+        np.cross(tangent_y, normal), np.array([1.0, 0.0, 0.0], dtype=np.float64)
+    )
+    return anchor, normal, tangent_x, tangent_y
+
+
+def _build_sensor_frames_from_local_mesh(
+    local_meshes_by_link: Dict[str, trimesh.Trimesh],
+    zone_to_link: Dict[str, str],
+) -> Dict[str, SensorFrame]:
+    frames = {}
+    for zone in ("little", "ring", "middle", "index", "thumb"):
+        link = zone_to_link[zone]
+        tm = local_meshes_by_link.get(link)
+        if tm is None or len(tm.vertices) < 4:
+            continue
+        anchor, normal, tx, ty = _estimate_surface_frame(np.asarray(tm.vertices))
+        frames[zone] = SensorFrame(link, anchor, normal, tx, ty)
+
+    palm_link = zone_to_link["palm_middle"]
+    palm_tm = local_meshes_by_link.get(palm_link)
+    if palm_tm is not None and len(palm_tm.vertices) > 8:
+        verts = np.asarray(palm_tm.vertices)
+        _, normal, tx, ty = _estimate_surface_frame(verts)
+        split_axis = verts @ tx
+        q1, q2 = np.quantile(split_axis, [1.0 / 3.0, 2.0 / 3.0])
+        masks = {
+            "palm_right": split_axis <= q1,
+            "palm_middle": (split_axis > q1) & (split_axis <= q2),
+            "palm_left": split_axis > q2,
+        }
+        for zone in PALM_ZONES:
+            mask = masks[zone]
+            if np.count_nonzero(mask) < 8:
+                mask = np.ones(len(verts), dtype=bool)
+            seg = verts[mask]
+            seg_proj = seg @ normal
+            t = np.quantile(seg_proj, 0.85)
+            seg_mask = seg_proj >= t
+            if np.count_nonzero(seg_mask) < 4:
+                seg_mask = np.ones(len(seg), dtype=bool)
+            anchor = seg[seg_mask].mean(axis=0)
+            frames[zone] = SensorFrame(palm_link, anchor, normal, tx, ty)
+    return frames
+
+
+def _world_sensor_frame(sensor: SensorFrame, link_pose: np.ndarray):
+    R = link_pose[:3, :3]
+    p = link_pose[:3, 3]
+    anchor = R @ sensor.anchor_local + p
+    normal = _safe_normalize(R @ sensor.normal_local, np.array([0.0, 0.0, 1.0]))
+    tx = _safe_normalize(R @ sensor.tangent_x_local, np.array([1.0, 0.0, 0.0]))
+    ty = _safe_normalize(R @ sensor.tangent_y_local, np.array([0.0, 1.0, 0.0]))
+    return anchor, normal, tx, ty
+
+
+def _parse_xyz(text: str, default=(0.0, 0.0, 0.0)) -> np.ndarray:
+    vals = str(text).split() if text is not None else []
+    if len(vals) != 3:
+        return np.array(default, dtype=np.float64)
+    return np.array([float(v) for v in vals], dtype=np.float64)
+
+
+def _rpy_to_matrix(rpy: np.ndarray) -> np.ndarray:
+    rr, rp, ry = float(rpy[0]), float(rpy[1]), float(rpy[2])
+    cr, sr = np.cos(rr), np.sin(rr)
+    cp, sp = np.cos(rp), np.sin(rp)
+    cy, sy = np.cos(ry), np.sin(ry)
+    Rx = np.array([[1, 0, 0], [0, cr, -sr], [0, sr, cr]], dtype=np.float64)
+    Ry = np.array([[cp, 0, sp], [0, 1, 0], [-sp, 0, cp]], dtype=np.float64)
+    Rz = np.array([[cy, -sy, 0], [sy, cy, 0], [0, 0, 1]], dtype=np.float64)
+    return Rz @ Ry @ Rx
+
+
+def _parse_rgba(text: str) -> Optional[np.ndarray]:
+    if not text:
+        return None
+    vals = [float(x) for x in str(text).split()]
+    if len(vals) == 3:
+        vals.append(1.0)
+    if len(vals) != 4:
+        return None
+    rgba = np.clip(np.array(vals, dtype=np.float64), 0.0, 1.0)
+    return (rgba * 255.0).astype(np.uint8)
+
+
+def _infer_mesh_color(mesh: trimesh.Trimesh) -> np.ndarray:
+    vc = getattr(mesh.visual, "vertex_colors", None)
+    if vc is not None:
+        vc_arr = np.asarray(vc)
+        if vc_arr.ndim == 2 and vc_arr.shape[0] > 0 and vc_arr.shape[1] >= 3:
+            rgba = np.array([255, 255, 255, 255], dtype=np.uint8)
+            rgba[: min(4, vc_arr.shape[1])] = vc_arr[0, : min(4, vc_arr.shape[1])].astype(np.uint8)
+            return rgba
+    return np.array([255, 255, 255, 255], dtype=np.uint8)
+
+
+def _apply_robot_mesh_colors(vis: ViserViewer, robot_name: str, link_rgba: Dict[str, np.ndarray]) -> None:
+    robot = vis.robot_dict.get(robot_name)
+    if robot is None or not hasattr(robot, "_meshes"):
+        return
+    link_names = sorted(link_rgba.keys(), key=len, reverse=True)
+    for mesh_name, mesh_handle in robot._meshes.items():
+        matched = None
+        for ln in link_names:
+            if mesh_name.endswith(f"/{ln}") or f"/{ln}/" in mesh_name:
+                matched = ln
+                break
+        if matched is None:
+            continue
+        rgba = link_rgba[matched].astype(np.uint8)
+        mesh_handle.color = tuple(int(c) for c in rgba[:3])
+        mesh_handle.opacity = float(rgba[3]) / 255.0
+
+
+def load_local_link_meshes_from_urdf(
+    urdf_path: str, required_links: Optional[set] = None
+) -> Dict[str, trimesh.Trimesh]:
+    root = ET.parse(urdf_path).getroot()
+    base_dir = os.path.dirname(urdf_path)
+    material_rgba: Dict[str, np.ndarray] = {}
+    for material in root.findall("material"):
+        name = material.attrib.get("name", "")
+        color_node = material.find("color")
+        if not name or color_node is None:
+            continue
+        rgba = _parse_rgba(color_node.attrib.get("rgba", ""))
+        if rgba is not None:
+            material_rgba[name] = rgba
+
+    out: Dict[str, trimesh.Trimesh] = {}
+    for link in root.findall("link"):
+        link_name = link.attrib.get("name", "")
+        if required_links is not None and link_name not in required_links:
+            continue
+        parts: List[trimesh.Trimesh] = []
+        for visual in link.findall("visual"):
+            geom = visual.find("geometry")
+            if geom is None:
+                continue
+            mesh_node = geom.find("mesh")
+            if mesh_node is None:
+                continue
+            visual_rgba = None
+            material_node = visual.find("material")
+            if material_node is not None:
+                color_node = material_node.find("color")
+                if color_node is not None:
+                    visual_rgba = _parse_rgba(color_node.attrib.get("rgba", ""))
+                else:
+                    material_name = material_node.attrib.get("name", "")
+                    if material_name in material_rgba:
+                        visual_rgba = material_rgba[material_name]
+
+            mesh_rel = mesh_node.attrib.get("filename", "")
+            if not mesh_rel:
+                continue
+            mesh_path = os.path.join(base_dir, mesh_rel)
+            if not os.path.exists(mesh_path):
+                continue
+            try:
+                loaded = trimesh.load(mesh_path, force="mesh", process=False)
+            except Exception:
+                continue
+            if isinstance(loaded, trimesh.Scene):
+                geoms = [g for g in loaded.geometry.values() if isinstance(g, trimesh.Trimesh)]
+                if not geoms:
+                    continue
+                tm = trimesh.util.concatenate(geoms)
+            else:
+                tm = loaded
+            tm = tm.copy()
+            scale = _parse_xyz(mesh_node.attrib.get("scale", "1 1 1"), (1.0, 1.0, 1.0))
+            tm.vertices = tm.vertices * scale[None, :]
+            origin_node = visual.find("origin")
+            if origin_node is not None:
+                xyz = _parse_xyz(origin_node.attrib.get("xyz", "0 0 0"))
+                rpy = _parse_xyz(origin_node.attrib.get("rpy", "0 0 0"))
+                T = np.eye(4, dtype=np.float64)
+                T[:3, :3] = _rpy_to_matrix(rpy)
+                T[:3, 3] = xyz
+                tm.apply_transform(T)
+            if visual_rgba is not None and len(tm.vertices) > 0:
+                tm.visual.vertex_colors = np.tile(visual_rgba[None, :], (len(tm.vertices), 1))
+            parts.append(tm)
+        if parts:
+            out[link_name] = trimesh.util.concatenate(parts)
+    return out
+
+
 def length_to_color(length, max_len=0.08):
     t = np.clip(length / max_len, 0.0, 1.0)
     if t < 0.25:
@@ -327,25 +607,15 @@ def make_arrow_mesh(start, direction, length, color_rgba):
     return arrow
 
 
-def get_mesh(robot_wrapper: RobotWrapper, robot_obj, state):
-    robot_wrapper.compute_forward_kinematics(state)
+def get_mesh(robot_module: RobotModule, state):
+    robot_module.update_cfg(state)
+    scene = robot_module.scene
     out = {}
-    for ln, meshes in robot_obj.mesh_dict.items():
-        if not meshes:
-            continue
-        T = robot_wrapper.get_link_pose(robot_wrapper.get_link_index(ln))
-        merged = []
-        for m in meshes:
-            mm = copy.deepcopy(m)
-            mm.transform(T)
-            merged.append(
-                trimesh.Trimesh(
-                    vertices=np.asarray(mm.vertices),
-                    faces=np.asarray(mm.triangles),
-                    process=False,
-                )
-            )
-        out[ln] = trimesh.util.concatenate(merged)
+    for link_name, mesh in scene.geometry.items():
+        transform = scene.graph.get(link_name)[0]
+        link_mesh = mesh.copy()
+        link_mesh.apply_transform(transform)
+        out[link_name] = link_mesh
     return out
 
 
@@ -384,12 +654,17 @@ def main():
     parser.add_argument("--ep", type=int, required=True)
     parser.add_argument("--object-mesh", type=str, default=None, help="Mesh file for the object.")
     parser.add_argument("--visualize-object", action="store_true")
+    parser.add_argument("--object-alpha", type=float, default=0.3, help="Object mesh opacity [0,1]. Lower => more transparent.")
     parser.add_argument("--visualize-tactile", action="store_true")
+    parser.add_argument("--max-normal-force", type=float, default=100.0)
+    parser.add_argument("--max-tangential-force", type=float, default=100.0)
+    parser.add_argument("--max-arrow-len", type=float, default=0.025)
     parser.add_argument("--frame-offset", type=int, default=0, help="Positive => robot leads object; negative => robot lags object.")
+    parser.add_argument("--arm_time_offset", type=float, default=0.09)
     args = parser.parse_args()
     object_name = args.object
 
-    capture_root = os.path.join("/home/temp_id/shared_data/capture/hri_xarm_f1", args.object, str(args.ep))
+    capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026/inspire_f1", args.object, str(args.ep))
     data_root = os.path.join(capture_root, "raw")
     
     arm_dir = os.path.join(data_root, "arm")
@@ -409,10 +684,21 @@ def main():
     arm_qpos, arm_time = load_series(arm_dir, ("position.npy", "action_qpos.npy", "action.npy"))
     # hand_action, hand_time = load_series(hand_dir, ("action.npy", "position.npy"))
     
+    arm_time = arm_time + args.arm_time_offset
+    
     if args.hand == "inspire":
         hand_action, hand_time = load_series(hand_dir, ("position.npy", "action.npy"))
     elif args.hand == "inspire_f1":
-        hand_action, hand_time = load_series(hand_dir, ("right_joint_states.npy"))
+        hand_action, hand_time = load_series(hand_dir, ("right_joint_states.npy",))
+
+    # Some datasets only store right_joint_states without hand timestamps.
+    # In that case, align hand timeline to arm time range before resampling.
+    hand_time_path = os.path.join(hand_dir, "time.npy")
+    if not os.path.exists(hand_time_path):
+        if len(arm_time) > 1:
+            hand_time = np.linspace(arm_time[0], arm_time[-1], hand_action.shape[0], dtype=float)
+        else:
+            hand_time = np.arange(hand_action.shape[0], dtype=float)
 
     hand_action = resample_to(hand_time, hand_action, arm_time)
     if args.hand == "inspire":
@@ -425,19 +711,24 @@ def main():
     full_qpos = np.concatenate([arm_qpos, hand_qpos], axis=1)
 
     tactile_seq = None
+    tactile_force_seq = None
     tactile_index = None
     if args.visualize_tactile:
-        tactile_path = os.path.join(hand_dir, "tactile.npy")
+        tactile_path = os.path.join(hand_dir, "right_tactile.npy")
         if not os.path.exists(tactile_path):
             raise FileNotFoundError(f"Tactile file not found: {tactile_path}")
         tactile_payload = np.load(tactile_path, allow_pickle=True)
-        tactile_seq = normalize_tactile_sequence(tactile_payload, TACTILE_LAYOUT)
-        tactile_index = build_tactile_index_from_layout(TACTILE_LAYOUT)
+        try:
+            tactile_force_seq = normalize_force_dict_sequence(tactile_payload)
+        except Exception:
+            tactile_seq = normalize_tactile_sequence(tactile_payload, TACTILE_LAYOUT)
+            tactile_index = build_tactile_index_from_layout(TACTILE_LAYOUT)
 
     obj_traj = None
     if args.visualize_object:
-        obj_traj = load_object_trajectory(object_track_dir)
-        print(f"Loaded object trajectory with {obj_traj.shape[0]} frames.")
+        obj_traj_path = os.path.join(object_track_dir, "obj_T_frames.npz")
+        obj_traj = load_object_world_trajectory_npz(obj_traj_path)
+        print(f"Loaded object trajectory with {obj_traj.shape[0]} frames from {obj_traj_path}")
 
     # Build master timeline from camera timestamps (pc_time) using fill_framedrop logic.
     
@@ -468,27 +759,58 @@ def main():
         ).reshape(len(video_times), 4, 4)
         obj_traj = np.einsum("ij,tjk->tik", r2c, obj_traj)
         obj_mesh = load_object_mesh(args.object_mesh)
-        mat = getattr(obj_mesh.visual, "material", None)
-        if mat is not None:
-            factor = np.array(getattr(mat, "baseColorFactor", [1, 1, 1, 1]), dtype=float)
-            factor[3] = 0.3  # set desired transparency
-            mat.baseColorFactor = factor
-            mat.alphaMode = "BLEND"  # keep texture, just blend alpha
-            mat.doubleSided = True
-    tactile_i = interpolate_sequence(tactile_seq, len(video_times)) if tactile_seq is not None else None
-    # tactile_i = resample_to(arm_time, tactile_seq, video_times) if tactile_seq is not None else None
+        set_mesh_alpha(obj_mesh, args.object_alpha)
+    if tactile_seq is not None:
+        n_tactile = min(len(hand_time), tactile_seq.shape[0])
+        tactile_i = resample_to(
+            np.asarray(hand_time[:n_tactile], dtype=float),
+            np.asarray(tactile_seq[:n_tactile], dtype=float),
+            video_times,
+        )
+    else:
+        tactile_i = None
+    tactile_force_i = (
+        resample_force_dict_sequence(tactile_force_seq, len(video_times))
+        if tactile_force_seq is not None
+        else None
+    )
 
     urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_right.urdf")
     link_color_map = build_link_color_map(urdf_path)
-    robot_wrapper = RobotWrapper(urdf_path)
-    robot_obj = robot_info(urdf_path, down_sample=True)
-    arrow_handles = {k: None for k in TACTILE_VERTEX_MAP} if args.visualize_tactile else {}
+    tactile_robot = RobotModule(urdf_path) if args.visualize_tactile else None
+    zone_arrow_color: Dict[str, np.ndarray] = {}
+    robot_link_rgba: Dict[str, np.ndarray] = {}
+    sensor_frames: Dict[str, SensorFrame] = {}
+    if args.visualize_tactile:
+        all_local_meshes_by_link = load_local_link_meshes_from_urdf(urdf_path)
+        robot_link_rgba = {ln: _infer_mesh_color(tm) for ln, tm in all_local_meshes_by_link.items()}
+
+    if args.visualize_tactile and tactile_force_i is not None:
+        required_links = set(ZONE_TO_LINK.values())
+        local_meshes_by_link = load_local_link_meshes_from_urdf(urdf_path, required_links=required_links)
+        sensor_frames = _build_sensor_frames_from_local_mesh(local_meshes_by_link, ZONE_TO_LINK)
+        for zone, sensor in sensor_frames.items():
+            tm = local_meshes_by_link.get(sensor.link_name)
+            if tm is not None:
+                zone_arrow_color[zone] = _infer_mesh_color(tm)
+
+    if args.visualize_tactile:
+        if tactile_force_i is not None and sensor_frames:
+            arrow_handles = {k: None for k in ZONE_TO_LINK}
+        elif tactile_i is not None:
+            arrow_handles = {k: None for k in TACTILE_VERTEX_MAP}
+        else:
+            raise ValueError("Unsupported tactile payload: neither force-dict nor legacy tactile matrix could be parsed.")
+    else:
+        arrow_handles = {}
 
     vis = ViserViewer()
     vis.add_floor(height=0.0)
     vis.add_robot("robot", urdf_path)
+    if robot_link_rgba:
+        _apply_robot_mesh_colors(vis, "robot", robot_link_rgba)
     if obj_mesh is not None and obj_traj is not None:
-        vis.add_object(object_name, obj_mesh, obj_traj[0])
+        vis.add_object(object_name, obj_mesh, obj_traj[0], opacity=args.object_alpha)
         if object_name in vis.obj_dict:
             vis.obj_dict[object_name]["frame"].show_axes = False
     vis.add_traj("traj", {"robot": qpos_video}, {object_name: obj_traj} if obj_traj is not None else {})
@@ -502,34 +824,93 @@ def main():
             return
         t = max(0, min(len(video_times) - 1, timestep))
         q = qpos_video[t]
-        meshes = get_mesh(robot_wrapper, robot_obj, q)
-        tactile_frame = unpack_tactile_frame(tactile_i[t], tactile_index)
+        tactile_robot.update_cfg(q[: tactile_robot.get_num_joints()])
 
         with vis.server.atomic():
-            for name, (link, vids) in TACTILE_VERTEX_MAP.items():
-                if name not in tactile_frame or link not in meshes:
-                    continue
-                # tm = meshes[link].copy()
-                # tm.apply_transform(c2r)
-                p = tactile_frame[name].mean()
-                length = np.clip(p / 1000.0, 0, 1) * 0.2
-                link_rgba = link_color_map.get(link)
-                if link_rgba is None:
-                    color = np.array([255, 255, 255, 255], dtype=np.uint8)
-                else:
-                    color = (np.clip(link_rgba, 0.0, 1.0) * 255).astype(np.uint8)
-                c, n = compute_contact_arrow(meshes[link], vids)
-                arrow = make_arrow_mesh(c, n, length, color)
-                if arrow is None:
-                    if arrow_handles[name]:
-                        arrow_handles[name].remove()
-                        arrow_handles[name] = None
-                else:
-                    if arrow_handles[name]:
-                        arrow_handles[name].remove()
-                    arrow_handles[name] = vis.server.scene.add_mesh_trimesh(
-                        f"/contact/{name}", arrow
+            if tactile_force_i is not None and sensor_frames:
+                tactile_force = tactile_force_i[t]
+                for zone, sensor in sensor_frames.items():
+                    try:
+                        link_pose = tactile_robot.get_transform(
+                            sensor.link_name, tactile_robot.urdf.base_link, collision_geometry=False
+                        )
+                    except Exception:
+                        continue
+                    anchor, normal, tx, ty = _world_sensor_frame(sensor, link_pose)
+                    vis_normal = -normal
+                    normal_force, tangential_force, tangential_deg = _extract_zone_force(tactile_force, zone)
+
+                    normal_len = (
+                        np.clip(normal_force / args.max_normal_force, 0.0, 1.0)
+                        * args.max_arrow_len
                     )
+                    normal_vec = vis_normal * normal_len
+                    tangential_vec = np.zeros(3, dtype=np.float64)
+                    if tangential_deg >= 0.0 and tangential_force > 0.0:
+                        theta = np.deg2rad(tangential_deg)
+                        tangential_dir = np.cos(theta) * tx + np.sin(theta) * ty
+                        tangential_dir = _safe_normalize(
+                            tangential_dir, np.array([1.0, 0.0, 0.0], dtype=np.float64)
+                        )
+                        tangential_len = (
+                            np.clip(tangential_force / args.max_tangential_force, 0.0, 1.0)
+                            * args.max_arrow_len
+                        )
+                        tangential_vec = tangential_dir * tangential_len
+
+                    total_vec = normal_vec + tangential_vec
+                    length = float(np.linalg.norm(total_vec))
+                    color = zone_arrow_color.get(zone)
+                    if color is None:
+                        link_rgba = link_color_map.get(sensor.link_name)
+                        if link_rgba is None:
+                            color = np.array([255, 255, 255, 255], dtype=np.uint8)
+                        else:
+                            color = (np.clip(link_rgba, 0.0, 1.0) * 255).astype(np.uint8)
+
+                    if length <= 1e-6:
+                        if arrow_handles[zone]:
+                            arrow_handles[zone].remove()
+                            arrow_handles[zone] = None
+                        continue
+
+                    direction = total_vec / (length + 1e-12)
+                    arrow = make_arrow_mesh(anchor, direction, length, color)
+                    if arrow is None:
+                        if arrow_handles[zone]:
+                            arrow_handles[zone].remove()
+                            arrow_handles[zone] = None
+                    else:
+                        if arrow_handles[zone]:
+                            arrow_handles[zone].remove()
+                        arrow_handles[zone] = vis.server.scene.add_mesh_trimesh(
+                            f"/contact/{zone}", arrow
+                        )
+            elif tactile_i is not None and tactile_index is not None:
+                meshes = get_mesh(tactile_robot, q)
+                tactile_frame = unpack_tactile_frame(tactile_i[t], tactile_index)
+                for name, (link, vids) in TACTILE_VERTEX_MAP.items():
+                    if name not in tactile_frame or link not in meshes:
+                        continue
+                    p = tactile_frame[name].mean()
+                    length = np.clip(p / 1000.0, 0, 1) * 0.2
+                    link_rgba = link_color_map.get(link)
+                    if link_rgba is None:
+                        color = np.array([255, 255, 255, 255], dtype=np.uint8)
+                    else:
+                        color = (np.clip(link_rgba, 0.0, 1.0) * 255).astype(np.uint8)
+                    c, n = compute_contact_arrow(meshes[link], vids)
+                    arrow = make_arrow_mesh(c, n, length, color)
+                    if arrow is None:
+                        if arrow_handles[name]:
+                            arrow_handles[name].remove()
+                            arrow_handles[name] = None
+                    else:
+                        if arrow_handles[name]:
+                            arrow_handles[name].remove()
+                        arrow_handles[name] = vis.server.scene.add_mesh_trimesh(
+                            f"/contact/{name}", arrow
+                        )
 
     vis.update_scene = update_scene_with_tactile
     vis.start_viewer()

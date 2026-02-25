@@ -10,6 +10,8 @@ from paradex.dataset_acqusition.capture import CaptureSession
 from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.calibration.utils import save_current_camparam, save_current_C2R
 
+
+
 parser = argparse.ArgumentParser()
 
 # parser.add_argument('--device', choices=['xsens', 'occulus'])
@@ -17,7 +19,7 @@ parser = argparse.ArgumentParser()
 # parser.add_argument('--hand', type=str, default=None)
 parser.add_argument('--hand_side', type=str, default='right')
 parser.add_argument('--name', type=str)
-parser.add_argument('--capture_root', default="hri_taeyun")
+parser.add_argument('--capture_root', default="eccv2026/hand_taeyun")
 parser.add_argument('--realsense', action='store_true')
 
 args = parser.parse_args()

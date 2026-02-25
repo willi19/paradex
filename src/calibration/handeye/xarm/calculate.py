@@ -16,10 +16,30 @@ from paradex.image.aruco import merge_charuco_detection, find_common_indices, de
 from paradex.transforms.conversion import SOLVE_XA_B
 from paradex.visualization.robot import RobotModule
 
+EXCLUDED_SERIALS = {
+    "25452066",
+    "25452062",
+}
+
+
+def _filter_images_for_calibration(images, intrinsics=None, extrinsics=None):
+    filtered = {}
+    for serial_num, image in images.items():
+        if serial_num in EXCLUDED_SERIALS:
+            continue
+        if intrinsics is not None and serial_num not in intrinsics:
+            continue
+        if extrinsics is not None and serial_num not in extrinsics:
+            continue
+        filtered[serial_num] = image
+    return filtered
+
+
 def undistort_and_detect_charuco(name):
     img_dict = None
     root_dir = os.path.join(handeye_calib_path, name)
     index_list = sorted(os.listdir(root_dir))
+    intrinsic, extrinsic = load_camparam(os.path.join(root_dir, "0"))
     
     for index in tqdm.tqdm(index_list, desc="Undistort and detect charuco"):
         print(f"Processing index {index}...")
@@ -35,8 +55,18 @@ def undistort_and_detect_charuco(name):
         os.makedirs(os.path.join(root_dir, index, "undistort", "images"), exist_ok=True)
         if img_dict is None:
             img_dict = ImageDict.from_path(os.path.join(root_dir, index))
+            img_dict.images = _filter_images_for_calibration(
+                img_dict.images, intrinsics=intrinsic, extrinsics=extrinsic
+            )
+            img_dict.set_camparam(intrinsic, extrinsic)
         else:
             img_dict.update_path(os.path.join(root_dir, index))
+            img_dict.images = _filter_images_for_calibration(
+                img_dict.images, intrinsics=intrinsic, extrinsics=extrinsic
+            )
+        if len(img_dict.images) == 0:
+            print(f"No valid cameras after exclusion for index {index}, skipping.")
+            continue
         
         print(f"Undistorting and detecting charuco for index {index}...")
         # if index=='21' or '22':
@@ -187,9 +217,17 @@ def debug(name, arm):
         
         if img_dict is None:
             img_dict = ImageDict.from_path(os.path.join(root_dir, index, "undistort"))
+            img_dict.images = _filter_images_for_calibration(
+                img_dict.images, intrinsics=intrinsic, extrinsics=extrinsic
+            )
             img_dict.set_camparam(intrinsic, extrinsic)
         else:
             img_dict.update_path(os.path.join(root_dir, index, "undistort"))
+            img_dict.images = _filter_images_for_calibration(
+                img_dict.images, intrinsics=intrinsic, extrinsics=extrinsic
+            )
+        if len(img_dict.images) == 0:
+            continue
         
         qpos = np.load(os.path.join(root_dir, index, "qpos.npy"))
         eef = np.load(os.path.join(root_dir, index, "eef_fk.npy"))

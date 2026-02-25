@@ -71,7 +71,7 @@ class ViserViewer():
         
         self.robot_dict[name] = robot
 
-    def add_object(self, name, obj: trimesh.Trimesh, obj_T):
+    def add_object(self, name, obj: trimesh.Trimesh, obj_T, opacity: float = 1.0):
         """
         Add an object mesh to the scene
         
@@ -79,6 +79,7 @@ class ViserViewer():
             name: Unique name for the object
             obj: trimesh.Trimesh object
             obj_T: 4x4 transformation matrix for the object pose
+            opacity: Object opacity [0,1]. Uses simple mesh path when < 1.
         """
         # Create a frame for the object
         frame_handle = self.server.scene.add_frame(
@@ -90,9 +91,27 @@ class ViserViewer():
             axes_radius=0.002,
         )
         
-        # Add mesh to the frame (at origin relative to frame)
-        mesh_handle = self.server.scene.add_mesh_trimesh(
-                name=f"/objects/{name}_frame/{name}",
+        # Add mesh to the frame (at origin relative to frame).
+        # add_mesh_trimesh in this viser version does not expose handle.opacity,
+        # so use add_mesh_simple when transparency is requested.
+        obj_name = f"/objects/{name}_frame/{name}"
+        if opacity < 0.999:
+            color = np.array([200, 200, 200], dtype=np.uint8)
+            vc = getattr(obj.visual, "vertex_colors", None)
+            if vc is not None:
+                vc_arr = np.asarray(vc)
+                if vc_arr.ndim == 2 and vc_arr.shape[0] > 0 and vc_arr.shape[1] >= 3:
+                    color = vc_arr[:, :3].mean(axis=0).astype(np.uint8)
+            mesh_handle = self.server.scene.add_mesh_simple(
+                name=obj_name,
+                vertices=obj.vertices,
+                faces=obj.faces,
+                color=color,
+            )
+            mesh_handle.opacity = float(np.clip(opacity, 0.0, 1.0))
+        else:
+            mesh_handle = self.server.scene.add_mesh_trimesh(
+                name=obj_name,
                 mesh=obj
             )
         
@@ -230,6 +249,8 @@ class ViserViewer():
             self.gui_next_frame = self.server.gui.add_button("Next Frame", disabled=True)
             self.gui_prev_frame = self.server.gui.add_button("Prev Frame", disabled=True)
             self.gui_playing = self.server.gui.add_checkbox("Playing", True)
+            self.gui_pause = self.server.gui.add_button("Pause")
+            self.gui_resume = self.server.gui.add_button("Resume", disabled=True)
             self.render_png = self.server.gui.add_checkbox("Render to PNG", False)
             self.gui_framerate = self.server.gui.add_slider(
                 "FPS", min=1, max=120, step=0.1, initial_value=10
@@ -289,11 +310,21 @@ class ViserViewer():
         def _(_) -> None:
             self.gui_timestep.value = (self.gui_timestep.value - 1) % self.num_frames
 
+        @self.gui_pause.on_click
+        def _(_) -> None:
+            self.gui_playing.value = False
+
+        @self.gui_resume.on_click
+        def _(_) -> None:
+            self.gui_playing.value = True
+
         @self.gui_playing.on_update
         def _(_) -> None:
             self.gui_timestep.disabled = self.gui_playing.value
             self.gui_next_frame.disabled = self.gui_playing.value
             self.gui_prev_frame.disabled = self.gui_playing.value
+            self.gui_pause.disabled = not self.gui_playing.value
+            self.gui_resume.disabled = self.gui_playing.value
             
         @self.render_video_btn.on_click
         def _(_) -> None:

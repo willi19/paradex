@@ -1,5 +1,7 @@
 import os
 import time
+import glob
+import subprocess
 import numpy as np
 import chime
 chime.theme('pokemon')
@@ -28,6 +30,11 @@ class CaptureSession():
         events=None,
         realsense=False,
     ):
+        if realsense:
+            self.realsense = realsense_controller()
+        else:
+            self.realsense = None
+        
         if arm is None and hand is None and teleop is not None:
             raise ValueError("Teleop device requires at least one of arm or hand to be specified.")
         
@@ -43,11 +50,8 @@ class CaptureSession():
             self.timestamp_monitor = None
             self.sync_generator = None
 
-        if realsense:
-            self.realsense = realsense_controller()
-        else:
-            self.realsense = None
-        
+     
+
         if arm is not None:
             self.arm = get_arm(arm)
             self.arm_name = arm
@@ -110,7 +114,6 @@ class CaptureSession():
         if self.arm is not None:
             self.arm.start(os.path.join(shared_dir, save_path, "raw", "arm"))
         
-
         if self.hand is not None:
             self.hand.start(os.path.join(shared_dir, save_path, "raw", "hand"))
             
@@ -131,12 +134,14 @@ class CaptureSession():
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.start(os.path.join(shared_dir, save_path, "raw", "timestamps"))
             self.sync_generator.start(fps=30)
+        
         if self.realsense is not None:
             self.realsense.start(
                 save_path=os.path.join(shared_dir, save_path, "depth_cam"),
                 fps=30,
                 use_depth=True,
             )
+        
         
     def stop(self):
         if self.arm is not None:

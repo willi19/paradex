@@ -41,6 +41,7 @@ if __name__ == "__main__":
         
         controller.move(action, is_servo=False)
         
+        time.sleep(0.5)
 
         os.makedirs(f"{root_dir}/{idx}/images", exist_ok=True)
         rcc.start("image", False, remove_home(os.path.join(root_dir, str(idx))))

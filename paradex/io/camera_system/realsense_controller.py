@@ -12,8 +12,10 @@ import pyrealsense2 as rs
 class realsense_controller:
     def __init__(
         self,
-        color_size=(1280, 720),
-        depth_size=(1024, 768),
+        color_size=(640, 360),
+        depth_size=(320, 240),
+        #     color_size=(1920, 1080),
+        # depth_size=(1024, 768),
         default_fps=30,
         warmup_frames=30,
     ):
@@ -36,6 +38,8 @@ class realsense_controller:
         self.save_dir = None
         self.session_prefix = None
         self.started = False
+        
+        self.ctx = rs.context()
 
     def _has_profile(self, device, stream_type, fmt, size, fps):
         for sensor in device.sensors:
@@ -71,8 +75,8 @@ class realsense_controller:
         self.save_dir.mkdir(parents=True, exist_ok=True)
         self.session_prefix = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        ctx = rs.context()
-        devices = ctx.query_devices()
+        # ctx = rs.context()
+        devices = self.ctx.query_devices()
         if len(devices) == 0:
             raise RuntimeError("No RealSense device connected.")
 
@@ -111,8 +115,6 @@ class realsense_controller:
             )
 
         self.pipeline.start(config)
-        for _ in range(self.warmup_frames):
-            self.pipeline.wait_for_frames()
 
         self._open_writers()
         self.stop_event.clear()

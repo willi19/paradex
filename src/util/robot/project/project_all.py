@@ -230,11 +230,17 @@ def project_robot_and_object(
     os.makedirs(output_dir, exist_ok=True)
 
     image_dir = os.path.join(ep_root, "video_extracted")
+    
+    
+    
     if qpos_video is not None:
         total_frames = qpos_video.shape[0]
+        print("aaaaa")
     elif video_frame_ids is not None:
         total_frames = len(video_frame_ids)
+        print("bbbbb")
     else:
+        print("ccccc")
         if not os.path.isdir(image_dir):
             raise ValueError(f"Cannot infer frames: image_dir does not exist ({image_dir}).")
         cam_dirs = [
@@ -271,6 +277,7 @@ def project_robot_and_object(
 
     start = max(0, start_frame)
     end = total_frames if end_frame is None else min(end_frame, total_frames)
+    
     if start >= end:
         raise ValueError(f"Invalid frame range: start={start}, end={end}, total={total_frames}")
     frame_indices = list(range(start, end, max(1, stride)))
@@ -449,8 +456,8 @@ def main():
     parser.add_argument("--hand", type=str, default="inspire_f1")
     parser.add_argument("--object", type=str, required=True)
     parser.add_argument("--capture-ep", type=str, default="0")
-    parser.add_argument("--object-mesh-name", type=str, required=True)
-    parser.add_argument("--capture-root", type=str, default="hri_xarm_f1", help="Capture root directory name.")
+    parser.add_argument("--object-mesh-name", type=str)
+    parser.add_argument("--capture-root", type=str, default="eccv2026/inspire_f1", help="Capture root directory name.")
     parser.add_argument("--project-object", action="store_true", help="Project the tracked object mesh in addition to the robot.")
     parser.add_argument("--project-robot", action="store_true", help="Project the robot mesh.")
     parser.add_argument("--start-frame", type=int, default=0, help="Start frame index (inclusive).")
@@ -460,9 +467,9 @@ def main():
     parser.add_argument("--device", type=str, default="cuda:0")
     parser.add_argument("--overlay-option", type=str, choices=["action", "position"], default="position", help="Whether to overlay using hand action or hand position data.")
     parser.add_argument("--output-type", type=str, choices=["video", "grid"], default="grid", help="Output overlaid result as videos (per camera) or as tiled grid images per frame.")
-    parser.add_argument("--grid-scale", type=float, default=1.0, help="Downscale factor for saved grid frames before writing PNG (e.g., 0.5 halves width/height).")
+    parser.add_argument("--grid-scale", type=float, default=0.25, help="Downscale factor for saved grid frames before writing PNG (e.g., 0.5 halves width/height).")
     parser.add_argument("--frame-offset", type=int, default=0, help="Shift overlay target video frames by this offset.")
-    parser.add_argument("--arm-time-offset", type=float, default=0.0, help="Shift arm timestamps by this many seconds (positive delays arm).")
+    parser.add_argument("--arm-time-offset", type=float, default=0.09, help="Shift arm timestamps by this many seconds (positive delays arm).")
     parser.add_argument("--hand-time-offset", type=float, default=0.0, help="Shift hand timestamps by this many seconds (positive delays hand).")
     args = parser.parse_args()
 

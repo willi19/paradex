@@ -71,7 +71,6 @@ class XArmController:
                 is_servo = self.is_servo
 
             is_joint_value = (action.shape == (6,))
-            
             if not is_servo and not self.finished:
                 self.arm.set_mode(0)  # 0: position control, 1: servo control
                 self.arm.set_state(state=0)
@@ -99,7 +98,7 @@ class XArmController:
             else:
                 if is_joint_value:
                     self._last_pose = np.array(self.arm.get_position(is_radian=True)[1])[:3]
-                    self._target_pose = np.array(self.arm.get_forward_kinematics(action.tolist(), input_is_radian=True, return_is_radian=True)[1])[:3]
+                    self._target_pose = np.array(self.arm.get_forward_kinematics(action.tolist(), input_is_radian=True, return_is_radian=True)[1])
                     # if np.linalg.norm(self._last_pose - self._target_pose) > 7:
                     #     print("too large delta pose, skip servo command\n")
                     #     continue
@@ -118,7 +117,7 @@ class XArmController:
             
             if self.save_event.is_set():
                 if is_joint_value:
-                    cart = homo2cart(action)
+                    homo = cart2homo(self._target_pose.copy())
                     qpos = action.copy()
                 else:
                     cart = homo2cart(action)
@@ -127,13 +126,14 @@ class XArmController:
                     if success != 0:
                         print("ik not success")
                         qpos = - np.ones(6)
+                    homo = action.copy()
                     
                 _, state = self.arm.get_joint_states(is_radian=True)
                 self.data["position"].append(np.array(state[0])[:6])
                 self.data["velocity"].append(np.array(state[1])[:6])
                 self.data["torque"].append(np.array(state[2])[:6])
                 self.data["time"].append(time.time())
-                self.data["action"].append(cart)
+                self.data["action"].append(homo)
                 
                 self.data["action_qpos"].append(qpos[:6])
                     

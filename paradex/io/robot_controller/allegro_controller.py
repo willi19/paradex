@@ -86,6 +86,8 @@ class AllegroController:
         desired_js.position = list(desired_angles)
         desired_js.effort = list([])
 
+        print(desired_angles)
+
         self.joint_comm_publisher.publish(desired_js)
         
 
@@ -109,7 +111,7 @@ class AllegroController:
         }
         
     def move_hand(self):
-        fps = 10
+        fps = 50
         self.hand_cnt = 0
         self.hand_lock = Lock()
         
@@ -137,6 +139,8 @@ class AllegroController:
 
                 end_time = time.time()
                 time.sleep(max(0, 1 / fps - (end_time - start_time)))
+        
+
         
     def set_target_action(self, action):
         self.target_action[:] = action.copy()

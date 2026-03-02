@@ -86,7 +86,6 @@ def main():
 
 
     count = int(find_latest_index(os.path.join(shared_dir, "allegro_qpos", args.name))) + 1
-    # print("ccccccccccccccc": count)
 
     try:
         # Wait for Allegro to receive its first joint state (when supported)

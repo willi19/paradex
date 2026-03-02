@@ -592,8 +592,8 @@ def compute_contact_arrow(tm, vids):
 def make_arrow_mesh(start, direction, length, color_rgba):
     if length < 1e-6:
         return None
-    shaft_radius = 0.003
-    head_radius = 0.004
+    shaft_radius = 0.005
+    head_radius = 0.006
     shaft_height = length * 0.7
     head_height = length * 0.35
     shaft = trimesh.creation.cylinder(radius=shaft_radius, height=shaft_height)
@@ -649,7 +649,7 @@ def build_link_color_map(urdf_path: str) -> Dict[str, np.ndarray]:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--arm", type=str, default="xarm")
-    parser.add_argument("--hand", type=str, default="inspire")
+    parser.add_argument("--hand", type=str, default="inspire_f1")
     parser.add_argument("--object", type=str, required=True)
     parser.add_argument("--ep", type=int, required=True)
     parser.add_argument("--object-mesh", type=str, default=None, help="Mesh file for the object.")
@@ -658,7 +658,7 @@ def main():
     parser.add_argument("--visualize-tactile", action="store_true")
     parser.add_argument("--max-normal-force", type=float, default=100.0)
     parser.add_argument("--max-tangential-force", type=float, default=100.0)
-    parser.add_argument("--max-arrow-len", type=float, default=0.025)
+    parser.add_argument("--max-arrow-len", type=float, default=0.05)
     parser.add_argument("--frame-offset", type=int, default=0, help="Positive => robot leads object; negative => robot lags object.")
     parser.add_argument("--arm_time_offset", type=float, default=0.09)
     args = parser.parse_args()

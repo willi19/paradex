@@ -27,5 +27,5 @@ def get_hand(hand_name, tactile = False, ip = False):
         return InspireF1Controller(hand_side="right")
         
     if hand_name == "allegro":
-        from .allegro_controller import AllegroController
+        from .allegro_controller_temp import AllegroController
         return AllegroController(**network_info[hand_name]["param"])

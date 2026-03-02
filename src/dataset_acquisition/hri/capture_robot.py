@@ -3,8 +3,8 @@ import argparse
 import json
 from threading import Event
 
-import chime
-chime.theme('pokemon')
+# import chime
+# chime.theme('pokemon')
 
 from paradex.dataset_acqusition.capture import CaptureSession
 from paradex.utils.path import shared_dir
@@ -73,7 +73,7 @@ while not exit_event.is_set():
     episode_rel_path = os.path.join("capture", args.capture_root, args.name, str(last_idx))
     episode_abs_path = os.path.join(shared_dir, episode_rel_path)
     cs.start(episode_rel_path)
-    chime.info(sync=True)
+    # chime.info(sync=True)
     print("Starting new recording session:", name)
     print("Capturing index:", last_idx)
     

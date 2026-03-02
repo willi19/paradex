@@ -19,6 +19,23 @@ action_dof = 16
 
 DEFAULT_VAL = None
 
+# Logical joint order used by this codebase: thumb(0x), index(1x), middle(2x), ring(3x).
+LOGICAL_JOINT_ORDER = [
+    "ah_joint00", "ah_joint01", "ah_joint02", "ah_joint03",
+    "ah_joint10", "ah_joint11", "ah_joint12", "ah_joint13",
+    "ah_joint20", "ah_joint21", "ah_joint22", "ah_joint23",
+    "ah_joint30", "ah_joint31", "ah_joint32", "ah_joint33",
+]
+
+# Position controller command order. Based on the observed behavior, the controller
+# is consuming finger blocks as index -> middle -> ring -> thumb.
+CONTROLLER_JOINT_ORDER = [
+    "ah_joint30", "ah_joint31", "ah_joint32", "ah_joint33",
+    "ah_joint00", "ah_joint01", "ah_joint02", "ah_joint03",
+    "ah_joint10", "ah_joint11", "ah_joint12", "ah_joint13",
+    "ah_joint20", "ah_joint21", "ah_joint22", "ah_joint23",
+]
+
 class AllegroController(Node):
     def __init__(self, addr=None, **_):
         # Events first so they always exist even if init is interrupted
@@ -31,6 +48,11 @@ class AllegroController(Node):
         self.device_addr = addr
 
         self.current_joint_pose = DEFAULT_VAL
+        self._missing_joint_names_warned = False
+        self._logical_to_controller_idx = np.array(
+            [LOGICAL_JOINT_ORDER.index(name) for name in CONTROLLER_JOINT_ORDER],
+            dtype=int,
+        )
 
         self.lock = Lock()
 
@@ -94,13 +116,21 @@ class AllegroController(Node):
             self.action = action.copy()
 
     def _sub_callback_joint_state(self, msg: JointState):
-        # JointState order must match controller's joint order.
-        # Usually it does if the controller config uses same joint list.
-        if len(msg.position) >= action_dof:
-            pos = np.asarray(msg.position[:action_dof], dtype=float)
-        else:
-            # If not enough joints, ignore
+        if len(msg.name) != len(msg.position):
+            self.get_logger().warn('Ignoring joint state with mismatched name/position lengths.')
             return
+
+        name_to_pos = dict(zip(msg.name, msg.position))
+        missing_names = [name for name in LOGICAL_JOINT_ORDER if name not in name_to_pos]
+        if missing_names:
+            if not self._missing_joint_names_warned:
+                self.get_logger().warn(
+                    f'Ignoring joint state missing Allegro joints: {missing_names}'
+                )
+                self._missing_joint_names_warned = True
+            return
+
+        pos = np.array([name_to_pos[name] for name in LOGICAL_JOINT_ORDER], dtype=float)
 
         with self.lock:
             self.joint_value = pos.copy()
@@ -126,8 +156,10 @@ class AllegroController(Node):
                 current = self.joint_value.copy()
             action = action + current
 
+        controller_action = action[self._logical_to_controller_idx]
+
         msg = Float64MultiArray()
-        msg.data = action.tolist()
+        msg.data = controller_action.tolist()
         self.pub_cmd.publish(msg)
 
     def get_data(self):

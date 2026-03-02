@@ -10,7 +10,7 @@ from paradex.dataset_acqusition.capture import CaptureSession
 from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.calibration.utils import save_current_camparam, save_current_C2R
 
-
+import json
 
 parser = argparse.ArgumentParser()
 
@@ -37,11 +37,14 @@ cs = CaptureSession(
 name = args.name
 
 
+# last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.capture_root, args.hand_side, name)))
 last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.capture_root, args.hand_side, name)))
+
 while not exit_event.is_set():
     if not save_event.is_set():
         stop_event.clear()
         continue
+    
     
     # index = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     last_idx += 1
@@ -54,7 +57,22 @@ while not exit_event.is_set():
         time.sleep(0.02)
         
     cs.stop()
+    paired_robot_episode = int(input(f"Enter the episode number of paired robot sequence for {args.name}: "))
+
     save_current_C2R(os.path.join(shared_dir, save_path))
+    
+    paired_info_json_path = os.path.join(shared_dir, save_path, "paired_robot_episode.json")
+    
+    with open(paired_info_json_path, "w") as f:
+        json.dump(
+            {
+                "human hand episode": last_idx,
+                "paired robot episode": paired_robot_episode,
+            },
+            f,
+            indent=2,
+        )
+    
     print("Stopped recording session:", name)
 
     save_event.clear()

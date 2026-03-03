@@ -204,7 +204,7 @@ class CaptureSession():
         if self.realsense is not None:
             self.realsense.end()
     
-    def teleop(self, session_events=None, state_policy="gesture_control"):
+    def teleop(self, session_events=None, state_policy="gesture_control", loop_callback=None):
         if self.teleop_device is None:
             raise ValueError("No teleop device initialized.")
         if state_policy not in ["gesture_control", "keyboard_control"]:
@@ -246,6 +246,13 @@ class CaptureSession():
                 if self.save_path is not None:
                     self.state_hist.append(state)
                     self.state_time.append(time.time())
+
+                if loop_callback is not None:
+                    try:
+                        loop_callback(self)
+                    except Exception as exc:
+                        print(f"teleop loop_callback failed: {exc}")
+                        loop_callback = None
                     
                 if state == 0:
                     wrist_pose, hand_action = self.retargetor.get_action(data)

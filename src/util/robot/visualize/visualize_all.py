@@ -10,11 +10,12 @@ import numpy as np
 import trimesh
 import yourdfpy
 
-from paradex.utils.path import rsc_path
+from paradex.utils.path import rsc_path, shared_dir
 from paradex.visualization.visualizer.viser import ViserViewer
 from paradex.visualization.robot import RobotModule
 from paradex.utils.load_data import load_series, resample_to
 from paradex.robot.inspire import inspire_action_to_qpos, inspire_f1_action_to_qpos_dof6
+
 
 # Suppress per-frame yourdfpy mimic-chain warnings (thumb_4 -> thumb_3 -> thumb_2).
 logging.getLogger("yourdfpy.urdf").setLevel(logging.ERROR)
@@ -664,7 +665,7 @@ def main():
     args = parser.parse_args()
     object_name = args.object
 
-    capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026/inspire", args.object, str(args.ep))
+    capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026", args.hand, args.object, str(args.ep))
     data_root = os.path.join(capture_root, "raw")
     
     arm_dir = os.path.join(data_root, "arm")
@@ -675,6 +676,10 @@ def main():
     timestamp_path = os.path.join(data_root, "timestamps", "timestamp.npy")
     frame_id_path = os.path.join(data_root, "timestamps", "frame_id.npy")
 
+    if args.object_mesh == None:
+        object_mesh_path = os.path.join(shared_dir, "mesh", args.object, f"{args.object}.obj")
+
+    print(object_mesh_path)
 
     c2r_path = os.path.join(capture_root, "C2R.npy")
     
@@ -758,7 +763,7 @@ def main():
             video_times,
         ).reshape(len(video_times), 4, 4)
         obj_traj = np.einsum("ij,tjk->tik", r2c, obj_traj)
-        obj_mesh = load_object_mesh(args.object_mesh)
+        obj_mesh = load_object_mesh(object_mesh_path)
         set_mesh_alpha(obj_mesh, args.object_alpha)
     if tactile_seq is not None:
         n_tactile = min(len(hand_time), tactile_seq.shape[0])
@@ -775,7 +780,13 @@ def main():
         else None
     )
 
-    urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_right.urdf")
+    if args.hand == "inspire_f1":
+        urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_right.urdf")
+    elif args.hand == "allegro":
+        urdf_path = "/home/temp_id/paradex/rsc/robot/xarm_allegro.urdf"
+    elif args.hand == "inspire":
+        urdf_path = 
+    
     link_color_map = build_link_color_map(urdf_path)
     tactile_robot = RobotModule(urdf_path) if args.visualize_tactile else None
     zone_arrow_color: Dict[str, np.ndarray] = {}

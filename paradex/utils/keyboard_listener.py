@@ -11,6 +11,8 @@ def listen_keyboard(event_dict):
                 if key in event_dict:
                     event_dict[key].set()
                     print(f"[{key}] event triggered")
+                elif key == "":
+                    print("")
                 else:
                     print(f"Unknown key: {key}")
             except (EOFError, KeyboardInterrupt):

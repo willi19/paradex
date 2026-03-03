@@ -497,7 +497,7 @@ def main():
     parser.add_argument("--arm", type=str, default="xarm")
     parser.add_argument("--hand", type=str, default="inspire_f1")
     parser.add_argument("--object", type=str, required=True)
-    parser.add_argument("--capture-ep", type=str, default="0")
+    parser.add_argument("--ep", type=str, default="0")
     parser.add_argument("--object-mesh-name", type=str)
     parser.add_argument("--capture-root", type=str, default="eccv2026/inspire_f1", help="Capture root directory name.")
     parser.add_argument("--project-object", action="store_true", help="Project the tracked object mesh in addition to the robot.")
@@ -523,7 +523,7 @@ def main():
         hand=args.hand,
         object=args.object,
         capture_root=args.capture_root,
-        capture_ep=args.capture_ep,
+        capture_ep=args.ep,
         object_mesh_name=object_mesh_name,
         project_robot=args.project_robot,
         project_object=args.project_object,

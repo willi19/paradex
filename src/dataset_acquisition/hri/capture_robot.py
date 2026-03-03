@@ -17,9 +17,11 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--device', choices=['xsens', 'occulus'], default="xsens")
 parser.add_argument('--arm', type=str, default="xarm")
-parser.add_argument('--hand', type=str, default="inspire_f1")
-parser.add_argument('--capture_root', type=str, default="eccv2026/inspire_f1")
+parser.add_argument('--hand', type=str, default="inspire")
+parser.add_argument('--capture_root', type=str, default="eccv2026/inspire")
 parser.add_argument('--name', type=str, required=True)
+parser.add_argument('--tactile', action="store_true")
+parser.add_argument('--ip', action="store_true")
 
 args = parser.parse_args()
 
@@ -50,6 +52,8 @@ cs = CaptureSession(
     teleop=args.device,
     hand_side = "right",
     events=events,
+    tactile=args.tactile,
+    ip=args.ip
 )
 
 name = args.name
@@ -97,6 +101,9 @@ while not exit_event.is_set():
     else:
         grasp_input = "n"
 
+    save_event.clear()
+    stop_event.clear()
+
     os.makedirs(episode_abs_path, exist_ok=True)
     grasp_json_path = os.path.join(episode_abs_path, "grasp_result.json")
     with open(grasp_json_path, "w") as f:
@@ -108,13 +115,31 @@ while not exit_event.is_set():
             f,
             indent=2,
         )
+    grasp_yes_event.clear()
+    grasp_no_event.clear()
+    
+    
+    paired_human_episode = int(input(f"Enter the episode number of paired human sequence for {args.name}: "))
+    paired_info_json_path = os.path.join(shared_dir, episode_rel_path, "paired_human_episode.json")
+    
+    with open(paired_info_json_path, "w") as f:
+        json.dump(
+            {
+                "human hand episode": last_idx,
+                "paired human episode": paired_human_episode,
+            },
+            f,
+            indent=2,
+        )
+        
+    
+        
     # print(f"Saved grasp result: {grasp_json_path}")
     print(f"Current Success count: {success_count} / Failure count: {fail_count}")
     print("===================================================")
-    grasp_yes_event.clear()
-    grasp_no_event.clear()
-    save_event.clear()
-    stop_event.clear()
+    
+    
+    print(f"============== episode {last_idx} done =========================")
 
     if state == "exit":
         break

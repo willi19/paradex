@@ -57,10 +57,21 @@ while not exit_event.is_set():
         time.sleep(0.02)
         
     cs.stop()
-    paired_robot_episode = int(input(f"Enter the episode number of paired robot sequence for {args.name}: "))
 
     save_current_C2R(os.path.join(shared_dir, save_path))
     
+    
+    
+    print("Stopped recording session:", name)
+
+    save_event.clear()
+    stop_event.clear()
+    
+    print("Press Enter")
+    
+    paired_robot_episode = int(input(f"Enter the episode number of paired robot sequence for {args.name}: "))
+
+        
     paired_info_json_path = os.path.join(shared_dir, save_path, "paired_robot_episode.json")
     
     with open(paired_info_json_path, "w") as f:
@@ -72,11 +83,8 @@ while not exit_event.is_set():
             f,
             indent=2,
         )
-    
-    print("Stopped recording session:", name)
+        
+    print(f"============== episode {last_idx} done =========================")
 
-    save_event.clear()
-    stop_event.clear()
-
-print("Exiting teleoperation recording.")
+print("Exiting recording.")
 cs.end()

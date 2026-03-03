@@ -1,3 +1,6 @@
+sudo modprobe -r pcan
+sudo modprobe peak_usb
+
 sudo ip link set can0 down
 sudo ip link set can0 up type can bitrate 1000000
 

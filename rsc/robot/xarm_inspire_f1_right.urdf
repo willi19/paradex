@@ -442,7 +442,7 @@
       
       <material name="">
         
-        <color rgba="1 1 1 1"/>
+        <color rgba="0.15 0.15 0.15 1"/>
         
       </material>
       
@@ -542,7 +542,9 @@
       
       <material name="">
         
-        <color rgba="0.75 0.72 0.68 1"/>
+        <!-- <color rgba="0.75 0.72 0.68 1"/> -->
+        <color rgba="0.15 0.15 0.15 1"/>
+
         
       </material>
       
@@ -598,7 +600,8 @@
       
       <material name="">
         
-        <color rgba="1 1 1 1"/>
+        <!-- <color rgba="1 1 1 1"/> -->
+        <color rgba="0.15 0.15 0.15 1"/>
         
       </material>
       

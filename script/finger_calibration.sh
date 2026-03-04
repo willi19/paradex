@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_DIR="/home/temp_id/shared_data/0127_inspire_pinky_calibration_2"
-HAND_JSON="/home/temp_id/shared_data/0127_inspire_pinky_calibration_2/998/lookup_arm_to_hand.json"
-HAND_STATE_KEY="998"
+BASE_DIR="/home/temp_id/shared_data/0304_inspire_calibration_5"
+HAND_JSON="/home/temp_id/shared_data/0304_inspire_calibration_5/0/lookup_arm_to_hand.json"
+HAND_STATE_KEY="0"
 
 for ep_dir in "$BASE_DIR"/*; do
   if [[ -d "$ep_dir" ]]; then

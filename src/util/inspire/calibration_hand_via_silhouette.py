@@ -446,7 +446,7 @@ def save_debug_compare_grid(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--base-dir", type=str, default=os.path.join(shared_dir, "inspire_pinky_calibration"))
+    parser.add_argument("--base-dir", type=str, default=os.path.join(shared_dir, "0304_inspire_calibration_5"))
     parser.add_argument("--ep", type=str, default="1000")
     parser.add_argument("--gd-steps", type=int, default=5000)
     parser.add_argument("--gd-lr-float", type=float, default=5e-3)
@@ -484,7 +484,8 @@ def main() -> None:
     hand_state = np.load(os.path.join(ep_dir, "raw", "hand", "state.npy"))
     arm_state = np.load(os.path.join(ep_dir, "raw", "arm", "state.npy"))
 
-    hand_qpos = np.zeros(18, dtype=float)
+    finger_qpos = inspire_state_to_qpos_sil(hand_state)
+    hand_qpos = np.concatenate([finger_qpos, np.zeros(6, dtype=float)], axis=0)
     full_qpos = np.concatenate([arm_state.reshape(1, -1), hand_qpos.reshape(1, -1)], axis=1)[0]
 
     urdf_path = args.urdf_path
@@ -573,6 +574,23 @@ def main() -> None:
         "arm_to_hand_yaw",
     ]
     idx_float = [chain_joint_names.index(jn) for jn in float_joints if jn in chain_joint_names]
+    hardcoded_init_arm_to_hand = torch.tensor(
+        [
+            0,
+            0,
+            0,
+            0,
+            0,
+            3.14
+        ],
+        dtype=torch.float32,
+        device=device,
+    )
+    if len(idx_float) != len(hardcoded_init_arm_to_hand):
+        raise ValueError(
+            f"arm_to_hand joint count mismatch: {len(idx_float)} vs {len(hardcoded_init_arm_to_hand)}"
+        )
+    qpos_base[idx_float] = hardcoded_init_arm_to_hand
     init_float = qpos_base[idx_float].clone()
 
     # Debug before optimization.

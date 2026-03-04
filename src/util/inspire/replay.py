@@ -37,12 +37,13 @@ hand_ctrl = get_hand(args.hand, ip=True)
 try:
     # date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     for pos in range(0, 1001, 1):
-        hand_action = np.array([pos, 1000, 1000, 1000, 1000, 1000])
+        hand_action = np.array([1000, 1000, 1000, 1000, pos, 0])
         hand_ctrl.move(hand_action)
         time.sleep(0.5)
         hand_state = hand_ctrl.get_qpos()
         arm_state = arm_ctrl.get_data()
-        state_str = str(hand_state[0])
+        state_str = str(hand_state[4])
+        print(pos)
         if os.path.exists(os.path.join(shared_dir, args.save_path, state_str)):
             print(f"Skip capture, already exists: {args.save_path}/{state_str}")
             continue

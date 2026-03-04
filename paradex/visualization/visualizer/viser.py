@@ -1,3 +1,4 @@
+import json
 from distro import name
 import numpy as np
 import yourdfpy
@@ -18,6 +19,8 @@ class ViserViewer():
         self.frame_nodes: dict[str, viser.FrameHandle] = {}
 
         self.up_direction = up_direction
+        self.view_state_dir = Path(".viser_views")
+        self.view_state_path = self.view_state_dir / "viser_current_view.json"
         self.robot_dict = {}
         self.obj_dict = {}
 
@@ -54,6 +57,84 @@ class ViserViewer():
             def _(_) -> None:
                 client.camera.far = far_slider.value
 
+            self.load_saved_view(client, verbose=False)
+
+    def _get_active_client(self, event=None) -> Optional[viser.ClientHandle]:
+        event_client = getattr(event, "client", None)
+        if event_client is not None:
+            return event_client
+        clients = list(self.server.get_clients().values())
+        if not clients:
+            return None
+        return clients[0]
+
+    def _serialize_camera_state(self, camera: viser.CameraHandle) -> dict:
+        return {
+            "position": np.asarray(camera.position, dtype=float).tolist(),
+            "look_at": np.asarray(camera.look_at, dtype=float).tolist(),
+            "up_direction": np.asarray(camera.up_direction, dtype=float).tolist(),
+            "wxyz": np.asarray(camera.wxyz, dtype=float).tolist(),
+            "fov": float(camera.fov),
+            "near": float(camera.near),
+            "far": float(camera.far),
+        }
+
+    def _set_view_state_path_for_object(self, object_name: str) -> None:
+        safe_name = Path(str(object_name)).name.strip().replace(" ", "_")
+        if not safe_name:
+            safe_name = "viser_current"
+        self.view_state_path = self.view_state_dir / f"{safe_name}_view.json"
+
+    def save_current_view(self, event=None) -> bool:
+        client = self._get_active_client(event)
+        if client is None:
+            print("No clients connected; cannot save current view.")
+            return False
+
+        payload = self._serialize_camera_state(client.camera)
+        self.view_state_path.parent.mkdir(parents=True, exist_ok=True)
+        with self.view_state_path.open("w", encoding="utf-8") as f:
+            json.dump(payload, f, indent=2)
+        print(f"Saved current view to: {self.view_state_path}")
+        return True
+
+    def load_saved_view(
+        self,
+        client: Optional[viser.ClientHandle] = None,
+        *,
+        verbose: bool = True,
+    ) -> bool:
+        target_client = client or self._get_active_client()
+        if target_client is None:
+            if verbose:
+                print("No clients connected; cannot load saved view.")
+            return False
+        if not self.view_state_path.exists():
+            if verbose:
+                print(f"No saved view found at: {self.view_state_path}")
+            return False
+
+        with self.view_state_path.open("r", encoding="utf-8") as f:
+            payload = json.load(f)
+
+        camera = target_client.camera
+        if "near" in payload:
+            camera.near = float(payload["near"])
+        if "far" in payload:
+            camera.far = float(payload["far"])
+        if "fov" in payload:
+            camera.fov = float(payload["fov"])
+        if "position" in payload:
+            camera.position = np.asarray(payload["position"], dtype=float)
+        if "look_at" in payload:
+            camera.look_at = np.asarray(payload["look_at"], dtype=float)
+        if "up_direction" in payload:
+            camera.up_direction = np.asarray(payload["up_direction"], dtype=float)
+
+        if verbose:
+            print(f"Loaded saved view from: {self.view_state_path}")
+        return True
+
     def add_robot(self, name, urdf_path, pose=None, include_arm_meshes=True):
         robot = ViserRobotModule(
             target=self.server,
@@ -82,6 +163,8 @@ class ViserViewer():
             opacity: Object opacity [0,1]. Uses simple mesh path when < 1.
         """
         # Create a frame for the object
+        
+        
         frame_handle = self.server.scene.add_frame(
             f"/objects/{name}_frame",
             position=obj_T[:3, 3],
@@ -95,6 +178,8 @@ class ViserViewer():
         # add_mesh_trimesh in this viser version does not expose handle.opacity,
         # so use add_mesh_simple when transparency is requested.
         obj_name = f"/objects/{name}_frame/{name}"
+        self._set_view_state_path_for_object(name)
+        
         if opacity < 0.999:
             color = np.array([200, 200, 200], dtype=np.uint8)
             vc = getattr(obj.visual, "vertex_colors", None)
@@ -167,7 +252,8 @@ class ViserViewer():
             height=size * 2,
             plane="xy",  # Assuming XY plane at given height
             position=(0.0, 0.0, height),
-            cell_size = 0.1
+            cell_size = 0.1,
+            section_color=(0.5, 0.5, 0)
         )
     
     def update_floor(self):
@@ -271,6 +357,10 @@ class ViserViewer():
                 "Floor Size", min=0.2, max=1.0, step=0.5, initial_value=0.5
             )
             self.grid_visible = self.server.gui.add_checkbox("Show Grid", True)
+
+        with self.server.gui.add_folder("Camera"):
+            self.save_view_btn = self.server.gui.add_button("Save Current View")
+            self.load_view_btn = self.server.gui.add_button("Load Saved View")
             
         with self.server.gui.add_folder("Video Rendering"):
             self.video_width = self.server.gui.add_number("Video Width", initial_value=1280, min=640, max=3840)
@@ -293,6 +383,14 @@ class ViserViewer():
         @self.grid_visible.on_update
         def _(_) -> None:
             self.update_floor()
+
+        @self.save_view_btn.on_click
+        def _(event) -> None:
+            self.save_current_view(event)
+
+        @self.load_view_btn.on_click
+        def _(event) -> None:
+            self.load_saved_view(self._get_active_client(event))
 
         @self.gui_timestep.on_update
         def _(_) -> None:

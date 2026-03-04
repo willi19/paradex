@@ -456,12 +456,14 @@ def main() -> None:
         "--cam-ids",
         nargs="*",
         default=[
-            # "22645029",
-            "22641023",
-            # "22684210",
+            "22641005",
+            # "22641023",
+            "22645021",
             "22684737",
-            "22684755",
-            "23022639",
+            "22645026",
+            "22645029"
+            # "22684755",
+            # "23022639",
         ],
         help="Camera IDs to use for optimization.",
     )
@@ -479,9 +481,9 @@ def main() -> None:
     arm_state = np.load(os.path.join(ep_dir, "raw", "arm", "state.npy"))
 
     hand_state = hand_state.copy()
-    # Zero non-pinky fingers in state (keep pinky at index 0).
+    # Zero non-thumb fingers in state (keep thumb controls at indices 4, 5).
     if hand_state.shape[0] >= 6:
-        hand_state[1:] = 1000
+        hand_state[:4] = 1000
     hand_qpos = inspire_state_to_qpos_sil(hand_state)
     full_qpos = np.concatenate([arm_state.reshape(1, -1), hand_qpos.reshape(1, -1), np.zeros(6, dtype=float).reshape(1, -1)], axis=1)[0]
 
@@ -496,6 +498,15 @@ def main() -> None:
         raise ValueError(f"qpos length mismatch: {full_qpos.shape[0]} vs {robot_dof}")
 
     joint_names = robot.get_joint_names()
+    fixed_thumb_chain = {
+        "left_thumb_2_joint": 0.028551956189990197,
+        "left_thumb_3_joint": 0.03802848974682442,
+        "left_thumb_4_joint": -0.09894437590980233,
+    }
+    for jn, val in fixed_thumb_chain.items():
+        if jn not in joint_names:
+            raise KeyError(f"Joint '{jn}' not found in robot joint names")
+        full_qpos[joint_names.index(jn)] = float(val)
     if args.hand_json:
         with open(args.hand_json, "r") as f:
             hand_data = json.load(f)
@@ -562,17 +573,14 @@ def main() -> None:
     }
     urdf_kin = TorchUrdfKinematics(urdf_path, device=device)
 
-    idx_little_1 = joint_names.index("left_little_1_joint")
-    idx_little_2 = joint_names.index("left_little_2_joint")
+    idx_thumb_1 = joint_names.index("left_thumb_1_joint")
 
     base_qpos = full_qpos.copy()
-    init_theta_1 = base_qpos[idx_little_1]
-    init_theta_2 = base_qpos[idx_little_2]
+    init_theta_1 = base_qpos[idx_thumb_1]
     
 
     print(f"Using {len(available_cam_ids)} view(s): {available_cam_ids}")
-    print(f"Initial pinky_1: {init_theta_1:.6f} rad")
-    print(f"Initial pinky_2: {init_theta_2:.6f} rad")
+    print(f"Initial thumb_1: {init_theta_1:.6f} rad")
 
     # Build qpos tensor in chain order.
     joint_to_val = {name: base_qpos[i] for i, name in enumerate(joint_names)}
@@ -582,14 +590,12 @@ def main() -> None:
         dtype=torch.float32,
         device=device,
     )
-    idx_chain_l1 = chain_joint_names.index("left_little_1_joint")
-    idx_chain_l2 = chain_joint_names.index("left_little_2_joint")
+    idx_chain_t1 = chain_joint_names.index("left_thumb_1_joint")
 
     # Debug before optimization.
     with torch.no_grad():
         qpos_dbg = qpos_base.clone()
-        qpos_dbg[idx_chain_l1] = init_theta_1
-        qpos_dbg[idx_chain_l2] = init_theta_2
+        qpos_dbg[idx_chain_t1] = init_theta_1
         before_meshes = urdf_kin.forward(qpos_dbg)
         _, before_mask = renderer.render_multi(before_meshes)
         before_mask_np = {k: v.detach().cpu().numpy() for k, v in before_mask.items()}
@@ -600,18 +606,16 @@ def main() -> None:
     if images:
         save_debug_compare_grid(debug_root, before_mask_np, target_masks, "before", images=images)
 
-    # Optimize little_1 first (autograd).
+    # Optimize thumb_1 only.
     theta1_t = torch.tensor(init_theta_1, device=device, requires_grad=True)
-    theta2_fixed = torch.tensor(init_theta_2, device=device, requires_grad=False)
     opt1 = torch.optim.Adam([theta1_t], lr=args.gd_lr1)
     best_theta_1 = float(init_theta_1)
     best_loss_1 = float("inf")
     for i in range(1, args.gd_steps + 1):
         opt1.zero_grad()
         qpos_step = qpos_base.clone()
-        qpos_step[idx_chain_l1] = theta1_t
-        qpos_step[idx_chain_l2] = theta2_fixed
-        meshes = urdf_kin.forward(qpos_step, exclude=["left_little_2"])
+        qpos_step[idx_chain_t1] = theta1_t
+        meshes = urdf_kin.forward(qpos_step)
         _, mask_pred = renderer.render_multi(meshes)
         loss = compute_loss_torch(mask_pred, target_masks_torch)
         loss.backward()
@@ -622,7 +626,7 @@ def main() -> None:
             best_theta_1 = float(theta1_t.detach().item())
         if i == 1 or i == args.gd_steps or i % max(1, args.gd_steps // 5) == 0:
             print(
-                f"pinky_1 gd {i}/{args.gd_steps}: theta={theta1_t.item():.6f}, "
+                f"thumb_1 gd {i}/{args.gd_steps}: theta={theta1_t.item():.6f}, "
                 f"loss={loss.item():.6f}, grad={grad_val:.6e}"
             )
         if images and args.debug_every > 0 and i % args.debug_every == 0:
@@ -630,61 +634,25 @@ def main() -> None:
                 dbg_meshes = urdf_kin.forward(qpos_step.detach())
                 _, dbg_mask = renderer.render_multi(dbg_meshes)
                 dbg_mask_np = {k: v.detach().cpu().numpy() for k, v in dbg_mask.items()}
-            save_debug_compare_grid(debug_root, dbg_mask_np, target_masks, f"pinky1_step{i:04d}")
-
-    # Optimize little_2 next with little_1 fixed.
-    theta1_fixed = torch.tensor(best_theta_1, device=device, requires_grad=False)
-    theta2_t = torch.tensor(init_theta_2, device=device, requires_grad=True)
-    opt2 = torch.optim.Adam([theta2_t], lr=args.gd_lr2)
-    best_theta_2 = float(init_theta_2)
-    best_loss_2 = float("inf")
-    for i in range(1, args.gd_steps + 1):
-        opt2.zero_grad()
-        qpos_step = qpos_base.clone()
-        qpos_step[idx_chain_l1] = theta1_fixed
-        qpos_step[idx_chain_l2] = theta2_t
-        meshes = urdf_kin.forward(qpos_step)
-        _, mask_pred = renderer.render_multi(meshes)
-        loss = compute_loss_torch(mask_pred, target_masks_torch)
-        loss.backward()
-        grad_val = 0.0 if theta2_t.grad is None else float(theta2_t.grad.item())
-        opt2.step()
-        if loss.item() < best_loss_2:
-            best_loss_2 = float(loss.item())
-            best_theta_2 = float(theta2_t.detach().item())
-        if i == 1 or i == args.gd_steps or i % max(1, args.gd_steps // 5) == 0:
-            print(
-                f"pinky_2 gd {i}/{args.gd_steps}: theta={theta2_t.item():.6f}, "
-                f"loss={loss.item():.6f}, grad={grad_val:.6e}"
-            )
-        if images and args.debug_every > 0 and i % args.debug_every == 0:
-            with torch.no_grad():
-                dbg_meshes = urdf_kin.forward(qpos_step.detach())
-                _, dbg_mask = renderer.render_multi(dbg_meshes)
-                dbg_mask_np = {k: v.detach().cpu().numpy() for k, v in dbg_mask.items()}
-            save_debug_compare_grid(debug_root, dbg_mask_np, target_masks, f"pinky2_step{i:04d}")
+            save_debug_compare_grid(debug_root, dbg_mask_np, target_masks, f"thumb1_step{i:04d}")
 
     # Debug after optimization.
     with torch.no_grad():
         qpos_after = qpos_base.clone()
-        qpos_after[idx_chain_l1] = best_theta_1
-        qpos_after[idx_chain_l2] = best_theta_2
+        qpos_after[idx_chain_t1] = best_theta_1
         after_meshes = urdf_kin.forward(qpos_after)
         _, after_mask = renderer.render_multi(after_meshes)
         after_mask_np = {k: v.detach().cpu().numpy() for k, v in after_mask.items()}
     if images:
         save_debug_compare_grid(debug_root, after_mask_np, target_masks, "after", images=images)
 
-    out_json = args.out_json or os.path.join(ep_dir, "lookup_pinky.json")
+    out_json = args.out_json or os.path.join(ep_dir, "lookup_thumb.json")
     state_key = os.path.basename(ep_dir)
     data = {
         state_key: {
-            "pinky_1": best_theta_1,
-            "pinky_2": best_theta_2,
-            "loss_pinky_1": best_loss_1,
-            "loss_pinky_2": best_loss_2,
-            "init_pinky_1": float(init_theta_1),
-            "init_pinky_2": float(init_theta_2),
+            "thumb_1": best_theta_1,
+            "loss_thumb_1": best_loss_1,
+            "init_thumb_1": float(init_theta_1),
         }
     }
     with open(out_json, "w") as f:

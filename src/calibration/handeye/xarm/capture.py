@@ -54,7 +54,7 @@ if __name__ == "__main__":
         
         print(f"Saved data for step {idx}")
         
-    controller.end(True)
+    controller.end(set_break=False)
     rcc.end()
 
 

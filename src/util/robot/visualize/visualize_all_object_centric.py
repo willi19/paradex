@@ -521,6 +521,14 @@ def _set_robot_arm_visibility(vis: ViserViewer, robot_name: str, visible: bool) 
             mesh_handle.visible = visible
 
 
+def _transform_point(T_world: np.ndarray, point: np.ndarray) -> np.ndarray:
+    return T_world[:3, :3] @ point + T_world[:3, 3]
+
+
+def _transform_direction(T_world: np.ndarray, direction: np.ndarray) -> np.ndarray:
+    return T_world[:3, :3] @ direction
+
+
 def load_local_link_meshes_from_urdf(
     urdf_path: str, required_links: Optional[set] = None
 ) -> Dict[str, trimesh.Trimesh]:
@@ -710,6 +718,7 @@ def main():
         capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026", args.hand, args.object, str(args.ep))
     else:
         capture_root = os.path.join(args.capture_root, args.object, str(args.ep))
+    
     data_root = os.path.join(capture_root, "raw")
     
     arm_dir = os.path.join(data_root, "arm")
@@ -731,6 +740,8 @@ def main():
     
     c2r = np.load(c2r_path)
     r2c = np.linalg.inv(c2r)
+    object_origin_pose = r2c @ load_object_pose_txt(object_pos_path)
+    scene_from_object = np.linalg.inv(object_origin_pose)
 
     arm_qpos, arm_time = load_series(arm_dir, ("position.npy", "action_qpos.npy", "action.npy"))
     # hand_action, hand_time = load_series(hand_dir, ("action.npy", "position.npy"))
@@ -781,10 +792,10 @@ def main():
     fixed_object_pose = None
     if args.visualize_object:
         if args.fix_object_position:
-            # if args.object_pos_path is None:
-            #     raise ValueError("--object-pos-path is required when --fix-object-position is set.")
+            if object_pos_path is None:
+                raise ValueError("--object-pos-path is required when --fix-object-position is set.")
             fixed_object_pose = load_object_pose_txt(object_pos_path)
-            print(f"Loaded fixed object pose from {object_pos_path}")
+            print(f"Loaded fixed object pose from {args.object_pos_path}")
         else:
             obj_traj_path = os.path.join(object_track_dir, "obj_T_frames.npz")
             obj_traj = load_object_world_trajectory_npz(obj_traj_path)
@@ -822,6 +833,7 @@ def main():
                 video_times,
             ).reshape(len(video_times), 4, 4)
             obj_traj = np.einsum("ij,tjk->tik", r2c, obj_traj)
+        obj_traj = np.einsum("ij,tjk->tik", scene_from_object, obj_traj)
         obj_mesh = load_object_mesh(object_mesh_path)
         set_mesh_alpha(obj_mesh, args.object_alpha)
     if tactile_seq is not None:
@@ -878,7 +890,7 @@ def main():
 
     vis = ViserViewer()
     # vis.add_floor(height=0.0)
-    vis.add_robot("robot", urdf_path)
+    vis.add_robot("robot", urdf_path, pose=scene_from_object)
     if robot_link_rgba:
         _apply_robot_mesh_colors(vis, "robot", robot_link_rgba)
     if args.transparent_robot:
@@ -911,6 +923,19 @@ def main():
                     except Exception:
                         continue
                     anchor, normal, tx, ty = _world_sensor_frame(sensor, link_pose)
+                    anchor = _transform_point(scene_from_object, anchor)
+                    normal = _safe_normalize(
+                        _transform_direction(scene_from_object, normal),
+                        np.array([0.0, 0.0, 1.0], dtype=np.float64),
+                    )
+                    tx = _safe_normalize(
+                        _transform_direction(scene_from_object, tx),
+                        np.array([1.0, 0.0, 0.0], dtype=np.float64),
+                    )
+                    ty = _safe_normalize(
+                        _transform_direction(scene_from_object, ty),
+                        np.array([0.0, 1.0, 0.0], dtype=np.float64),
+                    )
                     vis_normal = -normal
                     normal_force, tangential_force, tangential_deg = _extract_zone_force(tactile_force, zone)
 
@@ -974,6 +999,11 @@ def main():
                     else:
                         color = (np.clip(link_rgba, 0.0, 1.0) * 255).astype(np.uint8)
                     c, n = compute_contact_arrow(meshes[link], vids)
+                    c = _transform_point(scene_from_object, c)
+                    n = _safe_normalize(
+                        _transform_direction(scene_from_object, n),
+                        np.array([0.0, 0.0, 1.0], dtype=np.float64),
+                    )
                     arrow = make_arrow_mesh(c, n, length, color)
                     if arrow is None:
                         if arrow_handles[name]:

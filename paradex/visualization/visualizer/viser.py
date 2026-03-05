@@ -23,6 +23,7 @@ class ViserViewer():
         self.view_state_path = self.view_state_dir / "viser_current_view.json"
         self.robot_dict = {}
         self.obj_dict = {}
+        self.camera_dict = {}
 
         self.traj_list = []
         self.num_frames = 0
@@ -580,7 +581,7 @@ class ViserViewer():
                 point.remove()
             contact_point_segments = []
             
-    def add_camera(self, name, extrinsic, intrinsic, color=(0, 255, 0), size=0.1):
+    def add_camera(self, name, extrinsic, intrinsic, color=(0, 255, 0), size=0.1, show_axes=True, image=None):
         """
         Add a camera frustum visualization to the scene
         
@@ -632,51 +633,72 @@ class ViserViewer():
             f"/cameras/{name}_frame",
             position=cam_pos,
             wxyz=R.from_matrix(cam_rot).as_quat()[[3, 0, 1, 2]],
-            show_axes=True,
+            show_axes=show_axes,
             axes_length=size * 0.5,
             axes_radius=size * 0.01,
         )
-        
-        # Calculate frustum corners in camera space
-        # Calculate frustum corners in camera space
-        frustum_depth = size
-        corners_cam = np.array([
-            [(0 - cx) / fx * frustum_depth, (0 - cy) / fy * frustum_depth, frustum_depth],  # top-left
-            [(width - cx) / fx * frustum_depth, (0 - cy) / fy * frustum_depth, frustum_depth],  # top-right
-            [(width - cx) / fx * frustum_depth, (height - cy) / fy * frustum_depth, frustum_depth],  # bottom-right
-            [(0 - cx) / fx * frustum_depth, (height - cy) / fy * frustum_depth, frustum_depth],  # bottom-left
-        ])
 
-        # Draw frustum edges (from camera center to corners) - in CAMERA FRAME coordinates
         color_normalized = tuple(c / 255.0 for c in color)
-        camera_origin = np.array([0, 0, 0])  # Origin in camera frame
+        frustum_handle = None
 
-        for i, corner in enumerate(corners_cam):
-            self.server.scene.add_spline_catmull_rom(
-                f"/cameras/{name}_frame/edge_{i}",
-                positions=np.array([camera_origin, corner]),  # Use camera frame coordinates
+        if image is not None:
+            fov = 2.0 * np.arctan2(float(height) * 0.5, float(fy))
+            aspect = float(width) / max(float(height), 1.0)
+            frustum_handle = self.server.scene.add_camera_frustum(
+                name=f"/cameras/{name}_frame/frustum",
+                fov=float(fov),
+                aspect=float(aspect),
+                scale=float(size),
+                line_width=2.0,
+                color=color,
+                image=image,
+                variant="filled",
+                position=(0.0, 0.0, 0.0),
+                wxyz=(1.0, 0.0, 0.0, 0.0),
+            )
+        else:
+            # Calculate frustum corners in camera space
+            frustum_depth = size
+            corners_cam = np.array([
+                [(0 - cx) / fx * frustum_depth, (0 - cy) / fy * frustum_depth, frustum_depth],  # top-left
+                [(width - cx) / fx * frustum_depth, (0 - cy) / fy * frustum_depth, frustum_depth],  # top-right
+                [(width - cx) / fx * frustum_depth, (height - cy) / fy * frustum_depth, frustum_depth],  # bottom-right
+                [(0 - cx) / fx * frustum_depth, (height - cy) / fy * frustum_depth, frustum_depth],  # bottom-left
+            ])
+
+            camera_origin = np.array([0, 0, 0])  # Origin in camera frame
+
+            for i, corner in enumerate(corners_cam):
+                self.server.scene.add_spline_catmull_rom(
+                    f"/cameras/{name}_frame/edge_{i}",
+                    positions=np.array([camera_origin, corner]),  # Use camera frame coordinates
+                    color=color_normalized,
+                    line_width=2.0
+                )
+
+            # Draw frustum rectangle (connecting corners) - in CAMERA FRAME coordinates
+            for i in range(4):
+                self.server.scene.add_spline_catmull_rom(
+                    f"/cameras/{name}_frame/rect_{i}",
+                    positions=np.array([corners_cam[i], corners_cam[(i + 1) % 4]]),
+                    color=color_normalized,
+                    line_width=2.0
+                )
+
+            # Optionally add a small sphere at camera center
+            self.server.scene.add_icosphere(
+                f"/cameras/{name}_frame/center",
+                radius=size * 0.05,
                 color=color_normalized,
-                line_width=2.0
+                position=camera_origin  # At origin of camera frame
             )
 
-        # Draw frustum rectangle (connecting corners) - in CAMERA FRAME coordinates
-        for i in range(4):
-            self.server.scene.add_spline_catmull_rom(
-                f"/cameras/{name}_frame/rect_{i}",
-                positions=np.array([corners_cam[i], corners_cam[(i + 1) % 4]]),
-                color=color_normalized,
-                line_width=2.0
-            )
-
-        # Optionally add a small sphere at camera center
-        self.server.scene.add_icosphere(
-            f"/cameras/{name}_frame/center",
-            radius=size * 0.05,
-            color=color_normalized,
-            position=camera_origin  # At origin of camera frame
-        )
-
-        
+        self.camera_dict[name] = {
+            "frame": frame_handle,
+            "frustum": frustum_handle,
+            "intrinsic": intrinsic,
+            "extrinsic": world_from_cam,
+        }
         return frame_handle
 
     def change_color(self, name, color):

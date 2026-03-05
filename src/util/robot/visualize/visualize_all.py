@@ -1,14 +1,16 @@
 import argparse
+import json
 import logging
 import os
 import re
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
-from typing import Tuple, Dict, Any, Optional, List
+from typing import Tuple, Dict, Any, Optional, List, Set
 
 import numpy as np
 import trimesh
 import yourdfpy
+import cv2
 
 from paradex.utils.path import rsc_path, shared_dir
 from paradex.visualization.visualizer.viser import ViserViewer
@@ -30,6 +32,163 @@ def str2bool(v):
         return False
     raise argparse.ArgumentTypeError(f"Expected a boolean value, got '{v}'")
 
+
+
+def parse_camera_ids(raw: Optional[str]) -> Optional[Set[str]]:
+    if raw is None:
+        return None
+    vals = [x.strip() for x in raw.split(",")]
+    vals = [x for x in vals if x]
+    return set(vals)
+
+
+def load_json(path: str) -> Dict[str, Any]:
+    if not os.path.exists(path):
+        raise FileNotFoundError(path)
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def parse_cam_from_world(extrinsic_value: Any) -> np.ndarray:
+    arr = np.asarray(extrinsic_value, dtype=float)
+    if arr.shape == (3, 4):
+        out = np.eye(4, dtype=float)
+        out[:3, :] = arr
+        return out
+    if arr.shape == (4, 4):
+        return arr
+    if arr.size == 12:
+        out = np.eye(4, dtype=float)
+        out[:3, :] = arr.reshape(3, 4)
+        return out
+    raise ValueError(f"Unsupported extrinsic shape: {arr.shape} (expected 3x4 or 4x4)")
+
+
+def build_intrinsic_for_viewer(serial: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    if "intrinsics_undistort" in payload:
+        K = np.asarray(payload["intrinsics_undistort"], dtype=float)
+    elif "original_intrinsics" in payload:
+        K = np.asarray(payload["original_intrinsics"], dtype=float)
+    else:
+        raise ValueError(f"{serial}: missing 'intrinsics_undistort'/'original_intrinsics'")
+    if K.shape != (3, 3):
+        raise ValueError(f"{serial}: intrinsic matrix shape {K.shape} is not 3x3")
+
+    width = payload.get("width")
+    height = payload.get("height")
+    if width is None or height is None:
+        cx = float(K[0, 2])
+        cy = float(K[1, 2])
+        width = int(round(cx * 2.0))
+        height = int(round(cy * 2.0))
+        print(f"[WARN] {serial}: missing width/height, fallback to width={width}, height={height}")
+
+    return {
+        "intrinsics_undistort": K.tolist(),
+        "width": int(width),
+        "height": int(height),
+    }
+
+
+def validate_rotation_matrix(R: np.ndarray, det_tol: float = 1e-2, orth_tol: float = 1e-2) -> Tuple[bool, str]:
+    det = np.linalg.det(R)
+    orth_err = np.linalg.norm(R.T @ R - np.eye(3), ord="fro")
+    if abs(det - 1.0) > det_tol:
+        return False, f"det(R)={det:.6f}"
+    if orth_err > orth_tol:
+        return False, f"orth_error={orth_err:.6e}"
+    return True, "ok"
+
+
+def color_from_name(name: str) -> Tuple[int, int, int]:
+    seed = int(np.frombuffer(name.encode("utf-8"), dtype=np.uint8).sum())
+    rng = np.random.default_rng(seed)
+    return tuple(int(x) for x in rng.integers(low=70, high=255, size=3))
+
+
+def add_cameras_to_scene(
+    vis: ViserViewer,
+    capture_root: str,
+    c2r: np.ndarray,
+    frustum_size: float,
+    show_axes: bool,
+    show_labels: bool,
+    image_root: Optional[str] = None,
+    initial_frame_id: Optional[int] = None,
+    view_scale: float = 1.0,
+    selected_ids: Optional[Set[str]] = None,
+) -> Tuple[int, int, Dict[str, Any]]:
+    uniform_camera_color = (80, 80, 80)
+    camparam_dir = os.path.join(capture_root, "cam_param")
+    intr_path = os.path.join(camparam_dir, "intrinsics.json")
+    extr_path = os.path.join(camparam_dir, "extrinsics.json")
+    if not (os.path.exists(intr_path) and os.path.exists(extr_path)):
+        print(f"[WARN] cam_param not found under {camparam_dir}; skipping camera visualization.")
+        return 0, 0, {}
+
+    intrinsics = load_json(intr_path)
+    extrinsics = load_json(extr_path)
+    k_intr = set(intrinsics.keys())
+    k_extr = set(extrinsics.keys())
+    serials = sorted(k_intr & k_extr)
+    if (k_extr - k_intr):
+        print(f"[WARN] Missing intrinsics for cameras: {sorted(k_extr - k_intr)}")
+    if (k_intr - k_extr):
+        print(f"[WARN] Missing extrinsics for cameras: {sorted(k_intr - k_extr)}")
+    if selected_ids is not None:
+        unknown = sorted(selected_ids - (k_intr | k_extr))
+        if unknown:
+            print(f"[WARN] Requested camera IDs not found: {unknown}")
+        serials = [s for s in serials if s in selected_ids]
+
+    added = 0
+    skipped = 0
+    camera_handles: Dict[str, Any] = {}
+    use_camera_view = image_root is not None and os.path.isdir(image_root)
+    if image_root is not None and not os.path.isdir(image_root):
+        print(f"[WARN] camera image root not found: {image_root}. Frustum-only mode.")
+    for serial in serials:
+        try:
+            intrinsic_view = build_intrinsic_for_viewer(serial, intrinsics[serial])
+            cam_from_world = parse_cam_from_world(extrinsics[serial])
+            cam_from_robot = cam_from_world @ c2r
+            valid, reason = validate_rotation_matrix(cam_from_robot[:3, :3])
+            if not valid:
+                print(f"[WARN] camera {serial}: invalid rotation ({reason}), skipped.")
+                skipped += 1
+                continue
+            world_from_cam = np.linalg.inv(cam_from_robot)
+
+            image = None
+            if use_camera_view and initial_frame_id is not None:
+                img_path = os.path.join(image_root, serial, f"{int(initial_frame_id):05d}.jpg")
+                if os.path.exists(img_path):
+                    image = cv2.imread(img_path, cv2.IMREAD_COLOR)
+                    if image is not None:
+                        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                        if view_scale != 1.0:
+                            h, w = image.shape[:2]
+                            nw = max(1, int(round(w * view_scale)))
+                            nh = max(1, int(round(h * view_scale)))
+                            image = cv2.resize(image, (nw, nh), interpolation=cv2.INTER_AREA)
+
+            vis.add_camera(
+                name=serial,
+                extrinsic=world_from_cam,
+                intrinsic=intrinsic_view,
+                color=uniform_camera_color,
+                size=frustum_size,
+                show_axes=show_axes,
+                image=image,
+            )
+            if show_labels:
+                vis.server.scene.add_label(f"/cameras/{serial}_frame/label", serial)
+            camera_handles[serial] = vis.camera_dict.get(serial, {})
+            added += 1
+        except Exception as e:
+            print(f"[WARN] camera {serial}: skipped due to error: {e}")
+            skipped += 1
+    return added, skipped, camera_handles
 
 
 def interpolate_sequence(seq: np.ndarray, target_len: int) -> np.ndarray:
@@ -521,6 +680,22 @@ def _set_robot_arm_visibility(vis: ViserViewer, robot_name: str, visible: bool) 
             mesh_handle.visible = visible
 
 
+def _set_robot_hand_opacity(vis: ViserViewer, robot_name: str, opacity: float) -> None:
+    robot = vis.robot_dict.get(robot_name)
+    if robot is None or not hasattr(robot, "_meshes"):
+        return
+
+    arm_mesh_files = {"base.obj", "link1.obj", "link2.obj", "link3.obj", "link4.obj", "link5.obj", "link6.obj"}
+    target_opacity = float(np.clip(opacity, 0.0, 1.0))
+    for mesh_name, mesh_handle in robot._meshes.items():
+        mesh_file = mesh_name.rsplit("/", 1)[-1]
+        if mesh_file not in arm_mesh_files:
+            mesh_handle.opacity = target_opacity
+
+
+TACTILE_ARROW_RGBA = np.array([255, 0, 0, 255], dtype=np.uint8)
+
+
 def load_local_link_meshes_from_urdf(
     urdf_path: str, required_links: Optional[set] = None
 ) -> Dict[str, trimesh.Trimesh]:
@@ -628,7 +803,7 @@ def make_arrow_mesh(start, direction, length, color_rgba):
     shaft = trimesh.creation.cylinder(radius=shaft_radius, height=shaft_height)
     head  = trimesh.creation.cone(radius=head_radius, height=head_height)
     shaft.apply_translation([0, 0, shaft_height * 0.5])
-    head.apply_translation([0, 0, shaft_height + head_height * 0.5])
+    head.apply_translation([0, 0, shaft_height + head_height * 0.3])
     arrow = trimesh.util.concatenate([shaft, head])
     arrow.apply_transform(trimesh.geometry.align_vectors([0, 0, 1], direction))
     arrow.apply_translation(start)
@@ -689,6 +864,7 @@ def main():
     parser.add_argument("--fix-object-position", action="store_true")
     parser.add_argument("--object-pos-path", default=None)
     parser.add_argument("--transparent-robot", action="store_true")
+    parser.add_argument("--hand-alpha", type=float, default=1.0, help="Hand mesh opacity [0,1].")
     
     parser.add_argument("--object-alpha", type=float, default=1.0, help="Object mesh opacity [0,1]. Lower => more transparent.")
     
@@ -697,19 +873,36 @@ def main():
     parser.add_argument("--max-tangential-force", type=float, default=100.0)
     parser.add_argument("--max-arrow-len", type=float, default=0.05)
     parser.add_argument("--frame-offset", type=int, default=0, help="Positive => robot leads object; negative => robot lags object.")
+    parser.add_argument("--start-frame", type=int, default=-1, help="Inclusive start frame id on the master timeline. <0 means no lower bound.")
+    parser.add_argument("--end-frame", type=int, default=-1, help="Inclusive end frame id on the master timeline. <0 means no upper bound.")
     parser.add_argument("--arm_time_offset", type=float, default=0.09)
+    parser.add_argument("--show-cameras", type=str2bool, default=True, help="Show camera frustums in the same scene.")
+    parser.add_argument("--camera-ids", type=str, default=None, help="Comma-separated camera IDs to visualize.")
+    parser.add_argument("--camera-frustum-size", type=float, default=0.08, help="Camera frustum depth/size.")
+    parser.add_argument("--show-camera-axes", type=str2bool, default=True, help="Show camera axes.")
+    parser.add_argument("--show-camera-labels", type=str2bool, default=False, help="Show camera serial labels.")
+    parser.add_argument(
+        "--camera-image-root",
+        type=str,
+        default=None,
+        help="Root directory with per-camera frames, e.g., <capture_root>/video_extracted/<cam_id>/00001.jpg",
+    )
+    parser.add_argument("--camera-view-scale", type=float, default=1.0, help="Scale factor for camera-view images.")
     args = parser.parse_args()
     object_name = args.object
 
-    if args.object_pos_path == None:
-        object_pos_path = os.path.join("/home/temp_id/shared_data/capture/eccv2026", args.hand, args.object, str(args.ep), "single_frame_refine_output", "refined_pose_world.txt")
-    else:
-        object_pos_path = args.object_pos_path  
+    
 
     if args.capture_root == None:
         capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026", args.hand, args.object, str(args.ep))
     else:
         capture_root = os.path.join(args.capture_root, args.object, str(args.ep))
+        
+    if args.object_pos_path == None:
+        object_pos_path = os.path.join(capture_root, "single_frame_refine_output", "refined_pose_world.txt")
+    else:
+        object_pos_path = args.object_pos_path      
+    
     data_root = os.path.join(capture_root, "raw")
     
     arm_dir = os.path.join(data_root, "arm")
@@ -839,6 +1032,27 @@ def main():
         else None
     )
 
+    if args.start_frame >= 0 or args.end_frame >= 0:
+        frame_mask = np.ones(len(video_frame_ids), dtype=bool)
+        if args.start_frame >= 0:
+            frame_mask &= video_frame_ids >= args.start_frame
+        if args.end_frame >= 0:
+            frame_mask &= video_frame_ids <= args.end_frame
+        if not np.any(frame_mask):
+            raise ValueError(
+                f"No frames left after filtering with start={args.start_frame}, end={args.end_frame}."
+            )
+
+        video_times = video_times[frame_mask]
+        video_frame_ids = video_frame_ids[frame_mask]
+        qpos_video = qpos_video[frame_mask]
+        if obj_traj is not None:
+            obj_traj = obj_traj[frame_mask]
+        if tactile_i is not None:
+            tactile_i = tactile_i[frame_mask]
+        if tactile_force_i is not None:
+            tactile_force_i = [frame for frame, keep in zip(tactile_force_i, frame_mask) if keep]
+
     if args.hand == "inspire_f1":
         urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_right.urdf")
     elif args.hand == "allegro":
@@ -877,26 +1091,73 @@ def main():
         arrow_handles = {}
 
     vis = ViserViewer()
-    # vis.add_floor(height=0.0)
+    vis.add_floor(height=0.0)
     vis.add_robot("robot", urdf_path)
     if robot_link_rgba:
         _apply_robot_mesh_colors(vis, "robot", robot_link_rgba)
+    if args.hand_alpha < 0.999:
+        _set_robot_hand_opacity(vis, "robot", args.hand_alpha)
     if args.transparent_robot:
         _set_robot_arm_visibility(vis, "robot", False)
     if obj_mesh is not None and obj_traj is not None:
         vis.add_object(object_name, obj_mesh, obj_traj[0], opacity=args.object_alpha)
         if object_name in vis.obj_dict:
             vis.obj_dict[object_name]["frame"].show_axes = False
+    camera_handles = {}
+    camera_image_root = None
+    if args.show_cameras:
+        selected_camera_ids = parse_camera_ids(args.camera_ids)
+        camera_image_root = (
+            args.camera_image_root
+            if args.camera_image_root is not None
+            else os.path.join(capture_root, "video_extracted")
+        )
+        n_added, n_skipped, camera_handles = add_cameras_to_scene(
+            vis=vis,
+            capture_root=capture_root,
+            c2r=c2r,
+            frustum_size=args.camera_frustum_size,
+            show_axes=args.show_camera_axes,
+            show_labels=args.show_camera_labels,
+            image_root=camera_image_root,
+            initial_frame_id=int(video_frame_ids[0]) if len(video_frame_ids) > 0 else None,
+            view_scale=float(args.camera_view_scale),
+            selected_ids=selected_camera_ids,
+        )
+        print(f"[INFO] camera visualization added={n_added}, skipped={n_skipped}")
     vis.add_traj("traj", {"robot": qpos_video}, {object_name: obj_traj} if obj_traj is not None else {})
 
     # Wrap the viewer's update to inject tactile arrows per frame.
     original_update_scene = vis.update_scene
+    camera_last_frame: Dict[str, int] = {}
 
     def update_scene_with_tactile(timestep):
         original_update_scene(timestep)
+        t = max(0, min(len(video_times) - 1, timestep))
+        if camera_handles and camera_image_root is not None:
+            frame_id = int(video_frame_ids[t])
+            for serial, info in camera_handles.items():
+                frustum_handle = info.get("frustum")
+                if frustum_handle is None:
+                    continue
+                if camera_last_frame.get(serial) == frame_id:
+                    continue
+                img_path = os.path.join(camera_image_root, serial, f"{frame_id:05d}.jpg")
+                img_rgb = None
+                if os.path.exists(img_path):
+                    img = cv2.imread(img_path, cv2.IMREAD_COLOR)
+                    if img is not None:
+                        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                        if args.camera_view_scale != 1.0:
+                            h, w = img_rgb.shape[:2]
+                            nw = max(1, int(round(w * args.camera_view_scale)))
+                            nh = max(1, int(round(h * args.camera_view_scale)))
+                            img_rgb = cv2.resize(img_rgb, (nw, nh), interpolation=cv2.INTER_AREA)
+                frustum_handle.image = img_rgb
+                camera_last_frame[serial] = frame_id
+
         if not args.visualize_tactile:
             return
-        t = max(0, min(len(video_times) - 1, timestep))
         q = qpos_video[t]
         tactile_robot.update_cfg(q[: tactile_robot.get_num_joints()])
 
@@ -934,13 +1195,7 @@ def main():
 
                     total_vec = normal_vec + tangential_vec
                     length = float(np.linalg.norm(total_vec))
-                    color = zone_arrow_color.get(zone)
-                    if color is None:
-                        link_rgba = link_color_map.get(sensor.link_name)
-                        if link_rgba is None:
-                            color = np.array([255, 255, 255, 255], dtype=np.uint8)
-                        else:
-                            color = (np.clip(link_rgba, 0.0, 1.0) * 255).astype(np.uint8)
+                    color = TACTILE_ARROW_RGBA
 
                     if length <= 1e-6:
                         if arrow_handles[zone]:
@@ -968,11 +1223,7 @@ def main():
                         continue
                     p = tactile_frame[name].mean()
                     length = np.clip(p / 1000.0, 0, 1) * 0.2
-                    link_rgba = link_color_map.get(link)
-                    if link_rgba is None:
-                        color = np.array([255, 255, 255, 255], dtype=np.uint8)
-                    else:
-                        color = (np.clip(link_rgba, 0.0, 1.0) * 255).astype(np.uint8)
+                    color = TACTILE_ARROW_RGBA
                     c, n = compute_contact_arrow(meshes[link], vids)
                     arrow = make_arrow_mesh(c, n, length, color)
                     if arrow is None:

@@ -581,7 +581,17 @@ class ViserViewer():
                 point.remove()
             contact_point_segments = []
             
-    def add_camera(self, name, extrinsic, intrinsic, color=(0, 255, 0), size=0.1, show_axes=True, image=None):
+    def add_camera(
+        self,
+        name,
+        extrinsic,
+        intrinsic,
+        color=(0, 255, 0),
+        size=0.1,
+        show_axes=True,
+        image=None,
+        fov_scale: float = 1.0,
+    ):
         """
         Add a camera frustum visualization to the scene
         
@@ -641,8 +651,11 @@ class ViserViewer():
         color_normalized = tuple(c / 255.0 for c in color)
         frustum_handle = None
 
+        fov_scale = max(1e-3, float(fov_scale))
+
         if image is not None:
             fov = 2.0 * np.arctan2(float(height) * 0.5, float(fy))
+            fov = float(np.clip(fov * fov_scale, 1e-4, np.pi - 1e-3))
             aspect = float(width) / max(float(height), 1.0)
             frustum_handle = self.server.scene.add_camera_frustum(
                 name=f"/cameras/{name}_frame/frustum",
@@ -660,10 +673,10 @@ class ViserViewer():
             # Calculate frustum corners in camera space
             frustum_depth = size
             corners_cam = np.array([
-                [(0 - cx) / fx * frustum_depth, (0 - cy) / fy * frustum_depth, frustum_depth],  # top-left
-                [(width - cx) / fx * frustum_depth, (0 - cy) / fy * frustum_depth, frustum_depth],  # top-right
-                [(width - cx) / fx * frustum_depth, (height - cy) / fy * frustum_depth, frustum_depth],  # bottom-right
-                [(0 - cx) / fx * frustum_depth, (height - cy) / fy * frustum_depth, frustum_depth],  # bottom-left
+                [((0 - cx) / fx) * frustum_depth * fov_scale, ((0 - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # top-left
+                [((width - cx) / fx) * frustum_depth * fov_scale, ((0 - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # top-right
+                [((width - cx) / fx) * frustum_depth * fov_scale, ((height - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # bottom-right
+                [((0 - cx) / fx) * frustum_depth * fov_scale, ((height - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # bottom-left
             ])
 
             camera_origin = np.array([0, 0, 0])  # Origin in camera frame

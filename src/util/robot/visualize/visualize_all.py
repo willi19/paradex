@@ -116,6 +116,7 @@ def add_cameras_to_scene(
     image_root: Optional[str] = None,
     initial_frame_id: Optional[int] = None,
     view_scale: float = 1.0,
+    fov_scale: float = 1.0,
     selected_ids: Optional[Set[str]] = None,
 ) -> Tuple[int, int, Dict[str, Any]]:
     uniform_camera_color = (80, 80, 80)
@@ -180,6 +181,7 @@ def add_cameras_to_scene(
                 size=frustum_size,
                 show_axes=show_axes,
                 image=image,
+                fov_scale=fov_scale,
             )
             if show_labels:
                 vis.server.scene.add_label(f"/cameras/{serial}_frame/label", serial)
@@ -888,6 +890,7 @@ def main():
         help="Root directory with per-camera frames, e.g., <capture_root>/video_extracted/<cam_id>/00001.jpg",
     )
     parser.add_argument("--camera-view-scale", type=float, default=1.0, help="Scale factor for camera-view images.")
+    parser.add_argument("--camera-fov-scale", type=float, default=1.0, help="Visualization-only FOV scale (>1 => less pointy frustum).")
     args = parser.parse_args()
     object_name = args.object
 
@@ -1122,6 +1125,7 @@ def main():
             image_root=camera_image_root,
             initial_frame_id=int(video_frame_ids[0]) if len(video_frame_ids) > 0 else None,
             view_scale=float(args.camera_view_scale),
+            fov_scale=float(args.camera_fov_scale),
             selected_ids=selected_camera_ids,
         )
         print(f"[INFO] camera visualization added={n_added}, skipped={n_skipped}")

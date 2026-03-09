@@ -10,6 +10,7 @@ from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.utils.path import shared_dir
 
 from paradex.calibration.utils import save_current_camparam, save_current_C2R
+from paradex.image.image_dict import ImageDict
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--save_path', required=True)
@@ -31,12 +32,15 @@ try:
             continue
 
         date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        save_current_camparam(os.path.join(shared_dir, args.save_path, date_str))
-        save_current_C2R(os.path.join(shared_dir, args.save_path, date_str))
+        img_path = os.path.join(shared_dir, args.save_path, date_str)
+        save_current_camparam(img_path)
+        save_current_C2R(img_path)
         print(f"Capturing image to {args.save_path}/{date_str}")
         rcc.start("image", False, f'shared_data/{args.save_path}/{date_str}/raw')
         rcc.stop()
         save_event.clear()
-        
+        img_dict = ImageDict.from_path(img_path)
+        img_dict.undistort(os.path.join(img_path,'undistort'))
+        print(f"Undistorted images saved to {args.save_path}/{date_str}")
 finally:
     rcc.end()

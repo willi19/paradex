@@ -156,7 +156,7 @@ def process_video(root_dir, serial_num, video_predictor=video_predictor):
 
         
 def load_mask(root_dir, predictor=video_predictor):
-
+이건 realdex거든 
     outdir = os.path.join(root_dir, "masks")
     outdir_img = os.path.join(root_dir, "masked_images")
     os.makedirs(outdir, exist_ok=True)

@@ -6,16 +6,25 @@ hand = get_hand("allegro")
 start_time = time.time()
 
 qpos = np.zeros(16)
-
-while time.time() - start_time < 10:
-    if time.time() - start_time > 5:
-        v = 0.5 - (time.time() - start_time - 5) / 10 * 1
-    else:
-        v = (time.time() - start_time) / 10 * 1 + 0.5
-    qpos[4] = v
+hand.start("allegro_order_debug")
+for joint_idx in range(16):
+    print(f"Moving joint {joint_idx}")
+    start_time = time.time()
+    
+    while time.time() - start_time < 2:  # 각 조인트당 2초
+        t = time.time() - start_time
+        if t > 1:
+            v = 1.0 - (t - 1) * 1.0  # 1초 후 돌아오기
+        else:
+            v = t * 1.0  # 1초 동안 펴기
+        
+        qpos[joint_idx] = v
+        hand.move(qpos)
+    
+    qpos[joint_idx] = 0  # 원위치
     hand.move(qpos)
-
-time.sleep(2)   
+hand.end()
+time.sleep(2)
 
 # 0 thumb root
 # 1 thumb mid

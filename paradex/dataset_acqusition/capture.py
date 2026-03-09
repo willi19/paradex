@@ -15,7 +15,7 @@ from paradex.calibration.utils import save_current_camparam, save_current_C2R
 from paradex.utils.system import network_info
 
 class CaptureSession():
-    def __init__(self, camera=False, arm=None, hand=None, teleop=None):
+    def __init__(self, camera=False, arm=None, hand=None, teleop=None, hand_ip=False):
         if arm is None and hand is None and teleop is not None:
             raise ValueError("Teleop device requires at least one of arm or hand to be specified.")
         
@@ -37,7 +37,7 @@ class CaptureSession():
             self.arm = None
         
         if hand is not None:
-            self.hand = get_hand(hand)
+            self.hand = get_hand(hand, ip=hand_ip)
         else:
             self.hand = None
             

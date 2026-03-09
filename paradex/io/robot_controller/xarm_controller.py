@@ -118,7 +118,7 @@ class XArmController:
             
             if self.save_event.is_set():
                 if is_joint_value:
-                    cart = homo2cart(action)
+                    cart = self.arm.get_forward_kinematics(action.tolist(), input_is_radian=True, return_is_radian=True)[1]
                     qpos = action.copy()
                 else:
                     cart = homo2cart(action)

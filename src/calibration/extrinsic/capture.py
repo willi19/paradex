@@ -87,11 +87,11 @@ while True:
         if waiting_save:
             cv2.putText(merged_image, "Saving...", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
             
-        cv2.imshow("Merged Stream", merged_image)
+        cv2.imshow("Merged Stream", cv2.resize(merged_image, dsize=None, fx=0.8, fy=0.8))
         key = cv2.waitKey(1)
 
     else:
-        blank_image = np.ones((600, 800, 3), dtype=np.uint8)*500
+        blank_image = np.ones((600, 800, 3), dtype=np.uint)*500
         cv2.putText(blank_image, "Waiting for stream...", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
         cv2.imshow("Merged Stream", blank_image)
         key = cv2.waitKey(1)

@@ -591,6 +591,8 @@ class ViserViewer():
         show_axes=True,
         image=None,
         fov_scale: float = 1.0,
+        fov_override: Optional[float] = None,
+        aspect_override: Optional[float] = None,
     ):
         """
         Add a camera frustum visualization to the scene
@@ -654,9 +656,15 @@ class ViserViewer():
         fov_scale = max(1e-3, float(fov_scale))
 
         if image is not None:
-            fov = 2.0 * np.arctan2(float(height) * 0.5, float(fy))
+            if fov_override is not None:
+                fov = float(fov_override)
+            else:
+                fov = 2.0 * np.arctan2(float(height) * 0.5, float(fy))
             fov = float(np.clip(fov * fov_scale, 1e-4, np.pi - 1e-3))
-            aspect = float(width) / max(float(height), 1.0)
+            if aspect_override is not None:
+                aspect = float(aspect_override)
+            else:
+                aspect = float(width) / max(float(height), 1.0)
             frustum_handle = self.server.scene.add_camera_frustum(
                 name=f"/cameras/{name}_frame/frustum",
                 fov=float(fov),
@@ -672,12 +680,24 @@ class ViserViewer():
         else:
             # Calculate frustum corners in camera space
             frustum_depth = size
-            corners_cam = np.array([
-                [((0 - cx) / fx) * frustum_depth * fov_scale, ((0 - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # top-left
-                [((width - cx) / fx) * frustum_depth * fov_scale, ((0 - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # top-right
-                [((width - cx) / fx) * frustum_depth * fov_scale, ((height - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # bottom-right
-                [((0 - cx) / fx) * frustum_depth * fov_scale, ((height - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # bottom-left
-            ])
+            if fov_override is not None:
+                fov = float(np.clip(float(fov_override) * fov_scale, 1e-4, np.pi - 1e-3))
+                aspect = float(aspect_override) if aspect_override is not None else float(width) / max(float(height), 1.0)
+                half_h = np.tan(0.5 * fov) * frustum_depth
+                half_w = half_h * aspect
+                corners_cam = np.array([
+                    [-half_w, -half_h, frustum_depth],
+                    [half_w, -half_h, frustum_depth],
+                    [half_w, half_h, frustum_depth],
+                    [-half_w, half_h, frustum_depth],
+                ])
+            else:
+                corners_cam = np.array([
+                    [((0 - cx) / fx) * frustum_depth * fov_scale, ((0 - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # top-left
+                    [((width - cx) / fx) * frustum_depth * fov_scale, ((0 - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # top-right
+                    [((width - cx) / fx) * frustum_depth * fov_scale, ((height - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # bottom-right
+                    [((0 - cx) / fx) * frustum_depth * fov_scale, ((height - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # bottom-left
+                ])
 
             camera_origin = np.array([0, 0, 0])  # Origin in camera frame
 

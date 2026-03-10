@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import re
+import glob
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Tuple, Dict, Any, Optional, List, Set
@@ -117,6 +118,9 @@ def add_cameras_to_scene(
     initial_frame_id: Optional[int] = None,
     view_scale: float = 1.0,
     fov_scale: float = 1.0,
+    uniform_frustum: bool = False,
+    uniform_fov_deg: float = 60.0,
+    uniform_aspect: float = 4.0 / 3.0,
     selected_ids: Optional[Set[str]] = None,
 ) -> Tuple[int, int, Dict[str, Any]]:
     uniform_camera_color = (80, 80, 80)
@@ -182,6 +186,8 @@ def add_cameras_to_scene(
                 show_axes=show_axes,
                 image=image,
                 fov_scale=fov_scale,
+                fov_override=np.deg2rad(float(uniform_fov_deg)) if uniform_frustum else None,
+                aspect_override=float(uniform_aspect) if uniform_frustum else None,
             )
             if show_labels:
                 vis.server.scene.add_label(f"/cameras/{serial}_frame/label", serial)
@@ -295,6 +301,82 @@ def load_object_mesh(mesh_path: str) -> trimesh.Trimesh:
     if isinstance(mesh, list):
         return trimesh.util.concatenate(mesh)
     raise ValueError(f"Unexpected mesh type: {type(mesh)}")
+
+
+def _extract_frame_id_from_path(path: str) -> Optional[int]:
+    stem = os.path.splitext(os.path.basename(path))[0]
+    m = re.search(r"(\d+)$", stem)
+    if m is None:
+        m = re.search(r"(\d+)", stem)
+    if m is None:
+        return None
+    return int(m.group(1))
+
+
+def collect_gaussian_frame_paths(
+    gaussian_dir: Optional[str] = None,
+    gaussian_glob: Optional[str] = None,
+) -> Tuple[List[str], Dict[int, str]]:
+    paths: List[str] = []
+    if gaussian_glob:
+        paths = sorted(glob.glob(gaussian_glob))
+    elif gaussian_dir:
+        paths = sorted(glob.glob(os.path.join(gaussian_dir, "*.ply")))
+
+    by_frame: Dict[int, str] = {}
+    for p in paths:
+        fid = _extract_frame_id_from_path(p)
+        if fid is not None:
+            by_frame[fid] = p
+    return paths, by_frame
+
+
+def load_gaussian_points_from_ply(
+    ply_path: str,
+    max_points: int = 150000,
+) -> Tuple[np.ndarray, np.ndarray]:
+    geom = trimesh.load(ply_path, process=False)
+    if isinstance(geom, trimesh.Scene):
+        if len(geom.geometry) == 0:
+            raise ValueError(f"Empty scene in {ply_path}")
+        first_key = next(iter(geom.geometry.keys()))
+        geom = geom.geometry[first_key]
+
+    if isinstance(geom, trimesh.PointCloud):
+        points = np.asarray(geom.vertices, dtype=np.float32)
+        colors_raw = getattr(geom, "colors", None)
+    elif isinstance(geom, trimesh.Trimesh):
+        points = np.asarray(geom.vertices, dtype=np.float32)
+        colors_raw = getattr(geom.visual, "vertex_colors", None)
+    else:
+        raise ValueError(f"Unsupported PLY geometry type: {type(geom)}")
+
+    if points.ndim != 2 or points.shape[1] != 3:
+        raise ValueError(f"Invalid point shape in {ply_path}: {points.shape}")
+
+    if colors_raw is None:
+        colors = np.full((points.shape[0], 3), 255, dtype=np.uint8)
+    else:
+        colors = np.asarray(colors_raw)
+        if colors.ndim != 2 or colors.shape[0] != points.shape[0]:
+            colors = np.full((points.shape[0], 3), 255, dtype=np.uint8)
+        else:
+            if colors.shape[1] >= 3:
+                colors = colors[:, :3]
+            else:
+                colors = np.full((points.shape[0], 3), 255, dtype=np.uint8)
+            if colors.dtype != np.uint8:
+                if np.issubdtype(colors.dtype, np.floating) and colors.max() <= 1.0:
+                    colors = (np.clip(colors, 0.0, 1.0) * 255.0).astype(np.uint8)
+                else:
+                    colors = np.clip(colors, 0, 255).astype(np.uint8)
+
+    if max_points > 0 and points.shape[0] > max_points:
+        idx = np.linspace(0, points.shape[0] - 1, max_points, dtype=int)
+        points = points[idx]
+        colors = colors[idx]
+
+    return points, colors
 
 
 def set_mesh_alpha(mesh: trimesh.Trimesh, alpha: float) -> None:
@@ -891,6 +973,14 @@ def main():
     )
     parser.add_argument("--camera-view-scale", type=float, default=1.0, help="Scale factor for camera-view images.")
     parser.add_argument("--camera-fov-scale", type=float, default=1.0, help="Visualization-only FOV scale (>1 => less pointy frustum).")
+    parser.add_argument("--camera-uniform-frustum", type=str2bool, default=False, help="Force same frustum shape for all cameras.")
+    parser.add_argument("--camera-uniform-fov-deg", type=float, default=60.0, help="Uniform frustum vertical FOV in degrees.")
+    parser.add_argument("--camera-uniform-aspect", type=float, default=4.0 / 3.0, help="Uniform frustum aspect ratio (width/height).")
+    parser.add_argument("--gaussian-dir", type=str, default=None, help="Directory containing per-frame gaussian PLYs.")
+    parser.add_argument("--gaussian-glob", type=str, default=None, help="Glob for gaussian PLYs, e.g. '/path/time_*.ply'.")
+    parser.add_argument("--gaussian-ply", type=str, default=None, help="Single static gaussian PLY.")
+    parser.add_argument("--gaussian-point-size", type=float, default=0.0015, help="Point size for gaussian cloud rendering.")
+    parser.add_argument("--gaussian-max-points", type=int, default=150000, help="Max points per gaussian frame (0 means no limit).")
     args = parser.parse_args()
     object_name = args.object
 
@@ -1126,10 +1216,29 @@ def main():
             initial_frame_id=int(video_frame_ids[0]) if len(video_frame_ids) > 0 else None,
             view_scale=float(args.camera_view_scale),
             fov_scale=float(args.camera_fov_scale),
+            uniform_frustum=bool(args.camera_uniform_frustum),
+            uniform_fov_deg=float(args.camera_uniform_fov_deg),
+            uniform_aspect=float(args.camera_uniform_aspect),
             selected_ids=selected_camera_ids,
         )
         print(f"[INFO] camera visualization added={n_added}, skipped={n_skipped}")
     vis.add_traj("traj", {"robot": qpos_video}, {object_name: obj_traj} if obj_traj is not None else {})
+
+    gaussian_paths: List[str] = []
+    gaussian_by_frame: Dict[int, str] = {}
+    gaussian_handle = None
+    gaussian_last_key = None
+    if args.gaussian_ply is not None:
+        if not os.path.exists(args.gaussian_ply):
+            raise FileNotFoundError(f"--gaussian-ply not found: {args.gaussian_ply}")
+        gaussian_paths = [args.gaussian_ply]
+    else:
+        gaussian_paths, gaussian_by_frame = collect_gaussian_frame_paths(
+            gaussian_dir=args.gaussian_dir,
+            gaussian_glob=args.gaussian_glob,
+        )
+    if gaussian_paths:
+        print(f"[INFO] gaussian visualization enabled with {len(gaussian_paths)} ply file(s)")
 
     # Wrap the viewer's update to inject tactile arrows per frame.
     original_update_scene = vis.update_scene
@@ -1159,6 +1268,39 @@ def main():
                             img_rgb = cv2.resize(img_rgb, (nw, nh), interpolation=cv2.INTER_AREA)
                 frustum_handle.image = img_rgb
                 camera_last_frame[serial] = frame_id
+
+        nonlocal gaussian_handle, gaussian_last_key
+        if gaussian_paths:
+            if args.gaussian_ply is not None:
+                ply_path = gaussian_paths[0]
+                ply_key = ("static", ply_path)
+            else:
+                frame_id = int(video_frame_ids[t])
+                ply_path = gaussian_by_frame.get(frame_id)
+                if ply_path is None and t < len(gaussian_paths):
+                    ply_path = gaussian_paths[t]
+                ply_key = ("frame", ply_path)
+
+            if ply_path is not None and ply_key != gaussian_last_key:
+                try:
+                    pts, cols = load_gaussian_points_from_ply(
+                        ply_path,
+                        max_points=int(args.gaussian_max_points),
+                    )
+                    with vis.server.atomic():
+                        if gaussian_handle is not None:
+                            gaussian_handle.remove()
+                            gaussian_handle = None
+                        gaussian_handle = vis.server.scene.add_point_cloud(
+                            name="/gaussian/points",
+                            points=pts,
+                            colors=cols,
+                            point_size=float(args.gaussian_point_size),
+                            point_shape="circle",
+                        )
+                    gaussian_last_key = ply_key
+                except Exception as e:
+                    print(f"[WARN] failed to load gaussian PLY '{ply_path}': {e}")
 
         if not args.visualize_tactile:
             return

@@ -585,6 +585,28 @@ def resample_force_dict_sequence(seq: List[Dict[str, float]], target_len: int) -
     return [seq[i] for i in idx]
 
 
+def resample_force_dict_sequence_by_time(
+    seq: List[Dict[str, float]], src_time: np.ndarray, target_time: np.ndarray
+) -> List[Dict[str, float]]:
+    if len(target_time) == 0:
+        return []
+    if len(seq) == 0:
+        return [{} for _ in range(len(target_time))]
+    if len(src_time) != len(seq):
+        raise ValueError(f"src_time length ({len(src_time)}) != seq length ({len(seq)})")
+    if len(src_time) == 1:
+        return [seq[0] for _ in range(len(target_time))]
+
+    src_time = np.asarray(src_time, dtype=float).reshape(-1)
+    target_time = np.asarray(target_time, dtype=float).reshape(-1)
+    right = np.searchsorted(src_time, target_time, side="left")
+    right = np.clip(right, 0, len(src_time) - 1)
+    left = np.clip(right - 1, 0, len(src_time) - 1)
+    choose_left = np.abs(target_time - src_time[left]) <= np.abs(src_time[right] - target_time)
+    idx = np.where(choose_left, left, right)
+    return [seq[i] for i in idx]
+
+
 def _extract_zone_force(tactile: Dict[str, float], zone: str) -> Tuple[float, float, float]:
     normal = float(tactile.get(f"{zone}_normal_force", 0.0))
     tangent = float(tactile.get(f"{zone}_tangential_force", 0.0))
@@ -960,6 +982,7 @@ def main():
     parser.add_argument("--start-frame", type=int, default=-1, help="Inclusive start frame id on the master timeline. <0 means no lower bound.")
     parser.add_argument("--end-frame", type=int, default=-1, help="Inclusive end frame id on the master timeline. <0 means no upper bound.")
     parser.add_argument("--arm_time_offset", type=float, default=0.09)
+    parser.add_argument("--tactile_time_offset", type=float, default=0.0)
     parser.add_argument("--show-cameras", type=str2bool, default=True, help="Show camera frustums in the same scene.")
     parser.add_argument("--camera-ids", type=str, default=None, help="Comma-separated camera IDs to visualize.")
     parser.add_argument("--camera-frustum-size", type=float, default=0.08, help="Camera frustum depth/size.")
@@ -987,7 +1010,7 @@ def main():
     
 
     if args.capture_root == None:
-        capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026", args.hand, args.object, str(args.ep))
+        capture_root = os.path.join("/home/capture13/shared_data/capture/eccv2026", "_" + args.hand, args.object, str(args.ep))
     else:
         capture_root = os.path.join(args.capture_root, args.object, str(args.ep))
         
@@ -1025,7 +1048,7 @@ def main():
     
     if args.hand == "inspire":
         hand_action, hand_time = load_series(hand_dir, ("position.npy", "action.npy"))
-    elif args.hand == "inspire_f1":
+    elif args.hand == "inspire_f1" or args.hand == "_inspire_f1":
         hand_action, hand_time = load_series(hand_dir, ("right_joint_states.npy",))
     elif args.hand == "allegro":
         hand_action, hand_time = load_series(hand_dir, ("position.npy", ))
@@ -1042,7 +1065,7 @@ def main():
     hand_action = resample_to(hand_time, hand_action, arm_time)
     if args.hand == "inspire":
         hand_qpos = inspire_action_to_qpos(hand_action)
-    elif args.hand == "inspire_f1":
+    elif args.hand == "inspire_f1" or args.hand == "_inspire_f1":
         hand_qpos = inspire_f1_action_to_qpos_dof6(hand_action)
     else:
         hand_qpos = hand_action
@@ -1052,11 +1075,20 @@ def main():
     tactile_seq = None
     tactile_force_seq = None
     tactile_index = None
+    tactile_time = None
     if args.visualize_tactile:
         tactile_path = os.path.join(hand_dir, "right_tactile.npy")
         if not os.path.exists(tactile_path):
             raise FileNotFoundError(f"Tactile file not found: {tactile_path}")
+        tactile_time_path = os.path.join(hand_dir, "right_tactile_time.npy")
+        if not os.path.exists(tactile_time_path):
+            raise FileNotFoundError(f"Tactile time file not found: {tactile_time_path}")
+
         tactile_payload = np.load(tactile_path, allow_pickle=True)
+        tactile_time = np.asarray(np.load(tactile_time_path, allow_pickle=True), dtype=float).reshape(-1)
+        tactile_time = tactile_time + args.tactile_time_offset
+        if len(tactile_time) == 0:
+            raise ValueError(f"Empty tactile timeline: {tactile_time_path}")
         try:
             tactile_force_seq = normalize_force_dict_sequence(tactile_payload)
         except Exception:
@@ -1111,16 +1143,20 @@ def main():
         obj_mesh = load_object_mesh(object_mesh_path)
         set_mesh_alpha(obj_mesh, args.object_alpha)
     if tactile_seq is not None:
-        n_tactile = min(len(hand_time), tactile_seq.shape[0])
+        n_tactile = min(len(tactile_time), tactile_seq.shape[0])
         tactile_i = resample_to(
-            np.asarray(hand_time[:n_tactile], dtype=float),
+            np.asarray(tactile_time[:n_tactile], dtype=float),
             np.asarray(tactile_seq[:n_tactile], dtype=float),
             video_times,
         )
     else:
         tactile_i = None
     tactile_force_i = (
-        resample_force_dict_sequence(tactile_force_seq, len(video_times))
+        resample_force_dict_sequence_by_time(
+            tactile_force_seq[: min(len(tactile_force_seq), len(tactile_time))],
+            np.asarray(tactile_time[: min(len(tactile_force_seq), len(tactile_time))], dtype=float),
+            video_times,
+        )
         if tactile_force_seq is not None
         else None
     )

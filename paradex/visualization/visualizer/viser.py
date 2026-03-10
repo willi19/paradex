@@ -447,7 +447,8 @@ class ViserViewer():
                 width=int(self.video_width.value),
             )
             output_path = render_dir / f"{timestep:05d}.jpeg"
-            cv2.imwrite(str(output_path), rendered_img)
+            rendered_img_bgr = cv2.cvtColor(rendered_img, cv2.COLOR_RGB2BGR)
+            cv2.imwrite(str(output_path), rendered_img_bgr)
         except Exception as e:
             print(f"Failed to render frame {timestep}: {e}")
 
@@ -496,8 +497,9 @@ class ViserViewer():
                 except Exception as e:
                     print(f"Failed to render frame {t}: {e}")
                     continue
-                cv2.imwrite(str(frames_dir / f"{t:05d}.jpeg"), rendered_img)
-                writer.write(rendered_img)
+                rendered_img_bgr = cv2.cvtColor(rendered_img, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(str(frames_dir / f"{t:05d}.jpeg"), rendered_img_bgr)
+                writer.write(rendered_img_bgr)
         finally:
             writer.release()
             self.gui_playing.value = prev_playing

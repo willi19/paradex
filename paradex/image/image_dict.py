@@ -55,7 +55,7 @@ class ImageDict:
         calib_dir = path if (path / "cam_param").exists() else None
         
         # Load images
-        images = {}
+        images = {} 
         
         for img_file in os.listdir(images_dir):
             if img_file.endswith(('.png', '.jpg', '.jpeg', '.bmp', '.tiff')):
@@ -65,8 +65,8 @@ class ImageDict:
                     images[serial] = img
         
         if not images:
-            raise ValueError(f"No images found in {path}")
-        
+            raise (f"No images found in {path}")
+        ValueError
         # Load calibration
         intrinsic = {}
         extrinsic = {}
@@ -394,7 +394,7 @@ class ImageDict:
         
         if points_3d.ndim == 1:
             points_3d = points_3d.reshape(1, 3)
-            
+        
         proj_points = {}
         for serial, proj_mtx in self._cache['proj_mtx'].items():
             homog_points = np.hstack((points_3d, np.ones((points_3d.shape[0], 1))))  # Nx4

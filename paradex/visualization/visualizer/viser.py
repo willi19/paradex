@@ -20,7 +20,7 @@ import tempfile
 from paradex.visualization.robot import RobotModule  
 
 class ViserViewer():
-    def __init__(self, up_direction=np.array([0,0,1])):
+    def __init__(self, up_direction=np.array([0,0,1]), port_number=8080):
         self.frame_nodes: dict[str, viser.FrameHandle] = {}
 
         self.up_direction = up_direction
@@ -36,7 +36,7 @@ class ViserViewer():
         # self.add_lights()
 
     def load_server(self):
-        self.server = viser.ViserServer()
+        self.server = viser.ViserServer(host="0.0.0.0", port=8080)
         self.server.gui.configure_theme(dark_mode=True)
 
         self.server.scene.set_up_direction(self.up_direction)
@@ -145,6 +145,7 @@ class ViserViewer():
         }
         
         self.frame_nodes[name] = frame_handle
+        return frame_handle
 
     def add_traj(self, name, robot_traj: Dict, obj_traj: Dict = {}):
         # if len(robot_traj) == 0:
@@ -395,8 +396,8 @@ class ViserViewer():
             show_axes=True,
             # axis_length=0.1,
             # axis_radius=0.002,
-            axes_length=0.05,
-            axes_radius=0.002,
+            axes_length=scale,
+            axes_radius=scale*0.04,
             position=T[:3, 3],
             wxyz=R.from_matrix(T[:3, :3]).as_quat()[[3, 0, 1, 2]],
         )

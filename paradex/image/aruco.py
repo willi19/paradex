@@ -186,6 +186,7 @@ def draw_aruco(img, kypt, ids=None, color=(255, 0, 0)):
 
         for i in range(4):
             cv2.circle(img, tuple(corner[i]), 5, color, -1)
+            
             cv2.putText(img, str(i), (corner[i][0] + 10, corner[i][1] - 10),
                         cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 255), 1)
 

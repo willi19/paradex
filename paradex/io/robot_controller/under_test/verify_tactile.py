@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch
 sys.modules['serial'] = MagicMock()
 
 # Add the directory to the path so we can import the module
-sys.path.append('/home/jisoo/data2/paradex/paradex/io/robot_controller/under_test')
+sys.path.append('/home/robot/paradex/paradex/io/robot_controller/under_test')
 
 from hand_rh56dftp import InspireHandRH56DFTP, RegisterRH56DFTP
 

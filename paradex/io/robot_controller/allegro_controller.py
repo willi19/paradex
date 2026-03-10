@@ -18,6 +18,7 @@ MAX_ANGLE = 2.1
 action_dof = 16
 
 DEFAULT_VAL = None
+JS_TO_CMD = [8, 6, 10, 3, 5, 2, 0, 1, 7, 15, 14, 12, 11, 13, 4, 9]
 
 class AllegroController(Node):
     def __init__(self):
@@ -37,21 +38,33 @@ class AllegroController(Node):
         self.action = np.zeros(action_dof, dtype=float)
         self.joint_value = np.zeros(action_dof, dtype=float)
 
+        self._executor = rclpy.executors.SingleThreadedExecutor()
+        self._executor.add_node(self)
+
+        self.spin_thread = Thread(target=self._spin_loop, daemon=True)
+        self.spin_thread.start()
+
         self.thread = Thread(target=self.control_loop, daemon=True)
         self.thread.start()
 
+    def _spin_loop(self):
+        while rclpy.ok() and not self.exit_event.is_set():
+            self._executor.spin_once(timeout_sec=0.1)
+
     def control_loop(self):
         # wait first joint state
-        while rclpy.ok() and not self.connection_event.is_set():
-            rclpy.spin_once(self, timeout_sec=0.01)  # 필수!
-            time.sleep(0.01)
-
         rate_hz = 100.0
         dt = 1.0 / rate_hz
 
         while rclpy.ok() and not self.exit_event.is_set():
+            if self.connection_event.wait(timeout=0.1):
+                break
+        
+        if not self.connection_event.is_set():
+            return
+        
+        while rclpy.ok() and not self.exit_event.is_set():
             start_time = time.perf_counter()
-
             with self.lock:
                 action = self.action.copy()
                 joint_value = self.joint_value.copy()
@@ -81,14 +94,21 @@ class AllegroController(Node):
     def end(self):
         self.exit_event.set()
         self.thread.join(timeout=1.0)
+        self.spin_thread.join(timeout=1.0)
+        try:
+            self._executor.remove_node(self)
+            self._executor.shutdown()
+        except Exception:
+            pass
+        
         if self.save_event.is_set():
             self.stop()
 
     def move(self, action):
-        action = np.asarray(action, dtype=float)
-        assert action.shape[0] == action_dof
+        action_np = np.asarray(action, dtype=float)
+        assert action_np.shape[0] == action_dof
         with self.lock:
-            self.action = action.copy()
+            self.action = action_np.copy()
 
     def _sub_callback_joint_state(self, msg: JointState):
         # JointState order must match controller's joint order.
@@ -138,7 +158,7 @@ class AllegroController(Node):
         """
         with self.lock:
             return {
-                'qpos': self.joint_value.copy(),
+                'qpos': self.joint_value[JS_TO_CMD],
                 'action': self.action.copy(),
                 'time': time.time()
             }

@@ -414,6 +414,7 @@ paradex/io/robot_controller/allegro_controller.py
 paradex/io/robot_controller/gui_controller copy.py
 paradex/io/robot_controller/gui_controller.py
 paradex/io/robot_controller/gui_controller_prev.py
+paradex/io/robot_controller/gui_controller_test.py
 paradex/io/robot_controller/inspire_controller.py
 paradex/io/robot_controller/xarm_controller.py
 paradex/io/robot_controller/deprecated/inspire_controller_ip.py
@@ -1187,4 +1188,3 @@ system/robothome/camera_config.json
 system/robothome/charuco_info.json
 system/robothome/network.json
 system/robothome/pc.json
-test/test_insys.py

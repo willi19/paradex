@@ -4,6 +4,7 @@ import os
 from typing import Dict, List, Tuple
 
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 THUMB_KEYS = ("thumb_2", "thumb_3", "thumb_4")
@@ -69,18 +70,76 @@ def collect_thumb_series(base_path: str, json_name: str) -> Tuple[List[int], Dic
     return xs, series
 
 
-def plot_thumb_series(xs: List[int], series: Dict[str, List[float]], output_path: str) -> None:
+def format_polynomial(coeffs: np.ndarray) -> str:
+    degree = len(coeffs) - 1
+    terms: List[str] = []
+
+    for idx, coeff in enumerate(coeffs):
+        power = degree - idx
+        if abs(coeff) < 1e-10:
+            continue
+
+        coeff_str = f"{abs(coeff):.4g}"
+        if power == 0:
+            term = coeff_str
+        elif power == 1:
+            term = f"{coeff_str}x"
+        else:
+            term = f"{coeff_str}x^{power}"
+
+        if not terms:
+            sign = "-" if coeff < 0 else ""
+        else:
+            sign = " - " if coeff < 0 else " + "
+
+        terms.append(f"{sign}{term}")
+
+    return "".join(terms) if terms else "0"
+
+
+def plot_thumb_series(
+    xs: List[int],
+    series: Dict[str, List[float]],
+    output_path: str,
+    show_window: bool,
+    fit_degree: int,
+) -> None:
     fig, axes = plt.subplots(3, 1, figsize=(10, 9), sharex=True)
+    xs_array = np.array(xs, dtype=float)
 
     for ax, key in zip(axes, THUMB_KEYS):
-        ax.plot(xs, series[key], marker="o", linewidth=1.5)
+        ys_array = np.array(series[key], dtype=float)
+        ax.plot(xs, ys_array, marker="o", markersize=2, linewidth=1.2, label="data")
+
+        equation = "fit unavailable"
+        if len(xs_array) >= 2:
+            effective_degree = min(fit_degree, len(xs_array) - 1)
+            coeffs = np.polyfit(xs_array, ys_array, deg=effective_degree)
+            fit_x = np.linspace(xs_array.min(), xs_array.max(), 300)
+            fit_y = np.polyval(coeffs, fit_x)
+            equation = f"y = {format_polynomial(coeffs)}"
+            ax.plot(fit_x, fit_y, linewidth=1.6, linestyle="--", label=f"poly fit ({effective_degree})")
+
+        ax.text(
+            0.01,
+            0.98,
+            equation,
+            transform=ax.transAxes,
+            va="top",
+            ha="left",
+            fontsize=8,
+            bbox={"facecolor": "white", "alpha": 0.7, "edgecolor": "none"},
+        )
         ax.set_ylabel(key)
         ax.grid(True, alpha=0.3)
         ax.set_title(key)
+        ax.legend(loc="best")
 
     axes[-1].set_xlabel("Episode Folder")
     fig.tight_layout()
     fig.savefig(output_path, dpi=200)
+    if show_window:
+        plt.show()
     plt.close(fig)
 
 
@@ -89,14 +148,25 @@ def main() -> None:
     parser.add_argument("--base-path", type=str, required=True)
     parser.add_argument("--json-name", type=str, default="lookup_thumb.json")
     parser.add_argument("--out-path", type=str, default=None)
+    parser.add_argument("--fit-degree", type=int, default=2)
+    parser.add_argument("--no-show", action="store_true")
     args = parser.parse_args()
+
+    if args.fit_degree < 1:
+        raise ValueError("--fit-degree must be at least 1")
 
     out_path = args.out_path
     if out_path is None:
         out_path = os.path.join(args.base_path, "thumb_lookup_plot.png")
 
     xs, series = collect_thumb_series(args.base_path, args.json_name)
-    plot_thumb_series(xs, series, out_path)
+    plot_thumb_series(
+        xs,
+        series,
+        out_path,
+        show_window=not args.no_show,
+        fit_degree=args.fit_degree,
+    )
     print(f"Saved plot to {out_path}")
 
 

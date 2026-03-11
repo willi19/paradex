@@ -23,6 +23,223 @@ from paradex.robot.inspire import inspire_action_to_qpos, inspire_f1_action_to_q
 # Suppress per-frame yourdfpy mimic-chain warnings (thumb_4 -> thumb_3 -> thumb_2).
 logging.getLogger("yourdfpy.urdf").setLevel(logging.ERROR)
 
+
+def _apply_transform_to_points(points: np.ndarray, transform: np.ndarray) -> np.ndarray:
+    ones = np.ones((points.shape[0], 1), dtype=np.float64)
+    points_h = np.concatenate([np.asarray(points, dtype=np.float64), ones], axis=1)
+    transformed = (np.asarray(transform, dtype=np.float64) @ points_h.T).T
+    return transformed[:, :3].astype(np.float32)
+
+
+def _list_mano_param_frames(mano_param_dir: str) -> np.ndarray:
+    if not os.path.isdir(mano_param_dir):
+        raise FileNotFoundError(f"MANO parameter directory not found: {mano_param_dir}")
+    frame_ids: List[int] = []
+    for name in os.listdir(mano_param_dir):
+        if not name.endswith(".json"):
+            continue
+        stem = os.path.splitext(name)[0]
+        if not stem.isdigit():
+            continue
+        frame_ids.append(int(stem))
+    if not frame_ids:
+        raise FileNotFoundError(f"No frame json files (e.g., 00001.json) found in: {mano_param_dir}")
+    return np.asarray(sorted(set(frame_ids)), dtype=int)
+
+
+def _build_mano():
+    try:
+        import torch
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            "torch is required for --hand mano. Install torch in this environment."
+        ) from e
+
+    try:
+        from hamer.hamer.models.mano_wrapper import MANO
+    except ModuleNotFoundError:
+        try:
+            from hamer.models.mano_wrapper import MANO
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError(
+                "MANO wrapper import failed. Ensure `hamer` is importable for --hand mano."
+            ) from e
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    repo_root = os.path.abspath(os.path.join(script_dir, "..", "..", "..", ".."))
+    data_root_candidates = [
+        os.environ.get("HAMER_DATA_DIR"),
+        os.path.join(repo_root, "hamer", "_DATA", "data"),
+        os.path.join(os.path.dirname(repo_root), "paradex_processing", "hamer", "_DATA", "data"),
+        os.path.join("/home", "capture14", "paradex_processing", "hamer", "_DATA", "data"),
+    ]
+    data_root = None
+    for cand in data_root_candidates:
+        if not cand:
+            continue
+        mano_dir = os.path.join(cand, "mano")
+        mean_params = os.path.join(cand, "mano_mean_params.npz")
+        if os.path.isdir(mano_dir) and os.path.exists(mean_params):
+            data_root = cand
+            break
+    if data_root is None:
+        raise FileNotFoundError(
+            "Could not find MANO data. Set HAMER_DATA_DIR or place files under "
+            "`hamer/_DATA/data` (expects `mano/` and `mano_mean_params.npz`)."
+        )
+
+    mano_cfg = {
+        "data_dir": data_root,
+        "model_path": os.path.join(data_root, "mano"),
+        "gender": "male",
+        "num_hand_joints": 15,
+        "mean_params": os.path.join(data_root, "mano_mean_params.npz"),
+        "create_body_pose": False,
+    }
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    mano = MANO(**mano_cfg).to(device)
+    return torch, mano, device
+
+
+def _get_extended_mano_faces(mano) -> np.ndarray:
+    faces = mano.faces
+    faces_new = np.array(
+        [
+            [92, 38, 234],
+            [234, 38, 239],
+            [38, 122, 239],
+            [239, 122, 279],
+            [122, 118, 279],
+            [279, 118, 215],
+            [118, 117, 215],
+            [215, 117, 214],
+            [117, 119, 214],
+            [214, 119, 121],
+            [119, 120, 121],
+            [121, 120, 78],
+            [120, 108, 78],
+            [78, 108, 79],
+        ],
+        dtype=np.int32,
+    )
+    return np.concatenate([faces, faces_new], axis=0)
+
+
+def _ensure_global_orient(x: np.ndarray) -> np.ndarray:
+    arr = np.asarray(x, dtype=np.float32)
+    if arr.shape == (3, 3):
+        arr = arr[None, None, :, :]
+    elif arr.shape == (1, 3, 3):
+        arr = arr[None, :, :, :]
+    elif arr.shape != (1, 1, 3, 3):
+        raise ValueError(f"Unsupported global_orient shape: {arr.shape}")
+    return arr
+
+
+def _ensure_hand_pose(x: np.ndarray) -> np.ndarray:
+    arr = np.asarray(x, dtype=np.float32)
+    if arr.shape == (15, 3, 3):
+        arr = arr[None, :, :, :]
+    elif arr.shape != (1, 15, 3, 3):
+        raise ValueError(f"Unsupported hand_pose shape: {arr.shape}")
+    return arr
+
+
+def _ensure_transl(x: np.ndarray) -> np.ndarray:
+    arr = np.asarray(x, dtype=np.float32)
+    if arr.shape == (3,):
+        arr = arr[None, :]
+    elif arr.shape != (1, 3):
+        raise ValueError(f"Unsupported transl shape: {arr.shape}")
+    return arr
+
+
+def _load_mano_vertices_from_json(json_path: str, torch_mod, mano, device) -> np.ndarray:
+    with open(json_path, "r", encoding="utf-8") as f:
+        payload = json.load(f)
+    if "fit" not in payload:
+        raise KeyError(f"'fit' key not found in: {json_path}")
+    fit = payload["fit"]
+
+    global_orient = torch_mod.tensor(
+        _ensure_global_orient(fit["global_orient"]), dtype=torch_mod.float32, device=device
+    )
+    hand_pose = torch_mod.tensor(
+        _ensure_hand_pose(fit["hand_pose"]), dtype=torch_mod.float32, device=device
+    )
+    transl = torch_mod.tensor(_ensure_transl(fit["transl"]), dtype=torch_mod.float32, device=device)
+    betas = torch_mod.tensor(np.asarray(fit["betas"], dtype=np.float32), dtype=torch_mod.float32, device=device)
+    if betas.ndim == 1:
+        betas = betas.unsqueeze(0)
+
+    with torch_mod.no_grad():
+        output = mano.forward(
+            global_orient=global_orient.float(),
+            hand_pose=hand_pose.float(),
+            betas=betas.float(),
+            transl=transl.float(),
+            pose2rot=False,
+            use_pca=False,
+        )
+    return output.vertices[0].detach().cpu().numpy().astype(np.float32)
+
+
+def _make_canonical_mano_vertices(torch_mod, mano, device) -> np.ndarray:
+    eye = torch_mod.eye(3, dtype=torch_mod.float32, device=device)
+    global_orient = eye.view(1, 1, 3, 3).clone()
+    hand_pose = eye.view(1, 1, 3, 3).repeat(1, 15, 1, 1).clone()
+    betas = torch_mod.zeros((1, 10), dtype=torch_mod.float32, device=device)
+    transl = torch_mod.zeros((1, 3), dtype=torch_mod.float32, device=device)
+    with torch_mod.no_grad():
+        output = mano.forward(
+            global_orient=global_orient.float(),
+            hand_pose=hand_pose.float(),
+            betas=betas.float(),
+            transl=transl.float(),
+            pose2rot=False,
+            use_pca=False,
+        )
+    return output.vertices[0].detach().cpu().numpy().astype(np.float32)
+
+
+def _compute_min_vertex_distances(
+    src_vertices: np.ndarray,
+    dst_vertices: np.ndarray,
+    src_chunk: int = 2048,
+    dst_chunk: int = 8192,
+) -> np.ndarray:
+    if src_vertices.ndim != 2 or src_vertices.shape[1] != 3:
+        raise ValueError(f"Expected src vertices shape (N,3), got {src_vertices.shape}")
+    if dst_vertices.ndim != 2 or dst_vertices.shape[1] != 3:
+        raise ValueError(f"Expected dst vertices shape (M,3), got {dst_vertices.shape}")
+
+    out = np.full((src_vertices.shape[0],), np.inf, dtype=np.float32)
+    for src_start in range(0, src_vertices.shape[0], src_chunk):
+        src_stop = min(src_start + src_chunk, src_vertices.shape[0])
+        src_chunk_vertices = src_vertices[src_start:src_stop].astype(np.float32, copy=False)
+        best_sq = np.full((src_chunk_vertices.shape[0],), np.inf, dtype=np.float32)
+        for dst_start in range(0, dst_vertices.shape[0], dst_chunk):
+            dst_stop = min(dst_start + dst_chunk, dst_vertices.shape[0])
+            dst_chunk_vertices = dst_vertices[dst_start:dst_stop].astype(np.float32, copy=False)
+            diff = src_chunk_vertices[:, None, :] - dst_chunk_vertices[None, :, :]
+            dist_sq = np.sum(diff * diff, axis=2)
+            best_sq = np.minimum(best_sq, np.min(dist_sq, axis=1))
+        out[src_start:src_stop] = np.sqrt(best_sq)
+    return out
+
+
+def _build_contact_colors(distances: np.ndarray, clip_distance: float) -> np.ndarray:
+    clip_distance = max(float(clip_distance), 1e-6)
+    normalized = np.clip(np.asarray(distances, dtype=np.float32) / clip_distance, 0.0, 1.0)
+    x = 1.0 - normalized
+    r = np.clip(1.5 - np.abs(4.0 * x - 3.0), 0.0, 1.0)
+    g = np.clip(1.5 - np.abs(4.0 * x - 2.0), 0.0, 1.0)
+    b = np.clip(1.5 - np.abs(4.0 * x - 1.0), 0.0, 1.0)
+    rgb = np.stack([r, g, b], axis=1) * 255.0
+    alpha = np.full((distances.shape[0], 1), 255, dtype=np.uint8)
+    return np.concatenate([rgb.astype(np.uint8), alpha], axis=1)
+
+
 def str2bool(v):
     if isinstance(v, bool):
         return v
@@ -812,6 +1029,14 @@ def _set_robot_arm_visibility(vis: ViserViewer, robot_name: str, visible: bool) 
             mesh_handle.visible = visible
 
 
+def _set_robot_all_visibility(vis: ViserViewer, robot_name: str, visible: bool) -> None:
+    robot = vis.robot_dict.get(robot_name)
+    if robot is None or not hasattr(robot, "_meshes"):
+        return
+    for _, mesh_handle in robot._meshes.items():
+        mesh_handle.visible = visible
+
+
 def _set_robot_hand_opacity(vis: ViserViewer, robot_name: str, opacity: float) -> None:
     robot = vis.robot_dict.get(robot_name)
     if robot is None or not hasattr(robot, "_meshes"):
@@ -826,6 +1051,15 @@ def _set_robot_hand_opacity(vis: ViserViewer, robot_name: str, opacity: float) -
 
 
 TACTILE_ARROW_RGBA = np.array([255, 0, 0, 255], dtype=np.uint8)
+ARM_LINK_NAMES = {
+    "base.obj",
+    "link1.obj",
+    "link2.obj",
+    "link3.obj",
+    "link4.obj",
+    "link5.obj",
+    "link6.obj",
+}
 
 
 def load_local_link_meshes_from_urdf(
@@ -955,6 +1189,32 @@ def get_mesh(robot_module: RobotModule, state):
     return out
 
 
+def get_all_robot_link_names(robot_module: RobotModule) -> list[str]:
+    return [link_name for link_name in robot_module.scene.geometry.keys() if link_name != "world"]
+
+
+def get_non_arm_link_names(robot_module: RobotModule) -> list[str]:
+    return [link_name for link_name in get_all_robot_link_names(robot_module) if link_name not in ARM_LINK_NAMES]
+
+
+def build_robot_hand_mesh(robot_module: RobotModule, state: np.ndarray, hand_link_names: list[str]) -> trimesh.Trimesh:
+    robot_module.update_cfg(state)
+    scene = robot_module.scene
+    meshes = []
+    for link_name in hand_link_names:
+        mesh = scene.geometry.get(link_name)
+        if mesh is None:
+            continue
+        transform = scene.graph.get(link_name)[0]
+        link_mesh = mesh.copy()
+        link_mesh.apply_transform(transform)
+        meshes.append(link_mesh)
+
+    if not meshes:
+        raise ValueError("No robot hand meshes found in URDF scene")
+    return trimesh.util.concatenate(meshes)
+
+
 def build_link_color_map(urdf_path: str) -> Dict[str, np.ndarray]:
     urdf = yourdfpy.URDF.load(urdf_path)
     link_colors = {}
@@ -1031,13 +1291,56 @@ def main():
     parser.add_argument("--gaussian-ply", type=str, default=None, help="Single static gaussian PLY.")
     parser.add_argument("--gaussian-point-size", type=float, default=0.0015, help="Point size for gaussian cloud rendering.")
     parser.add_argument("--gaussian-max-points", type=int, default=150000, help="Max points per gaussian frame (0 means no limit).")
+    parser.add_argument(
+        "--mano-dir-name",
+        type=str,
+        default="single_frame_fit_warm_start_one_euro",
+        help="Directory under capture_root containing per-frame MANO json parameters (00001.json ...).",
+    )
+    parser.add_argument(
+        "--compute-contact",
+        action="store_true",
+        help="Compute hand/object vertex distances and apply contact heatmap coloring.",
+    )
+    parser.add_argument(
+        "--show-hand",
+        action="store_true",
+        help="When --compute-contact, show canonical hand contact colors.",
+    )
+    parser.add_argument(
+        "--show-object",
+        action="store_true",
+        help="When --compute-contact, show canonical object contact colors.",
+    )
+    parser.add_argument(
+        "--mano-distance-clip",
+        type=float,
+        default=0.02,
+        help="Distance (meters) mapped to coldest color for MANO contact visualization.",
+    )
+    parser.add_argument(
+        "--mano-canonical-separation",
+        type=float,
+        default=0.35,
+        help="X-axis separation between canonical hand and object views.",
+    )
     args = parser.parse_args()
     object_name = args.object
 
-    
-
     if args.capture_root == None:
-        capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026", args.hand, args.object, str(args.ep))
+        if args.hand == "mano":
+            hand_candidates = ("_inspire_f1", "inspire_f1", "_allegro", "allegro", "inspire")
+            capture_root = None
+            for hand_name in hand_candidates:
+                candidate = os.path.join("/home/temp_id/shared_data/capture/eccv2026", hand_name, args.object, str(args.ep))
+                if os.path.isdir(candidate):
+                    capture_root = candidate
+                    break
+            if capture_root is None:
+                capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026", "_inspire_f1", args.object, str(args.ep))
+                print(f"[WARN] Could not auto-find capture root for --hand mano, fallback: {capture_root}")
+        else:
+            capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026", args.hand, args.object, str(args.ep))
     else:
         capture_root = os.path.join(args.capture_root, args.object, str(args.ep))
     
@@ -1060,7 +1363,7 @@ def main():
     frame_id_path = os.path.join(data_root, "timestamps", "frame_id.npy")
 
     if args.object_mesh is None:
-        object_mesh_path = os.path.join(shared_dir, "mesh", args.object, f"{args.object}.obj")
+        object_mesh_path = os.path.join(shared_dir, "mesh_blender", args.object, f"{args.object}.obj")
     else:
         object_mesh_path = args.object_mesh
 
@@ -1071,36 +1374,38 @@ def main():
     c2r = np.load(c2r_path)
     r2c = np.linalg.inv(c2r)
 
-    arm_qpos, arm_time = load_series(arm_dir, ("position.npy", "action_qpos.npy", "action.npy"))
-    # hand_action, hand_time = load_series(hand_dir, ("action.npy", "position.npy"))
-    
-    arm_time = arm_time + args.arm_time_offset
-    
-    if args.hand == "inspire":
-        hand_action, hand_time = load_series(hand_dir, ("position.npy", "action.npy"))
-    elif args.hand == "inspire_f1" or args.hand == "_inspire_f1":
-        hand_action, hand_time = load_series(hand_dir, ("right_joint_states.npy",))
-    elif args.hand == "allegro":
-        hand_action, hand_time = load_series(hand_dir, ("position.npy", ))
+    is_mano = args.hand == "mano"
+    arm_time = None
+    qpos_video = None
+    if not is_mano:
+        arm_qpos, arm_time = load_series(arm_dir, ("position.npy", "action_qpos.npy", "action.npy"))
+        arm_time = arm_time + args.arm_time_offset
 
-    # Some datasets only store right_joint_states without hand timestamps.
-    # In that case, align hand timeline to arm time range before resampling.
-    hand_time_path = os.path.join(hand_dir, "time.npy")
-    if not os.path.exists(hand_time_path):
-        if len(arm_time) > 1:
-            hand_time = np.linspace(arm_time[0], arm_time[-1], hand_action.shape[0], dtype=float)
+        if args.hand == "inspire":
+            hand_action, hand_time = load_series(hand_dir, ("position.npy", "action.npy"))
+        elif args.hand == "inspire_f1" or args.hand == "_inspire_f1":
+            hand_action, hand_time = load_series(hand_dir, ("right_joint_states.npy",))
+        elif args.hand == "allegro":
+            hand_action, hand_time = load_series(hand_dir, ("position.npy", ))
         else:
-            hand_time = np.arange(hand_action.shape[0], dtype=float)
+            raise ValueError(f"Invalid hand name: {args.hand}")
 
-    hand_action = resample_to(hand_time, hand_action, arm_time)
-    if args.hand == "inspire":
-        hand_qpos = inspire_action_to_qpos(hand_action)
-    elif args.hand == "inspire_f1" or args.hand == "_inspire_f1":
-        hand_qpos = inspire_f1_action_to_qpos_dof6(hand_action)
-    else:
-        hand_qpos = hand_action
+        hand_time_path = os.path.join(hand_dir, "time.npy")
+        if not os.path.exists(hand_time_path):
+            if len(arm_time) > 1:
+                hand_time = np.linspace(arm_time[0], arm_time[-1], hand_action.shape[0], dtype=float)
+            else:
+                hand_time = np.arange(hand_action.shape[0], dtype=float)
 
-    full_qpos = np.concatenate([arm_qpos, hand_qpos], axis=1)
+        hand_action = resample_to(hand_time, hand_action, arm_time)
+        if args.hand == "inspire":
+            hand_qpos = inspire_action_to_qpos(hand_action)
+        elif args.hand == "inspire_f1" or args.hand == "_inspire_f1":
+            hand_qpos = inspire_f1_action_to_qpos_dof6(hand_action)
+        else:
+            hand_qpos = hand_action
+
+        full_qpos = np.concatenate([arm_qpos, hand_qpos], axis=1)
 
     tactile_seq = None
     tactile_force_seq = None
@@ -1146,14 +1451,25 @@ def main():
     
     
     if os.path.exists(timestamp_path) and os.path.exists(frame_id_path):
-        video_times = np.load(timestamp_path)
-        video_frame_ids = np.load(frame_id_path)
-        qpos_video = resample_to(arm_time, full_qpos, video_times)
+        video_times = np.asarray(np.load(timestamp_path), dtype=float)
+        video_frame_ids = np.asarray(np.load(frame_id_path), dtype=int)
+        if not is_mano:
+            qpos_video = resample_to(arm_time, full_qpos, video_times)
     else:
-        video_times = arm_time
-        video_frame_ids = np.arange(1, full_qpos.shape[0] + 1, dtype=int)
-        qpos_video = full_qpos
-    if args.frame_offset != 0:
+        if is_mano:
+            if obj_pose_frame_ids is not None and len(obj_pose_frame_ids) > 0:
+                video_frame_ids = obj_pose_frame_ids.astype(int)
+                video_times = np.arange(len(video_frame_ids), dtype=float)
+            else:
+                raise FileNotFoundError(
+                    "timestamp/frame_id not found and object trajectory frames unavailable. "
+                    "For --hand mano, object trajectory directory is required."
+                )
+        else:
+            video_times = arm_time
+            video_frame_ids = np.arange(1, full_qpos.shape[0] + 1, dtype=int)
+            qpos_video = full_qpos
+    if (not is_mano) and args.frame_offset != 0:
         shifted = np.zeros_like(qpos_video)
         max_idx = len(qpos_video) - 1
         for i in range(len(qpos_video)):
@@ -1200,7 +1516,8 @@ def main():
 
     video_times = video_times[frame_mask]
     video_frame_ids = video_frame_ids[frame_mask]
-    qpos_video = qpos_video[frame_mask]
+    if qpos_video is not None:
+        qpos_video = qpos_video[frame_mask]
     if tactile_i is not None:
         tactile_i = tactile_i[frame_mask]
     if tactile_force_i is not None:
@@ -1219,25 +1536,27 @@ def main():
             obj_traj = np.einsum("ij,tjk->tik", r2c, obj_traj_world)
         obj_mesh = load_object_mesh(object_mesh_path)
         set_mesh_alpha(obj_mesh, args.object_alpha)
-    if args.hand == "inspire_f1":
-        urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_right.urdf")
-    elif args.hand == "allegro":
-        urdf_path = "/home/temp_id/paradex/rsc/robot/xarm_allegro.urdf"
-    elif args.hand == "inspire":
-        urdf_path = "/home/temp_id/paradex/rsc/robot/xarm_inspire_DFTP.urdf"
-    else:
-        raise ValueError("Invalid hand name")
-    
-    link_color_map = build_link_color_map(urdf_path)
-    tactile_robot = RobotModule(urdf_path) if args.visualize_tactile else None
+    urdf_path = None
+    if not is_mano:
+        if args.hand == "inspire_f1":
+            urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_right.urdf")
+        elif args.hand == "allegro":
+            urdf_path = "/home/temp_id/paradex/rsc/robot/xarm_allegro.urdf"
+        elif args.hand == "inspire":
+            urdf_path = "/home/temp_id/paradex/rsc/robot/xarm_inspire_DFTP.urdf"
+        else:
+            raise ValueError("Invalid hand name")
+
+    link_color_map = build_link_color_map(urdf_path) if urdf_path is not None else {}
+    tactile_robot = RobotModule(urdf_path) if (args.visualize_tactile and urdf_path is not None) else None
     zone_arrow_color: Dict[str, np.ndarray] = {}
     robot_link_rgba: Dict[str, np.ndarray] = {}
     sensor_frames: Dict[str, SensorFrame] = {}
-    if args.visualize_tactile:
+    if args.visualize_tactile and urdf_path is not None:
         all_local_meshes_by_link = load_local_link_meshes_from_urdf(urdf_path)
         robot_link_rgba = {ln: _infer_mesh_color(tm) for ln, tm in all_local_meshes_by_link.items()}
 
-    if args.visualize_tactile and tactile_force_i is not None:
+    if args.visualize_tactile and tactile_force_i is not None and urdf_path is not None:
         required_links = set(ZONE_TO_LINK.values())
         local_meshes_by_link = load_local_link_meshes_from_urdf(urdf_path, required_links=required_links)
         sensor_frames = _build_sensor_frames_from_local_mesh(local_meshes_by_link, ZONE_TO_LINK)
@@ -1259,17 +1578,22 @@ def main():
     vis = ViserViewer(scene_title = f"{args.hand}_{args.object}")
     
     vis.add_floor(height=0.0)
-    vis.add_robot("robot", urdf_path)
-    if robot_link_rgba:
-        _apply_robot_mesh_colors(vis, "robot", robot_link_rgba)
-    if args.hand_alpha < 0.999:
-        _set_robot_hand_opacity(vis, "robot", args.hand_alpha)
-    if args.transparent_robot:
-        _set_robot_arm_visibility(vis, "robot", False)
+    if not is_mano:
+        vis.add_robot("robot", urdf_path)
+        if robot_link_rgba:
+            _apply_robot_mesh_colors(vis, "robot", robot_link_rgba)
+        if args.hand_alpha < 0.999:
+            _set_robot_hand_opacity(vis, "robot", args.hand_alpha)
+        if args.transparent_robot:
+            _set_robot_arm_visibility(vis, "robot", False)
+        if args.compute_contact:
+            _set_robot_all_visibility(vis, "robot", False)
     if obj_mesh is not None and obj_traj is not None:
         vis.add_object(object_name, obj_mesh, obj_traj[0], opacity=args.object_alpha)
         if object_name in vis.obj_dict:
             vis.obj_dict[object_name]["frame"].show_axes = False
+        if args.compute_contact and object_name in vis.obj_dict:
+            vis.obj_dict[object_name]["handle"].visible = False
     camera_handles = {}
     camera_image_root = None
     if args.show_cameras:
@@ -1296,7 +1620,73 @@ def main():
             selected_ids=selected_camera_ids,
         )
         print(f"[INFO] camera visualization added={n_added}, skipped={n_skipped}")
-    vis.add_traj("traj", {"robot": qpos_video}, {object_name: obj_traj} if obj_traj is not None else {})
+    mano_faces = None
+    mano_param_dir = None
+    mano_frame_offset = 0
+    mano_frame_by_timestep: Optional[np.ndarray] = None
+    mano_cache: Dict[int, np.ndarray] = {}
+    mano_mesh_handle = None
+    mano_contact_object_handle = None
+    canonical_hand_handle = None
+    canonical_object_handle = None
+    torch_mod = None
+    mano_model = None
+    mano_device = None
+    canonical_hand_vertices = None
+    robot_contact_module = None
+    robot_contact_hand_links: List[str] = []
+    robot_contact_hand_handle = None
+    robot_contact_object_handle = None
+    robot_canonical_hand_handle = None
+    robot_canonical_object_handle = None
+    robot_canonical_hand_vertices = None
+    robot_canonical_hand_faces = None
+    if is_mano:
+        if not args.visualize_object or obj_pose_frame_ids is None:
+            raise ValueError("--hand mano requires --visualize-object with sequence_refine_output/refined_world_poses.")
+        mano_param_dir = os.path.join(capture_root, args.mano_dir_name)
+        mano_frame_ids = _list_mano_param_frames(mano_param_dir)
+        mapped_frames = video_frame_ids + mano_frame_offset
+        valid = np.isin(mapped_frames, mano_frame_ids)
+        if not np.any(valid):
+            raise ValueError(
+                f"No overlapping frames between object frames and MANO params (offset={mano_frame_offset}). "
+                f"object range={int(video_frame_ids.min())}..{int(video_frame_ids.max())}, "
+                f"mano range={int(mano_frame_ids.min())}..{int(mano_frame_ids.max())}"
+            )
+        if np.count_nonzero(~valid) > 0:
+            print(f"[WARN] Dropping {int(np.count_nonzero(~valid))} frames without MANO json after offset={mano_frame_offset}.")
+            video_times = video_times[valid]
+            video_frame_ids = video_frame_ids[valid]
+            mapped_frames = mapped_frames[valid]
+            if obj_traj is not None:
+                obj_traj = obj_traj[valid]
+        mano_frame_by_timestep = mapped_frames.astype(int)
+        torch_mod, mano_model, mano_device = _build_mano()
+        mano_faces = _get_extended_mano_faces(mano_model)
+        if args.compute_contact and (args.show_hand or args.show_object):
+            canonical_hand_vertices = _make_canonical_mano_vertices(torch_mod, mano_model, mano_device)
+        print(
+            f"[INFO] MANO mapping: object_frame -> mano_frame = object_frame + {mano_frame_offset} "
+            f"(object {int(video_frame_ids[0])}..{int(video_frame_ids[-1])}, "
+            f"mano {int(mano_frame_by_timestep[0])}..{int(mano_frame_by_timestep[-1])})"
+        )
+    elif args.compute_contact:
+        if not args.visualize_object or obj_traj is None or obj_mesh is None:
+            raise ValueError("--compute-contact for robot requires --visualize-object and valid object trajectory.")
+        robot_contact_module = RobotModule(urdf_path)
+        robot_contact_hand_links = get_non_arm_link_names(robot_contact_module)
+        if len(robot_contact_hand_links) == 0:
+            raise ValueError("No non-arm links found for robot contact computation.")
+        if args.show_hand:
+            zero_state = np.zeros((robot_contact_module.get_num_joints(),), dtype=float)
+            canonical_hand_mesh = build_robot_hand_mesh(robot_contact_module, zero_state, robot_contact_hand_links)
+            robot_canonical_hand_vertices = np.asarray(canonical_hand_mesh.vertices, dtype=np.float32)
+            robot_canonical_hand_faces = np.asarray(canonical_hand_mesh.faces, dtype=np.int32)
+
+    traj_len = len(video_times)
+    dummy_timeline = np.zeros((traj_len, 1), dtype=float)
+    vis.add_traj("traj", {"timeline": dummy_timeline} if is_mano else {"robot": qpos_video}, {object_name: obj_traj} if obj_traj is not None else {})
 
     gaussian_paths: List[str] = []
     gaussian_by_frame: Dict[int, str] = {}
@@ -1317,6 +1707,7 @@ def main():
     # Wrap the viewer's update to inject tactile arrows per frame.
     original_update_scene = vis.update_scene
     camera_last_frame: Dict[str, int] = {}
+    canonical_only = bool(args.compute_contact and (args.show_hand or args.show_object))
 
     def update_scene_with_tactile(timestep):
         original_update_scene(timestep)
@@ -1377,85 +1768,273 @@ def main():
                     print(f"[WARN] failed to load gaussian PLY '{ply_path}': {e}")
 
         if not args.visualize_tactile:
-            return
-        q = qpos_video[t]
-        tactile_robot.update_cfg(q[: tactile_robot.get_num_joints()])
+            pass
+        elif tactile_robot is None or qpos_video is None:
+            pass
+        else:
+            q = qpos_video[t]
+            tactile_robot.update_cfg(q[: tactile_robot.get_num_joints()])
 
         with vis.server.atomic():
-            if tactile_force_i is not None and sensor_frames:
-                tactile_force = tactile_force_i[t]
-                for zone, sensor in sensor_frames.items():
-                    try:
-                        link_pose = tactile_robot.get_transform(
-                            sensor.link_name, tactile_robot.urdf.base_link, collision_geometry=False
-                        )
-                    except Exception:
-                        continue
-                    anchor, normal, tx, ty = _world_sensor_frame(sensor, link_pose)
-                    vis_normal = -normal
-                    normal_force, tangential_force, tangential_deg = _extract_zone_force(tactile_force, zone)
+            if is_mano and mano_frame_by_timestep is not None and mano_faces is not None:
+                nonlocal mano_mesh_handle, mano_contact_object_handle, canonical_hand_handle, canonical_object_handle
+                mano_frame_id = int(mano_frame_by_timestep[t])
+                if mano_frame_id not in mano_cache:
+                    mano_json = os.path.join(mano_param_dir, f"{mano_frame_id:05d}.json")
+                    if not os.path.exists(mano_json):
+                        raise FileNotFoundError(f"MANO json not found: {mano_json}")
+                    verts = _load_mano_vertices_from_json(mano_json, torch_mod, mano_model, mano_device)
+                    verts = _apply_transform_to_points(verts, r2c)
+                    mano_cache[mano_frame_id] = verts
 
-                    normal_len = (
-                        np.clip(normal_force / args.max_normal_force, 0.0, 1.0)
-                        * args.max_arrow_len
+                hand_vertices = mano_cache[mano_frame_id]
+                mano_mesh = trimesh.Trimesh(vertices=hand_vertices, faces=mano_faces, process=False)
+                set_mesh_alpha(mano_mesh, args.hand_alpha)
+
+                if (
+                    args.compute_contact
+                    and obj_mesh is not None
+                    and obj_traj is not None
+                    and t < len(obj_traj)
+                ):
+                    object_vertices = _apply_transform_to_points(np.asarray(obj_mesh.vertices), obj_traj[t])
+                    hand_dist = _compute_min_vertex_distances(hand_vertices, object_vertices)
+                    object_dist = _compute_min_vertex_distances(object_vertices, hand_vertices)
+                    hand_colors = _build_contact_colors(hand_dist, args.mano_distance_clip)
+                    object_colors = _build_contact_colors(object_dist, args.mano_distance_clip)
+
+                    mano_mesh.visual = trimesh.visual.ColorVisuals(
+                        mesh=mano_mesh,
+                        vertex_colors=hand_colors,
                     )
-                    normal_vec = vis_normal * normal_len
-                    tangential_vec = np.zeros(3, dtype=np.float64)
-                    if tangential_deg >= 0.0 and tangential_force > 0.0:
-                        theta = np.deg2rad(tangential_deg)
-                        tangential_dir = np.cos(theta) * tx + np.sin(theta) * ty
-                        tangential_dir = _safe_normalize(
-                            tangential_dir, np.array([1.0, 0.0, 0.0], dtype=np.float64)
+
+                    posed_object_mesh = trimesh.Trimesh(
+                        vertices=object_vertices,
+                        faces=np.asarray(obj_mesh.faces),
+                        process=False,
+                    )
+                    posed_object_mesh.visual = trimesh.visual.ColorVisuals(
+                        mesh=posed_object_mesh,
+                        vertex_colors=object_colors,
+                    )
+                    if not canonical_only:
+                        if mano_contact_object_handle is not None:
+                            mano_contact_object_handle.remove()
+                        mano_contact_object_handle = vis.server.scene.add_mesh_trimesh(
+                            "/mano/contact_object", posed_object_mesh
                         )
-                        tangential_len = (
-                            np.clip(tangential_force / args.max_tangential_force, 0.0, 1.0)
+
+                    if (args.show_hand or args.show_object) and canonical_hand_vertices is not None:
+                        sep = float(args.mano_canonical_separation) * 0.5
+                        if args.show_hand:
+                            canonical_hand_mesh = trimesh.Trimesh(
+                                vertices=np.asarray(canonical_hand_vertices) + np.array([-sep, 0.0, 0.0], dtype=np.float32),
+                                faces=mano_faces,
+                                process=False,
+                            )
+                            canonical_hand_mesh.visual = trimesh.visual.ColorVisuals(
+                                mesh=canonical_hand_mesh,
+                                vertex_colors=hand_colors,
+                            )
+                            if canonical_hand_handle is not None:
+                                canonical_hand_handle.remove()
+                            canonical_hand_handle = vis.server.scene.add_mesh_trimesh(
+                                "/mano/canonical_hand", canonical_hand_mesh
+                            )
+                        elif canonical_hand_handle is not None:
+                            canonical_hand_handle.remove()
+                            canonical_hand_handle = None
+
+                        if args.show_object:
+                            canonical_object_mesh = trimesh.Trimesh(
+                                vertices=np.asarray(obj_mesh.vertices, dtype=np.float32) + np.array([sep, 0.0, 0.0], dtype=np.float32),
+                                faces=np.asarray(obj_mesh.faces),
+                                process=False,
+                            )
+                            canonical_object_mesh.visual = trimesh.visual.ColorVisuals(
+                                mesh=canonical_object_mesh,
+                                vertex_colors=object_colors,
+                            )
+                            if canonical_object_handle is not None:
+                                canonical_object_handle.remove()
+                            canonical_object_handle = vis.server.scene.add_mesh_trimesh(
+                                "/mano/canonical_object", canonical_object_mesh
+                            )
+                        elif canonical_object_handle is not None:
+                            canonical_object_handle.remove()
+                            canonical_object_handle = None
+
+                if not canonical_only:
+                    if mano_mesh_handle is not None:
+                        mano_mesh_handle.remove()
+                    mano_mesh_handle = vis.server.scene.add_mesh_trimesh("/mano/hand", mano_mesh)
+            elif (
+                (not is_mano)
+                and args.compute_contact
+                and robot_contact_module is not None
+                and qpos_video is not None
+                and obj_traj is not None
+                and obj_mesh is not None
+            ):
+                nonlocal robot_contact_hand_handle, robot_contact_object_handle
+                nonlocal robot_canonical_hand_handle, robot_canonical_object_handle
+                joint_num = robot_contact_module.get_num_joints()
+                state = np.asarray(qpos_video[t][:joint_num], dtype=float)
+                posed_hand_mesh = build_robot_hand_mesh(robot_contact_module, state, robot_contact_hand_links)
+                posed_hand_vertices = np.asarray(posed_hand_mesh.vertices, dtype=np.float32)
+                posed_object_vertices = _apply_transform_to_points(np.asarray(obj_mesh.vertices), obj_traj[t])
+
+                hand_dist = _compute_min_vertex_distances(posed_hand_vertices, posed_object_vertices)
+                object_dist = _compute_min_vertex_distances(posed_object_vertices, posed_hand_vertices)
+                hand_colors = _build_contact_colors(hand_dist, args.mano_distance_clip)
+                object_colors = _build_contact_colors(object_dist, args.mano_distance_clip)
+
+                posed_hand_mesh.visual = trimesh.visual.ColorVisuals(
+                    mesh=posed_hand_mesh,
+                    vertex_colors=hand_colors,
+                )
+                set_mesh_alpha(posed_hand_mesh, args.hand_alpha)
+                if not canonical_only:
+                    if robot_contact_hand_handle is not None:
+                        robot_contact_hand_handle.remove()
+                    robot_contact_hand_handle = vis.server.scene.add_mesh_trimesh(
+                        "/robot_contact/hand", posed_hand_mesh
+                    )
+
+                posed_object_mesh = trimesh.Trimesh(
+                    vertices=posed_object_vertices,
+                    faces=np.asarray(obj_mesh.faces),
+                    process=False,
+                )
+                posed_object_mesh.visual = trimesh.visual.ColorVisuals(
+                    mesh=posed_object_mesh,
+                    vertex_colors=object_colors,
+                )
+                set_mesh_alpha(posed_object_mesh, args.object_alpha)
+                if not canonical_only:
+                    if robot_contact_object_handle is not None:
+                        robot_contact_object_handle.remove()
+                    robot_contact_object_handle = vis.server.scene.add_mesh_trimesh(
+                        "/robot_contact/object", posed_object_mesh
+                    )
+
+                if args.show_hand:
+                    if robot_canonical_hand_vertices is not None and robot_canonical_hand_faces is not None:
+                        sep = float(args.mano_canonical_separation) * 0.5
+                        canonical_hand_mesh = trimesh.Trimesh(
+                            vertices=robot_canonical_hand_vertices + np.array([-sep, 0.0, 0.0], dtype=np.float32),
+                            faces=robot_canonical_hand_faces,
+                            process=False,
+                        )
+                        canonical_hand_mesh.visual = trimesh.visual.ColorVisuals(
+                            mesh=canonical_hand_mesh,
+                            vertex_colors=hand_colors,
+                        )
+                        if robot_canonical_hand_handle is not None:
+                            robot_canonical_hand_handle.remove()
+                        robot_canonical_hand_handle = vis.server.scene.add_mesh_trimesh(
+                            "/robot_contact/canonical_hand", canonical_hand_mesh
+                        )
+                elif robot_canonical_hand_handle is not None:
+                    robot_canonical_hand_handle.remove()
+                    robot_canonical_hand_handle = None
+
+                if args.show_object:
+                    sep = float(args.mano_canonical_separation) * 0.5
+                    canonical_object_mesh = trimesh.Trimesh(
+                        vertices=np.asarray(obj_mesh.vertices, dtype=np.float32) + np.array([sep, 0.0, 0.0], dtype=np.float32),
+                        faces=np.asarray(obj_mesh.faces),
+                        process=False,
+                    )
+                    canonical_object_mesh.visual = trimesh.visual.ColorVisuals(
+                        mesh=canonical_object_mesh,
+                        vertex_colors=object_colors,
+                    )
+                    set_mesh_alpha(canonical_object_mesh, args.object_alpha)
+                    if robot_canonical_object_handle is not None:
+                        robot_canonical_object_handle.remove()
+                    robot_canonical_object_handle = vis.server.scene.add_mesh_trimesh(
+                        "/robot_contact/canonical_object", canonical_object_mesh
+                    )
+                elif robot_canonical_object_handle is not None:
+                    robot_canonical_object_handle.remove()
+                    robot_canonical_object_handle = None
+
+            if args.visualize_tactile and tactile_robot is not None and qpos_video is not None:
+                if tactile_force_i is not None and sensor_frames:
+                    tactile_force = tactile_force_i[t]
+                    for zone, sensor in sensor_frames.items():
+                        try:
+                            link_pose = tactile_robot.get_transform(
+                                sensor.link_name, tactile_robot.urdf.base_link, collision_geometry=False
+                            )
+                        except Exception:
+                            continue
+                        anchor, normal, tx, ty = _world_sensor_frame(sensor, link_pose)
+                        vis_normal = -normal
+                        normal_force, tangential_force, tangential_deg = _extract_zone_force(tactile_force, zone)
+
+                        normal_len = (
+                            np.clip(normal_force / args.max_normal_force, 0.0, 1.0)
                             * args.max_arrow_len
                         )
-                        tangential_vec = tangential_dir * tangential_len
+                        normal_vec = vis_normal * normal_len
+                        tangential_vec = np.zeros(3, dtype=np.float64)
+                        if tangential_deg >= 0.0 and tangential_force > 0.0:
+                            theta = np.deg2rad(tangential_deg)
+                            tangential_dir = np.cos(theta) * tx + np.sin(theta) * ty
+                            tangential_dir = _safe_normalize(
+                                tangential_dir, np.array([1.0, 0.0, 0.0], dtype=np.float64)
+                            )
+                            tangential_len = (
+                                np.clip(tangential_force / args.max_tangential_force, 0.0, 1.0)
+                                * args.max_arrow_len
+                            )
+                            tangential_vec = tangential_dir * tangential_len
 
-                    total_vec = normal_vec + tangential_vec
-                    length = float(np.linalg.norm(total_vec))
-                    color = TACTILE_ARROW_RGBA
+                        total_vec = normal_vec + tangential_vec
+                        length = float(np.linalg.norm(total_vec))
+                        color = TACTILE_ARROW_RGBA
 
-                    if length <= 1e-6:
-                        if arrow_handles[zone]:
-                            arrow_handles[zone].remove()
-                            arrow_handles[zone] = None
-                        continue
+                        if length <= 1e-6:
+                            if arrow_handles[zone]:
+                                arrow_handles[zone].remove()
+                                arrow_handles[zone] = None
+                            continue
 
-                    direction = total_vec / (length + 1e-12)
-                    arrow = make_arrow_mesh(anchor, direction, length, color)
-                    if arrow is None:
-                        if arrow_handles[zone]:
-                            arrow_handles[zone].remove()
-                            arrow_handles[zone] = None
-                    else:
-                        if arrow_handles[zone]:
-                            arrow_handles[zone].remove()
-                        arrow_handles[zone] = vis.server.scene.add_mesh_trimesh(
-                            f"/contact/{zone}", arrow
-                        )
-            elif tactile_i is not None and tactile_index is not None:
-                meshes = get_mesh(tactile_robot, q)
-                tactile_frame = unpack_tactile_frame(tactile_i[t], tactile_index)
-                for name, (link, vids) in TACTILE_VERTEX_MAP.items():
-                    if name not in tactile_frame or link not in meshes:
-                        continue
-                    p = tactile_frame[name].mean()
-                    length = np.clip(p / 1000.0, 0, 1) * 0.2
-                    color = TACTILE_ARROW_RGBA
-                    c, n = compute_contact_arrow(meshes[link], vids)
-                    arrow = make_arrow_mesh(c, n, length, color)
-                    if arrow is None:
-                        if arrow_handles[name]:
-                            arrow_handles[name].remove()
-                            arrow_handles[name] = None
-                    else:
-                        if arrow_handles[name]:
-                            arrow_handles[name].remove()
-                        arrow_handles[name] = vis.server.scene.add_mesh_trimesh(
-                            f"/contact/{name}", arrow
-                        )
+                        direction = total_vec / (length + 1e-12)
+                        arrow = make_arrow_mesh(anchor, direction, length, color)
+                        if arrow is None:
+                            if arrow_handles[zone]:
+                                arrow_handles[zone].remove()
+                                arrow_handles[zone] = None
+                        else:
+                            if arrow_handles[zone]:
+                                arrow_handles[zone].remove()
+                            arrow_handles[zone] = vis.server.scene.add_mesh_trimesh(
+                                f"/contact/{zone}", arrow
+                            )
+                elif tactile_i is not None and tactile_index is not None:
+                    meshes = get_mesh(tactile_robot, q)
+                    tactile_frame = unpack_tactile_frame(tactile_i[t], tactile_index)
+                    for name, (link, vids) in TACTILE_VERTEX_MAP.items():
+                        if name not in tactile_frame or link not in meshes:
+                            continue
+                        p = tactile_frame[name].mean()
+                        length = np.clip(p / 1000.0, 0, 1) * 0.2
+                        color = TACTILE_ARROW_RGBA
+                        c, n = compute_contact_arrow(meshes[link], vids)
+                        arrow = make_arrow_mesh(c, n, length, color)
+                        if arrow is None:
+                            if arrow_handles[name]:
+                                arrow_handles[name].remove()
+                                arrow_handles[name] = None
+                        else:
+                            if arrow_handles[name]:
+                                arrow_handles[name].remove()
+                            arrow_handles[name] = vis.server.scene.add_mesh_trimesh(
+                                f"/contact/{name}", arrow
+                            )
 
     vis.update_scene = update_scene_with_tactile
     vis.start_viewer()

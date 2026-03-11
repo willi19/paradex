@@ -294,6 +294,32 @@ def load_object_pose_txt(txt_path: str) -> np.ndarray:
     return arr
 
 
+def load_object_world_trajectory_txt_dir(txt_dir: str) -> Tuple[Dict[int, np.ndarray], np.ndarray]:
+    if not os.path.isdir(txt_dir):
+        raise FileNotFoundError(f"Object trajectory directory not found: {txt_dir}")
+
+    txt_paths = sorted(glob.glob(os.path.join(txt_dir, "pose_*.txt")))
+    if not txt_paths:
+        raise FileNotFoundError(f"No pose_*.txt files found in: {txt_dir}")
+
+    by_frame: Dict[int, np.ndarray] = {}
+    frame_ids: List[int] = []
+    for txt_path in txt_paths:
+        stem = os.path.splitext(os.path.basename(txt_path))[0]
+        m = re.match(r"pose_(\d+)$", stem)
+        if m is None:
+            continue
+        frame_id = int(m.group(1))
+        by_frame[frame_id] = load_object_pose_txt(txt_path)
+        frame_ids.append(frame_id)
+
+    if not frame_ids:
+        raise ValueError(f"Failed to parse any valid frame ids from pose_*.txt in: {txt_dir}")
+
+    frame_ids_arr = np.asarray(sorted(set(frame_ids)), dtype=int)
+    return by_frame, frame_ids_arr
+
+
 def load_object_mesh(mesh_path: str) -> trimesh.Trimesh:
     mesh = trimesh.load(mesh_path, force="mesh")
     if isinstance(mesh, trimesh.Trimesh):
@@ -981,7 +1007,7 @@ def main():
     parser.add_argument("--frame-offset", type=int, default=0, help="Positive => robot leads object; negative => robot lags object.")
     parser.add_argument("--start-frame", type=int, default=-1, help="Inclusive start frame id on the master timeline. <0 means no lower bound.")
     parser.add_argument("--end-frame", type=int, default=-1, help="Inclusive end frame id on the master timeline. <0 means no upper bound.")
-    parser.add_argument("--arm_time_offset", type=float, default=0.28)
+    parser.add_argument("--arm_time_offset", type=float, default=0.15)
     parser.add_argument("--tactile_time_offset", type=float, default=0.0)
     
     parser.add_argument("--show-cameras", type=str2bool, default=True, help="Show camera frustums in the same scene.")
@@ -1028,7 +1054,7 @@ def main():
     arm_dir = os.path.join(data_root, "arm")
     hand_dir = os.path.join(data_root, "hand")
 
-    object_track_dir = os.path.join(capture_root, "object_tracking_result")
+    refined_world_pose_dir = os.path.join(capture_root, "sequence_refine_output", "refined_world_poses")
 
     timestamp_path = os.path.join(data_root, "timestamps", "timestamp.npy")
     frame_id_path = os.path.join(data_root, "timestamps", "frame_id.npy")
@@ -1100,6 +1126,8 @@ def main():
             tactile_index = build_tactile_index_from_layout(TACTILE_LAYOUT)
 
     obj_traj = None
+    obj_pose_by_frame: Optional[Dict[int, np.ndarray]] = None
+    obj_pose_frame_ids: Optional[np.ndarray] = None
     fixed_object_pose = None
     if args.visualize_object:
         if args.fix_object_position:
@@ -1108,19 +1136,11 @@ def main():
             fixed_object_pose = load_object_pose_txt(object_pos_path)
             print(f"Loaded fixed object pose from {object_pos_path}")
         else:
-            try:
-                obj_traj_path = os.path.join(object_track_dir, "obj_T_frames.npz")
-                obj_traj = load_object_world_trajectory_npz(obj_traj_path)
-                print(f"Loaded object trajectory with {obj_traj.shape[0]} frames from {obj_traj_path}")
-            except:
-                try:
-                    obj_traj_path = os.path.join(capture_root, "video_tracking_output", "192.168.0.14_5560", "all_poses_world.npz")
-                    obj_traj = load_object_world_trajectory_npz(obj_traj_path)
-                    print(f"Loaded object trajectory with {obj_traj.shape[0]} frames from {obj_traj_path}")
-                except:
-                    obj_traj_path = os.path.join(capture_root, "video_tracking_output", "192.168.0.13_5560", "all_poses_world.npz")
-                    obj_traj = load_object_world_trajectory_npz(obj_traj_path)
-                    print(f"Loaded object trajectory with {obj_traj.shape[0]} frames from {obj_traj_path}")
+            obj_pose_by_frame, obj_pose_frame_ids = load_object_world_trajectory_txt_dir(refined_world_pose_dir)
+            print(
+                f"Loaded object trajectory with {len(obj_pose_frame_ids)} frames from {refined_world_pose_dir} "
+                f"(frame range: {int(obj_pose_frame_ids[0])}~{int(obj_pose_frame_ids[-1])})"
+            )
 
     # Build master timeline from camera timestamps (pc_time) using fill_framedrop logic.
     
@@ -1140,22 +1160,6 @@ def main():
             src = min(max(i + args.frame_offset, 0), max_idx)
             shifted[i] = qpos_video[src]
         qpos_video = shifted
-    obj_mesh = None
-    if args.visualize_object and (obj_traj is not None or fixed_object_pose is not None):
-        if fixed_object_pose is not None:
-            fixed_object_pose_cam = r2c @ fixed_object_pose
-            obj_traj = np.tile(fixed_object_pose_cam[None, :, :], (len(video_times), 1, 1))
-        else:
-            # Snap object trajectory onto the master timeline (assume uniform spacing across its original length).
-            obj_time = np.linspace(video_times[0], video_times[-1], obj_traj.shape[0])
-            obj_traj = resample_to(
-                obj_time,
-                obj_traj.reshape(obj_traj.shape[0], -1),
-                video_times,
-            ).reshape(len(video_times), 4, 4)
-            obj_traj = np.einsum("ij,tjk->tik", r2c, obj_traj)
-        obj_mesh = load_object_mesh(object_mesh_path)
-        set_mesh_alpha(obj_mesh, args.object_alpha)
     if tactile_seq is not None:
         n_tactile = min(len(tactile_time), tactile_seq.shape[0])
         tactile_i = resample_to(
@@ -1175,27 +1179,46 @@ def main():
         else None
     )
 
-    if args.start_frame >= 0 or args.end_frame >= 0:
-        frame_mask = np.ones(len(video_frame_ids), dtype=bool)
-        if args.start_frame >= 0:
-            frame_mask &= video_frame_ids >= args.start_frame
-        if args.end_frame >= 0:
-            frame_mask &= video_frame_ids <= args.end_frame
-        if not np.any(frame_mask):
-            raise ValueError(
-                f"No frames left after filtering with start={args.start_frame}, end={args.end_frame}."
+    frame_mask = np.ones(len(video_frame_ids), dtype=bool)
+    if args.start_frame >= 0:
+        frame_mask &= video_frame_ids >= args.start_frame
+    if args.end_frame >= 0:
+        frame_mask &= video_frame_ids <= args.end_frame
+    if (
+        args.visualize_object
+        and not args.fix_object_position
+        and obj_pose_frame_ids is not None
+    ):
+        frame_mask &= np.isin(video_frame_ids.astype(int), obj_pose_frame_ids)
+
+    if not np.any(frame_mask):
+        raise ValueError(
+            "No frames left after filtering. "
+            f"start={args.start_frame}, end={args.end_frame}, "
+            f"object_pose_frames={None if obj_pose_frame_ids is None else (int(obj_pose_frame_ids[0]), int(obj_pose_frame_ids[-1]))}"
+        )
+
+    video_times = video_times[frame_mask]
+    video_frame_ids = video_frame_ids[frame_mask]
+    qpos_video = qpos_video[frame_mask]
+    if tactile_i is not None:
+        tactile_i = tactile_i[frame_mask]
+    if tactile_force_i is not None:
+        tactile_force_i = [frame for frame, keep in zip(tactile_force_i, frame_mask) if keep]
+
+    obj_mesh = None
+    if args.visualize_object and (obj_pose_by_frame is not None or fixed_object_pose is not None):
+        if fixed_object_pose is not None:
+            fixed_object_pose_cam = r2c @ fixed_object_pose
+            obj_traj = np.tile(fixed_object_pose_cam[None, :, :], (len(video_times), 1, 1))
+        else:
+            obj_traj_world = np.stack(
+                [obj_pose_by_frame[int(fid)] for fid in video_frame_ids.astype(int)],
+                axis=0,
             )
-
-        video_times = video_times[frame_mask]
-        video_frame_ids = video_frame_ids[frame_mask]
-        qpos_video = qpos_video[frame_mask]
-        if obj_traj is not None:
-            obj_traj = obj_traj[frame_mask]
-        if tactile_i is not None:
-            tactile_i = tactile_i[frame_mask]
-        if tactile_force_i is not None:
-            tactile_force_i = [frame for frame, keep in zip(tactile_force_i, frame_mask) if keep]
-
+            obj_traj = np.einsum("ij,tjk->tik", r2c, obj_traj_world)
+        obj_mesh = load_object_mesh(object_mesh_path)
+        set_mesh_alpha(obj_mesh, args.object_alpha)
     if args.hand == "inspire_f1":
         urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_right.urdf")
     elif args.hand == "allegro":

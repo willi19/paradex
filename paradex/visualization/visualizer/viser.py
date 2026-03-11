@@ -15,7 +15,7 @@ import viser.transforms as tf
 from paradex.visualization.robot import RobotModule  
 
 class ViserViewer():
-    def __init__(self, up_direction=np.array([0,0,1])):
+    def __init__(self, up_direction=np.array([0,0,1]), scene_title = None):
         self.frame_nodes: dict[str, viser.FrameHandle] = {}
 
         self.up_direction = up_direction
@@ -32,13 +32,15 @@ class ViserViewer():
         self.add_lights()
         self.add_player()
         # self.add_lights()
+        
+        self.scene_title = scene_title
 
     def load_server(self):
         self.server = viser.ViserServer()
-        self.server.gui.configure_theme(dark_mode=False)
+        self.server.gui.configure_theme(dark_mode=True)
 
         self.server.scene.set_up_direction(self.up_direction)
-        # self.server.scene.set_background_color((0, 0, 0))
+        # self.server.scene.set_background_color((255, 255, 255))
         self.server.scene.world_axes
 
         @self.server.on_client_connect
@@ -364,8 +366,8 @@ class ViserViewer():
             self.load_view_btn = self.server.gui.add_button("Load Saved View")
             
         with self.server.gui.add_folder("Video Rendering"):
-            self.video_width = self.server.gui.add_number("Video Width", initial_value=1280, min=640, max=3840)
-            self.video_height = self.server.gui.add_number("Video Height", initial_value=720, min=480, max=2160)
+            self.video_width = self.server.gui.add_number("Video Width", initial_value=1920, min=640, max=3840)
+            self.video_height = self.server.gui.add_number("Video Height", initial_value=1080, min=480, max=2160)
             self.video_fps = self.server.gui.add_slider("Video FPS", min=10, max=60, step=1, initial_value=30)
             self.render_video_btn = self.server.gui.add_button("Render Full Video")
             
@@ -427,7 +429,7 @@ class ViserViewer():
             
         @self.render_video_btn.on_click
         def _(_) -> None:
-            self.render_full_video()
+            self.render_full_video(self.scene_title)
 
     def render_current_frame(self, timestep, render_dir: Optional[Path] = None):
         """Render the current frame to a PNG/JPEG using the first connected client."""
@@ -452,11 +454,13 @@ class ViserViewer():
         except Exception as e:
             print(f"Failed to render frame {timestep}: {e}")
 
-    def render_full_video(self):
+    def render_full_video(self, scene_title = None):
         """Render all frames to a video using the current GUI render settings."""
         if self.num_frames <= 0:
             print("No frames to render.")
             return
+
+        print(f"rendering started: {scene_title}")
 
         clients = list(self.server.get_clients().values())
         if not clients:
@@ -473,7 +477,12 @@ class ViserViewer():
         render_dir.mkdir(exist_ok=True)
         frames_dir.mkdir(exist_ok=True)
 
-        video_path = render_dir / "rendered.mp4"
+        if scene_title != None:
+            video_path = render_dir / f"rendered_{scene_title}.mp4"
+        else:
+            video_path = render_dir / "rendered.mp4"
+            
+            
         writer = cv2.VideoWriter(
             str(video_path),
             cv2.VideoWriter_fourcc(*"mp4v"),

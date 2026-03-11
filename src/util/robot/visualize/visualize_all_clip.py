@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import glob
+import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from typing import Tuple, Dict, Any, Optional, List, Set
@@ -55,20 +56,43 @@ def _build_mano():
             "torch is required for --hand mano. Install torch in this environment."
         ) from e
 
-    try:
-        from hamer.hamer.models.mano_wrapper import MANO
-    except ModuleNotFoundError:
+    def _try_import_mano():
         try:
-            from hamer.models.mano_wrapper import MANO
-        except ModuleNotFoundError as e:
+            from hamer.hamer.models.mano_wrapper import MANO as _MANO
+            return _MANO
+        except ModuleNotFoundError:
+            from hamer.models.mano_wrapper import MANO as _MANO
+            return _MANO
+
+    try:
+        MANO = _try_import_mano()
+    except ModuleNotFoundError:
+        extra_import_roots = [
+            os.environ.get("HAMER_REPO_DIR"),
+            os.path.expanduser("~/hamer-mediapipe"),
+            os.path.expanduser("~/hamer-mediapipe/hamer"),
+        ]
+        for root in extra_import_roots:
+            if not root or not os.path.isdir(root):
+                continue
+            if root not in sys.path:
+                sys.path.insert(0, root)
+            try:
+                MANO = _try_import_mano()
+                break
+            except ModuleNotFoundError:
+                continue
+        else:
             raise ModuleNotFoundError(
-                "MANO wrapper import failed. Ensure `hamer` is importable for --hand mano."
-            ) from e
+                "MANO wrapper import failed. Ensure `hamer` is importable for --hand mano. "
+                "Checked default PYTHONPATH plus HAMER_REPO_DIR and ~/hamer-mediapipe."
+            )
 
     script_dir = os.path.dirname(os.path.abspath(__file__))
     repo_root = os.path.abspath(os.path.join(script_dir, "..", "..", "..", ".."))
     data_root_candidates = [
         os.environ.get("HAMER_DATA_DIR"),
+        os.path.join(os.path.expanduser("~/hamer-mediapipe"), "_DATA", "data"),
         os.path.join(repo_root, "hamer", "_DATA", "data"),
         os.path.join(os.path.dirname(repo_root), "paradex_processing", "hamer", "_DATA", "data"),
         os.path.join("/home", "capture14", "paradex_processing", "hamer", "_DATA", "data"),
@@ -1189,15 +1213,15 @@ def get_mesh(robot_module: RobotModule, state):
     return out
 
 
-def get_all_robot_link_names(robot_module: RobotModule) -> list[str]:
+def get_all_robot_link_names(robot_module: RobotModule) -> List[str]:
     return [link_name for link_name in robot_module.scene.geometry.keys() if link_name != "world"]
 
 
-def get_non_arm_link_names(robot_module: RobotModule) -> list[str]:
+def get_non_arm_link_names(robot_module: RobotModule) -> List[str]:
     return [link_name for link_name in get_all_robot_link_names(robot_module) if link_name not in ARM_LINK_NAMES]
 
 
-def build_robot_hand_mesh(robot_module: RobotModule, state: np.ndarray, hand_link_names: list[str]) -> trimesh.Trimesh:
+def build_robot_hand_mesh(robot_module: RobotModule, state: np.ndarray, hand_link_names: List[str]) -> trimesh.Trimesh:
     robot_module.update_cfg(state)
     scene = robot_module.scene
     meshes = []
@@ -1346,6 +1370,9 @@ def main():
     
     if args.hand == "_allegro":
         args.hand = "allegro"
+    
+    if args.hand == "_inspire_f1":
+        args.hand = "inspire_f1"
     
     if args.object_pos_path == None:
         object_pos_path = os.path.join(capture_root, "single_frame_refine_output", "refined_pose_world.txt")
@@ -1575,7 +1602,13 @@ def main():
     else:
         arrow_handles = {}
 
-    vis = ViserViewer(scene_title = f"{args.hand}_{args.object}")
+    scene_title = (
+        f"{args.hand}_{args.object}"
+        f"_cc{int(bool(args.compute_contact))}"
+        f"_sh{int(bool(args.show_hand))}"
+        f"_so{int(bool(args.show_object))}"
+    )
+    vis = ViserViewer(scene_title=scene_title)
     
     vis.add_floor(height=0.0)
     if not is_mano:

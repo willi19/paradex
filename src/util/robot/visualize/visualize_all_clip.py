@@ -1186,8 +1186,8 @@ def compute_contact_arrow(tm, vids):
 def make_arrow_mesh(start, direction, length, color_rgba):
     if length < 1e-6:
         return None
-    shaft_radius = 0.005
-    head_radius = 0.006
+    shaft_radius = 0.002
+    head_radius = 0.004
     shaft_height = length * 0.7
     head_height = length * 0.35
     shaft = trimesh.creation.cylinder(radius=shaft_radius, height=shaft_height)
@@ -1350,6 +1350,7 @@ def main():
     )
     args = parser.parse_args()
     object_name = args.object
+    canonical_requested = bool(args.show_hand or args.show_object)
 
     if args.capture_root == None:
         if args.hand == "mano":
@@ -1619,13 +1620,13 @@ def main():
             _set_robot_hand_opacity(vis, "robot", args.hand_alpha)
         if args.transparent_robot:
             _set_robot_arm_visibility(vis, "robot", False)
-        if args.compute_contact:
+        if args.compute_contact or canonical_requested:
             _set_robot_all_visibility(vis, "robot", False)
     if obj_mesh is not None and obj_traj is not None:
         vis.add_object(object_name, obj_mesh, obj_traj[0], opacity=args.object_alpha)
         if object_name in vis.obj_dict:
             vis.obj_dict[object_name]["frame"].show_axes = False
-        if args.compute_contact and object_name in vis.obj_dict:
+        if (args.compute_contact or canonical_requested) and object_name in vis.obj_dict:
             vis.obj_dict[object_name]["handle"].visible = False
     camera_handles = {}
     camera_image_root = None
@@ -1674,6 +1675,7 @@ def main():
     robot_canonical_object_handle = None
     robot_canonical_hand_vertices = None
     robot_canonical_hand_faces = None
+    robot_canonical_hand_mesh_base = None
     if is_mano:
         if not args.visualize_object or obj_pose_frame_ids is None:
             raise ValueError("--hand mano requires --visualize-object with sequence_refine_output/refined_world_poses.")
@@ -1697,15 +1699,15 @@ def main():
         mano_frame_by_timestep = mapped_frames.astype(int)
         torch_mod, mano_model, mano_device = _build_mano()
         mano_faces = _get_extended_mano_faces(mano_model)
-        if args.compute_contact and (args.show_hand or args.show_object):
+        if args.show_hand:
             canonical_hand_vertices = _make_canonical_mano_vertices(torch_mod, mano_model, mano_device)
         print(
             f"[INFO] MANO mapping: object_frame -> mano_frame = object_frame + {mano_frame_offset} "
             f"(object {int(video_frame_ids[0])}..{int(video_frame_ids[-1])}, "
             f"mano {int(mano_frame_by_timestep[0])}..{int(mano_frame_by_timestep[-1])})"
         )
-    elif args.compute_contact:
-        if not args.visualize_object or obj_traj is None or obj_mesh is None:
+    elif args.compute_contact or args.show_hand:
+        if args.compute_contact and (not args.visualize_object or obj_traj is None or obj_mesh is None):
             raise ValueError("--compute-contact for robot requires --visualize-object and valid object trajectory.")
         robot_contact_module = RobotModule(urdf_path)
         robot_contact_hand_links = get_non_arm_link_names(robot_contact_module)
@@ -1714,6 +1716,7 @@ def main():
         if args.show_hand:
             zero_state = np.zeros((robot_contact_module.get_num_joints(),), dtype=float)
             canonical_hand_mesh = build_robot_hand_mesh(robot_contact_module, zero_state, robot_contact_hand_links)
+            robot_canonical_hand_mesh_base = canonical_hand_mesh.copy()
             robot_canonical_hand_vertices = np.asarray(canonical_hand_mesh.vertices, dtype=np.float32)
             robot_canonical_hand_faces = np.asarray(canonical_hand_mesh.faces, dtype=np.int32)
 
@@ -1740,9 +1743,17 @@ def main():
     # Wrap the viewer's update to inject tactile arrows per frame.
     original_update_scene = vis.update_scene
     camera_last_frame: Dict[str, int] = {}
-    canonical_only = bool(args.compute_contact and (args.show_hand or args.show_object))
+    canonical_only = canonical_requested
+    canonical_shift = np.array(
+        [-float(args.mano_canonical_separation) * 0.5, 0.0, 0.0], dtype=np.float64
+    )
 
     def update_scene_with_tactile(timestep):
+        nonlocal gaussian_handle, gaussian_last_key
+        nonlocal mano_mesh_handle, mano_contact_object_handle, canonical_hand_handle, canonical_object_handle
+        nonlocal robot_contact_hand_handle, robot_contact_object_handle
+        nonlocal robot_canonical_hand_handle, robot_canonical_object_handle
+
         original_update_scene(timestep)
         t = max(0, min(len(video_times) - 1, timestep))
         if camera_handles and camera_image_root is not None:
@@ -1767,7 +1778,6 @@ def main():
                 frustum_handle.image = img_rgb
                 camera_last_frame[serial] = frame_id
 
-        nonlocal gaussian_handle, gaussian_last_key
         if gaussian_paths:
             if args.gaussian_ply is not None:
                 ply_path = gaussian_paths[0]
@@ -1805,12 +1815,18 @@ def main():
         elif tactile_robot is None or qpos_video is None:
             pass
         else:
-            q = qpos_video[t]
+            use_canonical_tactile = (
+                (not is_mano)
+                and args.show_hand
+            )
+            if use_canonical_tactile:
+                q = np.zeros((tactile_robot.get_num_joints(),), dtype=float)
+            else:
+                q = qpos_video[t]
             tactile_robot.update_cfg(q[: tactile_robot.get_num_joints()])
 
         with vis.server.atomic():
             if is_mano and mano_frame_by_timestep is not None and mano_faces is not None:
-                nonlocal mano_mesh_handle, mano_contact_object_handle, canonical_hand_handle, canonical_object_handle
                 mano_frame_id = int(mano_frame_by_timestep[t])
                 if mano_frame_id not in mano_cache:
                     mano_json = os.path.join(mano_param_dir, f"{mano_frame_id:05d}.json")
@@ -1896,6 +1912,39 @@ def main():
                         elif canonical_object_handle is not None:
                             canonical_object_handle.remove()
                             canonical_object_handle = None
+                elif canonical_only:
+                    sep = float(args.mano_canonical_separation) * 0.5
+                    if args.show_hand and canonical_hand_vertices is not None:
+                        canonical_hand_mesh_plain = trimesh.Trimesh(
+                            vertices=np.asarray(canonical_hand_vertices) + np.array([-sep, 0.0, 0.0], dtype=np.float32),
+                            faces=mano_faces,
+                            process=False,
+                        )
+                        set_mesh_alpha(canonical_hand_mesh_plain, args.hand_alpha)
+                        if canonical_hand_handle is not None:
+                            canonical_hand_handle.remove()
+                        canonical_hand_handle = vis.server.scene.add_mesh_trimesh(
+                            "/mano/canonical_hand", canonical_hand_mesh_plain
+                        )
+                    elif canonical_hand_handle is not None:
+                        canonical_hand_handle.remove()
+                        canonical_hand_handle = None
+
+                    if args.show_object and obj_mesh is not None:
+                        canonical_object_mesh_plain = trimesh.Trimesh(
+                            vertices=np.asarray(obj_mesh.vertices, dtype=np.float32) + np.array([sep, 0.0, 0.0], dtype=np.float32),
+                            faces=np.asarray(obj_mesh.faces),
+                            process=False,
+                        )
+                        set_mesh_alpha(canonical_object_mesh_plain, args.object_alpha)
+                        if canonical_object_handle is not None:
+                            canonical_object_handle.remove()
+                        canonical_object_handle = vis.server.scene.add_mesh_trimesh(
+                            "/mano/canonical_object", canonical_object_mesh_plain
+                        )
+                    elif canonical_object_handle is not None:
+                        canonical_object_handle.remove()
+                        canonical_object_handle = None
 
                 if not canonical_only:
                     if mano_mesh_handle is not None:
@@ -1909,8 +1958,6 @@ def main():
                 and obj_traj is not None
                 and obj_mesh is not None
             ):
-                nonlocal robot_contact_hand_handle, robot_contact_object_handle
-                nonlocal robot_canonical_hand_handle, robot_canonical_object_handle
                 joint_num = robot_contact_module.get_num_joints()
                 state = np.asarray(qpos_video[t][:joint_num], dtype=float)
                 posed_hand_mesh = build_robot_hand_mesh(robot_contact_module, state, robot_contact_hand_links)
@@ -1992,6 +2039,37 @@ def main():
                 elif robot_canonical_object_handle is not None:
                     robot_canonical_object_handle.remove()
                     robot_canonical_object_handle = None
+            elif (
+                (not is_mano)
+                and canonical_only
+                and not args.compute_contact
+            ):
+                sep = float(args.mano_canonical_separation) * 0.5
+                if args.show_hand and robot_canonical_hand_mesh_base is not None:
+                    canonical_hand_mesh_plain = robot_canonical_hand_mesh_base.copy()
+                    canonical_hand_mesh_plain.apply_translation(np.array([-sep, 0.0, 0.0], dtype=np.float64))
+                    set_mesh_alpha(canonical_hand_mesh_plain, args.hand_alpha)
+                    if robot_canonical_hand_handle is not None:
+                        robot_canonical_hand_handle.remove()
+                    robot_canonical_hand_handle = vis.server.scene.add_mesh_trimesh(
+                        "/robot_contact/canonical_hand", canonical_hand_mesh_plain
+                    )
+                elif robot_canonical_hand_handle is not None:
+                    robot_canonical_hand_handle.remove()
+                    robot_canonical_hand_handle = None
+
+                if args.show_object and obj_mesh is not None:
+                    canonical_object_mesh_plain = obj_mesh.copy()
+                    canonical_object_mesh_plain.apply_translation(np.array([sep, 0.0, 0.0], dtype=np.float64))
+                    set_mesh_alpha(canonical_object_mesh_plain, args.object_alpha)
+                    if robot_canonical_object_handle is not None:
+                        robot_canonical_object_handle.remove()
+                    robot_canonical_object_handle = vis.server.scene.add_mesh_trimesh(
+                        "/robot_contact/canonical_object", canonical_object_mesh_plain
+                    )
+                elif robot_canonical_object_handle is not None:
+                    robot_canonical_object_handle.remove()
+                    robot_canonical_object_handle = None
 
             if args.visualize_tactile and tactile_robot is not None and qpos_video is not None:
                 if tactile_force_i is not None and sensor_frames:
@@ -2036,6 +2114,8 @@ def main():
                             continue
 
                         direction = total_vec / (length + 1e-12)
+                        if use_canonical_tactile:
+                            anchor = anchor + canonical_shift
                         arrow = make_arrow_mesh(anchor, direction, length, color)
                         if arrow is None:
                             if arrow_handles[zone]:
@@ -2057,6 +2137,8 @@ def main():
                         length = np.clip(p / 1000.0, 0, 1) * 0.2
                         color = TACTILE_ARROW_RGBA
                         c, n = compute_contact_arrow(meshes[link], vids)
+                        if use_canonical_tactile:
+                            c = c + canonical_shift
                         arrow = make_arrow_mesh(c, n, length, color)
                         if arrow is None:
                             if arrow_handles[name]:

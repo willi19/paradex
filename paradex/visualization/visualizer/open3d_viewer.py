@@ -5,7 +5,6 @@ import trimesh
 import time
 from pathlib import Path
 from tqdm.auto import tqdm
-import imageio.v3 as iio
 import open3d as o3d
 import yourdfpy
 
@@ -30,15 +29,13 @@ class Open3DVideoRenderer:
         self.width = width
         self.height = height
         self.fps = fps
-        self.urdf_path = urdf_path  # URDF 경로 저장
-        
+        self.urdf_path = urdf_path
+
         if c2r is None:
             self.c2r = np.eye(4)
         else:
             self.c2r = c2r
-            
-        # URDF 로드
-        self.urdf_path = urdf_path
+
         self.robot = RobotWrapper(urdf_path)
         self.qpos = qpos
         
@@ -81,26 +78,10 @@ class Open3DVideoRenderer:
         self.floor_mat.shader = "defaultLit"
         
     def setup_lighting(self):
-        """조명 설정"""
-        # 환경광만 사용 (더 안정적)
         self.renderer.scene.set_lighting(
-            o3d.visualization.rendering.Open3DScene.LightingProfile.MED_SHADOWS, 
+            o3d.visualization.rendering.Open3DScene.LightingProfile.MED_SHADOWS,
             np.array([0.0, -1.0, -1.0])
         )
-        
-        # 점광원은 문제가 있을 수 있으므로 주석처리
-        # try:
-        #     self.renderer.scene.scene.add_point_light(
-        #         "point_light", 
-        #         np.array([1.0, 1.0, 1.0], dtype=np.float32),  # color
-        #         np.array([2.0, 2.0, 3.0], dtype=np.float32),  # position
-        #         100.0,  # intensity
-        #         10.0,   # falloff
-        #         True    # cast_shadows
-        #     )
-        # except Exception as e:
-        #     print(f"Warning: Could not add point light: {e}")
-        #     pass
         
     def trimesh_to_o3d(self, trimesh_mesh):
         """Trimesh를 Open3D 메시로 변환"""
@@ -125,9 +106,7 @@ class Open3DVideoRenderer:
                         try:
                             mesh_path = visual.geometry.mesh.filename
                             if not Path(mesh_path).is_absolute():
-                                # 상대 경로인 경우 URDF 파일 위치 기준으로 해석
-                                # if hasattr(urdf_, 'filename') and urdf_.filename:
-                                urdf_dir = Path(self.urdf_path).parent# Path(urdf_.filename).parent
+                                urdf_dir = Path(self.urdf_path).parent
                                 mesh_path = urdf_dir / mesh_path
                             
                             mesh = trimesh.load(mesh_path)
@@ -188,26 +167,15 @@ class Open3DVideoRenderer:
         self.renderer.scene.add_geometry("coordinate_frame", coordinate_frame, self.mat)
         
     def render_frame(self, timestep):
-        """단일 프레임 렌더링"""
-        # 이전 로봇 파트들 제거
+        # Remove previous robot parts
         for i in range(self.current_robot_parts):
-            try:
+            if self.renderer.scene.has_geometry(f"robot_part_{i}"):
                 self.renderer.scene.remove_geometry(f"robot_part_{i}")
-            except:
-                pass
-        
-        # 오브젝트 제거
-        try:
+
+        # Remove previous object
+        if self.renderer.scene.has_geometry(self.object_nm):
             self.renderer.scene.remove_geometry(self.object_nm)
-        except:
-            pass
             
-        # 로봇 메시들 추가
-        qpos = np.zeros(22)
-        qpos[:6] = self.qpos[timestep][:6]
-        qpos[:6] = self.qpos[timestep][:6]
-        qpos[:6] = self.qpos[timestep][:6]
-        
         self.robot.compute_forward_kinematics(self.qpos[timestep])
         robot_meshes = []
         for link_name, mesh in self.robot_mesh.items():
@@ -234,95 +202,50 @@ class Open3DVideoRenderer:
         """카메라 뷰 설정"""
         self.renderer.setup_camera(90, center, eye, up)
         
-    def render_video(self, output_path="rendered_video_o3d.mp4", camera_eye=[1.5, 1.5, 1.5], logger=[]):
-        """전체 비디오 렌더링"""
-        logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Starting Open3D video rendering...", "type": "process_msg"})
-        logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Frames: {self.num_frames}, Resolution: {self.width}x{self.height}, FPS: {self.fps}", "type": "process_msg"})
-        # 카메라 설정
-        self.set_camera_view(eye=np.array(camera_eye))
+    def render_video(self, output_path="rendered_video_o3d.mp4", camera_eye=[1.5, 1.5, 1.5], logger=None):
+        if logger is None:
+            logger = []
 
-        # 바닥과 좌표계 추가
+        def _log(msg, msg_type="process_msg"):
+            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": msg, "type": msg_type})
+
+        _log(f"Starting Open3D video rendering...")
+        _log(f"Frames: {self.num_frames}, Resolution: {self.width}x{self.height}, FPS: {self.fps}")
+
+        self.set_camera_view(eye=np.array(camera_eye))
         self.add_floor()
         self.add_coordinate_frame()
-        
-        frames = []
-        
+
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(str(output_path), fourcc, self.fps, (self.width, self.height))
+
         try:
             for timestep in tqdm(range(self.num_frames), desc="Rendering frames with Open3D"):
-                # 프레임 렌더링
-                
                 img = self.render_frame(timestep)
-                
-                # 디버깅: 이미지 크기와 내용 확인
-                if timestep == 0:
-                    logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"First frame shape: {img.shape}, dtype: {img.dtype}, min/max: {img.min()}/{img.max()}", "type": "process_msg"})
-                
-                # 이미지가 유효한지 확인
+
                 if img is None or img.size == 0:
-                    logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Warning: Frame {timestep} is empty!", "type": "process_error"})
-                    # 빈 프레임 대신 검은 이미지 생성
+                    _log(f"Warning: Frame {timestep} is empty!", "process_error")
                     img = np.zeros((self.height, self.width, 3), dtype=np.uint8)
-                
-                frames.append(img)
-                
-                
+
+                # Write directly to video (RGB -> BGR)
+                frame_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+                out.write(frame_bgr)
+
                 if timestep % 50 == 0:
-                    progress_percent = (timestep / self.num_frames) * 100
-                    logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Progress: {progress_percent:.1f}% ({timestep}/{self.num_frames})", "type": "process_cnt"})
-            
-            if not frames:
-                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": "No frames were generated!", "type": "process_error"})
-                return
-                
-            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Generated {len(frames)} frames", "type": "process_msg"})
-            
-            # 비디오 저장 - OpenCV를 먼저 시도 (더 안정적)
-            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Saving video to {output_path}...", "type": "process_msg"})
-            
-            self.save_video_opencv(frames, output_path, logger)
-                
-            # 최종 상태 출력
+                    _log(f"Progress: {timestep / self.num_frames * 100:.1f}% ({timestep}/{self.num_frames})", "process_cnt")
+
+            out.release()
+
             if Path(output_path).exists() and Path(output_path).stat().st_size > 0:
                 file_size = Path(output_path).stat().st_size
-                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Final video: {output_path}", "type": "process_msg"})
-                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"File size: {file_size / (1024*1024):.2f} MB", "type": "process_msg"})
-                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Total frames: {len(frames)}", "type": "process_msg"})
-                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Video duration: {len(frames) / self.fps:.2f} seconds", "type": "process_msg"})
+                _log(f"Video saved: {output_path} ({file_size / (1024*1024):.2f} MB, {self.num_frames} frames, {self.num_frames / self.fps:.2f}s)")
             else:
-                logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": "Final video file is empty or doesn't exist", "type": "process_error"})
-                
+                _log("Video file is empty or doesn't exist", "process_error")
+
         except Exception as e:
-            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Error during rendering: {e}", "type": "process_error"})
+            out.release()
+            _log(f"Error during rendering: {e}", "process_error")
             import traceback
             traceback.print_exc()
         
-            
-    def save_video_opencv(self, frames, output_path, logger=[]):
-        """OpenCV를 사용한 비디오 저장 (대안)"""
-        if not frames:
-            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": "No frames to save", "type": "process_error"})
-            return
-            
-        height, width = frames[0].shape[:2]
-        
-        # OpenCV VideoWriter 설정
-        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-        out = cv2.VideoWriter(str(output_path), fourcc, self.fps, (width, height))
-        
-        for frame in frames:
-            # RGB를 BGR로 변환 (OpenCV는 BGR 사용)
-            if len(frame.shape) == 3 and frame.shape[2] == 3:
-                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            else:
-                frame_bgr = frame
-            out.write(frame_bgr)
-        
-        out.release()
-        
-        if Path(output_path).exists():
-            file_size = Path(output_path).stat().st_size
-            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"Video saved with OpenCV: {output_path}", "type": "process_msg"})
-            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": f"File size: {file_size / (1024*1024):.2f} MB", "type": "process_msg"})
-        else:
-            logger.append({"root_dir": output_path, "time": time.time(), "state": "processing", "msg": "OpenCV video save also failed", "type": "process_error"})
             

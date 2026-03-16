@@ -24,6 +24,7 @@ class ViserViewer():
         self.frame_nodes: dict[str, viser.FrameHandle] = {}
 
         self.up_direction = up_direction
+        self.port_number = port_number
         self.robot_dict = {}
         self.obj_dict = {}
 
@@ -33,31 +34,12 @@ class ViserViewer():
         self.load_server()
         self.add_lights()
         self.add_player()
-        # self.add_lights()
 
     def load_server(self):
-        self.server = viser.ViserServer(host="0.0.0.0", port=8080)
+        self.server = viser.ViserServer(host="0.0.0.0", port=self.port_number)
         self.server.gui.configure_theme(dark_mode=True)
 
         self.server.scene.set_up_direction(self.up_direction)
-        self.server.scene.world_axes
-
-        # @self.server.on_client_connect
-        # def _(client: viser.ClientHandle) -> None:
-        #     near_slider = client.gui.add_slider(
-        #         "Near", min=0.01, max=10.0, step=0.001, initial_value=client.camera.near
-        #     )
-        #     far_slider = client.gui.add_slider(
-        #         "Far", min=1, max=1000.0, step=0.001, initial_value=client.camera.far
-        #     )
-
-        #     @near_slider.on_update
-        #     def _(_) -> None:
-        #         client.camera.near = near_slider.value
-
-        #     @far_slider.on_update
-        #     def _(_) -> None:
-        #         client.camera.far = far_slider.value
 
     def add_robot(self, name, urdf_path, pose=None):
         robot = ViserRobotModule(
@@ -124,16 +106,9 @@ class ViserViewer():
         )
         
         # Add mesh to the frame (at origin relative to frame)
-        # mesh_handle = self.server.scene.add_mesh_trimesh(
-        #         name=f"/objects/{name}_frame/{name}",
-        #         mesh=obj
-        #     )
-        mesh_handle = self.server.scene.add_mesh_simple(
+        mesh_handle = self.server.scene.add_mesh_trimesh(
                 name=f"/objects/{name}_frame/{name}",
-                vertices=obj.vertices,
-                faces=obj.faces,
-                cast_shadow=True,
-                receive_shadow=True
+                mesh=obj
         )
         
         # Store in object dictionary
@@ -244,10 +219,14 @@ class ViserViewer():
         with self.server.atomic():
             for robot_name, robot in self.robot_dict.items():
                 if robot_name in current_traj["robot"]:
-                    robot.update_cfg(current_traj["robot"][robot_name][local_timestep])
+                    traj = current_traj["robot"][robot_name]
+                    clamped_t = min(local_timestep, len(traj) - 1)
+                    robot.update_cfg(traj[clamped_t])
             for obj_name, obj in self.obj_dict.items():
                 if obj_name in current_traj["object"]:
-                    obj_transform = current_traj["object"][obj_name][local_timestep]
+                    traj = current_traj["object"][obj_name]
+                    clamped_t = min(local_timestep, len(traj) - 1)
+                    obj_transform = traj[clamped_t]
                     frame_handle = obj['frame']
                     
                     # Frame의 position과 rotation 업데이트
@@ -260,6 +239,47 @@ class ViserViewer():
         
         if self.render_png.value:
             self.render_current_frame(timestep)
+
+    def render_current_frame(self, timestep):
+        """Render the current frame to PNG."""
+        os.makedirs("rendered_frames", exist_ok=True)
+        out_path = f"rendered_frames/frame_{timestep:06d}.png"
+        self.capture_scene_png(out_path)
+
+    def render_full_video(self):
+        """Render all frames to a video file."""
+        if self.num_frames == 0:
+            print("No trajectory loaded, nothing to render.")
+            return
+
+        os.makedirs("rendered_frames", exist_ok=True)
+        was_playing = self.gui_playing.value
+        self.gui_playing.value = False
+
+        width = int(self.video_width.value)
+        height = int(self.video_height.value)
+        fps = int(self.video_fps.value)
+
+        for t in range(self.num_frames):
+            self.update_scene(t)
+            out_path = f"rendered_frames/frame_{t:06d}.png"
+            self.capture_scene_png(out_path, height=height, width=width)
+            if t % 50 == 0:
+                print(f"Rendered {t}/{self.num_frames} frames")
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        video_path = f"video_{timestamp}.mp4"
+        subprocess.run([
+            'ffmpeg', '-y', '-loglevel', 'warning',
+            '-framerate', str(fps),
+            '-i', 'rendered_frames/frame_%06d.png',
+            '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18',
+            video_path
+        ], check=True)
+
+        shutil.rmtree("rendered_frames")
+        self.gui_playing.value = was_playing
+        print(f"Video saved: {video_path}")
 
     def update(self):
         if self.gui_playing.value and len(self.traj_list) > 0 and self.num_frames > 0:
@@ -351,7 +371,7 @@ class ViserViewer():
         @self.gui_next_frame.on_click
         def _(_) -> None:
             if self.num_frames > 0:
-                self.gui_timestep.value = (self.gui_timestep.value + 10) % self.num_frames
+                self.gui_timestep.value = (self.gui_timestep.value + 1) % self.num_frames
 
         @self.gui_prev_frame.on_click
         def _(_) -> None:
@@ -390,14 +410,12 @@ class ViserViewer():
             self.capture_scene_png(out_path, height=height, width=width)
             print(f"Saved: {out_path}")
 
-    def add_frame(self, name, T):
+    def add_frame(self, name, T, scale=0.1):
         self.frame_nodes[name] = self.server.scene.add_frame(
             name=f"/{name}/frame",
             show_axes=True,
-            # axis_length=0.1,
-            # axis_radius=0.002,
             axes_length=scale,
-            axes_radius=scale*0.04,
+            axes_radius=scale * 0.04,
             position=T[:3, 3],
             wxyz=R.from_matrix(T[:3, :3]).as_quat()[[3, 0, 1, 2]],
         )
@@ -476,23 +494,23 @@ class ViserViewer():
         
         @clear_contact_button.on_click
         def _(_) -> None:
-            for line in contact_line_segments:
+            for line in self.contact_line_segments:
                 line.remove()
-            contact_line_segments = []
-            for point in contact_point_segments:
+            self.contact_line_segments = []
+            for point in self.contact_point_segments:
                 point.remove()
-            contact_point_segments = []
+            self.contact_point_segments = []
             
-    def add_camera(self, name, extrinsic, intrinsic, color=(0, 255, 0), size=0.1):
+    def add_camera(self, name, extrinsic, intrinsic, color=(0.0, 1.0, 0.0), size=0.1):
         """
         Add a camera frustum visualization to the scene
-        
+
         Args:
             name: Unique name for the camera
             extrinsic: 4x4 or 3x4 camera extrinsic matrix (cam_from_world or world_from_cam)
             intrinsic: Camera intrinsic parameters dict with keys 'fx', 'fy', 'cx', 'cy', 'width', 'height'
                     OR 3x3 intrinsic matrix
-            color: RGB tuple (0-255)
+            color: RGB tuple (0.0-1.0 float range)
             size: Size of the frustum (depth from camera center)
         """
         # Handle extrinsic matrix format
@@ -551,14 +569,13 @@ class ViserViewer():
         ])
 
         # Draw frustum edges (from camera center to corners) - in CAMERA FRAME coordinates
-        color_normalized = tuple(c / 255.0 for c in color)
         camera_origin = np.array([0, 0, 0])  # Origin in camera frame
 
         for i, corner in enumerate(corners_cam):
             self.server.scene.add_spline_catmull_rom(
                 f"/cameras/{name}_frame/edge_{i}",
-                positions=np.array([camera_origin, corner]),  # Use camera frame coordinates
-                color=color_normalized,
+                positions=np.array([camera_origin, corner]),
+                color=color,
                 line_width=2.0
             )
 
@@ -567,59 +584,57 @@ class ViserViewer():
             self.server.scene.add_spline_catmull_rom(
                 f"/cameras/{name}_frame/rect_{i}",
                 positions=np.array([corners_cam[i], corners_cam[(i + 1) % 4]]),
-                color=color_normalized,
+                color=color,
                 line_width=2.0
             )
 
-        # Optionally add a small sphere at camera center
+        # Add a small sphere at camera center
         self.server.scene.add_icosphere(
             f"/cameras/{name}_frame/center",
             radius=size * 0.05,
-            color=color_normalized,
-            position=camera_origin  # At origin of camera frame
+            color=color,
+            position=camera_origin
         )
 
         
         return frame_handle
 
     def change_color(self, name, color, name_list=[]):
-        """Change the color of a robot's visualized URDF."""
+        """Change the color of a robot or object. color is (r, g, b) or (r, g, b, a) in 0.0-1.0 range."""
         if name in self.robot_dict:
             self.robot_dict[name].change_color(name_list, color)
         elif name in self.obj_dict:
             mesh_handle = self.obj_dict[name]['handle']
-            mesh_handle.color = tuple(int(c * 255) for c in color)
+            mesh_handle.color = color[:3]
             if len(color) == 4:
                 mesh_handle.opacity = color[3]
         else:
-            print(f"Robot '{name}' not found.")    
+            print(f"'{name}' not found in robot_dict or obj_dict.")    
     
-    def add_sphere(self, name, position, radius=0.05, color=(1.0,0,0)):
+    def add_sphere(self, name, position, radius=0.05, color=(1.0, 0.0, 0.0)):
         self.server.scene.add_icosphere(
             name=f"/spheres/{name}",
             radius=radius,
-            color=tuple(int(c * 255) for c in color),
+            color=color,
             position=position,
             cast_shadow=True,
             receive_shadow=True
         )
 
-    def add_arrow(self, name, start, end, color=(0,255,0), shaft_radius=0.01, head_radius=0.02, head_length=0.03, opacity=1.0):
+    def add_arrow(self, name, start, end, color=(0.0, 1.0, 0.0), shaft_radius=0.01, head_radius=0.02, head_length=0.03, opacity=1.0):
         """
         Add an arrow visualization with head
-        
+
         Args:
             name: Unique name for the arrow
             start: Starting position [x, y, z]
             end: Ending position [x, y, z]
-            color: RGB color (0-255 range)
+            color: RGB color (0.0-1.0 float range)
             shaft_radius: Radius of arrow shaft
             head_radius: Radius of arrow head cone
             head_length: Length of arrow head cone
             opacity: Opacity value (0.0-1.0)
         """
-        from scipy.spatial.transform import Rotation as R
-        import trimesh
         
         start = np.array(start)
         end = np.array(end)
@@ -653,7 +668,7 @@ class ViserViewer():
             name=f"/arrows/{name}_shaft",
             vertices=shaft_mesh.vertices,
             faces=shaft_mesh.faces,
-            color=tuple(c / 255.0 for c in color),
+            color=color,
             opacity=opacity,
             cast_shadow=True,
             receive_shadow=True
@@ -675,7 +690,7 @@ class ViserViewer():
             name=f"/arrows/{name}_head",
             vertices=cone_mesh.vertices,
             faces=cone_mesh.faces,
-            color=tuple(c / 255.0 for c in color),
+            color=color,
             opacity=opacity,
             cast_shadow=True,
             receive_shadow=True
@@ -706,104 +721,43 @@ class ViserViewer():
         imageio.imwrite(out_path, img)
 
                 
-    def add_video_capture_gui(self):
-        """Add video capture GUI controls"""
-        with self.server.gui.add_folder("Video Capture"):
-            # Resolution controls
-            self.capture_width = self.server.gui.add_slider(
-                "Width",
-                min=480,
-                max=1920,
-                step=80,
-                initial_value=1280
-            )
-            
-            self.capture_height = self.server.gui.add_slider(
-                "Height",
-                min=480,
-                max=1920,
-                step=80,
-                initial_value=720
-            )
-            
-            # Video parameters
-            self.video_fps = self.server.gui.add_slider(
-                "Video FPS",
-                min=10,
-                max=60,
-                step=1,
-                initial_value=30
-            )
-
+    def add_camera_path_gui(self):
+        """Add interpolated camera path video recording GUI (uses capture settings from Capture folder)."""
+        with self.server.gui.add_folder("Camera Path Video"):
             self.video_duration = self.server.gui.add_slider(
-                "Duration (sec)",
-                min=1.0,
-                max=10.0,
-                step=0.5,
-                initial_value=3.0
+                "Duration (sec)", min=1.0, max=10.0, step=0.5, initial_value=3.0
             )
-            
-            # Output path
-            self.output_path = self.server.gui.add_text(
-                "Output Path",
-                initial_value=""
-            )
-            
-            # View controls
             self.set_start_view_btn = self.server.gui.add_button("Set Start View")
             self.set_end_view_btn = self.server.gui.add_button("Set End View")
-            self.record_video_btn = self.server.gui.add_button("Record Video")
-            
-            # Screenshot
-            self.capture_png_btn = self.server.gui.add_button("Capture PNG")
+            self.record_video_btn = self.server.gui.add_button("Record Camera Path Video")
 
-        # Callbacks
         @self.set_start_view_btn.on_click
         def _(_) -> None:
             if len(self.server.get_clients()) == 0:
-                print("❌ No client connected!")
+                print("No client connected!")
                 return
             client = next(iter(self.server.get_clients().values()))
             self.start_view = {
                 'position': client.camera.position,
                 'wxyz': client.camera.wxyz
             }
-            print("✓ Start view set:", self.start_view['position'], self.start_view['wxyz'])
+            print(f"Start view set: {self.start_view['position']}")
 
         @self.set_end_view_btn.on_click
         def _(_) -> None:
             if len(self.server.get_clients()) == 0:
-                print("❌ No client connected!")
+                print("No client connected!")
                 return
             client = next(iter(self.server.get_clients().values()))
             self.end_view = {
                 'position': client.camera.position,
                 'wxyz': client.camera.wxyz
             }
-            print("✓ End view set:", self.end_view['position'])
+            print(f"End view set: {self.end_view['position']}")
 
         @self.record_video_btn.on_click
         def _(_) -> None:
             self._record_interpolated_video()
-        
-        @self.capture_png_btn.on_click
-        def _(_) -> None:
-            # output_path가 비어있으면 타임스탬프로 생성
-            if self.output_path.value.strip() == "":
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                out_path = f"capture_{timestamp}.png"
-            else:
-                out_path = self.output_path.value
-            
-            print(f"Capturing current view to {out_path}...")
-            
-            # GUI에서 설정한 해상도 사용
-            width = int(self.capture_width.value)
-            height = int(self.capture_height.value)
-            
-            # PNG 캡처
-            self.capture_scene_png(out_path, height=height, width=width)
-            print(f"✅ Saved: {out_path}")
 
     def _record_interpolated_video(self):
         """Record interpolated video between start and end views"""
@@ -1021,17 +975,13 @@ class ViserRobotModule():
         self.update_cfg(np.zeros(len(self._urdf.joint_map)))    
 
     def change_color(self, name_list, color: Tuple[float, float, float]) -> None:
-        """Change the color of the visualized URDF."""
+        """Change the color of the visualized URDF. color is (r, g, b) or (r, g, b, a) in 0.0-1.0 range."""
         name_list = list(self._meshes.keys()) if len(name_list) == 0 else name_list
-        
-        if len(color) == 4:
-            opacity = color[3]
-        else:
-            opacity = 1.0
 
-        color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
+        opacity = color[3] if len(color) == 4 else 1.0
+        rgb = color[:3]
         for name in name_list:
-            self._meshes[name].color = color
+            self._meshes[name].color = rgb
             self._meshes[name].opacity = opacity
 
     @property

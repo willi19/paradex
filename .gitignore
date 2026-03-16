@@ -49,4 +49,4 @@ thirdparty/EfficientLoFTR/ckpts/*.ckpt
 build/lib/paradex
 .vscode/settings.json
 
-test
+test.claude-memory

@@ -164,12 +164,11 @@ class CaptureSession():
 
         if self.camera is not None:
             print("Stopping camera and saving calibration data...")
-            self.sync_generator.stop()
-            time.sleep(0.5)
             self.camera.stop()
             print("Camera stopped.")
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.stop()
+            self.sync_generator.stop()
 
             save_current_camparam(os.path.join(shared_dir, self.save_path))
             if self.arm is not None:

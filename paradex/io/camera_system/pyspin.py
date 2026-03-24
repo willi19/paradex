@@ -183,9 +183,16 @@ class PyspinCamera():
             try:
                 pImageRaw = self.cam.GetNextImage(timeout_ms)
             except ps.SpinnakerException as exc:
-                # Timeout is expected when trigger is stopped first.
+                # Timeout/no-trigger is expected when stopping sync first.
                 msg = str(exc).lower()
-                if "timeout" in msg or "time out" in msg:
+                is_timeout_like = (
+                    "timeout" in msg
+                    or "time out" in msg
+                    or "failed waiting for eventdata" in msg
+                    or "new_buffer_data" in msg
+                    or "-1011" in msg
+                )
+                if is_timeout_like:
                     return None, None
                 raise
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}

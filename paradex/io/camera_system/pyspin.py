@@ -158,7 +158,7 @@ class PyspinCamera():
         serialnum = ps.CStringPtr(serialnum_entry).GetValue()
         return serialnum
         
-    def get_image(self):
+    def get_image(self, timeout_ms=None):
         """Get next image from camera.
     
         Image mode: Retries with 100ms timeout, auto-restarts on failure.
@@ -177,7 +177,17 @@ class PyspinCamera():
         #             self.stop()
         #             self.start()
         # else:
-        pImageRaw = self.cam.GetNextImage()
+        if timeout_ms is None:
+            pImageRaw = self.cam.GetNextImage()
+        else:
+            try:
+                pImageRaw = self.cam.GetNextImage(timeout_ms)
+            except ps.SpinnakerException as exc:
+                # Timeout is expected when trigger is stopped first.
+                msg = str(exc).lower()
+                if "timeout" in msg or "time out" in msg:
+                    return None, None
+                raise
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
         
         if frame_data['frameID'] % 1 == 0:

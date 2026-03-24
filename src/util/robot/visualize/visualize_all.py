@@ -1197,7 +1197,7 @@ def main():
             tactile_force_i = [frame for frame, keep in zip(tactile_force_i, frame_mask) if keep]
 
     if args.hand == "inspire_f1":
-        urdf_path = os.path.join(rsc_path, "robot", f"{args.arm}_{args.hand}_right.urdf")
+        urdf_path = os.path.join(rsc_path, "robot", "xarm_inspire_f1_right.urdf")
     elif args.hand == "allegro":
         urdf_path = "/home/temp_id/paradex/rsc/robot/xarm_allegro.urdf"
     elif args.hand == "inspire":

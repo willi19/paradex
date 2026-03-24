@@ -48,3 +48,6 @@ thirdparty/EfficientLoFTR/ckpts/*.ckpt
 thirdparty/EfficientLoFTR/ckpts/*.ckpt
 build/lib/paradex
 .vscode/settings.json
+
+rendered/*
+rendered_video/*

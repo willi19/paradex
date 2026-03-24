@@ -265,7 +265,7 @@ class Camera():
                 
         while self.event["start"].is_set() and not self.event["exit"].is_set():
             try:
-                frame, frame_data = self.camera.get_image()
+                frame, frame_data = self.camera.get_image(timeout_ms=500)
                 if frame is None:
                     continue
                 

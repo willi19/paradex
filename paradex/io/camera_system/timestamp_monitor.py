@@ -118,7 +118,9 @@ class TimestampMonitor():
                 
         while self.event["start"].is_set() and not self.event["exit"].is_set():
             try:
-                frame_data = self.camera.get_timestamp()
+                frame_data = self.camera.get_timestamp(timeout_ms=500)
+                if frame_data is None:
+                    continue
                 self.last_frame_id = frame_data["frameID"]
                 self.last_timestamp = frame_data["pc_time"]
                 

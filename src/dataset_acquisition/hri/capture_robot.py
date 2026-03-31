@@ -100,20 +100,16 @@ while not exit_event.is_set():
     cs.stop()
     print("Stopped recording session:", name)
 
-    grasp_yes_event.clear()
-    grasp_no_event.clear()
-    print("Grasp success? Press y or n, then Enter.")
-    while not exit_event.is_set():
-        if grasp_yes_event.is_set():
-            grasp_input = "y"
-            success_count += 1
-            break
-        if grasp_no_event.is_set():
-            grasp_input = "n"
-            fail_count += 1
-            break
-    else:
+    grasp_input = "n"
+    if grasp_yes_event.is_set() and not grasp_no_event.is_set():
+        grasp_input = "y"
+    elif grasp_no_event.is_set():
         grasp_input = "n"
+
+    if grasp_input == "y":
+        success_count += 1
+    else:
+        fail_count += 1
 
     save_event.clear()
     stop_event.clear()

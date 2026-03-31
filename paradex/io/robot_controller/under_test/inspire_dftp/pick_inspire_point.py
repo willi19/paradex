@@ -10,7 +10,8 @@ from paradex.robot.robot_wrapper_deprecated import RobotWrapper
 # =========================
 # Config
 # =========================
-URDF_PATH = "/home/temp_id/paradex/rsc/robot/inspire_left.urdf"
+URDF_PATH = "/home/temp_id/paradex/rsc/robot/KISTAR_URDF/KISTAR.urdf"
+FINGER_TIP_MESH_PATH = "/home/temp_id/paradex/rsc/robot/KISTAR_URDF/meshes/kistar/finger_tip.STL"
 BASE_T = np.eye(4)
 
 
@@ -21,7 +22,7 @@ def forward_kinematic(robot_wrapper: RobotWrapper, state: np.ndarray = None):
 def get_mesh(robot_wrapper, state, base_T=np.eye(4), mesh_tg = 'all'):
 
     forward_kinematic(robot_wrapper, state)
-    robot_obj = robot_info(URDF_PATH, down_sample=True)
+    robot_obj = robot_info(URDF_PATH, down_sample=False)
     
     link_list = []
     for link_nm, mesh_items in robot_obj.mesh_dict.items():
@@ -48,106 +49,81 @@ def get_mesh(robot_wrapper, state, base_T=np.eye(4), mesh_tg = 'all'):
 
     return vis_list
 
-# =========================
-# FK + mesh extraction
-# =========================
-def get_link_o3d_mesh_meanpose(
+
+def get_target_mesh_and_pcd_meanpose(
     robot_wrapper: RobotWrapper,
     target_link: str,
     base_T=np.eye(4),
 ):
-    """
-    get_mesh()를 이용해서
-    mean pose(qpos=0)에서 target_link의 Open3D mesh를 world 좌표로 bake
-    """
-
-    # -------------------------
-    # mean pose
-    # -------------------------
-    qpos = np.zeros(12, dtype=np.float32)  # Inspire hand DOF
-
-    # -------------------------
-    # get all meshes (이미 FK + bake 완료)
-    # -------------------------
-    mesh_list = get_mesh(
-        robot_wrapper=robot_wrapper,
-        state=qpos,
-        base_T=base_T,
+    # finger_tip.STL 로컬 vertex index를 그대로 쓰기 위해 FK pose를 적용하지 않음
+    target_tm = trimesh.load(
+        FINGER_TIP_MESH_PATH,
+        force="mesh",
+        process=False,
     )
-    # mesh_list: List[(link_name, trimesh.Trimesh)]
+    target_mesh = trimesh_to_o3d_mesh(target_tm)
+    target_mesh.compute_vertex_normals()
 
-    # -------------------------
-    # target link mesh만 추출
-    # -------------------------
-    target_meshes = []
-    for link_nm, tm in mesh_list:
-        print(link_nm)
-        if link_nm == target_link:
-            # trimesh → open3d 변환
-            o3d_mesh = o3d.geometry.TriangleMesh(
-                vertices=o3d.utility.Vector3dVector(tm.vertices),
-                triangles=o3d.utility.Vector3iVector(tm.faces),
-            )
-            target_meshes.append(o3d_mesh)
+    target_points = np.asarray(target_tm.vertices).copy()
+    target_pcd = o3d.geometry.PointCloud()
+    target_pcd.points = o3d.utility.Vector3dVector(target_points)
+    target_pcd.colors = o3d.utility.Vector3dVector(
+        np.tile(np.array([[1.0, 0.0, 0.0]]), (len(target_points), 1))
+    )
 
-    if len(target_meshes) == 0:
-        raise RuntimeError(f"[ERROR] No mesh found for link {target_link}")
+    return target_mesh, target_pcd
 
-    # -------------------------
-    # 여러 mesh면 merge
-    # -------------------------
-    mesh = target_meshes[0]
-    for m in target_meshes[1:]:
-        mesh += m
 
-    mesh.compute_vertex_normals()
-    return mesh
+def trimesh_to_o3d_mesh(tm: trimesh.Trimesh):
+    return o3d.geometry.TriangleMesh(
+        vertices=o3d.utility.Vector3dVector(tm.vertices),
+        triangles=o3d.utility.Vector3iVector(tm.faces),
+    )
 
 
 # =========================
 # Pick vertices
 # =========================
-def pick_vertices(mesh: o3d.geometry.TriangleMesh, link_name: str):
+def pick_vertices(
+    target_pcd: o3d.geometry.PointCloud,
+    link_name: str,
+):
     print("=" * 70)
-    print(f"[PICK MODE - MESH + POINTCLOUD] link = {link_name}")
+    print(f"[PICK MODE - POINTCLOUD ONLY] link = {link_name}")
     print(" Left Click : pick point (on pointcloud)")
     print(" Q          : quit")
     print("=" * 70)
 
-    # -------------------------
-    # PointCloud (vertex 그대로 사용)
-    # -------------------------
-    pcd = o3d.geometry.PointCloud()
-    pcd.points = mesh.vertices
-
-    # point 색 (눈에 잘 띄게)
-    pcd.colors = o3d.utility.Vector3dVector(
-        np.tile(np.array([[1.0, 0.0, 0.0]]), (len(mesh.vertices), 1))
-    )
-
+    # FK 이후 target_link 기준 point cloud
+    target_count = len(target_pcd.points)
     # -------------------------
     # VisualizerWithEditing
     # -------------------------
     vis = o3d.visualization.VisualizerWithEditing()
     vis.create_window(window_name=f"Pick {link_name}")
 
-    # mesh는 보기용
-    # vis.add_geometry(mesh)
-
-    # pointcloud는 pick용
-    vis.add_geometry(pcd)
+    # target pointcloud (pick 대상)
+    vis.add_geometry(target_pcd)
 
     # render option
     opt = vis.get_render_option()
     opt.point_size = 10.0
     opt.mesh_show_wireframe = True
-    opt.mesh_show_back_face = True  # 내부도 보이게
+    opt.mesh_show_back_face = True
 
     vis.run()
     vis.destroy_window()
 
-    picked = vis.get_picked_points()
-    print(f"\n[PICKED VERTEX INDICES] {picked}\n")
+    raw_picked = vis.get_picked_points()
+    picked = []
+    for idx in raw_picked:
+        # target pcd 기준 인덱스만 사용
+        if 0 <= idx < target_count:
+            picked.append(idx)
+
+    # 중복 제거 + 정렬
+    picked = sorted(set(picked))
+    print(f"\n[PICKED TARGET-LINK VERTEX INDICES] {picked}\n")
 
     return picked
 
@@ -180,7 +156,7 @@ if __name__ == "__main__":
     # -------------------------
     # 🔧 여기서 link 이름만 바꿔가며 pick
     # -------------------------
-    TARGET_LINK = "base_link"
+    TARGET_LINK = "index_tip"
     # 예시:
     # "thumb_tip"
     # "index_intermediate"
@@ -191,7 +167,7 @@ if __name__ == "__main__":
     # Mesh load (mean pose)
     # -------------------------
     print(robot_wrapper.link_names)
-    mesh = get_link_o3d_mesh_meanpose(
+    target_mesh, target_pcd = get_target_mesh_and_pcd_meanpose(
         robot_wrapper=robot_wrapper,
         target_link=TARGET_LINK,
     )
@@ -206,7 +182,10 @@ if __name__ == "__main__":
     # 'thumb_intermediate', 'thumb_distal', 'thumb_tip']
     
     
-    pick_vertices(mesh, TARGET_LINK)
+    picked_indices = pick_vertices(
+        target_pcd,
+        TARGET_LINK,
+    )
 
     # -------------------------
     # (선택) arrow anchor 계산 테스트
@@ -214,7 +193,10 @@ if __name__ == "__main__":
     # Open3D 출력값으로 교체해서 확인 가능
     example_vertex_indices = [0, 1, 2]  # ← 나중에 교체
 
-    start_pt, normal = compute_arrow_anchor(mesh, example_vertex_indices)
+    if len(picked_indices) >= 3:
+        example_vertex_indices = picked_indices[:3]
+
+    start_pt, normal = compute_arrow_anchor(target_mesh, example_vertex_indices)
 
     print("====================================")
     print("[EXAMPLE ARROW ANCHOR]")

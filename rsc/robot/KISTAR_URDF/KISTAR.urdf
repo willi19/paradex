@@ -1,0 +1,1191 @@
+<?xml version="1.0" ?>
+<!--Made by Jaesung Lee from PRIME Lab/ Last update: 2025-08-15-->
+
+<robot name="kistar_hand">
+
+  <!-- MOUNT -->
+    <link name="mount">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/mount.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/mount.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+  <!-- PALM -->
+    <link name="palm">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/Palm.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.15476"/>
+        <origin rpy="0 0 0" xyz="-0.01669 0.00079 -0.02862"/>
+        <inertia ixx="0.00032705182" ixy="-0.00001050022" ixz="0.00005386046"
+        iyy="0.00035100257" iyz="-0.00000337009" izz="0.00016323150"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/Palm.STL"/>
+        </geometry>
+        <material name="Black">
+          <color rgba="0 0 0 1"/>
+        </material>
+      </visual>
+    </link>
+
+  <!-- MOUNT JOINT -->
+    <joint name="kistar_mount_joint" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0. 0. 0.071"/>
+      <parent link="mount"/>
+      <child link="palm"/>
+    </joint>
+
+
+  <!-- THUMB -->
+    <link name="thumb_basemotor">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/thp1.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.01904"/>
+        <origin rpy="0 0 0" xyz="0.01002 0.00044 0.00000"/>
+        <inertia ixx="0.00000107197" ixy="0.00000008151" ixz="0.00000000000" iyy="0.00000344968" iyz="0.00000000000" izz="0.00000315305"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/thp1.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+    <!-- THUMB JOINT -->
+    <joint name="thumb_base_joint" type="fixed">
+      <origin rpy="-0.0873 0. 0." xyz="-0.02325 0.01224 -0.02988"/>
+      <parent link="palm"/>
+      <child link="thumb_basemotor"/>
+    </joint>
+
+
+    <link name="thumb_link_0">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/thumb_link_0.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.02423"/>
+        <origin rpy="0 0 0" xyz="-0.00714 0.00000 0.02081"/>
+        <inertia ixx="0.00001317338" ixy="0.00000000000" ixz="-0.00000386319" iyy="0.00001497641" iyz="0.00000000000" izz="0.00000318767"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/thumb_link_0.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="thumb_joint_0" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0." upper="1.5708" velocity="6.283"/>
+      <origin rpy="-1.5708 0. 0." xyz="0.0197 0.002 0."/>
+      <parent link="thumb_basemotor"/>
+      <child link="thumb_link_0"/>
+      <dynamics damping="0.0414019" friction="0.0523963"/>
+    </joint>
+
+    <link name="thumb_link_1">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/thumb_link_1.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+      <mass value="0.00191"/>
+        <origin rpy="0 0 0" xyz="0.00043 0.00000 0.00345"/>
+        <inertia ixx="0.00000023689" ixy="0.00000000000" ixz="0.00000000784" iyy="0.00000007651" iyz="0.00000000000" izz="0.00000021019"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/thumb_link_1.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="thumb_joint_1" type="revolute">
+      <axis xyz="0 0 1"/>
+      <limit effort="0.2" lower="-1.5708" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0. 0. 0." xyz="-0.002 0. 0.036"/>
+      <parent link="thumb_link_0"/>
+      <child link="thumb_link_1"/>
+      <dynamics damping="0.00587541" friction="0.0150275"/>
+    </joint>
+
+
+    <link name="thumb_link_2">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/thumb_link_2.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.01827"/>
+        <origin rpy="0 0 0" xyz="-0.00154 0.00021 0.01842"/>
+        <inertia ixx="0.00000796138" ixy="-0.00000001114" ixz="-0.00000053085" iyy="0.00000752132" iyz="0.00000001719" izz="0.00000105696"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/thumb_link_2.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="thumb_joint_2" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0. 0. 0." xyz="0.002 0. 0.0102"/>
+      <parent link="thumb_link_1"/>
+      <child link="thumb_link_2"/>
+      <dynamics damping="0.010638" friction="0.00616359"/>
+    </joint>
+
+
+    <link name="thumb_tip_braket">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/Tip_braket.STL"/>
+        </geometry>
+      </collision>
+    <inertial>
+        <mass value="0.00719"/>
+        <origin rpy="0 0 0" xyz="-0.00190 0.00000 0.01626"/>
+      <inertia ixx="0.00073654000" ixy="0.00000000000" ixz="-0.00002227000" iyy="0.00020117000" iyz="0.00000000000" izz="0.00071277000"/>    </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/Tip_braket.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="thumb_joint_3" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0. 0. 0." xyz="0. 0. 0.0335"/>
+      <parent link="thumb_link_2"/>
+      <child link="thumb_tip_braket"/>
+      <dynamics damping="0.0226948" friction="0.0227036"/>
+    </joint>  
+
+
+    <link name="thumb_tip">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_tip.STL"/>
+        </geometry>
+      </collision>
+    <inertial>
+        <mass value="0.00719"/>
+        <origin rpy="0 0 0" xyz="-0. 0. 0.00816"/>
+        <inertia ixx="0.00030378000" ixy="0.00000000000" ixz="0.00000000000" iyy="0.00030378000" iyz="0.00000000000" izz="0.00027029000"/>    </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_tip.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="thumb_tip_joint" type="fixed">
+      <origin rpy="0. 0. 0." xyz="-0.002 0. 0.010"/>
+      <parent link="thumb_tip_braket"/>
+      <child link="thumb_tip"/>
+    </joint>
+
+
+    <link name="thumb_sensor_0">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="thumb_sensor_0" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. 0.00865"/>
+      <parent link="thumb_link_2"/>
+      <child link="thumb_sensor_0"/>
+    </joint>
+
+
+    <link name="thumb_sensor_1">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="thumb_sensor_1" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. 0.02485"/>
+      <parent link="thumb_link_2"/>
+      <child link="thumb_sensor_1"/>
+    </joint>
+
+
+  <!--INDEX-->
+      <link name="index_basemotor">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_basemotor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.01904"/>
+        <origin rpy="0 0 0" xyz="0.01338 0.00095 -0.00207"/>
+        <inertia ixx="0.00000121099" ixy="0.00000030359" ixz="-0.00000056482" 
+        iyy="0.00000548403" iyz="-0.00000003164" izz="0.00000507172"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_basemotor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="index_base_joint" type="fixed">
+      <origin rpy="-0.0873 0. 0." xyz="-0.02325 0.02935 -0.0004"/>
+      <parent link="palm"/>
+      <child link="index_basemotor"/>
+    </joint>
+
+
+    <link name="index_link_0">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_0.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00473"/>
+        <origin rpy="0 0 0" xyz="-0.00353 0.00000 0.00948"/>
+        <inertia ixx="0.00000076951" ixy="0.00000000000" ixz="-0.00000009858" 
+        iyy="0.00000092515" iyz="0.00000000000" izz="0.00000062017"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_0.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="index_joint_0" type="revolute">
+      <axis xyz="1 0 0"/>
+      <limit effort="0.2" lower="-0.261799" upper="0.261799" velocity="6.283"/>
+      <origin rpy="0. 0. 0." xyz="0.02325 0. 0.0047"/>
+      <parent link="index_basemotor"/>
+      <child link="index_link_0"/>
+      <dynamics damping="0.0414019" friction="0.0523963"/>
+    </joint>
+
+
+    <link name="index_link_1">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_1.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.03549"/>
+        <origin rpy="0 0 0" xyz="-0.00166 0.00000 0.01675"/>
+        <inertia ixx="0.00001607025" ixy="0.00000000000" ixz="-0.00000098913"
+        iyy="0.00001510746" iyz="0.00000000000" izz="0.00000219008"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_1.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="index_joint_1" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0. 0. 0." xyz="0.002 0. 0.0195"/>
+      <parent link="index_link_0"/>
+      <child link="index_link_1"/>
+      <dynamics damping="0.00587541" friction="0.0150275"/>
+    </joint>
+
+
+    <link name="index_link_2">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_2.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00300"/>
+        <origin rpy="0 0 0" xyz="-0.00146 0.0 0.00659"/>
+        <inertia ixx="0.00200547000" ixy="0.00000000000" ixz="-0.00005438000" 
+        iyy="0.00050465000" iyz="0.00000000000" izz="0.00196277000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_2.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="index_joint_2" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0 0 0" xyz="0. 0. 0.0335"/>
+      <parent link="index_link_1"/>
+      <child link="index_link_2"/>
+      <dynamics damping="0.010638" friction="0.00616359"/>
+    </joint>
+
+
+    <link name="index_finger_motor">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_halfmotor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.015"/>
+        <origin rpy="0 0 0" xyz="-0.00163 0. 0.00677"/>
+        <inertia ixx="0.00041537000" ixy="0.00000000000" ixz="0.00000109000" 
+        iyy="0.00028785000" iyz="0.00000000000" izz="0.00029216000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_halfmotor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link> 
+
+    <joint name="index_finger_motor_joint" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0. 0. 0.0267"/>
+      <parent link="index_link_2"/>
+      <child link="index_finger_motor"/>
+    </joint>
+
+
+    <link name="index_tip_braket">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/Tip_braket.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00719"/>
+        <origin rpy="0 0 0" xyz="-0.00137 0.00000 0.00621"/>
+        <inertia ixx="0.00073654000" ixy="0.00000000000" ixz="-0.00002227000"
+        iyy="0.00020117000" iyz="0.00000000000" izz="0.00071277000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/Tip_braket.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="index_joint_3" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0 0 0" xyz="0. 0. 0."/>
+      <parent link="index_finger_motor"/>
+      <child link="index_tip_braket"/>
+      <dynamics damping="0.0226948" friction="0.0227036"/>
+    </joint>
+
+
+    <link name="index_tip">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_tip.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00719"/>
+        <origin rpy="0 0 0" xyz="0. 0.00000 0.00816"/>
+        <inertia ixx="0.00030378000" ixy="0.00000000000" ixz="0.00000000000"
+        iyy="0.00030378000" iyz="0.00000000000" izz="0.00027029000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_tip.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="index_tip_joint" type="fixed">
+      <origin rpy="0. 0. 0." xyz="-0.002 0. 0.010"/>
+      <parent link="index_tip_braket"/>
+      <child link="index_tip"/>
+    </joint>
+
+    <link name="index_sensor_0">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="index_sensor_0" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. 0.00865"/>
+      <parent link="index_link_1"/>
+      <child link="index_sensor_0"/>
+    </joint>
+
+  
+    <link name="index_sensor_1">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="index_sensor_1" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. 0.02485"/>
+      <parent link="index_link_1"/>
+      <child link="index_sensor_1"/>
+    </joint>
+
+  
+    <link name="index_sensor_2">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="index_sensor_2" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. -0.00865"/>
+      <parent link="index_finger_motor"/>
+      <child link="index_sensor_2"/>
+    </joint>
+
+
+
+  <!-- MIDDLE -->
+    <link name="middle_basemotor">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_basemotor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.01904"/>
+        <origin rpy="0 0 0" xyz="0.01338 0.00095 -0.00207"/>
+        <inertia ixx="0.00000121099" ixy="0.00000030359" ixz="-0.00000056482" 
+        iyy="0.00000548403" iyz="-0.00000003164" izz="0.00000507172"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_basemotor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="middle_base_joint" type="fixed">
+      <origin rpy="0. 0. 0." xyz="-0.02325 0. 0."/>
+      <parent link="palm"/>
+      <child link="middle_basemotor"/>
+    </joint>
+
+
+    <link name="middle_link_0">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_0.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00473"/>
+        <origin rpy="0 0 0" xyz="-0.00353 0.00000 0.00948"/>
+        <inertia ixx="0.00000076951" ixy="0.00000000000" ixz="-0.00000009858" 
+        iyy="0.00000092515" iyz="0.00000000000" izz="0.00000062017"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_0.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="middle_joint_0" type="revolute">
+      <axis xyz="1 0 0"/>
+      <limit effort="0.2" lower="-0.261799" upper="0.261799" velocity="6.283"/>
+      <origin rpy="0. 0. 0." xyz="0.02325 0. 0.0047"/>
+      <parent link="middle_basemotor"/>
+      <child link="middle_link_0"/>
+      <dynamics damping="0.0414019" friction="0.0523963"/>
+    </joint>
+
+
+    <link name="middle_link_1">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_1.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.03549"/>
+        <origin rpy="0 0 0" xyz="-0.00166 0.00000 0.01675"/>
+        <inertia ixx="0.00001607025" ixy="0.00000000000" ixz="-0.00000098913"
+        iyy="0.00001510746" iyz="0.00000000000" izz="0.00000219008"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_1.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="middle_joint_1" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0. 0. 0." xyz="0.002 0. 0.0195"/>
+      <parent link="middle_link_0"/>
+      <child link="middle_link_1"/>
+      <dynamics damping="0.00587541" friction="0.0150275"/>
+    </joint>
+
+
+    <link name="middle_link_2">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_2.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00300"/>
+        <origin rpy="0 0 0" xyz="-0.00146 0.0 0.00659"/>
+        <inertia ixx="0.00200547000" ixy="0.00000000000" ixz="-0.00005438000" 
+        iyy="0.00050465000" iyz="0.00000000000" izz="0.00196277000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_2.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="middle_joint_2" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0 0 0" xyz="0. 0. 0.0335"/>
+      <parent link="middle_link_1"/>
+      <child link="middle_link_2"/>
+      <dynamics damping="0.010638" friction="0.00616359"/>
+    </joint>
+
+
+    <link name="middle_finger_motor">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_halfmotor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.015"/>
+        <origin rpy="0 0 0" xyz="-0.00163 0. 0.00677"/>
+        <inertia ixx="0.00041537000" ixy="0.00000000000" ixz="0.00000109000" 
+        iyy="0.00028785000" iyz="0.00000000000" izz="0.00029216000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_halfmotor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link> 
+
+    <joint name="middle_finger_motor_joint" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0. 0. 0.0267"/>
+      <parent link="middle_link_2"/>
+      <child link="middle_finger_motor"/>
+    </joint>
+
+
+    <link name="middle_tip_braket">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/Tip_braket.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00719"/>
+        <origin rpy="0 0 0" xyz="-0.00137 0.00000 0.00621"/>
+        <inertia ixx="0.00073654000" ixy="0.00000000000" ixz="-0.00002227000"
+        iyy="0.00020117000" iyz="0.00000000000" izz="0.00071277000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/Tip_braket.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="middle_joint_3" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0 0 0" xyz="0. 0. 0."/>
+      <parent link="middle_finger_motor"/>
+      <child link="middle_tip_braket"/>
+      <dynamics damping="0.0226948" friction="0.0227036"/>
+    </joint>
+
+
+    <link name="middle_tip">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_tip.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00719"/>
+        <origin rpy="0 0 0" xyz="0. 0.00000 0.00816"/>
+        <inertia ixx="0.00030378000" ixy="0.00000000000" ixz="0.00000000000"
+        iyy="0.00030378000" iyz="0.00000000000" izz="0.00027029000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_tip.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="middle_tip_joint" type="fixed">
+      <origin rpy="0. 0. 0." xyz="-0.002 0. 0.010"/>
+      <parent link="middle_tip_braket"/>
+      <child link="middle_tip"/>
+    </joint>
+
+    <link name="middle_sensor_0">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="middle_sensor_0" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. 0.00865"/>
+      <parent link="middle_link_1"/>
+      <child link="middle_sensor_0"/>
+    </joint>
+
+  
+    <link name="middle_sensor_1">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="middle_sensor_1" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. 0.02485"/>
+      <parent link="middle_link_1"/>
+      <child link="middle_sensor_1"/>
+    </joint>
+
+  
+    <link name="middle_sensor_2">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="middle_sensor_2" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. -0.00865"/>
+      <parent link="middle_finger_motor"/>
+      <child link="middle_sensor_2"/>
+    </joint>
+
+
+
+  <!-- RING -->
+    <link name="ring_basemotor">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_basemotor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.01904"/>
+        <origin rpy="0 0 0" xyz="0.01338 0.00095 -0.00207"/>
+        <inertia ixx="0.00000121099" ixy="0.00000030359" ixz="-0.00000056482" 
+        iyy="0.00000548403" iyz="-0.00000003164" izz="0.00000507172"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_basemotor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="ring_base_joint" type="fixed">
+      <origin rpy="0.0873 0. 0." xyz="-0.02325 -0.02935 -0.0004"/>
+      <parent link="palm"/>
+      <child link="ring_basemotor"/>
+    </joint>
+
+
+    <link name="ring_link_0">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_0.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00473"/>
+        <origin rpy="0 0 0" xyz="-0.00353 0.00000 0.00948"/>
+        <inertia ixx="0.00000076951" ixy="0.00000000000" ixz="-0.00000009858" 
+        iyy="0.00000092515" iyz="0.00000000000" izz="0.00000062017"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_0.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="ring_joint_0" type="revolute">
+      <axis xyz="1 0 0"/>
+      <limit effort="0.2" lower="-0.261799" upper="0.261799" velocity="6.283"/>
+      <origin rpy="0. 0. 0." xyz="0.02325 0. 0.0047"/>
+      <parent link="ring_basemotor"/>
+      <child link="ring_link_0"/>
+      <dynamics damping="0.0414019" friction="0.0523963"/>
+    </joint>
+
+
+    <link name="ring_link_1">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_1.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.03549"/>
+        <origin rpy="0 0 0" xyz="-0.00166 0.00000 0.01675"/>
+        <inertia ixx="0.00001607025" ixy="0.00000000000" ixz="-0.00000098913"
+        iyy="0.00001510746" iyz="0.00000000000" izz="0.00000219008"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_1.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="ring_joint_1" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0. 0. 0." xyz="0.002 0. 0.0195"/>
+      <parent link="ring_link_0"/>
+      <child link="ring_link_1"/>
+      <dynamics damping="0.00587541" friction="0.0150275"/>
+    </joint>
+
+
+    <link name="ring_link_2">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_2.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00300"/>
+        <origin rpy="0 0 0" xyz="-0.00146 0.0 0.00659"/>
+        <inertia ixx="0.00200547000" ixy="0.00000000000" ixz="-0.00005438000" 
+        iyy="0.00050465000" iyz="0.00000000000" izz="0.00196277000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_link_2.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="ring_joint_2" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0 0 0" xyz="0. 0. 0.0335"/>
+      <parent link="ring_link_1"/>
+      <child link="ring_link_2"/>
+      <dynamics damping="0.010638" friction="0.00616359"/>
+    </joint>
+
+
+    <link name="ring_finger_motor">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_halfmotor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.015"/>
+        <origin rpy="0 0 0" xyz="-0.00163 0. 0.00677"/>
+        <inertia ixx="0.00041537000" ixy="0.00000000000" ixz="0.00000109000" 
+        iyy="0.00028785000" iyz="0.00000000000" izz="0.00029216000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_halfmotor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link> 
+
+    <joint name="ring_finger_motor_joint" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0. 0. 0.0267"/>
+      <parent link="ring_link_2"/>
+      <child link="ring_finger_motor"/>
+    </joint>
+
+
+    <link name="ring_tip_braket">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/Tip_braket.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00719"/>
+        <origin rpy="0 0 0" xyz="-0.00137 0.00000 0.00621"/>
+        <inertia ixx="0.00073654000" ixy="0.00000000000" ixz="-0.00002227000"
+        iyy="0.00020117000" iyz="0.00000000000" izz="0.00071277000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/Tip_braket.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="ring_joint_3" type="revolute">
+      <axis xyz="0 1 0"/>
+      <limit effort="0.2" lower="0" upper="1.5708" velocity="6.283"/>
+      <origin rpy="0 0 0" xyz="0. 0. 0."/>
+      <parent link="ring_finger_motor"/>
+      <child link="ring_tip_braket"/>
+      <dynamics damping="0.0226948" friction="0.0227036"/>
+    </joint>
+
+
+    <link name="ring_tip">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_tip.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.00719"/>
+        <origin rpy="0 0 0" xyz="0. 0.00000 0.00816"/>
+        <inertia ixx="0.00030378000" ixy="0.00000000000" ixz="0.00000000000"
+        iyy="0.00030378000" iyz="0.00000000000" izz="0.00027029000"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/finger_tip.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="ring_tip_joint" type="fixed">
+      <origin rpy="0. 0. 0." xyz="-0.002 0. 0.010"/>
+      <parent link="ring_tip_braket"/>
+      <child link="ring_tip"/>
+    </joint>
+
+    <link name="ring_sensor_0">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="ring_sensor_0" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. 0.00865"/>
+      <parent link="ring_link_1"/>
+      <child link="ring_sensor_0"/>
+    </joint>
+
+  
+    <link name="ring_sensor_1">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="ring_sensor_1" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. 0.02485"/>
+      <parent link="ring_link_1"/>
+      <child link="ring_sensor_1"/>
+    </joint>
+
+  
+    <link name="ring_sensor_2">
+      <collision>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+      </collision>
+      <inertial>
+        <mass value="0.0"/>
+        <origin rpy="0 0 0" xyz="0 0 0"/>
+        <inertia ixx="0.0" ixy="0.0" ixz="0.0" iyy="0.0" iyz="0.0" izz="0.0"/>
+      </inertial>
+      <visual>
+        <geometry>
+          <mesh filename="meshes/kistar/sensor.STL"/>
+        </geometry>
+        <material name="Grey">
+          <color rgba="0.2 0.2 0.2 1"/>
+        </material>
+      </visual>
+    </link>
+
+    <joint name="ring_sensor_2" type="fixed">
+      <origin rpy="0. 0. 0." xyz="0.00525 0. -0.00865"/>
+      <parent link="ring_finger_motor"/>
+      <child link="ring_sensor_2"/>
+    </joint>
+
+</robot>

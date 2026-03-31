@@ -223,3 +223,100 @@ def inspire_f1(hand_pose_frame: Dict[str, np.ndarray]):
 
     
     return inspire_angles
+
+
+
+def kistar(hand_pose_frame):
+    required = [
+        "wrist",
+        "thumb_metacarpal",
+        "thumb_proximal",
+        "thumb_distal",
+        "index_metacarpal",
+        "index_proximal",
+        "index_intermediate",
+        "index_distal",
+        "middle_metacarpal",
+        "middle_proximal",
+        "middle_intermediate",
+        "middle_distal",
+        "ring_metacarpal",
+        "ring_proximal",
+        "ring_intermediate",
+        "ring_distal",
+    ]
+    if any(k not in hand_pose_frame for k in required):
+        return None
+
+    def _angle_to_raw(v, max_angle=1.8):
+        v = float(np.clip(v, 0.0, max_angle))
+        return int(np.clip(np.rint(v / max_angle * 4096.0), 0, 4096))
+
+    # intermediate representation in radians (allegro-like extraction)
+    allegro_angles = np.zeros(16, dtype=np.float64)
+    joint_name_list = ["metacarpal", "proximal", "intermediate", "distal"]
+    wrist_inv = np.linalg.inv(hand_pose_frame["wrist"])
+
+    for i, finger_name in enumerate(["index", "middle", "ring"]):
+        metacarpal = f"{finger_name}_metacarpal"
+        distal = f"{finger_name}_distal"
+
+        tip_position = (wrist_inv @ hand_pose_frame[distal])[:3, 3]
+        finger_base_position = (wrist_inv @ hand_pose_frame[metacarpal])[:3, 3]
+        tip_direction = tip_position - finger_base_position
+        norm = np.linalg.norm(tip_direction)
+        if norm < 1e-8:
+            return None
+        tip_direction = tip_direction / norm
+
+        if tip_direction[1] > 0.9:
+            allegro_angles[4 * i] = 0.0
+        else:
+            allegro_angles[4 * i] = np.arctan2(tip_direction[0], tip_direction[2]) * (0.9 - tip_direction[1])
+
+        for j in range(3):
+            parent_name = f"{finger_name}_{joint_name_list[j]}"
+            joint_name = f"{finger_name}_{joint_name_list[j + 1]}"
+            rot_mat = np.linalg.inv(hand_pose_frame[parent_name][:3, :3]) @ hand_pose_frame[joint_name][:3, :3]
+            v = rot_mat[1, 1] if rot_mat[2, 1] >= 0 else 1
+            v = max(-1.0, min(1.0, v))
+            allegro_angles[4 * i + j + 1] = np.arccos(v)
+        allegro_angles[4 * i + 1] = (allegro_angles[4 * i + 1] - 0.35) * 1.5
+
+    thumb_meta = hand_pose_frame["wrist"][:3, :3].T @ hand_pose_frame["thumb_metacarpal"][:3, :3]
+    thumb_meta_angle = R.from_matrix(thumb_meta).as_euler("xyz")
+    allegro_angles[12] = thumb_meta_angle[0]
+    allegro_angles[13] = -thumb_meta_angle[2] - 1.57
+    for i, (parent_name, joint_name) in enumerate(
+        [("thumb_metacarpal", "thumb_proximal"), ("thumb_proximal", "thumb_distal")]
+    ):
+        rot_mat = np.linalg.inv(hand_pose_frame[parent_name][:3, :3]) @ hand_pose_frame[joint_name][:3, :3]
+        allegro_angles[14 + i] = rot_mat[2, 1] * 1.2
+
+    # KISTAR raw command (0=open, 4096=closed), 16-dof with fixed indices
+    kistar_raw = np.zeros(16, dtype=np.int32)
+
+    # thumb: active [0,2,3], fixed [1]
+    kistar_raw[0] = _angle_to_raw(allegro_angles[13], max_angle=0.35)    
+    kistar_raw[1] = -_angle_to_raw(allegro_angles[13], max_angle=0.35)
+
+    kistar_raw[2] = _angle_to_raw(allegro_angles[14], max_angle=1.5)
+    kistar_raw[3] = _angle_to_raw(allegro_angles[15], max_angle=1.5)
+
+    # index: active [5,6,7], fixed [4]
+    kistar_raw[5] = _angle_to_raw(allegro_angles[1], max_angle=1.8)
+    kistar_raw[6] = _angle_to_raw(allegro_angles[2], max_angle=1.8)
+    kistar_raw[7] = _angle_to_raw(allegro_angles[3], max_angle=1.8)
+
+    # middle: active [9,10,11], fixed [8]
+    kistar_raw[9] = _angle_to_raw(allegro_angles[5], max_angle=1.8)
+    kistar_raw[10] = _angle_to_raw(allegro_angles[6], max_angle=1.8)
+    kistar_raw[11] = _angle_to_raw(allegro_angles[7], max_angle=1.8)
+
+    # ring: active [13,14,15], fixed [12]
+    kistar_raw[13] = _angle_to_raw(allegro_angles[9], max_angle=1.8)
+    kistar_raw[14] = _angle_to_raw(allegro_angles[10], max_angle=1.8)
+    kistar_raw[15] = _angle_to_raw(allegro_angles[11], max_angle=1.8)
+
+    # fixed joints: 1,4,8,12 are already 0
+    return kistar_raw

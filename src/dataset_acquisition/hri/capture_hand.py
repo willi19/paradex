@@ -68,22 +68,22 @@ while not exit_event.is_set():
     save_event.clear()
     stop_event.clear()
     
-    print("Press Enter")
+    # print("Press Enter")
     
-    paired_robot_episode = int(input(f"Enter the episode number of paired robot sequence for {args.name}: "))
+    # paired_robot_episode = int(input(f"Enter the episode number of paired robot sequence for {args.name}: "))
 
         
-    paired_info_json_path = os.path.join(shared_dir, save_path, "paired_robot_episode.json")
+    # paired_info_json_path = os.path.join(shared_dir, save_path, "paired_robot_episode.json")
     
-    with open(paired_info_json_path, "w") as f:
-        json.dump(
-            {
-                "human hand episode": last_idx,
-                "paired robot episode": paired_robot_episode,
-            },
-            f,
-            indent=2,
-        )
+    # with open(paired_info_json_path, "w") as f:
+    #     json.dump(
+    #         {
+    #             "human hand episode": last_idx,
+    #             "paired robot episode": paired_robot_episode,
+    #         },
+    #         f,
+    #         indent=2,
+    #     )
         
     print(f"============== episode {last_idx} done =========================")
 

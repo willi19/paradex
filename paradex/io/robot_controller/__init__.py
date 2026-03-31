@@ -5,8 +5,10 @@ def get_arm(arm_name):
     #     from .franka_controller import FrankaController
     #     return FrankaController()
     if arm_name == "xarm":
-        from .xarm_controller import XArmController
-        return XArmController(**network_info[arm_name]["param"])
+        # from .xarm_controller import XArmController
+        # return XArmController(**network_info[arm_name]["param"])
+        from .xarm_controller_ros import XArmControllerROS
+        return XArmControllerROS(**network_info["xarm"]["param"])
     if arm_name == "openarm":
         from .openarm_state_receiver import OpenArmStateReceiver
         return OpenArmStateReceiver()
@@ -29,3 +31,7 @@ def get_hand(hand_name, tactile = False, ip = False):
     if hand_name == "allegro":
         from .allegro_controller_ros2 import AllegroController
         return AllegroController(**network_info[hand_name]["param"])
+
+    if hand_name == "kistar":
+        from .kistarcontroller import KistarController
+        return KistarController()

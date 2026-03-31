@@ -41,10 +41,10 @@ class CaptureSession():
         if camera:
             self.camera = remote_camera_controller(name="dataset_acquisition")
             self.sync_generator = UTGE900(**network_info["signal_generator"]["param"])
-            if arm is not None or hand is not None:
-                self.timestamp_monitor = TimestampMonitor(**network_info["timestamp"]["param"])
-            else:
-                self.timestamp_monitor = None
+            # if arm is not None or hand is not None:
+            self.timestamp_monitor = TimestampMonitor(**network_info["timestamp"]["param"])
+            # else:
+            #     self.timestamp_monitor = None
         else:
             self.camera = None
             self.timestamp_monitor = None
@@ -163,12 +163,13 @@ class CaptureSession():
             np.save(os.path.join(shared_dir, self.save_path, "raw", "state", "state_time.npy"), np.array(self.state_time))
 
         if self.camera is not None:
+            self.sync_generator.stop()
             print("Stopping camera and saving calibration data...")
+            time.sleep(3.0)
             self.camera.stop()
             print("Camera stopped.")
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.stop()
-            self.sync_generator.stop()
 
             save_current_camparam(os.path.join(shared_dir, self.save_path))
             if self.arm is not None:

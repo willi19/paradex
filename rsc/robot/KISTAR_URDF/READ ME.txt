@@ -1,0 +1,16 @@
+- Made by Jaesung LEE from Prime Lab(KIST)
+- last update: Dec-19-2025
+
+업데이트 내용:
+finger tip -> finger_tip / tip_braket으로 나눠서 사이를 fixed joint 로 고정
+Link_2 -> finger_motor / Link_2 로 나누어서 사이를 fixed joint 로 고정
+Link 파트 바로 다음 Joint 추가하여 코드 가시성 확보
+
+완료: link/ Joint , 센서 각 손가락당 3개(엄지 2개), inertia, mass/ damding
+
+모든 손가락은 base motor/ link 0,1,2/ tip 으로 이루어져 있다. 
+엄지 손가락만 sensor가 2개 이며, 나머지 손가락은 3개 이다. 
+엄지손가락 두번째 조인트는 180도 회전하게 해두었다.
+좌표축은 cad 파일 확인할 것.
+
+메쉬가 열리지 않을땐, 파일 경로 확인하기.

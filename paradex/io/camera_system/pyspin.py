@@ -609,8 +609,19 @@ class PyspinTimestampMonitor():
                 pImageRaw.Release()
                 return frame_data
 
-            except Exception as e:
-                return None
+            except ps.SpinnakerException as exc:
+                # Timeout/no-trigger is expected when stopping sync first.
+                msg = str(exc).lower()
+                is_timeout_like = (
+                    "timeout" in msg
+                    or "time out" in msg
+                    or "failed waiting for eventdata" in msg
+                    or "new_buffer_data" in msg
+                    or "-1011" in msg
+                )
+                if is_timeout_like:
+                    return None
+                raise
         else:
             pImageRaw = self.cam.GetNextImage()
         

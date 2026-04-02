@@ -1,10 +1,7 @@
 .DS_Store
 .gitignore
 README.md
-marker_offset.npy
 setup.py
-temp.py
-temp.sh
 .vscode/launch_prev.json
 .vscode/settings.json
 bodex/scale010_grasp.npy
@@ -374,11 +371,6 @@ docs/visualization/video.html
 docs/visualization/video.rst
 docs/visualization/viewer.html
 docs/visualization/viewer.rst
-inspire_motion/action.npy
-inspire_motion/force.npy
-inspire_motion/position.npy
-inspire_motion/tactile.npy
-inspire_motion/time.npy
 jisoo_test/gui_controller.py
 jisoo_test/test_insys.py
 jisoo_test/test_insys_inspire.py
@@ -451,9 +443,11 @@ paradex/io/robot_controller/inspire_f1_controller_ip.py
 paradex/io/robot_controller/inspire_f1_controller_ros2.py
 paradex/io/robot_controller/inspire_f1_state_receiver.py
 paradex/io/robot_controller/inspire_f1_tactile_plotter.py
+paradex/io/robot_controller/kistarcontroller.py
 paradex/io/robot_controller/openarm_f1_xsens_standalone.py
 paradex/io/robot_controller/openarm_state_receiver.py
 paradex/io/robot_controller/xarm_controller.py
+paradex/io/robot_controller/xarm_controller_ros.py
 paradex/io/robot_controller/deprecated/inspire_controller_ip.py
 paradex/io/teleop/__init__.py
 paradex/io/teleop/deprecated/occulus/receiver.py

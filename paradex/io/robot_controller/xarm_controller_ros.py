@@ -10,6 +10,10 @@ import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from xarm_msgs.srv import GetFloat32List, MoveCartesian, SetInt16
+try:
+    from xarm_msgs.srv import MoveJoint
+except Exception:  # keep compatibility with environments where MoveJoint is unavailable
+    MoveJoint = None
 
 action_dof = 6
 
@@ -41,7 +45,15 @@ def homo2aa(h):
 
 
 class XArmControllerROS(Node):
-    def __init__(self, ip=None, hw_ns="xarm", fps=100, record_fps=135, is_tool_coord=False):
+    def __init__(
+        self,
+        ip=None,
+        hw_ns="xarm",
+        fps=100,
+        record_fps=135,
+        is_tool_coord=False,
+        servo_api="cartesian_aa",
+    ):
         del ip  # kept for compatibility with existing network_info schema
 
         if not rclpy.ok():
@@ -55,6 +67,14 @@ class XArmControllerROS(Node):
         self.fps = float(fps)
         self.save_fps = float(record_fps)
         self.is_tool_coord = bool(is_tool_coord)
+        self.servo_api = str(servo_api).strip().lower()
+        if self.servo_api not in ("cartesian_aa", "angle_j"):
+            self.get_logger().warning(
+                f"Unknown servo_api='{servo_api}', fallback to 'cartesian_aa'"
+            )
+            self.servo_api = "cartesian_aa"
+        self._warned_joint_fallback = False
+        self._warned_pose_in_joint_mode = False
         self.hw_ns = hw_ns.strip("/")
         base = f"/{self.hw_ns}"
 
@@ -79,6 +99,9 @@ class XArmControllerROS(Node):
         self.cli_set_state = self.create_client(SetInt16, f"{base}/set_state")
         self.cli_get_position = self.create_client(GetFloat32List, f"{base}/get_position")
         self.cli_set_servo_cart_aa = self.create_client(MoveCartesian, f"{base}/set_servo_cartesian_aa")
+        self.cli_set_servo_angle_j = None
+        if MoveJoint is not None:
+            self.cli_set_servo_angle_j = self.create_client(MoveJoint, f"{base}/set_servo_angle_j")
         self.sub_joint_states = self.create_subscription(
             JointState, f"{base}/joint_states", self._joint_state_cb, 10
         )
@@ -114,6 +137,8 @@ class XArmControllerROS(Node):
             (self.cli_get_position, "get_position"),
             (self.cli_set_servo_cart_aa, "set_servo_cartesian_aa"),
         ]
+        if self.cli_set_servo_angle_j is not None:
+            clients.append((self.cli_set_servo_angle_j, "set_servo_angle_j"))
         for cli, name in clients:
             while not self.exit_event.is_set() and not cli.wait_for_service(timeout_sec=1.0):
                 self.get_logger().info(f"waiting service: {name}")
@@ -160,6 +185,19 @@ class XArmControllerROS(Node):
         req.is_tool_coord = self.is_tool_coord
         return self._call_sync(self.cli_set_servo_cart_aa, req, timeout_sec=0.3)
 
+    def _send_servo_angle_j(self, joints):
+        if self.cli_set_servo_angle_j is None or MoveJoint is None:
+            return None
+        req = MoveJoint.Request()
+        req.angles = np.asarray(joints, dtype=np.float32).tolist()
+        req.speed = 0.0
+        req.acc = 0.0
+        req.mvtime = 0.0
+        req.wait = False
+        if hasattr(req, "radius"):
+            req.radius = 0.0
+        return self._call_sync(self.cli_set_servo_angle_j, req, timeout_sec=0.3)
+
     def control_loop(self):
         while not self.exit_event.is_set():
             start_time = time.perf_counter()
@@ -167,21 +205,43 @@ class XArmControllerROS(Node):
             with self.lock:
                 action = self.action.copy()
 
+            cmd_name = "set_servo_cartesian_aa"
+            use_joint_servo = False
             if action.shape == (4, 4):
                 aa = homo2aa(action)
+                if self.servo_api == "angle_j" and not self._warned_pose_in_joint_mode:
+                    self.get_logger().warning(
+                        "servo_api='angle_j' requires joint action(shape=(6,)); using set_servo_cartesian_aa for pose action"
+                    )
+                    self._warned_pose_in_joint_mode = True
             elif action.shape == (6,):
                 aa = np.asarray(action, dtype=np.float64)
+                use_joint_servo = self.servo_api == "angle_j"
             else:
                 self.error_event.set()
                 time.sleep(0.01)
                 continue
 
-            res = self._send_servo_aa(aa)
+            if use_joint_servo:
+                cmd_name = "set_servo_angle_j"
+                res = self._send_servo_angle_j(aa)
+                if res is None:
+                    if not self._warned_joint_fallback:
+                        self.get_logger().warning(
+                            "set_servo_angle_j unavailable/timeout; command skipped"
+                        )
+                        self._warned_joint_fallback = True
+                    self.error_event.set()
+                    elapsed = time.perf_counter() - start_time
+                    time.sleep(max(0.0, (1.0 / self.fps) - elapsed))
+                    continue
+            else:
+                res = self._send_servo_aa(aa)
             if res is None:
-                self.get_logger().warning("set_servo_cartesian_aa timeout")
+                self.get_logger().warning(f"{cmd_name} timeout")
                 self.error_event.set()
             elif res.ret != 0:
-                self.get_logger().warning(f"set_servo_cartesian_aa ret={res.ret}, msg={res.message}")
+                self.get_logger().warning(f"{cmd_name} ret={res.ret}, msg={res.message}")
                 self.error_event.set()
 
             elapsed = time.perf_counter() - start_time

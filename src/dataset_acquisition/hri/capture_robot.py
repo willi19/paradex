@@ -24,6 +24,7 @@ parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--tactile', action="store_true")
 parser.add_argument('--ip', action="store_true")
 parser.add_argument('--visualize-tactile-realtime', action="store_true")
+parser.add_argument('--xarm-servo-api', choices=["cartesian_aa", "angle_j"], default="cartesian_aa")
 
 args = parser.parse_args()
 
@@ -56,7 +57,8 @@ cs = CaptureSession(
     hand_side = "right",
     events=events,
     tactile=args.tactile,
-    ip=args.ip
+    ip=args.ip,
+    arm_kwargs={"servo_api": args.xarm_servo_api} if args.arm == "xarm" else None,
 )
 
 tactile_plotter = None

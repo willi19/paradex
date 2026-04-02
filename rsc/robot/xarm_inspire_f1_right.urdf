@@ -128,7 +128,7 @@
     
     <limit effort="500.0" lower="-6.28318530718" upper="6.28318530718" velocity="3.14"/>
     
-    <dynamics damping="0.0001" friction="0.01"/>
+    <dynamics damping="1.0" friction="1.0"/>
     
   </joint>
   
@@ -184,7 +184,7 @@
     
     <limit effort="50.0" lower="-2.059" upper="2.0944" velocity="3.14"/>
     
-    <dynamics damping="0.0001" friction="0.01"/>
+    <dynamics damping="1.0" friction="1.0"/>
     
   </joint>
   
@@ -240,7 +240,7 @@
     
     <limit effort="32.0" lower="-3.927" upper="0.19198" velocity="3.14"/>
     
-    <dynamics damping="0.0001" friction="0.01"/>
+    <dynamics damping="1.0" friction="1.0"/>
     
   </joint>
   
@@ -296,7 +296,7 @@
     
     <limit effort="32.0" lower="-6.28318530718" upper="6.28318530718" velocity="3.14"/>
     
-    <dynamics damping="0.0001" friction="0.01"/>
+    <dynamics damping="1.0" friction="1.0"/>
     
   </joint>
   
@@ -352,7 +352,7 @@
     
     <limit effort="32.0" lower="-1.69297" upper="3.14159265359" velocity="3.14"/>
     
-    <dynamics damping="0.0001" friction="0.01"/>
+    <dynamics damping="1.0" friction="1.0"/>
     
   </joint>
   
@@ -408,7 +408,7 @@
     
     <limit effort="20.0" lower="-6.28318530718" upper="6.28318530718" velocity="3.14"/>
     
-    <dynamics damping="0.0001" friction="0.01"/>
+    <dynamics damping="1.0" friction="1.0"/>
     
   </joint>
     
@@ -932,7 +932,7 @@
       
       <origin xyz="0.0048965432924319 0.000707788830417878 -0.00883745365301308" rpy="0 0 0"/>
       
-      <mass value="0"/>
+      <mass value="0.01"/>
       
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       
@@ -988,7 +988,7 @@
       
       <origin xyz="3.77562735170631E-05 -0.0101703967740828 -0.0136494381069971" rpy="0 0 0"/>
       
-      <mass value="0"/>
+      <mass value="0.01"/>
       
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       
@@ -1162,7 +1162,7 @@
       
       <origin xyz="-0.000411923019764227 -0.0123118470405642 -0.00640361541021662" rpy="0 0 0"/>
       
-      <mass value="0"/>
+      <mass value="0.01"/>
       
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       
@@ -1218,7 +1218,7 @@
       
       <origin xyz="-0.00116882659469011 -0.0177404684378123 -0.0152714634926817" rpy="0 0 0"/>
       
-      <mass value="0"/>
+      <mass value="0.01"/>
       
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       
@@ -1392,7 +1392,7 @@
       
       <origin xyz="0.000471532938695406 -0.0138846665754712 -0.0063422335367961" rpy="0 0 0"/>
       
-      <mass value="0"/>
+      <mass value="0.01"/>
       
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       
@@ -1448,7 +1448,7 @@
       
       <origin xyz="-1.56032137985686E-05 -0.0191696833676399 -0.0160122884402975" rpy="0 0 0"/>
       
-      <mass value="0"/>
+      <mass value="0.01"/>
       
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       
@@ -1622,7 +1622,7 @@
       
       <origin xyz="0.00109767398054146 -0.0122697321740606 -0.00640361768517552" rpy="0 0 0"/>
       
-      <mass value="0"/>
+      <mass value="0.01"/>
       
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       
@@ -1678,7 +1678,7 @@
       
       <origin xyz="0.000974578618407327 -0.0177521976538281 -0.015271465020787" rpy="0 0 0"/>
       
-      <mass value="0"/>
+      <mass value="0.01"/>
       
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       
@@ -1852,7 +1852,7 @@
       
       <origin xyz="0.00132747018137316 -0.00844356465788672 -0.00651118992676019" rpy="0 0 0"/>
       
-      <mass value="0"/>
+      <mass value="0.01"/>
       
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       
@@ -1908,7 +1908,7 @@
       
       <origin xyz="0.00157850769633822 -0.0143797245335056 -0.0134611237924734" rpy="0 0 0"/>
       
-      <mass value="0"/>
+      <mass value="0.01"/>
       
       <inertia ixx="0" ixy="0" ixz="0" iyy="0" iyz="0" izz="0"/>
       

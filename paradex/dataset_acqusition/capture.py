@@ -29,6 +29,7 @@ class CaptureSession():
         hand_side="right",
         events=None,
         realsense=False,
+        arm_kwargs=None,
     ):
         if realsense:
             self.realsense = realsense_controller()
@@ -53,7 +54,8 @@ class CaptureSession():
      
 
         if arm is not None:
-            self.arm = get_arm(arm)
+            arm_kwargs = {} if arm_kwargs is None else dict(arm_kwargs)
+            self.arm = get_arm(arm, **arm_kwargs)
             self.arm_name = arm
         else:
             self.arm = None

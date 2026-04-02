@@ -1,6 +1,6 @@
 from paradex.utils.system import network_info
 
-def get_arm(arm_name):
+def get_arm(arm_name, **kwargs):
     # if arm_name == "franka":
     #     from .franka_controller import FrankaController
     #     return FrankaController()
@@ -8,7 +8,7 @@ def get_arm(arm_name):
         # from .xarm_controller import XArmController
         # return XArmController(**network_info[arm_name]["param"])
         from .xarm_controller_ros import XArmControllerROS
-        return XArmControllerROS(**network_info["xarm"]["param"])
+        return XArmControllerROS(**network_info["xarm"]["param"], **kwargs)
     if arm_name == "openarm":
         from .openarm_state_receiver import OpenArmStateReceiver
         return OpenArmStateReceiver()

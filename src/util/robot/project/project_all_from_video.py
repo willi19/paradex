@@ -19,6 +19,67 @@ from paradex.robot.utils import get_robot_urdf_path
 from paradex.image.projection import BatchRenderer
 
 
+KISTAR_JOINT_ENCODER_LIMITS = np.array(
+    [
+        (0.0, 4096.0),      # J00
+        (-4096.0, 4096.0),  # J01
+        (0.0, 4096.0),      # J02
+        (0.0, 4096.0),      # J03
+        (-680.0, 680.0),    # J04
+        (0.0, 4096.0),      # J05
+        (0.0, 4096.0),      # J06
+        (0.0, 4096.0),      # J07
+        (-680.0, 680.0),    # J08
+        (0.0, 4096.0),      # J09
+        (0.0, 4096.0),      # J10
+        (0.0, 4096.0),      # J11
+        (-680.0, 680.0),    # J12
+        (0.0, 4096.0),      # J13
+        (0.0, 4096.0),      # J14
+        (0.0, 4096.0),      # J15
+    ],
+    dtype=float,
+)
+
+KISTAR_JOINT_URDF_LIMITS = np.array(
+    [
+        (0.0, 1.5708),         # thumb_joint_0
+        (-1.5708, 1.5708),     # thumb_joint_1
+        (0.0, 1.5708),         # thumb_joint_2
+        (0.0, 1.5708),         # thumb_joint_3
+        (-0.261799, 0.261799), # index_joint_0
+        (0.0, 1.5708),         # index_joint_1
+        (0.0, 1.5708),         # index_joint_2
+        (0.0, 1.5708),         # index_joint_3
+        (-0.261799, 0.261799), # middle_joint_0
+        (0.0, 1.5708),         # middle_joint_1
+        (0.0, 1.5708),         # middle_joint_2
+        (0.0, 1.5708),         # middle_joint_3
+        (-0.261799, 0.261799), # ring_joint_0
+        (0.0, 1.5708),         # ring_joint_1
+        (0.0, 1.5708),         # ring_joint_2
+        (0.0, 1.5708),         # ring_joint_3
+    ],
+    dtype=float,
+)
+
+
+def kistar_encoder_to_rad(hand_state: np.ndarray) -> np.ndarray:
+    hand_state = np.asarray(hand_state, dtype=float)
+    if hand_state.ndim == 1:
+        hand_state = hand_state[None, :]
+    if hand_state.ndim != 2 or hand_state.shape[1] != 16:
+        raise ValueError(f"kistar hand state must be [N,16], got {hand_state.shape}")
+
+    enc_min = KISTAR_JOINT_ENCODER_LIMITS[:, 0]
+    enc_max = KISTAR_JOINT_ENCODER_LIMITS[:, 1]
+    rad_min = KISTAR_JOINT_URDF_LIMITS[:, 0]
+    rad_max = KISTAR_JOINT_URDF_LIMITS[:, 1]
+    denom = np.maximum(enc_max - enc_min, 1e-12)
+    t = np.clip((hand_state - enc_min) / denom, 0.0, 1.0)
+    return rad_min + t * (rad_max - rad_min)
+
+
 def _build_video_source_map(videos_dir, cam_ids):
     avi_paths = sorted(
         path for path in (os.path.join(videos_dir, name) for name in os.listdir(videos_dir))
@@ -167,10 +228,16 @@ def project_robot_and_object(
     if project_robot:
         arm_qpos, arm_time = load_series(arm_dir, ("position.npy", "action_qpos.npy", "action.npy"))
 
-        if overlay_option == "action":
-            hand_action, hand_time = load_series(hand_dir, ("action.npy", "right_joint_states.npy"))
+        if hand == "kistar":
+            if overlay_option == "action":
+                hand_action, hand_time = load_series(hand_dir, ("action.npy", "qpos.npy", "position.npy"))
+            else:
+                hand_action, hand_time = load_series(hand_dir, ("qpos.npy", "position.npy", "action.npy"))
         else:
-            hand_action, hand_time = load_series(hand_dir, ("position.npy", "right_joint_states.npy"))
+            if overlay_option == "action":
+                hand_action, hand_time = load_series(hand_dir, ("action.npy", "right_joint_states.npy"))
+            else:
+                hand_action, hand_time = load_series(hand_dir, ("position.npy", "right_joint_states.npy"))
 
         hand_time_path = os.path.join(hand_dir, "time.npy")
         if not os.path.exists(hand_time_path):
@@ -190,6 +257,8 @@ def project_robot_and_object(
             hand_qpos = inspire_action_to_qpos_dof12(hand_action)
         elif hand == "inspire_f1":
             hand_qpos = inspire_f1_action_to_qpos_dof6(hand_action)
+        elif hand == "kistar":
+            hand_qpos = kistar_encoder_to_rad(hand_action)
         else:
             hand_qpos = hand_action
 

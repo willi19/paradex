@@ -15,6 +15,7 @@ TARGET_CAMERAS = [
     "23012641",  # capture14
     "23022639",  # capture12
 ]
+STREAM_SIZE = (640, 480)  # (width, height)
 
 dp = DataPublisher(port=1234, name="camera_stream")
 
@@ -64,7 +65,7 @@ while not exit_event.is_set():
                 save_remain -= 1
                 save_id[camera_name] += 1
 
-            cur_image = cv2.resize(cur_image, (cur_image.shape[1]//8, cur_image.shape[0]//8))
+            cur_image = cv2.resize(cur_image, STREAM_SIZE)
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
             success, encoded_image = cv2.imencode('.jpg', cur_image, encode_param)
             
@@ -74,7 +75,7 @@ while not exit_event.is_set():
                     'name': camera_name,
                     'frame_id': int(frame_id),
                     'save_id': save_id[camera_name],
-                    'shape': tuple(int(x) for x in image.shape),
+                    'shape': tuple(int(x) for x in cur_image.shape),
                     'data_index': len(binary_data)
                 })
                 # Add binary data

@@ -11,6 +11,10 @@ from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from xarm_msgs.srv import GetFloat32List, MoveCartesian, SetInt16
 try:
+    from xarm_msgs.msg import RobotMsg
+except Exception:
+    RobotMsg = None
+try:
     from xarm_msgs.srv import MoveJoint
 except Exception:  # keep compatibility with environments where MoveJoint is unavailable
     MoveJoint = None
@@ -90,6 +94,7 @@ class XArmControllerROS(Node):
         self.latest_torque = None
         self.latest_joint_time = None
         self.last_pose_homo = np.eye(4, dtype=np.float64)
+        self.latest_pose_time = None
 
         self.action = self.last_pose_homo.copy()
         self.data = None
@@ -98,6 +103,7 @@ class XArmControllerROS(Node):
         self.cli_set_mode = self.create_client(SetInt16, f"{base}/set_mode")
         self.cli_set_state = self.create_client(SetInt16, f"{base}/set_state")
         self.cli_get_position = self.create_client(GetFloat32List, f"{base}/get_position")
+        self.cli_get_servo_angle = self.create_client(GetFloat32List, f"{base}/get_servo_angle")
         self.cli_set_servo_cart_aa = self.create_client(MoveCartesian, f"{base}/set_servo_cartesian_aa")
         self.cli_set_servo_angle_j = None
         if MoveJoint is not None:
@@ -105,6 +111,11 @@ class XArmControllerROS(Node):
         self.sub_joint_states = self.create_subscription(
             JointState, f"{base}/joint_states", self._joint_state_cb, 10
         )
+        self.sub_robot_states = None
+        if RobotMsg is not None:
+            self.sub_robot_states = self.create_subscription(
+                RobotMsg, f"{base}/robot_states", self._robot_state_cb, 10
+            )
 
         self.spin_thread = Thread(target=self._spin, daemon=True)
         self.spin_thread.start()
@@ -129,6 +140,13 @@ class XArmControllerROS(Node):
             self.latest_qvel = np.asarray(msg.velocity[:6], dtype=np.float64)
             self.latest_torque = np.asarray(msg.effort[:6], dtype=np.float64)
             self.latest_joint_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+
+    def _robot_state_cb(self, msg):
+        pose = np.asarray(msg.pose[:6], dtype=np.float64)
+        stamp = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+        with self.lock:
+            self.last_pose_homo = cart2homo(pose)
+            self.latest_pose_time = stamp
 
     def _wait_services(self):
         clients = [
@@ -336,16 +354,15 @@ class XArmControllerROS(Node):
             self.action = action.copy()
 
     def get_data(self):
-        req = GetFloat32List.Request()
-        res = self._call_sync(self.cli_get_position, req, timeout_sec=0.3)
-        if res is not None and res.ret == 0 and len(res.datas) >= 6:
-            with self.lock:
-                self.last_pose_homo = cart2homo(np.asarray(res.datas[:6], dtype=np.float64))
-
         with self.lock:
             qpos = self.latest_qpos.copy() if self.latest_qpos is not None else np.full(6, np.nan)
             pos = self.last_pose_homo.copy()
-            current_time = self.latest_joint_time if self.latest_joint_time is not None else time.time()
+            if self.latest_joint_time is not None:
+                current_time = self.latest_joint_time
+            elif self.latest_pose_time is not None:
+                current_time = self.latest_pose_time
+            else:
+                current_time = time.time()
 
         return {
             "qpos": qpos,

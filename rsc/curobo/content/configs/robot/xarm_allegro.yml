@@ -1,0 +1,299 @@
+robot_cfg:
+  kinematics:
+    use_usd_kinematics: false
+    usd_path: ''
+    usd_robot_root: ''
+    isaac_usd_path: ''
+    usd_flip_joints: {}
+    usd_flip_joint_limits: []
+    urdf_path: xarm_allegro.urdf
+    asset_root_path: rsc/curobo/content/assets/robot/allegro_description
+    base_link: link_base
+    ee_link: base_link
+    link_names:
+    - link1
+    - link2
+    - link3
+    - link4
+    - link5
+    - link6
+    - link_0.0
+    - link_1.0
+    - link_2.0
+    - link_3.0
+    - link_3.0_tip
+    - link_4.0
+    - link_5.0
+    - link_6.0
+    - link_7.0
+    - link_7.0_tip
+    - link_8.0
+    - link_9.0
+    - link_10.0
+    - link_11.0
+    - link_11.0_tip
+    - link_12.0
+    - link_13.0
+    - link_14.0
+    - link_15.0
+    - link_15.0_tip
+    - base_link
+    - wrist
+    collision_link_names:
+    - link_base
+    - link1
+    - link2
+    - link3
+    - link4
+    - link5
+    - link6
+    - base_link
+    - link_1.0
+    - link_2.0
+    - link_3.0
+    - link_3.0_tip
+    - link_5.0
+    - link_6.0
+    - link_7.0
+    - link_7.0_tip
+    - link_9.0
+    - link_10.0
+    - link_11.0
+    - link_11.0_tip
+    - link_13.0
+    - link_14.0
+    - link_15.0
+    - link_15.0_tip
+    collision_spheres: rsc/curobo/content/configs/robot/spheres/xarm_allegro.yml
+    collision_sphere_buffer: 0.0
+    self_collision_ignore:
+      link_base:
+      - link1
+      link1:
+      - link2
+      link2:
+      - link3
+      link3:
+      - link4
+      link4:
+      - link5
+      link5:
+      - link6
+      - base_link
+      - link_1.0
+      - link_2.0
+      - link_3.0
+      - link_3.0_tip
+      - link_5.0
+      - link_6.0
+      - link_7.0
+      - link_7.0_tip
+      - link_9.0
+      - link_10.0
+      - link_11.0
+      - link_11.0_tip
+      - link_13.0
+      - link_14.0
+      - link_15.0
+      - link_15.0_tip
+      link6:
+      - base_link
+      - link_1.0
+      - link_2.0
+      - link_3.0
+      - link_3.0_tip
+      - link_5.0
+      - link_6.0
+      - link_7.0
+      - link_7.0_tip
+      - link_9.0
+      - link_10.0
+      - link_11.0
+      - link_11.0_tip
+      - link_13.0
+      - link_14.0
+      - link_15.0
+      - link_15.0_tip
+      base_link:
+      - link_1.0
+      - link_5.0
+      - link_9.0
+      - link_12.0
+      link_1.0:
+      - link_2.0
+      link_2.0:
+      - link_3.0
+      link_3.0:
+      - link_3.0_tip
+      link_5.0:
+      - link_6.0
+      link_6.0:
+      - link_7.0
+      link_7.0:
+      - link_7.0_tip
+      link_9.0:
+      - link_10.0
+      link_10.0:
+      - link_11.0
+      link_11.0:
+      - link_11.0_tip
+      link_12.0:
+      - link_13.0
+      - link_14.0
+      link_13.0:
+      - link_14.0
+      link_14.0:
+      - link_15.0
+      link_15.0:
+      - link_15.0_tip
+    self_collision_buffer:
+      link_base: 0
+      link1: 0
+      link2: 0
+      link3: 0
+      link4: 0
+      link5: 0
+      link6: 0
+      base_link: 0.0
+      link_1.0: 0.0
+      link_2.0: 0.0
+      link_3.0: 0.002
+      link_3.0_tip: 0.0
+      link_5.0: 0.0
+      link_6.0: 0.0
+      link_7.0: 0.002
+      link_7.0_tip: 0.0
+      link_9.0: 0.0
+      link_10.0: 0.0
+      link_11.0: 0.002
+      link_11.0_tip: 0.0
+      link_13.0: 0.0
+      link_14.0: 0.0
+      link_15.0: 0.002
+      link_15.0_tip: 0.0
+    use_global_cumul: true
+    mesh_link_names:
+    - link_base
+    - link1
+    - link2
+    - link3
+    - link4
+    - link5
+    - link6
+    - base_link
+    - link_0.0
+    - link_1.0
+    - link_2.0
+    - link_3.0
+    - link_3.0_tip
+    - link_4.0
+    - link_5.0
+    - link_6.0
+    - link_7.0
+    - link_7.0_tip
+    - link_8.0
+    - link_9.0
+    - link_10.0
+    - link_11.0
+    - link_11.0_tip
+    - link_12.0
+    - link_13.0
+    - link_14.0
+    - link_15.0
+    - link_15.0_tip
+    cspace:
+      joint_names:
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+      - joint6
+      - joint_0.0
+      - joint_1.0
+      - joint_2.0
+      - joint_3.0
+      - joint_4.0
+      - joint_5.0
+      - joint_6.0
+      - joint_7.0
+      - joint_8.0
+      - joint_9.0
+      - joint_10.0
+      - joint_11.0
+      - joint_12.0
+      - joint_13.0
+      - joint_14.0
+      - joint_15.0
+      retract_config:
+      - -0.8048279285430908
+      - 0.2773207128047943
+      - -1.4464116096496582
+      - 2.0092501640319824
+      - 0.7059974074363708
+      - -2.361839532852173
+      - 0.0
+      - 1.5707
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.5707
+      - 0.0
+      - 0.0
+      - 0.0
+      - 1.5707
+      - 0.0
+      - 0.0
+      - 1.24565697
+      - 0.05513508
+      - 0.23153956
+      - -0.02217758
+      cspace_distance_weight:
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      null_space_weight:
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      max_jerk: 500.0
+      max_acceleration: 15.0
+    external_asset_path: rsc/curobo/content/assets/robot/allegro_description

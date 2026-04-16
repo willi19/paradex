@@ -9,6 +9,9 @@ def get_arm(arm_name, **kwargs):
         # return XArmController(**network_info[arm_name]["param"])
         from .xarm_controller_ros import XArmControllerROS
         return XArmControllerROS(**network_info["xarm"]["param"], **kwargs)
+    if arm_name == "xarm_ik":
+        from .xarm_controller_ros_ik import XArmControllerROSIK
+        return XArmControllerROSIK(**network_info["xarm"]["param"], **kwargs)
     if arm_name == "openarm":
         from .openarm_state_receiver import OpenArmStateReceiver
         return OpenArmStateReceiver()

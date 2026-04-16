@@ -1,0 +1,347 @@
+robot_cfg:
+  kinematics:
+    use_usd_kinematics: false
+    usd_path: ''
+    usd_robot_root: ''
+    isaac_usd_path: ''
+    usd_flip_joints: {}
+    usd_flip_joint_limits: []
+    urdf_path: xarm_inspire_f1.urdf
+    asset_root_path: rsc/curobo/content/assets/robot/inspire_description
+    base_link: link_base
+    ee_link: base_link
+    link_names:
+    - link1
+    - link2
+    - link3
+    - link4
+    - link5
+    - link6
+    - wrist
+    - base_link
+    - plam_1
+    - plam_2
+    - plam_3
+    - plam_force_sensor
+    - right_thumb_1
+    - right_thumb_2
+    - right_thumb_3
+    - right_thumb_4
+    - thumb_force_sensor
+    - thumb_tip
+    - right_index_1
+    - right_index_2
+    - index_force_sensor
+    - index_tip
+    - right_middle_1
+    - right_middle_2
+    - middle_force_sensor
+    - middle_tip
+    - right_ring_1
+    - right_ring_2
+    - ring_force_sensor
+    - ring_tip
+    - right_little_1
+    - right_little_2
+    - little_force_sensor
+    - little_tip
+    collision_link_names:
+    - link_base
+    - link1
+    - link2
+    - link3
+    - link4
+    - link5
+    - link6
+    - base_link
+    - plam_1
+    - plam_2
+    - plam_3
+    - plam_force_sensor
+    - right_thumb_2
+    - right_thumb_3
+    - right_thumb_4
+    - thumb_force_sensor
+    - thumb_tip
+    - right_index_1
+    - right_index_2
+    - index_force_sensor
+    - index_tip
+    - right_middle_1
+    - right_middle_2
+    - middle_force_sensor
+    - middle_tip
+    - right_ring_1
+    - right_ring_2
+    - ring_force_sensor
+    - ring_tip
+    - right_little_1
+    - right_little_2
+    - little_force_sensor
+    - little_tip
+    collision_spheres: rsc/curobo/content/configs/robot/spheres/xarm_inspire_f1.yml
+    collision_sphere_buffer: 0.0
+    self_collision_ignore:
+      link_base:
+      - link1
+      link1:
+      - link2
+      link2:
+      - link3
+      link3:
+      - link4
+      link4:
+      - link5
+      link5:
+      - link6
+      - base_link
+      - plam_1
+      - plam_2
+      - plam_3
+      - plam_force_sensor
+      - right_thumb_1
+      - right_thumb_2
+      - right_thumb_3
+      - right_thumb_4
+      - thumb_force_sensor
+      - thumb_tip
+      - right_index_1
+      - right_index_2
+      - index_force_sensor
+      - index_tip
+      - right_middle_1
+      - right_middle_2
+      - middle_force_sensor
+      - middle_tip
+      - right_ring_1
+      - right_ring_2
+      - ring_force_sensor
+      - ring_tip
+      - right_little_1
+      - right_little_2
+      - little_force_sensor
+      - little_tip
+      link6:
+      - base_link
+      - plam_1
+      - plam_2
+      - plam_3
+      - plam_force_sensor
+      - right_thumb_1
+      - right_thumb_2
+      - right_thumb_3
+      - right_thumb_4
+      - thumb_force_sensor
+      - thumb_tip
+      - right_index_1
+      - right_index_2
+      - index_force_sensor
+      - index_tip
+      - right_middle_1
+      - right_middle_2
+      - middle_force_sensor
+      - middle_tip
+      - right_ring_1
+      - right_ring_2
+      - ring_force_sensor
+      - ring_tip
+      - right_little_1
+      - right_little_2
+      - little_force_sensor
+      - little_tip
+      base_link:
+      - plam_1
+      - plam_3
+      - right_thumb_1
+      - right_index_1
+      - right_middle_1
+      - right_ring_1
+      - right_little_1
+      plam_1:
+      - plam_2
+      plam_2:
+      - base_link
+      - plam_3
+      - plam_force_sensor
+      - right_thumb_2
+      - right_index_1
+      - right_middle_1
+      - right_ring_1
+      - right_little_1
+      plam_3:
+      - plam_2
+      - base_link
+      right_thumb_1:
+      - right_thumb_2
+      right_thumb_2:
+      - right_thumb_3
+      right_thumb_3:
+      - thumb_force_sensor
+      - right_thumb_4
+      right_thumb_4:
+      - thumb_force_sensor
+      thumb_force_sensor:
+      - thumb_tip
+      right_index_1:
+      - index_force_sensor
+      - right_index_2
+      right_index_2:
+      - index_force_sensor
+      index_force_sensor:
+      - index_tip
+      right_middle_1:
+      - middle_force_sensor
+      - right_middle_2
+      right_middle_2:
+      - middle_force_sensor
+      middle_force_sensor:
+      - middle_tip
+      right_ring_1:
+      - ring_force_sensor
+      - right_ring_2
+      right_ring_2:
+      - ring_force_sensor
+      ring_force_sensor:
+      - ring_tip
+      right_little_1:
+      - little_force_sensor
+      - right_little_2
+      right_little_2:
+      - little_force_sensor
+      little_force_sensor:
+      - little_tip
+    self_collision_buffer:
+      link_base: 0
+      link1: 0
+      link2: 0
+      link3: 0
+      link4: 0
+      link5: 0
+      link6: 0
+      base_link: 0.0
+      plam_1: -0.003
+      plam_2: -0.003
+      plam_3: -0.003
+      plam_force_sensor: -0.003
+      right_thumb_1: -0.005
+      right_thumb_2: -0.005
+      right_thumb_3: -0.005
+      right_thumb_4: -0.005
+      thumb_force_sensor: -0.005
+      thumb_tip: -0.005
+      right_index_1: -0.005
+      right_index_2: -0.005
+      index_force_sensor: -0.005
+      index_tip: -0.005
+      right_middle_1: -0.005
+      right_middle_2: -0.005
+      middle_force_sensor: -0.005
+      middle_tip: -0.005
+      right_ring_1: -0.005
+      right_ring_2: -0.005
+      ring_force_sensor: -0.005
+      ring_tip: -0.005
+      right_little_1: -0.005
+      right_little_2: -0.005
+      little_force_sensor: -0.005
+      little_tip: -0.005
+    use_global_cumul: true
+    mesh_link_names:
+    - link_base
+    - link1
+    - link2
+    - link3
+    - link4
+    - link5
+    - link6
+    - base_link
+    - wrist
+    - plam_1
+    - plam_2
+    - plam_3
+    - plam_force_sensor
+    - right_thumb_1
+    - right_thumb_2
+    - right_thumb_3
+    - right_thumb_4
+    - thumb_force_sensor
+    - thumb_tip
+    - right_index_1
+    - right_index_2
+    - index_force_sensor
+    - index_tip
+    - right_middle_1
+    - right_middle_2
+    - middle_force_sensor
+    - middle_tip
+    - right_ring_1
+    - right_ring_2
+    - ring_force_sensor
+    - ring_tip
+    - right_little_1
+    - right_little_2
+    - little_force_sensor
+    - little_tip
+    lock_joints:
+      right_thumb_1_joint: 0.0
+      right_thumb_2_joint: 0.0
+      right_index_1_joint: 0.0
+      right_middle_1_joint: 0.0
+      right_ring_1_joint: 0.0
+      right_little_1_joint: 0.0
+    cspace:
+      joint_names:
+      - joint1
+      - joint2
+      - joint3
+      - joint4
+      - joint5
+      - joint6
+      - right_thumb_1_joint
+      - right_thumb_2_joint
+      - right_index_1_joint
+      - right_middle_1_joint
+      - right_ring_1_joint
+      - right_little_1_joint
+      retract_config:
+      - -1.26711
+      - -0.20246
+      - -1.13621
+      - 2.33176
+      - 0.32289
+      - 2.36492
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      - 0.0
+      cspace_distance_weight:
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      - 1
+      null_space_weight:
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      - 0
+      max_jerk: 500.0
+      max_acceleration: 15.0
+    external_asset_path: rsc/curobo/content/assets/robot/inspire_description

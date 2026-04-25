@@ -141,7 +141,11 @@ class ViserViewer():
 
         self.traj_list.append((name, new_traj_dict, traj_len))
         self.num_frames += traj_len
-        self.gui_timestep.max = self.num_frames - 1
+        new_max = max(self.num_frames - 1, 0)
+        with self.server.atomic():
+            if self.gui_timestep.value > new_max:
+                self.gui_timestep.value = new_max
+            self.gui_timestep.max = new_max
         # print(traj_len, self.num_frames)
     
     def clear_traj(self):
@@ -149,8 +153,9 @@ class ViserViewer():
 
         self.traj_list = []
         self.num_frames = 0
-        self.gui_timestep.max = 1
-        self.gui_timestep.value = 0
+        with self.server.atomic():
+            self.gui_timestep.value = 0
+            self.gui_timestep.max = 1
     
     def add_floor(self, height=0.0):
         self.floor_size = 15.0

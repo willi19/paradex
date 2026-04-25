@@ -1,5 +1,6 @@
 import os
 import glob
+import subprocess
 from pathlib import Path
 import cv2
 import time
@@ -108,20 +109,31 @@ def undistort_raw_video(video_path, progress_dict, video_id):
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
-    fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-    out = cv2.VideoWriter(out_path, fourcc, fps, (w, h))
-    
+    ffmpeg_proc = subprocess.Popen(
+        [
+            'ffmpeg', '-y', '-loglevel', 'error',
+            '-f', 'rawvideo', '-pix_fmt', 'bgr24',
+            '-s', f'{w}x{h}', '-r', str(fps),
+            '-i', '-',
+            '-c:v', 'libx264', '-preset', 'medium',
+            '-crf', '15', '-pix_fmt', 'yuv420p',
+            '-g', '30', '-tune', 'film',
+            out_path,
+        ],
+        stdin=subprocess.PIPE,
+    )
+
     last_frame = 0
     start_time = time.time()
-    
+
     while True:
         ret, frame = cap.read()
         if not ret:
             break
 
-        if (frame[:30, 30][::2, ::2] == 255).all():
+        if not (frame[:30, 30][::2, ::2] == 255).all():
             frame = apply_undistort_map(frame, mapx, mapy)
-        out.write(frame)
+        ffmpeg_proc.stdin.write(frame.tobytes())
         last_frame += 1
         
         # 진행상황 업데이트 (매 30프레임마다)
@@ -138,7 +150,8 @@ def undistort_raw_video(video_path, progress_dict, video_id):
                 'message': f'Processing... {last_frame}/{num_frame} frames'
             })
         
-    out.release()
+    ffmpeg_proc.stdin.close()
+    ffmpeg_proc.wait()
     cap.release()
     
     # 완료 상태 업데이트

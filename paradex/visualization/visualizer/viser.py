@@ -1,4 +1,5 @@
 
+import json
 import numpy as np
 import yourdfpy
 from scipy.spatial.transform import Rotation as R
@@ -9,6 +10,12 @@ from typing import List, Tuple, Dict
 import time
 import viser.transforms as tf
 import threading
+import os
+from datetime import datetime
+import shutil
+import subprocess
+from scipy.spatial.transform import Slerp
+import tempfile 
 
 from paradex.visualization.robot import RobotModule  
 
@@ -17,6 +24,7 @@ class ViserViewer():
         self.frame_nodes: dict[str, viser.FrameHandle] = {}
 
         self.up_direction = up_direction
+        self.port_number = port_number
         self.robot_dict = {}
         self.obj_dict = {}
 
@@ -26,31 +34,12 @@ class ViserViewer():
         self.load_server()
         self.add_lights()
         self.add_player()
-        # self.add_lights()
 
     def load_server(self):
-        self.server = viser.ViserServer(host="0.0.0.0", port=8080)
+        self.server = viser.ViserServer(host="0.0.0.0", port=self.port_number)
         self.server.gui.configure_theme(dark_mode=True)
 
         self.server.scene.set_up_direction(self.up_direction)
-        self.server.scene.world_axes
-
-        # @self.server.on_client_connect
-        # def _(client: viser.ClientHandle) -> None:
-        #     near_slider = client.gui.add_slider(
-        #         "Near", min=0.01, max=10.0, step=0.001, initial_value=client.camera.near
-        #     )
-        #     far_slider = client.gui.add_slider(
-        #         "Far", min=1, max=1000.0, step=0.001, initial_value=client.camera.far
-        #     )
-
-        #     @near_slider.on_update
-        #     def _(_) -> None:
-        #         client.camera.near = near_slider.value
-
-        #     @far_slider.on_update
-        #     def _(_) -> None:
-        #         client.camera.far = far_slider.value
 
     def add_robot(self, name, urdf_path, pose=None):
         robot = ViserRobotModule(
@@ -68,7 +57,36 @@ class ViserViewer():
         
         self.robot_dict[name] = robot
 
-    def add_object(self, name, obj: trimesh.Trimesh, obj_T, show_axes=False):
+    def add_trimesh(self, name, mesh: trimesh.Trimesh, pose=None):
+        obj_T = np.eye(4)
+        if pose is not None:
+            obj_T = pose
+        
+        frame_handle = self.server.scene.add_frame(
+            f"/objects/{name}_frame",
+            position=obj_T[:3, 3],
+            wxyz=R.from_matrix(obj_T[:3, :3]).as_quat()[[3, 0, 1, 2]],
+            show_axes=False,
+            axes_length=0.05,
+            axes_radius=0.002,
+        )
+
+        mesh_handle = self.server.scene.add_mesh_trimesh(
+            name=f"/objects/{name}_frame/{name}",
+            mesh=mesh,
+            cast_shadow=True,
+            receive_shadow=True
+        )
+        self.obj_dict[name] = {
+            'mesh': mesh,
+            'frame': frame_handle,
+            'transform': obj_T,
+            'handle': mesh_handle
+        }
+
+        self.frame_nodes[name] = frame_handle
+
+    def add_object(self, name, obj: trimesh.Trimesh, obj_T):
         """
         Add an object mesh to the scene
         
@@ -82,20 +100,15 @@ class ViserViewer():
             f"/objects/{name}_frame",
             position=obj_T[:3, 3],
             wxyz=R.from_matrix(obj_T[:3, :3]).as_quat()[[3, 0, 1, 2]],
-            show_axes=show_axes,
+            show_axes=False,
             axes_length=0.05,
             axes_radius=0.002,
         )
         
         # Add mesh to the frame (at origin relative to frame)
-        # mesh_handle = self.server.scene.add_mesh_trimesh(
-        #         name=f"/objects/{name}_frame/{name}",
-        #         mesh=obj
-        #     )
-        mesh_handle = self.server.scene.add_mesh_simple(
+        mesh_handle = self.server.scene.add_mesh_trimesh(
                 name=f"/objects/{name}_frame/{name}",
-                vertices=obj.vertices,
-                faces=obj.faces
+                mesh=obj
         )
         
         # Store in object dictionary
@@ -117,8 +130,6 @@ class ViserViewer():
         for robot_name in list(self.robot_dict.keys()):
             if robot_name in robot_traj:
                 new_traj_dict["robot"][robot_name] = robot_traj[robot_name]
-            else:
-                new_traj_dict["robot"][robot_name] = np.tile(self.robot_dict[robot_name].urdf.urdf.zero_cfg, (traj_len, 1))
 
         for obj_name in list(self.obj_dict.keys()):
             if obj_name in obj_traj:
@@ -130,24 +141,33 @@ class ViserViewer():
 
         self.traj_list.append((name, new_traj_dict, traj_len))
         self.num_frames += traj_len
-        self.gui_timestep.max = self.num_frames - 1
+        new_max = max(self.num_frames - 1, 0)
+        with self.server.atomic():
+            if self.gui_timestep.value > new_max:
+                self.gui_timestep.value = new_max
+            self.gui_timestep.max = new_max
         # print(traj_len, self.num_frames)
     
     def clear_traj(self):
+        self.gui_playing.value = False
+
         self.traj_list = []
         self.num_frames = 0
-        self.gui_timestep.max = 1
-        self.gui_timestep.value = 0
+        with self.server.atomic():
+            self.gui_timestep.value = 0
+            self.gui_timestep.max = 1
     
     def add_floor(self, height=0.0):
-        self.floor_size = 1.0
+        self.floor_size = 15.0
         size = self.floor_size
                 
         self.floor_box_handle = self.server.scene.add_box(
             name="floor/floor_box",
             dimensions=(size * 2, size * 2, 0.02),  # width, height, thickness
             position=(0.0, 0.0, height-0.01),  # Position slightly below z=0
-            color=(0.7, 0.7, 0.7)
+            color=(0.7, 0.7, 0.7),
+            cast_shadow=False,
+            receive_shadow=True  # Floor should receive shadows
         )
         
         # Use viser's built-in grid
@@ -160,6 +180,16 @@ class ViserViewer():
             cell_size = 0.1
         )
     
+    def add_grid(self, size=10.0, cell_size=0.1, height=0.0):
+        self.grid_handles = self.server.scene.add_grid(
+            name="grid",
+            width=size,
+            height=size,
+            plane="xy",  # Assuming XY plane at given height
+            position=(0.0, 0.0, height),
+            cell_size = cell_size
+        )
+
     def update_floor(self):
         # Toggle floor visibility
         if hasattr(self, 'floor_box_handle'):
@@ -194,11 +224,14 @@ class ViserViewer():
         with self.server.atomic():
             for robot_name, robot in self.robot_dict.items():
                 if robot_name in current_traj["robot"]:
-                    robot.update_cfg(current_traj["robot"][robot_name][local_timestep])
-
+                    traj = current_traj["robot"][robot_name]
+                    clamped_t = min(local_timestep, len(traj) - 1)
+                    robot.update_cfg(traj[clamped_t])
             for obj_name, obj in self.obj_dict.items():
                 if obj_name in current_traj["object"]:
-                    obj_transform = current_traj["object"][obj_name][local_timestep]
+                    traj = current_traj["object"][obj_name]
+                    clamped_t = min(local_timestep, len(traj) - 1)
+                    obj_transform = traj[clamped_t]
                     frame_handle = obj['frame']
                     
                     # Frame의 position과 rotation 업데이트
@@ -212,8 +245,49 @@ class ViserViewer():
         if self.render_png.value:
             self.render_current_frame(timestep)
 
+    def render_current_frame(self, timestep):
+        """Render the current frame to PNG."""
+        os.makedirs("rendered_frames", exist_ok=True)
+        out_path = f"rendered_frames/frame_{timestep:06d}.png"
+        self.capture_scene_png(out_path)
+
+    def render_full_video(self):
+        """Render all frames to a video file."""
+        if self.num_frames == 0:
+            print("No trajectory loaded, nothing to render.")
+            return
+
+        os.makedirs("rendered_frames", exist_ok=True)
+        was_playing = self.gui_playing.value
+        self.gui_playing.value = False
+
+        width = int(self.video_width.value)
+        height = int(self.video_height.value)
+        fps = int(self.video_fps.value)
+
+        for t in range(self.num_frames):
+            self.update_scene(t)
+            out_path = f"rendered_frames/frame_{t:06d}.png"
+            self.capture_scene_png(out_path, height=height, width=width)
+            if t % 50 == 0:
+                print(f"Rendered {t}/{self.num_frames} frames")
+
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        video_path = f"video_{timestamp}.mp4"
+        subprocess.run([
+            'ffmpeg', '-y', '-loglevel', 'warning',
+            '-framerate', str(fps),
+            '-i', 'rendered_frames/frame_%06d.png',
+            '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '18',
+            video_path
+        ], check=True)
+
+        shutil.rmtree("rendered_frames")
+        self.gui_playing.value = was_playing
+        print(f"Video saved: {video_path}")
+
     def update(self):
-        if self.gui_playing.value and len(self.traj_list) > 0:
+        if self.gui_playing.value and len(self.traj_list) > 0 and self.num_frames > 0:
             next_timestep = (self.gui_timestep.value + 1) % self.num_frames
             self.gui_timestep.value = next_timestep
             
@@ -241,7 +315,7 @@ class ViserViewer():
             )
             self.gui_next_frame = self.server.gui.add_button("Next Frame", disabled=True)
             self.gui_prev_frame = self.server.gui.add_button("Prev Frame", disabled=True)
-            self.gui_playing = self.server.gui.add_checkbox("Playing", False)
+            self.gui_playing = self.server.gui.add_checkbox("Playing", True)
             self.render_png = self.server.gui.add_checkbox("Render to PNG", False)
             self.gui_framerate = self.server.gui.add_slider(
                 "FPS", min=1, max=120, step=0.1, initial_value=10
@@ -268,7 +342,13 @@ class ViserViewer():
             self.video_height = self.server.gui.add_number("Video Height", initial_value=720, min=480, max=2160)
             self.video_fps = self.server.gui.add_slider("Video FPS", min=10, max=60, step=1, initial_value=30)
             self.render_video_btn = self.server.gui.add_button("Render Full Video")
-            
+        
+        with self.server.gui.add_folder("Capture"):
+            self.output_path = self.server.gui.add_text("Output Path", initial_value="")
+            self.capture_width = self.server.gui.add_number("Capture Width", initial_value=720, min=256, max=4096)
+            self.capture_height = self.server.gui.add_number("Capture Height", initial_value=720, min=256, max=4096)
+            self.capture_png_btn = self.server.gui.add_button("Capture Current View (PNG)")
+
         @gui_up.on_update
         def _(_) -> None:
             self.server.scene.set_up_direction(gui_up.value)
@@ -295,11 +375,13 @@ class ViserViewer():
 
         @self.gui_next_frame.on_click
         def _(_) -> None:
-            self.gui_timestep.value = (self.gui_timestep.value + 10) % self.num_frames
+            if self.num_frames > 0:
+                self.gui_timestep.value = (self.gui_timestep.value + 1) % self.num_frames
 
         @self.gui_prev_frame.on_click
         def _(_) -> None:
-            self.gui_timestep.value = (self.gui_timestep.value - 1) % self.num_frames
+            if self.num_frames > 0:
+                self.gui_timestep.value = (self.gui_timestep.value - 1) % self.num_frames
 
         @self.gui_playing.on_update
         def _(_) -> None:
@@ -311,41 +393,78 @@ class ViserViewer():
         def _(_) -> None:
             self.render_full_video()
 
-    def add_frame(self, name, T, scale=0.05):
+        @self.capture_png_btn.on_click
+        def _(_) -> None:
+            import os
+            from datetime import datetime
+            
+            # output_path가 비어있으면 타임스탬프로 생성
+            if self.output_path.value.strip() == "":
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                out_path = f"capture_{timestamp}.png"
+            else:
+                out_path = self.output_path.value
+            
+            print(f"Capturing current view to {out_path}...")
+            
+            # GUI에서 설정한 해상도 사용
+            width = int(self.capture_width.value)
+            height = int(self.capture_height.value)
+            
+            # PNG 캡처
+            self.capture_scene_png(out_path, height=height, width=width)
+            print(f"Saved: {out_path}")
+
+    def add_frame(self, name, T, scale=0.1):
         self.frame_nodes[name] = self.server.scene.add_frame(
             name=f"/{name}/frame",
             show_axes=True,
-            # axis_length=0.1,
-            # axis_radius=0.002,
             axes_length=scale,
-            axes_radius=scale*0.04,
+            axes_radius=scale * 0.04,
             position=T[:3, 3],
             wxyz=R.from_matrix(T[:3, :3]).as_quat()[[3, 0, 1, 2]],
         )
 
     def add_lights(self):
-        self.server.scene.add_transform_controls(
-            "/system/control_light0", position=(5, 1.0, 0.5), scale=0.5
-        )
-        self.server.scene.add_label("/system/control_light0/label", "Point")
-        point_light = self.server.scene.add_light_point(
-            name="/system/control_light0/point_light",
+        # Main directional light (sun-like, from above-front)
+        # Creates strong shadows for depth perception
+        self.server.scene.add_light_directional(
+            name="/system/directional_light",
             color=(255, 255, 255),
-            intensity=100.0,
-            visible=True
+            intensity=1.5,
+            wxyz=R.from_euler('xyz', [45, 0, 45], degrees=True).as_quat()[[3, 0, 1, 2]],
+            cast_shadow=True,
         )
 
-        self.server.scene.add_transform_controls(
-            "/system/control_light1", position=(5, -1.0, 0.5), scale=0.5
-        )
-        self.server.scene.add_label("/system/control_light1/label", "Point")
-        point_light = self.server.scene.add_light_point(
-            name="/system/control_light1/point_light",
+        # Fill light from opposite side (softer, no shadow)
+        self.server.scene.add_light_point(
+            name="/system/fill_light",
             color=(255, 255, 255),
-            intensity=100.0,
-            visible=True
+            intensity=2.0,
+            position=(-3.0, -3.0, 3.0),
+            cast_shadow=False  # No shadow for fill light
         )
-        self.server.scene.enable_default_lights(True)
+
+        # Key light (main shadow caster)
+        self.server.scene.add_light_point(
+            name="/system/key_light",
+            color=(255, 255, 255),
+            intensity=8.0,
+            position=(3.0, 3.0, 4.0),
+            cast_shadow=True
+        )
+
+        # Rim light (from back-top, for edge definition)
+        self.server.scene.add_light_point(
+            name="/system/rim_light",
+            color=(255, 255, 255),
+            intensity=3.0,
+            position=(0.0, 0.0, 5.0),
+            cast_shadow=False
+        )
+
+        # Disable default lights to only use our custom lights
+        self.server.scene.enable_default_lights(False)
         
     def add_contact_module(self, robot_name, obj_name):
         from scipy.spatial import cKDTree
@@ -380,23 +499,23 @@ class ViserViewer():
         
         @clear_contact_button.on_click
         def _(_) -> None:
-            for line in contact_line_segments:
+            for line in self.contact_line_segments:
                 line.remove()
-            contact_line_segments = []
-            for point in contact_point_segments:
+            self.contact_line_segments = []
+            for point in self.contact_point_segments:
                 point.remove()
-            contact_point_segments = []
+            self.contact_point_segments = []
             
-    def add_camera(self, name, extrinsic, intrinsic, color=(0, 255, 0), size=0.1):
+    def add_camera(self, name, extrinsic, intrinsic, color=(0.0, 1.0, 0.0), size=0.1):
         """
         Add a camera frustum visualization to the scene
-        
+
         Args:
             name: Unique name for the camera
             extrinsic: 4x4 or 3x4 camera extrinsic matrix (cam_from_world or world_from_cam)
             intrinsic: Camera intrinsic parameters dict with keys 'fx', 'fy', 'cx', 'cy', 'width', 'height'
                     OR 3x3 intrinsic matrix
-            color: RGB tuple (0-255)
+            color: RGB tuple (0.0-1.0 float range)
             size: Size of the frustum (depth from camera center)
         """
         # Handle extrinsic matrix format
@@ -441,7 +560,7 @@ class ViserViewer():
             wxyz=R.from_matrix(cam_rot).as_quat()[[3, 0, 1, 2]],
             show_axes=True,
             axes_length=size * 0.5,
-            axes_radius=size * 0.01,
+            axes_radius=size * 0.03,
         )
         
         # Calculate frustum corners in camera space
@@ -455,14 +574,13 @@ class ViserViewer():
         ])
 
         # Draw frustum edges (from camera center to corners) - in CAMERA FRAME coordinates
-        color_normalized = tuple(c / 255.0 for c in color)
         camera_origin = np.array([0, 0, 0])  # Origin in camera frame
 
         for i, corner in enumerate(corners_cam):
             self.server.scene.add_spline_catmull_rom(
                 f"/cameras/{name}_frame/edge_{i}",
-                positions=np.array([camera_origin, corner]),  # Use camera frame coordinates
-                color=color_normalized,
+                positions=np.array([camera_origin, corner]),
+                color=color,
                 line_width=2.0
             )
 
@@ -471,60 +589,359 @@ class ViserViewer():
             self.server.scene.add_spline_catmull_rom(
                 f"/cameras/{name}_frame/rect_{i}",
                 positions=np.array([corners_cam[i], corners_cam[(i + 1) % 4]]),
-                color=color_normalized,
+                color=color,
                 line_width=2.0
             )
 
-        # Optionally add a small sphere at camera center
+        # Add a small sphere at camera center
         self.server.scene.add_icosphere(
             f"/cameras/{name}_frame/center",
             radius=size * 0.05,
-            color=color_normalized,
-            position=camera_origin  # At origin of camera frame
+            color=color,
+            position=camera_origin
         )
 
         
         return frame_handle
 
-    def change_color(self, name, color):
-        """Change the color of a robot's visualized URDF."""
+    def change_color(self, name, color, name_list=[]):
+        """Change the color of a robot or object. color is (r, g, b) or (r, g, b, a) in 0.0-1.0 range."""
         if name in self.robot_dict:
-            self.robot_dict[name].change_color([], color)
+            self.robot_dict[name].change_color(name_list, color)
         elif name in self.obj_dict:
             mesh_handle = self.obj_dict[name]['handle']
-            mesh_handle.color = tuple(int(c * 255) for c in color)
+            mesh_handle.color = color[:3]
             if len(color) == 4:
                 mesh_handle.opacity = color[3]
         else:
-            print(f"Robot '{name}' not found.")    
+            print(f"'{name}' not found in robot_dict or obj_dict.")    
     
-    def add_sphere(self, name, position, radius=0.05, color=(1.0,0,0)):
+    def add_sphere(self, name, position, radius=0.05, color=(1.0, 0.0, 0.0)):
         self.server.scene.add_icosphere(
             name=f"/spheres/{name}",
             radius=radius,
-            color=tuple(int(c * 255) for c in color),
-            position=position
+            color=color,
+            position=position,
+            cast_shadow=True,
+            receive_shadow=True
         )
 
-    def add_arrow(self, name, start, end, color=(0,255,0), shaft_radius=0.01, head_radius=0.02, head_length=0.5):
+    def add_arrow(self, name, start, end, color=(0.0, 1.0, 0.0), shaft_radius=0.01, head_radius=0.02, head_length=0.03, opacity=1.0):
         """
-        Add an arrow visualization
-        
+        Add an arrow visualization with head
+
         Args:
             name: Unique name for the arrow
             start: Starting position [x, y, z]
             end: Ending position [x, y, z]
-            color: RGB color (0-255 range)
+            color: RGB color (0.0-1.0 float range)
             shaft_radius: Radius of arrow shaft
-            head_radius: Radius of arrow head
-            head_length: Length of arrow head
+            head_radius: Radius of arrow head cone
+            head_length: Length of arrow head cone
+            opacity: Opacity value (0.0-1.0)
         """
-        self.server.scene.add_spline_catmull_rom(
-            name=f"/arrows/{name}",
-            positions=np.array([start, end]),
-            color=tuple(c / 255.0 for c in color),
-            line_width=shaft_radius * 1000  # Convert to line width
+        
+        start = np.array(start)
+        end = np.array(end)
+        direction = end - start
+        total_length = np.linalg.norm(direction)
+        direction_norm = direction / total_length
+        
+        # Shaft length
+        shaft_length = total_length - head_length
+        shaft_end = end - direction_norm * head_length
+        
+        # Create shaft cylinder
+        shaft_mesh = trimesh.creation.cylinder(
+            radius=shaft_radius,
+            height=shaft_length
         )
+        
+        # Rotate and position shaft
+        default_dir = np.array([0, 0, 1])
+        rotation = R.align_vectors([direction_norm], [default_dir])[0]
+        rotation_matrix = rotation.as_matrix()
+        
+        shaft_center = (start + shaft_end) / 2
+        transform_shaft = np.eye(4)
+        transform_shaft[:3, :3] = rotation_matrix
+        transform_shaft[:3, 3] = shaft_center
+        shaft_mesh.apply_transform(transform_shaft)
+        
+        # Add shaft mesh
+        shaft_handle = self.server.scene.add_mesh_simple(
+            name=f"/arrows/{name}_shaft",
+            vertices=shaft_mesh.vertices,
+            faces=shaft_mesh.faces,
+            color=color,
+            opacity=opacity,
+            cast_shadow=True,
+            receive_shadow=True
+        )
+
+        # Create cone mesh
+        cone_mesh = trimesh.creation.cone(radius=head_radius, height=head_length)
+
+        cone_center = shaft_end
+
+        # Transform cone
+        transform_cone = np.eye(4)
+        transform_cone[:3, :3] = rotation_matrix
+        transform_cone[:3, 3] = cone_center
+        cone_mesh.apply_transform(transform_cone)
+
+        # Add cone mesh
+        head_handle = self.server.scene.add_mesh_simple(
+            name=f"/arrows/{name}_head",
+            vertices=cone_mesh.vertices,
+            faces=cone_mesh.faces,
+            color=color,
+            opacity=opacity,
+            cast_shadow=True,
+            receive_shadow=True
+        )
+        
+        return {'shaft': shaft_handle, 'head': head_handle}
+
+    def capture_scene_png(self, out_path, height=720, width=720):
+        import time
+        import imageio.v2 as imageio
+
+        # 1. client 연결될 때까지 대기
+        while len(self.server.get_clients()) == 0:
+            time.sleep(0.1)
+
+        # 2. 첫 client 가져오기
+        client = next(iter(self.server.get_clients().values()))
+        print(f"Capturing PNG from client {client}...")
+
+        # 3. 현재 카메라 상태로 렌더 요청
+        img = client.get_render(
+            height=height,
+            width=width,
+            transport_format="png",  # 논문용
+        )
+        print(f"Captured image of shape: {img.shape}")
+        # 4. PNG 저장
+        imageio.imwrite(out_path, img)
+
+                
+    def add_camera_path_gui(self):
+        """Add interpolated camera path video recording GUI (uses capture settings from Capture folder)."""
+        with self.server.gui.add_folder("Camera Path Video"):
+            self.video_duration = self.server.gui.add_slider(
+                "Duration (sec)", min=1.0, max=10.0, step=0.5, initial_value=3.0
+            )
+            self.set_start_view_btn = self.server.gui.add_button("Set Start View")
+            self.set_end_view_btn = self.server.gui.add_button("Set End View")
+            self.record_video_btn = self.server.gui.add_button("Record Camera Path Video")
+
+        @self.set_start_view_btn.on_click
+        def _(_) -> None:
+            if len(self.server.get_clients()) == 0:
+                print("No client connected!")
+                return
+            client = next(iter(self.server.get_clients().values()))
+            self.start_view = {
+                'position': client.camera.position,
+                'wxyz': client.camera.wxyz
+            }
+            print(f"Start view set: {self.start_view['position']}")
+
+        @self.set_end_view_btn.on_click
+        def _(_) -> None:
+            if len(self.server.get_clients()) == 0:
+                print("No client connected!")
+                return
+            client = next(iter(self.server.get_clients().values()))
+            self.end_view = {
+                'position': client.camera.position,
+                'wxyz': client.camera.wxyz
+            }
+            print(f"End view set: {self.end_view['position']}")
+
+        @self.record_video_btn.on_click
+        def _(_) -> None:
+            self._record_interpolated_video()
+
+    def _record_interpolated_video(self):
+        """Record interpolated video between start and end views"""
+        # Validation
+        if not hasattr(self, 'start_view') or not hasattr(self, 'end_view'):
+            print("❌ Please set both start and end views first!")
+            return
+        
+        # Client 확인
+        if len(self.server.get_clients()) == 0:
+            print("❌ No client connected!")
+            return
+        
+        client = next(iter(self.server.get_clients().values()))
+        
+        # Output path
+        if self.output_path.value.strip() == "":
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            out_path = f"video_{timestamp}.mp4"
+        else:
+            out_path = self.output_path.value
+            if not out_path.endswith('.mp4'):
+                out_path += '.mp4'
+        
+        print(f"\n🎬 Recording video to {out_path}...")
+        
+        # Parameters
+        fps = int(self.video_fps.value)
+        duration = float(self.video_duration.value)
+        n_frames = int(fps * duration)
+        width = int(self.capture_width.value)
+        height = int(self.capture_height.value)
+        
+        # Position interpolation
+        start_pos = np.array(self.start_view['position'])
+        end_pos = np.array(self.end_view['position'])
+        
+        # Rotation interpolation (slerp)
+        start_quat = np.array(self.start_view['wxyz'])  # [w, x, y, z]
+        end_quat = np.array(self.end_view['wxyz'])
+        
+        # scipy는 [x, y, z, w] 순서
+        start_rot = R.from_quat([start_quat[1], start_quat[2], start_quat[3], start_quat[0]])
+        end_rot = R.from_quat([end_quat[1], end_quat[2], end_quat[3], end_quat[0]])
+        
+        slerp = Slerp([0, 1], R.concatenate([start_rot, end_rot]))
+        
+        # Temp directory for frames
+        temp_dir = tempfile.mkdtemp()
+        
+        print(f"📸 Rendering {n_frames} frames ({width}x{height} @ {fps}fps)...")
+        
+        for i in range(n_frames):
+            t = i / (n_frames - 1) if n_frames > 1 else 0
+            
+            # Linear position interpolation
+            interp_pos = start_pos * (1 - t) + end_pos * t
+            
+            # Slerp rotation
+            interp_rot = slerp(t)
+            interp_quat_xyzw = interp_rot.as_quat()
+            interp_quat_xyzw = interp_quat_xyzw / np.linalg.norm(interp_quat_xyzw)
+            interp_quat_wxyz = [interp_quat_xyzw[3], interp_quat_xyzw[0], 
+                            interp_quat_xyzw[1], interp_quat_xyzw[2]]
+            
+            # Update camera
+            client.camera.position = tuple(interp_pos)
+            client.camera.wxyz = tuple(interp_quat_wxyz)
+            
+            print(f"Frame {i+1}/{n_frames}: Pos {client.camera.position}, WXYZ {client.camera.wxyz}")
+            # Capture
+            frame_path = os.path.join(temp_dir, f"frame_{i:04d}.png")
+            print(frame_path)
+            self.capture_scene_png(frame_path, height=height, width=width)
+            if True:#(i + 1) % 30 == 0 or i == n_frames - 1:
+                print(f"  Progress: {i + 1}/{n_frames} frames")
+        
+        # Encode with ffmpeg
+        print("🎞️  Encoding video...", temp_dir)
+        ffmpeg_cmd = [
+            'ffmpeg', '-y', '-loglevel', 'warning',
+            '-framerate', str(fps),
+            '-i', os.path.join(temp_dir, 'frame_%04d.png'),
+            '-c:v', 'libx264',
+            '-pix_fmt', 'yuv420p',
+            '-crf', '18',
+            out_path
+        ]
+        
+        subprocess.run(ffmpeg_cmd, check=True)
+        
+        # Cleanup
+        shutil.rmtree(temp_dir)
+        
+        print(f"✅ Video saved: {out_path}\n")
+
+    def add_view_save_gui(self):
+        with self.server.gui.add_folder("Save/Load View"):
+            self.view_file_path = self.server.gui.add_text(
+                "File Path", initial_value="view.json"
+            )
+            self.save_view_btn = self.server.gui.add_button("Save View")
+            self.load_view_btn = self.server.gui.add_button("Load View")
+            self.level_view_btn = self.server.gui.add_button("Level View")
+
+        @self.save_view_btn.on_click
+        def _(_) -> None:
+            if len(self.server.get_clients()) == 0:
+                print("No client connected!")
+                return
+            client = next(iter(self.server.get_clients().values()))
+            view = {
+                "position": list(client.camera.position),
+                "wxyz": list(client.camera.wxyz),
+            }
+            path = self.view_file_path.value.strip() or "view.json"
+            with open(path, "w") as f:
+                json.dump(view, f, indent=2)
+            print(f"View saved: {path}")
+
+        @self.load_view_btn.on_click
+        def _(_) -> None:
+            if len(self.server.get_clients()) == 0:
+                print("No client connected!")
+                return
+            path = self.view_file_path.value.strip() or "view.json"
+            if not os.path.exists(path):
+                print(f"File not found: {path}")
+                return
+            with open(path, "r") as f:
+                view = json.load(f)
+            client = next(iter(self.server.get_clients().values()))
+            client.camera.position = tuple(view["position"])
+            client.camera.wxyz = tuple(view["wxyz"])
+            print(f"View loaded: {path}")
+
+        @self.level_view_btn.on_click
+        def _(_) -> None:
+            if len(self.server.get_clients()) == 0:
+                print("No client connected!")
+                return
+            
+            client = next(iter(self.server.get_clients().values()))
+            pos = np.array(client.camera.position)
+            w, x, y, z = client.camera.wxyz
+
+            # 1. 현재 카메라가 바라보는 방향(Forward vector) 계산
+            r_current = R.from_quat([x, y, z, w])
+            # 기본적으로 카메라는 -z(또는 라이브러리에 따라 +x)를 바라봅니다. 
+            # Viser/Three.js 기준으로는 보통 [0, 0, -1]이 정면입니다.
+            forward = r_current.as_matrix() @ np.array([0, 0, -1])
+
+            # 2. 새로운 Right, Up, Forward 축 계산 (Gram-Schmidt 유사 방식)
+            # 월드의 Up은 [0, 0, 1]
+            world_up = np.array([0, 0, 1])
+            
+            # Right = Forward x World_Up (수평 오른쪽 방향 추출)
+            right = np.cross(forward, world_up)
+            
+            # 만약 카메라가 수직으로 하늘/땅을 보고 있어서 cross product가 0이 되는 경우 처리
+            if np.linalg.norm(right) < 1e-6:
+                print("Camera is looking straight up/down, cannot level Roll.")
+                return
+
+            right /= np.linalg.norm(right)
+            
+            # New Up = Right x Forward (이제 New Up은 월드 Z축 쪽으로 최대한 정렬됨)
+            new_up = np.cross(-right, forward)
+            new_up /= np.linalg.norm(new_up)
+
+            # 3. 새로운 Rotation Matrix 생성
+            # Matrix columns: [Right, Up, -Forward] (Viser/Three.js 좌표계 기준)
+            new_R = np.stack([-right, new_up, -forward], axis=1)
+            
+            # 4. 쿼터니언 변환 및 적용
+            new_q = R.from_matrix(new_R).as_quat() # x, y, z, w
+            client.camera.wxyz = (new_q[3], new_q[0], new_q[1], new_q[2])
+            
+            print("View leveled: Up vector is now aligned with World +Z")
 
 class ViserRobotModule():
     def __init__(self, target,#: viser.ViserServer | viser.ClientHandle,
@@ -563,16 +980,13 @@ class ViserRobotModule():
         self.update_cfg(np.zeros(len(self._urdf.joint_map)))    
 
     def change_color(self, name_list, color: Tuple[float, float, float]) -> None:
-        """Change the color of the visualized URDF."""
-        name_list = list(self._meshes.keys())
-        if len(color) == 4:
-            opacity = color[3]
-        else:
-            opacity = 1.0
+        """Change the color of the visualized URDF. color is (r, g, b) or (r, g, b, a) in 0.0-1.0 range."""
+        name_list = list(self._meshes.keys()) if len(name_list) == 0 else name_list
 
-        color = (int(color[0]*255), int(color[1]*255), int(color[2]*255))
+        opacity = color[3] if len(color) == 4 else 1.0
+        rgb = color[:3]
         for name in name_list:
-            self._meshes[name].color = color
+            self._meshes[name].color = rgb
             self._meshes[name].opacity = opacity
 
     @property
@@ -677,7 +1091,10 @@ class ViserRobotModule():
             vertices = mesh.vertices
             faces = mesh.faces
             color = np.array(mesh.visual.vertex_colors[0, :3])
-            self._meshes[name] = (self._target.scene.add_mesh_simple(name, vertices, faces, color=color))
+            self._meshes[name] = (self._target.scene.add_mesh_simple(
+                name, vertices, faces, color=color,
+                cast_shadow=True, receive_shadow=True
+            ))
             # self._meshes[name] = self._target.scene.add_mesh_trimesh(
             #     name=name,
             #     mesh=mesh
@@ -808,3 +1225,4 @@ def _viser_name_from_frame(
     if root_node_name != "/":
         frames.append(root_node_name)
     return "/".join(frames[::-1])
+

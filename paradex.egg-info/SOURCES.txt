@@ -5,7 +5,6 @@ marker_offset.npy
 setup.py
 .vscode/launch_prev.json
 .vscode/settings.json
-bodex/scale010_grasp.npy
 docs/.nojekyll
 docs/Makefile
 docs/conf.py
@@ -489,8 +488,6 @@ paradex/visualization/deprecated/renderer.py
 paradex/visualization/deprecated/shape.py
 paradex/visualization/deprecated/viewer.py
 paradex/visualization/deprecated/visual_hull.py
-paradex/visualization/skeleton/body.py
-paradex/visualization/skeleton/hand.py
 paradex/visualization/visualizer/open3d.py
 paradex/visualization/visualizer/open3d_viewer.py
 paradex/visualization/visualizer/viser.py
@@ -1233,4 +1230,3 @@ system/robothome/camera_config.json
 system/robothome/charuco_info.json
 system/robothome/network.json
 system/robothome/pc.json
-test/test_insys.py

@@ -8,7 +8,7 @@ def get_arm(arm_name):
         from .xarm_controller import XArmController
         return XArmController(**network_info[arm_name]["param"])
 
-def get_hand(hand_name, tactile=False, ip=False):
+def get_hand(hand_name, tactile=False, ip=True):
     if hand_name == "inspire":
         if ip:
             from paradex.io.robot_controller.inspire_controller_ip import InspireControllerIP

@@ -50,3 +50,5 @@ build/lib/paradex
 .vscode/settings.json
 
 test
+jisoo_test
+log

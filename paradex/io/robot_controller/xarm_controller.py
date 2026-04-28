@@ -37,8 +37,9 @@ class XArmController:
         self.xarm_ip_address = ip
         
         self.fps = 100
+        self._move_speed = None
         self.reset()
-        
+
         self.lock = Lock()
         
         self.exit_event = Event()
@@ -69,15 +70,19 @@ class XArmController:
             with self.lock:
                 action = self.action.copy()
                 is_servo = self.is_servo
+                move_speed = self._move_speed
 
             is_joint_value = (action.shape == (6,))
-            
+
             if not is_servo and not self.finished:
                 self.arm.set_mode(0)  # 0: position control, 1: servo control
                 self.arm.set_state(state=0)
-                    
+
                 if is_joint_value:
-                    self.arm.set_servo_angle(angle=action.tolist(), is_radian=True, wait=True)
+                    kwargs = dict(angle=action.tolist(), is_radian=True, wait=True)
+                    if move_speed is not None:
+                        kwargs['speed'] = move_speed
+                    self.arm.set_servo_angle(**kwargs)
                 else:
                     cart = homo2cart(action)
                     self.arm.set_position(x = cart[0],
@@ -86,34 +91,21 @@ class XArmController:
                                             roll = cart[3],
                                             pitch = cart[4],
                                             yaw = cart[5],
-                                            speed=100, 
-                                            is_radian=True, 
+                                            speed=100,
+                                            is_radian=True,
                                             wait=True) # motion_type=1 if necessary to go home but this is too dangerous
-                
+
                 self.arm.set_mode(1)
                 self.arm.set_state(state=0)
                 self.finished = True
                 self.position_control_event.set()
-                
-            
+
+
             else:
                 if is_joint_value:
-                    self._last_pose = np.array(self.arm.get_position(is_radian=True)[1])[:3]
-                    self._target_pose = np.array(self.arm.get_forward_kinematics(action.tolist(), input_is_radian=True, return_is_radian=True)[1])[:3]
-                    # if np.linalg.norm(self._last_pose - self._target_pose) > 7:
-                    #     print("too large delta pose, skip servo command\n")
-                    #     continue
-                    
                     self.arm.set_servo_angle_j(angles=action.tolist(), is_radian=True)
                 else:
-                    self._last_pose = np.array(self.arm.get_position(is_radian=True)[1])[:3]
                     aa = homo2aa(action)
-                    # print(np.linalg.norm(self._last_pose - aa[3:]), "delta pose")
-                    # if np.linalg.norm(self._last_pose - aa[:3]) > 7:
-                    #     print(np.linalg.norm(self._last_pose - aa[:3]))
-                    #     print("too large delta pose, skip servo command\n")
-                    #     continue
-                    
                     self.arm.set_servo_cartesian_aa(aa, is_radian=True)
             
             if self.save_event.is_set():
@@ -176,30 +168,46 @@ class XArmController:
         if self.save_event.is_set():
             self.stop()
     
-    def move(self, action, is_servo=True):
+    def move(self, action, is_servo=True, speed=None):
         assert action.shape == (4,4) or action.shape == (6,)
-        
+
+        # Clamp joint values to xArm limits to prevent out_of_joint_range errors
+        if action.shape == (6,):
+            action = np.clip(action, -2 * np.pi, 2 * np.pi)
+
         with self.lock:
             self.action = action.copy()
             self.is_servo = is_servo
-        
+            self._move_speed = speed
+
         if not is_servo:
             self.finished = False
             self.position_control_event.clear()
             self.position_control_event.wait()
         
+    def clear_error(self):
+        """Clear errors/warnings and re-enable servo mode without reconnecting."""
+        if self.arm.has_err_warn:
+            self.arm.clean_warn()
+            self.arm.clean_error()
+        self.arm.motion_enable(enable=True)
+        self.arm.set_mode(1)
+        self.arm.set_state(state=0)
+        self.error_event.clear()
+        time.sleep(0.1)
+
     def reset(self):
         self.arm = XArmAPI(self.xarm_ip_address, report_type="devlop")
         if self.arm.has_err_warn:
             self.arm.clean_warn()
             self.arm.clean_error()
-            
+
         self.arm.motion_enable(enable=True)
         self.arm.set_mode(0)
         self.arm.set_state(state=0)
         time.sleep(0.1)
-        
-        
+
+
         self.arm.set_mode(1)
         self.arm.set_state(state=0)
     

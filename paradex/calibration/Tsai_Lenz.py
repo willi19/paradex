@@ -54,7 +54,7 @@ def solve_axb_cpu(A, B):
         M1 = np.dot(beta.reshape(3,1),alpha.reshape(3,1).T)
         M2 = np.dot(beta2.reshape(3,1),alpha2.reshape(3,1).T)
         M3 = np.dot(beta3.reshape(3,1),alpha3.reshape(3,1).T)
-        M = M1+M2+M3
+        M += M1+M2+M3
     theta = np.dot(sqrtm(np.linalg.inv(np.dot(M.T, M))), M.T)
     for i in range(n_data):
         rot_a = A[i][0:3, 0:3]
@@ -71,7 +71,7 @@ def solve_axb_cpu(A, B):
     return T
 
     
-def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.001, verbose=False):
+def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=20000, learning_rate=0.005, verbose=False):
     """
     Solve AX = XB using PyTorch gradient descent
     
@@ -153,49 +153,64 @@ def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.00
     
     # Optimizer
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.8)
-    
+    scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=2000, gamma=0.7)
+
     losses = []
-    
+    best_loss = float('inf')
+    best_X = None
+    plateau_count = 0
+    plateau_tol = 1e-9
+    plateau_patience = 1500
+
     for epoch in range(max_epochs):
         optimizer.zero_grad()
-        
-        # Get current transformation
+
         X = model()
-        
-        # Compute loss: ||AX - XB||_F^2 for all pose pairs
-        total_loss = 0
+
+        # Separate rotation and translation residuals so neither dominates
+        rot_loss = 0.0
+        trans_loss = 0.0
         for A, B in zip(A_tensors, B_tensors):
             AX = torch.matmul(A, X)
             XB = torch.matmul(X, B)
-            loss = torch.norm(AX - XB, 'fro') ** 2
-            total_loss += loss
-            total_loss += torch.norm((AX-XB)[:3,3])
-        
-        # Add regularization terms
+            diff = AX - XB
+            rot_loss = rot_loss + torch.norm(diff[:3, :3], 'fro') ** 2
+            trans_loss = trans_loss + torch.norm(diff[:3, 3]) ** 2
+
+        # Translation in meters is O(1e-2) squared; rotation residual is O(1).
+        # Scale translation up so it actually drives the gradient.
+        total_loss = rot_loss + 1000.0 * trans_loss
+
         rotation_matrix = X[:3, :3]
-        
-        # Orthogonality constraint: R^T R = I
         ortho_loss = torch.norm(torch.matmul(rotation_matrix.T, rotation_matrix) - torch.eye(3)) ** 2
-        
-        # Determinant constraint: det(R) = 1
         det_loss = (torch.det(rotation_matrix) - 1) ** 2
-        
-        # Combined loss
-        total_loss = total_loss + 0.01 * ortho_loss + 0.01 * det_loss
-        
-        # Backward pass
+        total_loss = total_loss + 0.1 * ortho_loss + 0.1 * det_loss
+
         total_loss.backward()
         optimizer.step()
         scheduler.step()
-        
-        losses.append(total_loss.item())
-        
+
+        loss_val = total_loss.item()
+        losses.append(loss_val)
+
+        if loss_val < best_loss - plateau_tol:
+            best_loss = loss_val
+            best_X = model().detach().clone()
+            plateau_count = 0
+        else:
+            plateau_count += 1
+
         if verbose and epoch % 500 == 0:
-            print(f"Epoch {epoch}, Loss: {total_loss.item():.8f}, "
-                  f"Ortho: {ortho_loss.item():.8f}, Det: {det_loss.item():.8f}")
+            print(f"Epoch {epoch}, Loss: {loss_val:.8f} "
+                  f"(rot={rot_loss.item():.6f}, trans={trans_loss.item():.6e}, "
+                  f"ortho={ortho_loss.item():.6e}, det={det_loss.item():.6e})")
+
+        if plateau_count >= plateau_patience:
+            if verbose:
+                print(f"Early stop at epoch {epoch}, best loss={best_loss:.8f}")
+            break
     
-    # Return final transformation as numpy array
+    # Return best transformation seen during training (numpy)
     with torch.no_grad():
-        X_final = model().numpy()
+        X_final = best_X.numpy() if best_X is not None else model().numpy()
     return X_final

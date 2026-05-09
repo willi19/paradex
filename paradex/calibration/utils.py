@@ -8,10 +8,18 @@ from paradex.utils.path import shared_dir
 from paradex.utils.file_io import find_latest_directory
 from paradex.utils.system import config_dir
 
-cam_param_dir = os.path.join(shared_dir, "cam_param")
-handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")
-eef_calib_path = os.path.join(shared_dir, "eef")
-extrinsic_dir = os.path.join(shared_dir, "extrinsic")
+# Per-environment namespacing for calibration directories on the shared NAS.
+# Set PARADEX_NAMESPACE=<tag> (e.g. "jisoo", "2") to isolate this system's
+# calibrations from other labs sharing the same NAS. Empty / unset keeps the
+# original layout for backward compatibility.
+_calib_ns = os.environ.get("PARADEX_NAMESPACE", "").strip()
+_calib_suffix = f"_{_calib_ns}" if _calib_ns else ""
+
+cam_param_dir = os.path.join(shared_dir, f"cam_param{_calib_suffix}")
+handeye_calib_path = os.path.join(shared_dir, f"handeye_calibration{_calib_suffix}")
+eef_calib_path = os.path.join(shared_dir, f"eef{_calib_suffix}")
+extrinsic_dir = os.path.join(shared_dir, f"extrinsic{_calib_suffix}")
+intrinsic_dir = os.path.join(shared_dir, f"intrinsic{_calib_suffix}")
 
 def load_current_camparam(name=None):
     if name == None:
@@ -52,10 +60,9 @@ def load_camparam(demo_path):
 
 def load_current_intrinsic():
     intrinsics = {}
-    intrinsic_path = os.path.join(shared_dir, "intrinsic")
-    cam_list = os.listdir(intrinsic_path)
+    cam_list = os.listdir(intrinsic_dir)
     for cam_name in cam_list:
-        param_path = os.path.join(intrinsic_path, cam_name, "param")
+        param_path = os.path.join(intrinsic_dir, cam_name, "param")
         if os.path.exists(param_path) and len(os.listdir(param_path)) > 0:
             param_file = find_latest_directory(param_path)
             param = json.load(open(os.path.join(param_path, param_file), "r"))
@@ -83,10 +90,8 @@ def load_eef(demo_path):
     return eef
 
 def save_current_camparam(save_path):
-    camparam_dir = os.path.join(shared_dir, "cam_param")
-    camparam_name = find_latest_directory(camparam_dir)
-    camparam_path = os.path.join(shared_dir, "cam_param", camparam_name)
-    #if not os.path.exists(save_path):
+    camparam_name = find_latest_directory(cam_param_dir)
+    camparam_path = os.path.join(cam_param_dir, camparam_name)
     shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"), dirs_exist_ok=True)
     
 def load_current_C2R():

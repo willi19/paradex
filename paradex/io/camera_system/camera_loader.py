@@ -20,12 +20,20 @@ class CameraLoader:
     
     def load_pyspin_camera(self, serial_list=None):
         from paradex.io.camera_system.pyspin import get_serial_list, autoforce_ip
-        
+
         autoforce_ip()
-        
+
         if serial_list is None:
-            serial_list = get_serial_list()
-        
+            # env var로 명시적 필터 가능 (e.g. PARADEX_CAMERA_SERIALS=25322639,25305465).
+            # 일부 카메라가 물리적으로 없거나 다른 곳에서 점유 중이면 daemon이
+            # Camera.__init__ 에서 hang하는 걸 방지.
+            env_serials = os.environ.get("PARADEX_CAMERA_SERIALS", "").strip()
+            if env_serials:
+                serial_list = [s.strip() for s in env_serials.split(",") if s.strip()]
+                print(f"[CameraLoader] PARADEX_CAMERA_SERIALS 필터: {serial_list}")
+            else:
+                serial_list = get_serial_list()
+
         if len(serial_list) != len(get_camera_list()):
             print(f"[Warning] Configured camera count ({len(get_camera_list())}) does not match detected camera count ({len(serial_list)}). Using detected cameras.")
             for _ in range(RETRY_COUNT):

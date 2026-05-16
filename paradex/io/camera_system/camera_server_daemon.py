@@ -69,7 +69,27 @@ class camera_server_daemon:
     def execute_command(self, cmd):
         action = cmd.get('action')
         controller_name = cmd.get('controller_name')
-        
+
+        # Recording is a side-channel: it only opens/closes the per-camera
+        # VideoWriter on already-running cameras and never touches the
+        # acquisition lifecycle or shared memory. So it intentionally bypasses
+        # the single-owner lock — a record-only controller can toggle .avi
+        # while a separate "stream owner" controller holds the lock and keeps
+        # the daemon alive via heartbeat.
+        if action == "record_start":
+            try:
+                self.camera_loader.record_start(cmd.get('save_path'), cmd.get('fps', 30))
+                return {"status": "ok", "msg": "recording started"}
+            except Exception as e:
+                return {"status": "error", "msg": f"record_start failed: {e}"}
+
+        if action == "record_stop":
+            try:
+                self.camera_loader.record_stop()
+                return {"status": "ok", "msg": "recording stopped"}
+            except Exception as e:
+                return {"status": "error", "msg": f"record_stop failed: {e}"}
+
         if controller_name != self.current_controller and self.current_controller is not None:
             print(f"[Warning] {controller_name} tried to access, but locked by {self.current_controller}")
             return {"status":"error", "msg":f"locked by {self.current_controller}"}

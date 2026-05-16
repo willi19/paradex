@@ -25,13 +25,18 @@ class TimestampMonitor():
 
         self.last_error = None
         self.last_traceback = None
-        
-        self.capture_thread = Thread(target=self.run) 
-        self.capture_thread.start()  
-        
+        self.disabled = False
+
+        self.capture_thread = Thread(target=self.run)
+        self.capture_thread.start()
+
         self.event["connection"].wait()
+        if self.disabled:
+            print(f"[TimestampMonitor] DISABLED: {self.last_error}")
 
     def start(self, save_path=None):
+        if self.disabled:
+            return
         if self.event["start"].is_set():
             self.event["error"].set()
             self.event["error_reset"].clear()
@@ -72,17 +77,23 @@ class TimestampMonitor():
         return self.event["error"].is_set()
 
     def stop(self):
+        if self.disabled:
+            return
         self.event["start"].clear()
-        
+
         if self.event["error"].is_set():
             self.error_reset()
-            
+
         self.event["stop"].wait()
-                   
+
     def end(self):
+        if self.disabled:
+            self.event["exit"].set()
+            self.capture_thread.join()
+            return
         if self.event["start"].is_set():
             self.stop()
-        
+
         self.event["exit"].set()
         self.capture_thread.join()
     
@@ -153,17 +164,27 @@ class TimestampMonitor():
         self.event["stop"].set()
     
     def connect_camera(self):
-        # Establish connection
-        if self.type == "pyspin":
-            from paradex.io.camera_system.pyspin import load_timestamp_monitor
-        else:
-            raise NotImplementedError(f"Camera type {self.type} is not implemented.")
-        
-        self.camera = load_timestamp_monitor(self.name)
-        self.event["connection"].set()
-    
+        # Establish connection. On failure: disable gracefully instead of
+        # killing the thread (which would leave __init__ hung on
+        # connection.wait() forever).
+        try:
+            if self.type == "pyspin":
+                from paradex.io.camera_system.pyspin import load_timestamp_monitor
+            else:
+                raise NotImplementedError(f"Camera type {self.type} is not implemented.")
+            self.camera = load_timestamp_monitor(self.name)
+        except Exception as e:
+            self.camera = None
+            self.disabled = True
+            self.last_error = str(e)
+            self.last_traceback = traceback.format_exc()
+            self.event["error"].set()
+        finally:
+            self.event["connection"].set()  # always unblock __init__
+
     def release(self):
-        self.camera.release()
+        if self.camera is not None:
+            self.camera.release()
         self.event["release"].set()
 
     def get_data(self):
@@ -188,11 +209,16 @@ class TimestampMonitor():
                 
     def run(self):
         self.connect_camera()
-        
+        if self.disabled:
+            # camera unavailable -> wait quietly for end(), do nothing
+            while not self.event["exit"].is_set():
+                time.sleep(0.05)
+            return
+
         while not self.event["exit"].is_set(): # we should maintain the connection until exit
             if self.event["start"].is_set(): # Start data acquisition
                 self.continuous_acquire()
-                
+
             time.sleep(0.001)
                     
         self.release()

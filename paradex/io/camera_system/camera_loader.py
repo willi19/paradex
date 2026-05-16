@@ -23,6 +23,9 @@ class CameraLoader:
 
         autoforce_ip()
 
+        # env var 필터가 들어왔는지 추적 — 들어왔으면 아래 count-mismatch retry
+        # 로직이 env var 필터를 덮어쓰지 않도록 skip.
+        env_filtered = False
         if serial_list is None:
             # env var로 명시적 필터 가능 (e.g. PARADEX_CAMERA_SERIALS=25322639,25305465).
             # 일부 카메라가 물리적으로 없거나 다른 곳에서 점유 중이면 daemon이
@@ -30,11 +33,12 @@ class CameraLoader:
             env_serials = os.environ.get("PARADEX_CAMERA_SERIALS", "").strip()
             if env_serials:
                 serial_list = [s.strip() for s in env_serials.split(",") if s.strip()]
+                env_filtered = True
                 print(f"[CameraLoader] PARADEX_CAMERA_SERIALS 필터: {serial_list}")
             else:
                 serial_list = get_serial_list()
 
-        if len(serial_list) != len(get_camera_list()):
+        if not env_filtered and len(serial_list) != len(get_camera_list()):
             print(f"[Warning] Configured camera count ({len(get_camera_list())}) does not match detected camera count ({len(serial_list)}). Using detected cameras.")
             for _ in range(RETRY_COUNT):
                 time.sleep(RETRY_DELAY)
@@ -73,7 +77,40 @@ class CameraLoader:
         for t in threads:
             t.join()
         print("all cameras started.")
-    
+
+    def record_start(self, save_path, fps=30):
+        """Arm .avi recording on all cameras WITHOUT restarting acquisition.
+
+        Cameras must already be running (typically started in "stream" mode);
+        the shared-memory stream is unaffected. Video dir layout matches the
+        "video"/"full" start() path so rsync tooling keeps working.
+        """
+        save_paths = [
+            os.path.join(capture_path_list[ind % len(capture_path_list)], save_path, "videos")
+            for ind, _ in enumerate(self.cameralist)
+        ]
+        for path in save_paths:
+            os.makedirs(path, exist_ok=True)
+        print("record save paths:", save_paths)
+        threads = [
+            Thread(target=camera.record_start, args=(path, fps))
+            for camera, path in zip(self.cameralist, save_paths)
+        ]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        print("recording armed on all cameras.")
+
+    def record_stop(self):
+        """Disarm .avi recording on all cameras (stream keeps running)."""
+        threads = [Thread(target=camera.record_stop) for camera in self.cameralist]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        print("recording disarmed on all cameras.")
+
     def stop(self):
         threads = []
         for camera in self.cameralist:

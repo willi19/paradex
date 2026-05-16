@@ -3,9 +3,10 @@ from paradex.transforms.coordinate import DEVICE2WRIST,  DEVICE2GLOBAL
 from paradex.retargetor.hand_regargetor import inspire, allegro
 
 class Retargetor(): # Input is only from Xsens
-    def __init__(self, arm_name=None, hand_name=None):
+    def __init__(self, arm_name=None, hand_name=None, translation_scale=1.0):
         self.arm_name = arm_name
         self.hand_name = hand_name
+        self.translation_scale = float(translation_scale)
         
         if arm_name not in [None, "xarm", "franka"]:
             raise ValueError("Invalid arm name")
@@ -36,8 +37,8 @@ class Retargetor(): # Input is only from Xsens
 
         robot_wrist_pose = np.zeros((4,4))
         robot_wrist_pose[:3,:3] = self.init_robot_pose[:3,:3] @ delta_wrists_R
-                
-        robot_wrist_pose[:3,3] = delta_wrists_t + self.init_robot_pose[:3,3]
+
+        robot_wrist_pose[:3,3] = self.translation_scale * delta_wrists_t + self.init_robot_pose[:3,3]
         robot_wrist_pose[3,3] = 1
         
         self.last_arm_pose = robot_wrist_pose.copy()

@@ -116,7 +116,7 @@ class XSensReceiver:
                             self.hand_pose["Left"][joint_name] = XSENS2GLOBAL @ np.linalg.inv(pelvis_pose) @ left_hand_pose[i] @ np.linalg.inv(XSENS2WRIST_Left)
                 
                     if self.save_event.is_set():
-                        self.data["time"].append(data_header[3])  # timestamp
+                        self.data["time"].append(time.time())  # main PC wall clock for cross-sensor sync
                         for joint_name in xsens_joint_name:
                             self.data["Left"][joint_name].append(self.hand_pose["Left"][joint_name].copy())
                             self.data["Right"][joint_name].append(self.hand_pose["Right"][joint_name].copy())

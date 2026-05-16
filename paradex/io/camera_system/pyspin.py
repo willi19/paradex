@@ -53,11 +53,35 @@ def load_camera(serialnum):
 def load_timestamp_monitor(serialnum):
     cam_list = system.GetCameras()
 
+    # GetBySerial may return an invalid (NULL) CameraPtr instead of raising
+    # when the serial is absent -> camPtr.Init() then crashes with -1015.
+    # Validate against the actually-enumerated serials first.
+    available = []
+    for i in range(cam_list.GetSize()):
+        c = cam_list.GetByIndex(i)
+        try:
+            available.append(
+                ps.CStringPtr(
+                    c.GetTLDeviceNodeMap().GetNode("DeviceSerialNumber")
+                ).GetValue()
+            )
+        except Exception:
+            pass
+        del c
+    if serialnum not in available:
+        cam_list.Clear()
+        raise ValueError(
+            f"Timestamp-monitor camera serial {serialnum} not found on this PC. "
+            f"Available: {available or 'none'}. "
+            f"Run with --no_timestamp_monitor (this PC has no monitor camera)."
+        )
+
     try:
         camPtr = cam_list.GetBySerial(serialnum)
     except:
+        cam_list.Clear()
         raise ValueError(f"Camera with serial number {serialnum} not found.")
-    
+
     if serialnum in cam_info:
         gain = cam_info[serialnum]["gain"]
         exposure = cam_info[serialnum]["exposure_time"]

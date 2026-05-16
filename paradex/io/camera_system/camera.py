@@ -13,21 +13,35 @@ class Camera():
             "exit": Event(),
             "error": Event(),
             "error_reset": Event(),
-            
+
             "connection": Event(),
             "acquisition": Event(),
             "release": Event(),
-            "stop": Event()
+            "stop": Event(),
+            # Set whenever NO recording file is open (idle or after the writer
+            # has been fully released/flushed). record_stop() waits on this so
+            # callers can safely rsync the .avi right after.
+            "record_closed": Event(),
+            # Runtime recording toggle, independent of the acquisition
+            # lifecycle. When set during continuous_acquire(), a VideoWriter is
+            # opened mid-stream; when cleared it is closed. This lets a caller
+            # record .avi on/off WITHOUT stopping the shared-memory stream
+            # (no stop()/start(), no shm unlink).
+            "record": Event()
         }
-        
+
         self.event["error_reset"].set()
-        
+        self.event["record_closed"].set()  # no writer open yet
+
         self.type = cam_type
         self.name = name
-        
-        self.frame_shape = frame_shape  
-        
+
+        self.frame_shape = frame_shape
+
         self.last_frame_id = 0
+        # Per-episode recording target (set by record_start / start()).
+        self.record_save_path = None
+        self.record_fps = 30
 
         self.last_error = None
         self.last_traceback = None
@@ -139,7 +153,48 @@ class Camera():
         
         self.image_array_a.fill(0)
         self.image_array_b.fill(0)
-        
+
+    def _resolve_video_path(self, save_path):
+        """Resolve a save_path (dir or file) to a concrete .avi file path."""
+        _, ext = os.path.splitext(save_path)
+        if not ext:
+            return os.path.join(save_path, f"{self.name}.avi")
+        return save_path
+
+    def record_start(self, save_path, fps=30):
+        """Begin writing .avi mid-stream (no acquisition restart).
+
+        Safe to call while continuous_acquire() is running in any mode; the
+        acquisition loop picks up event['record'] on its next iteration and
+        opens the VideoWriter. The shared-memory stream is unaffected.
+        """
+        if save_path is None:
+            print(f"[WARNING] Camera {self.name} record_start ignored: save_path is None")
+            return
+        self.record_save_path = self._resolve_video_path(save_path)
+        self.record_fps = fps
+        save_dir = os.path.dirname(self.record_save_path)
+        if save_dir:
+            os.makedirs(save_dir, exist_ok=True)
+        self.event["record"].set()
+        print(f"[INFO] Camera {self.name} recording armed -> {self.record_save_path}")
+
+    def record_stop(self, flush_timeout=5.0):
+        """Stop writing .avi mid-stream (stream keeps running).
+
+        Blocks until the acquisition loop has actually released the
+        VideoWriter (file flushed/finalized on disk), so the caller can rsync
+        the .avi immediately afterwards without racing a half-written file.
+        """
+        self.event["record"].clear()
+        # Only wait if a capture loop is running to act on it; otherwise the
+        # writer is already closed (record_closed stays set).
+        if self.event["acquisition"].is_set():
+            if not self.event["record_closed"].wait(timeout=flush_timeout):
+                print(f"[WARNING] Camera {self.name} record file not confirmed "
+                      f"closed within {flush_timeout}s")
+        print(f"[INFO] Camera {self.name} recording disarmed.")
+
     def start(self, mode, syncMode, save_path=None, fps=30):
         if fps < 0 and mode in ["video", "full"] and syncMode is False:
             self.event["error"].set()
@@ -183,9 +238,20 @@ class Camera():
             save_dir = os.path.dirname(self.save_path)
             if save_dir:
                 os.makedirs(save_dir, exist_ok=True)
-                
+
+        # Backward compat: "video"/"full" record from the start. We express
+        # this through the same record-toggle path so continuous_acquire() has
+        # a single code path. "stream" starts disarmed (recording toggled at
+        # runtime via record_start/record_stop). "image" is unaffected.
+        if mode in ["video", "full"] and save_path is not None:
+            self.record_save_path = self.save_path
+            self.record_fps = fps
+            self.event["record"].set()
+        elif mode == "stream":
+            self.event["record"].clear()
+
         self.event["stop"].clear()
-        self.event["start"].set()  
+        self.event["start"].set()
         print(f"[INFO] Camera {self.name} will start.")  
         
         self.event["acquisition"].wait()   
@@ -221,26 +287,49 @@ class Camera():
         print(f"[INFO] Camera {self.name} has been successfully ended.")
     
     def continuous_acquire(self):
-        save_video = (self.mode in ["video", "full"] and self.save_path is not None)
         stream = (self.mode in ["stream", "full"])
         blank_frame = np.zeros(self.frame_shape, dtype=np.uint8)
         blank_frame[::2, ::2] = 255  # checkerboard pattern for dropped frames
-        
-        print(f"[INFO] Camera {self.name} starting continuous acquisition.")
-        if save_video:
+
+        # Recording is driven entirely by self.event["record"] (armed at
+        # start() for video/full, or toggled at runtime via record_start/
+        # record_stop). The writer is created/closed inside the loop so it can
+        # turn on/off WITHOUT interrupting acquisition or the shm stream.
+        video_writer = None
+        rec_prev_fid = None  # episode-local frame id for blank-fill
+
+        def _open_writer():
+            if self.record_save_path is None:
+                print(f"[WARNING] Camera {self.name} record requested but no save_path; ignoring.")
+                return None
             fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-            video_writer = cv2.VideoWriter(self.save_path, fourcc, fps=self.fps, frameSize=(self.frame_shape[1], self.frame_shape[0]))        
-        
+            w = cv2.VideoWriter(
+                self.record_save_path, fourcc, fps=self.record_fps,
+                frameSize=(self.frame_shape[1], self.frame_shape[0]),
+            )
+            self.event["record_closed"].clear()  # a file is now open
+            print(f"[INFO] Camera {self.name} recording -> {self.record_save_path}")
+            return w
+
+        def _close_writer(w):
+            if w is not None:
+                w.release()
+                print(f"[INFO] Camera {self.name} recording file closed.")
+            # Signal record_stop() that the .avi is fully flushed.
+            self.event["record_closed"].set()
+
+        print(f"[INFO] Camera {self.name} starting continuous acquisition.")
+
         try:
             self.camera.start("continuous", self.syncMode, self.fps)
-        
+
         except Exception as e:
             self.event["error"].set()
-            self.event["error_reset"].clear() 
-               
+            self.event["error_reset"].clear()
+
             self.last_error = str(e)
             self.last_traceback = traceback.format_exc()
-            
+
             print(f"[ERROR] Camera {self.name} exception occurred:")
             print(f"Exception Type: {type(e).__name__}")
             print(f"Exception Message: {str(e)}")
@@ -249,36 +338,48 @@ class Camera():
             self.event["acquisition"].set()  # To avoid deadlock
 
             self.event["error_reset"].wait()
-            
+
             self.event["acquisition"].clear()
             self.event["stop"].set()
-            
-            if save_video:
-                video_writer.release()
+
             if stream:
                 self.clear_shared_memory()
             print(f"[INFO] Camera {self.name} acquisition aborted due to error during start.")
-            return 
-            
-                
+            return
+
+
         self.event["acquisition"].set()
-                
+
         while self.event["start"].is_set() and not self.event["exit"].is_set():
             try:
+                # Toggle the recording file on/off mid-stream.
+                want_record = self.event["record"].is_set()
+                if want_record and video_writer is None:
+                    video_writer = _open_writer()
+                    rec_prev_fid = None
+                elif not want_record and video_writer is not None:
+                    _close_writer(video_writer)
+                    video_writer = None
+                    rec_prev_fid = None
+
                 frame, frame_data = self.camera.get_image()
                 if frame is None:
                     continue
-                
+
                 current_frame_id = frame_data["frameID"]
                 if self.last_frame_id > current_frame_id:
                     continue  # Skip out-of-order frames
-                
-                if save_video:
-                    for _ in range(current_frame_id - self.last_frame_id-1):
-                        print(f"frame drop {self.name}: missing frame id", current_frame_id-self.last_frame_id-1)
+
+                if video_writer is not None:
+                    if rec_prev_fid is None:
+                        # First frame of this recording episode.
+                        rec_prev_fid = current_frame_id - 1
+                    for _ in range(current_frame_id - rec_prev_fid - 1):
+                        print(f"frame drop {self.name}: missing frame id", current_frame_id - rec_prev_fid - 1)
                         video_writer.write(blank_frame)
                     video_writer.write(frame)
-                
+                    rec_prev_fid = current_frame_id
+
                 if stream:
                     # Write to shared memory
                     if self.write_flag[0] == 0:
@@ -291,20 +392,20 @@ class Camera():
                         self.write_flag[0] = 0
 
                 self.last_frame_id = current_frame_id
-                
+
             except Exception as e:
                 self.event["error"].set()
-                self.event["error_reset"].clear() 
-                   
+                self.event["error_reset"].clear()
+
                 self.last_error = str(e)
                 self.last_traceback = traceback.format_exc()
-                
+
                 print(f"[ERROR] Camera {self.name} exception occurred during acquisition:")
                 print(f"Exception Type: {type(e).__name__}")
                 print(f"Exception Message: {str(e)}")
                 print(self.last_traceback)
 
-                self.event["error_reset"].wait()             
+                self.event["error_reset"].wait()
                 break
 
         self.camera.stop()
@@ -312,10 +413,10 @@ class Camera():
 
         if stream:
             self.clear_shared_memory()
-        
-        if save_video:
-            video_writer.release()
-        
+
+        _close_writer(video_writer)
+        video_writer = None
+
         self.event["stop"].set()
     
     def single_acquire(self):
@@ -373,8 +474,11 @@ class Camera():
             'fps': getattr(self, 'fps', None),
             'syncMode': getattr(self, 'syncMode', None),
             'save_path': getattr(self, 'save_path', None),
+            'recording': self.event["record"].is_set(),
+            'record_writer_open': not self.event["record_closed"].is_set(),
+            'record_save_path': self.record_save_path,
             'time': time.time()
-        }  
+        }
 
     def run(self):
         self.connect_camera()

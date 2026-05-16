@@ -6,20 +6,31 @@ from threading import Thread, Event
 from paradex.utils.system import get_pc_list, get_pc_ip
 
 class remote_camera_controller:
-    def __init__(self, name, pc_list=None):
+    def __init__(self, name, pc_list=None, register_as_owner=True):
         self.name = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
         self.pc_list = get_pc_list() if pc_list is None else pc_list
-        
-        self.ping_port = 5480    
-        self.command_port = 5482   
+
+        self.ping_port = 5480
+        self.command_port = 5482
         self.connection_port = 5483
-        
+
+        # register_as_owner=False: a record-only side-channel client. It does
+        # NOT register (so it can't steal the lock from the stream owner) and
+        # does NOT heartbeat (the stream owner keeps the daemon alive). It only
+        # emits record_start/record_stop on demand.
+        self.register_as_owner = register_as_owner
+
         self.exit_event = Event()
         self.start_event = Event()
-        self.stop_event = Event()   
+        self.stop_event = Event()
+        self.record_start_event = Event()
+        self.record_stop_event = Event()
         self.sending_event = Event()
         self.error_event = Event()
+
+        self.record_save_path = None
+        self.record_fps = 30
 
         self.run_thread = Thread(target=self.run, daemon=True)
         self.run_thread.start()
@@ -48,8 +59,9 @@ class remote_camera_controller:
                 f"다음 PC들이 응답하지 않습니다: {failed_pcs}\n"
                 f"각 PC에서 'python src/camera/server_daemon.py'를 실행하세요."
             )
-        
-        self.register()
+
+        if self.register_as_owner:
+            self.register()
     
     def check_server_alive(self, pc):
         """ping port로 서버 확인"""
@@ -104,6 +116,21 @@ class remote_camera_controller:
         self.stop_event.set()
         self.sending_event.wait()
 
+    def record_start(self, save_path, fps=30):
+        """Arm .avi recording on the (already-streaming) daemon. Non-blocking
+        on acquisition: does not stop/restart cameras, stream is unaffected."""
+        self.record_save_path = save_path
+        self.record_fps = fps
+        self.sending_event.clear()
+        self.record_start_event.set()
+        self.sending_event.wait()
+
+    def record_stop(self):
+        """Disarm .avi recording (stream keeps running)."""
+        self.sending_event.clear()
+        self.record_stop_event.set()
+        self.sending_event.wait()
+
     def end(self):
         self.exit_event.set()        
         self.run_thread.join()
@@ -121,8 +148,10 @@ class remote_camera_controller:
         self.initialize()
         
         while not self.exit_event.is_set():
-            cmd = {'action': 'heartbeat'}
-            
+            # Owner clients heartbeat to keep the daemon alive; record-only
+            # side-channel clients stay silent unless toggling recording.
+            cmd = {'action': 'heartbeat'} if self.register_as_owner else None
+
             if self.start_event.is_set():
                 cmd = {
                     'action': 'start',
@@ -132,23 +161,40 @@ class remote_camera_controller:
                     'fps': self.fps
                 }
                 self.start_event.clear()
-                
+
             if self.stop_event.is_set():
                 cmd = {'action': 'stop'}
                 self.stop_event.clear()
-            
+
+            if self.record_start_event.is_set():
+                cmd = {
+                    'action': 'record_start',
+                    'save_path': self.record_save_path,
+                    'fps': self.record_fps,
+                }
+                self.record_start_event.clear()
+
+            if self.record_stop_event.is_set():
+                cmd = {'action': 'record_stop'}
+                self.record_stop_event.clear()
+
+            if cmd is None:
+                time.sleep(0.1)
+                continue
+
             response = self.send_command(cmd)
-            if cmd['action'] in ['start', 'stop']:
+            if cmd['action'] in ['start', 'stop', 'record_start', 'record_stop']:
                 self.sending_event.set()
-            
+
             for pc, resp in response.items():
                 if resp['status'] == 'error':
                     print(f"{pc}: {resp['msg']}")
                     self.error_event.set()
-                    
+
             time.sleep(0.1)
-            
-        self.send_command({'action': 'end'})
+
+        if self.register_as_owner:
+            self.send_command({'action': 'end'})
         for socket in self.command_sockets.values():
             socket.close()
         self.ctx.term()

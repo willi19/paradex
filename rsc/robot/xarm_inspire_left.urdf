@@ -210,7 +210,7 @@
     <dynamics damping="0.0001" friction="0.01" />
   </joint>
   <link name="wrist" />
-  <joint name="R_hand_base_joint" type="fixed">
+  <joint name="L_hand_base_joint" type="fixed">
     <origin rpy="0 0 0" xyz="0 0 0" />
     <parent link="wrist" />
     <child link="base_link" />
@@ -224,7 +224,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/base_link.STL" />
+        <mesh filename="inspire/meshes/left_base_link.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -233,11 +233,11 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/base_link.STL" />
+        <mesh filename="inspire/meshes/left_base_link.STL" />
       </geometry>
     </collision>
   </link>
-  <link name="right_thumb_1">
+  <link name="left_thumb_1">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00178423179132732 0.000649410769092404 0.00488589310434417" />
       <mass value="0.00115518743162309" />
@@ -246,7 +246,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_1.STL" />
+        <mesh filename="inspire/meshes/left_thumb_1.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -255,18 +255,18 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_1.STL" />
+        <mesh filename="inspire/meshes/left_thumb_1.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_thumb_1_joint" type="revolute">
+  <joint name="left_thumb_1_joint" type="revolute">
     <origin rpy="-3.1416 0 -3.1416" xyz="0.0269 0.02101 -0.069" />
     <parent link="base_link" />
-    <child link="right_thumb_1" />
+    <child link="left_thumb_1" />
     <axis xyz="0 0 -1" />
     <limit effort="10" lower="0" upper="1.15" velocity="1" />
   </joint>
-  <link name="right_thumb_2">
+  <link name="left_thumb_2">
     <inertial>
       <origin rpy="0 0 0" xyz="0.0141071308121962 0.0132720367246953 -0.00905029680056009" />
       <mass value="0.016" />
@@ -275,7 +275,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_2.STL" />
+        <mesh filename="inspire/meshes/left_thumb_2.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -284,18 +284,18 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_2.STL" />
+        <mesh filename="inspire/meshes/left_thumb_2.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_thumb_2_joint" type="revolute">
+  <joint name="left_thumb_2_joint" type="revolute">
     <origin rpy="1.5708 0 2.7925" xyz="-0.0063016 0.011924 0.003" />
-    <parent link="right_thumb_1" />
-    <child link="right_thumb_2" />
+    <parent link="left_thumb_1" />
+    <child link="left_thumb_2" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="0.55" velocity="1" />
   </joint>
-  <link name="right_thumb_3">
+  <link name="left_thumb_3">
     <inertial>
       <origin rpy="0 0 0" xyz="0.00937843602210774 0.00404407714692963 -0.00753947150343212" />
       <mass value="0.012" />
@@ -304,7 +304,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_3.STL" />
+        <mesh filename="inspire/meshes/left_thumb_3.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -313,19 +313,19 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_3.STL" />
+        <mesh filename="inspire/meshes/left_thumb_3.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_thumb_3_joint" type="revolute">
+  <joint name="left_thumb_3_joint" type="revolute">
     <origin rpy="0 0 0" xyz="0.034968 0.021325 -0.0015" />
-    <parent link="right_thumb_2" />
-    <child link="right_thumb_3" />
+    <parent link="left_thumb_2" />
+    <child link="left_thumb_3" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="3.14" velocity="1" />
-    <mimic joint="right_thumb_2_joint" multiplier="0.60" offset="0" />
+    <mimic joint="left_thumb_2_joint" multiplier="0.60" offset="0" />
   </joint>
-  <link name="right_thumb_4">
+  <link name="left_thumb_4">
     <inertial>
       <origin rpy="0 0 0" xyz="0.0109973997213043 0.00131062737520288 -0.0073435196000655" />
       <mass value="0.01" />
@@ -334,7 +334,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_4.STL" />
+        <mesh filename="inspire/meshes/left_thumb_4.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -343,19 +343,19 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_thumb_4.STL" />
+        <mesh filename="inspire/meshes/left_thumb_4.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_thumb_4_joint" type="revolute">
+  <joint name="left_thumb_4_joint" type="revolute">
     <origin rpy="0 0 0" xyz="0.018887 0.011501 -0.0002" />
-    <parent link="right_thumb_3" />
-    <child link="right_thumb_4" />
+    <parent link="left_thumb_3" />
+    <child link="left_thumb_4" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="3.14" velocity="1" />
-    <mimic joint="right_thumb_2_joint" multiplier="0.8" offset="0" />
+    <mimic joint="left_thumb_2_joint" multiplier="0.8" offset="0" />
   </joint>
-  <link name="right_index_1">
+  <link name="left_index_1">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00183546255523356 0.0123552521861834 -0.00664922294778368" />
       <mass value="0.00719999389753264" />
@@ -364,7 +364,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_index_1.STL" />
+        <mesh filename="inspire/meshes/left_index_1.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -373,18 +373,18 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_index_1.STL" />
+        <mesh filename="inspire/meshes/left_index_1.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_index_1_joint" type="revolute">
+  <joint name="left_index_1_joint" type="revolute">
     <origin rpy="-1.5359 0 -1.5708" xyz="0.038679 0.00056467 -0.1564" />
     <parent link="base_link" />
-    <child link="right_index_1" />
+    <child link="left_index_1" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="1.6" velocity="1" />
   </joint>
-  <link name="right_index_2">
+  <link name="left_index_2">
     <inertial>
       <origin rpy="0 0 0" xyz="0.000405081354201142 0.0257028143581744 -0.00609275623125877" />
       <mass value="0.0096859422185797" />
@@ -393,7 +393,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_index_2.STL" />
+        <mesh filename="inspire/meshes/left_index_2.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -402,19 +402,19 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_index_2.STL" />
+        <mesh filename="inspire/meshes/left_index_2.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_index_2_joint" type="revolute">
+  <joint name="left_index_2_joint" type="revolute">
     <origin rpy="0 0 0" xyz="-0.0016312 0.032734 -0.00055" />
-    <parent link="right_index_1" />
-    <child link="right_index_2" />
+    <parent link="left_index_1" />
+    <child link="left_index_2" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="3.14" velocity="1" />
-    <mimic joint="right_index_1_joint" multiplier="1.05" offset="0" />
+    <mimic joint="left_index_1_joint" multiplier="1.05" offset="0" />
   </joint>
-  <link name="right_middle_1">
+  <link name="left_middle_1">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00229221489529491 0.0122787164691098 -0.00664923691414206" />
       <mass value="0.00719999454699651" />
@@ -423,7 +423,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_middle_1.STL" />
+        <mesh filename="inspire/meshes/left_middle_1.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -432,18 +432,18 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_middle_1.STL" />
+        <mesh filename="inspire/meshes/left_middle_1.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_middle_1_joint" type="revolute">
+  <joint name="left_middle_1_joint" type="revolute">
     <origin rpy="-1.5708 0 -1.5708" xyz="0.0171 0.00056467 -0.157" />
     <parent link="base_link" />
-    <child link="right_middle_1" />
+    <child link="left_middle_1" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="1.6" velocity="1" />
   </joint>
-  <link name="right_middle_2">
+  <link name="left_middle_2">
     <inertial>
       <origin rpy="0 0 0" xyz="7.55635061812504E-05 0.0274472409700489 -0.00610051225570537" />
       <mass value="0.0104603374357648" />
@@ -452,7 +452,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_middle_2.STL" />
+        <mesh filename="inspire/meshes/left_middle_2.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -461,19 +461,19 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_middle_2.STL" />
+        <mesh filename="inspire/meshes/left_middle_2.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_middle_2_joint" type="revolute">
+  <joint name="left_middle_2_joint" type="revolute">
     <origin rpy="0 0 0" xyz="-0.0028436 0.032651 -0.00055" />
-    <parent link="right_middle_1" />
-    <child link="right_middle_2" />
+    <parent link="left_middle_1" />
+    <child link="left_middle_2" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="3.14" velocity="1" />
-    <mimic joint="right_middle_1_joint" multiplier="1.05" offset="0" />
+    <mimic joint="left_middle_1_joint" multiplier="1.05" offset="0" />
   </joint>
-  <link name="right_ring_1">
+  <link name="left_ring_1">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00240481178777661 0.0122571709475593 -0.00664923625225445" />
       <mass value="0.00719998997814135" />
@@ -482,7 +482,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_ring_1.STL" />
+        <mesh filename="inspire/meshes/left_ring_1.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -491,18 +491,18 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_ring_1.STL" />
+        <mesh filename="inspire/meshes/left_ring_1.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_ring_1_joint" type="revolute">
+  <joint name="left_ring_1_joint" type="revolute">
     <origin rpy="-1.6232 0 -1.5708" xyz="-0.0045302 0.00056467 -0.15683" />
     <parent link="base_link" />
-    <child link="right_ring_1" />
+    <child link="left_ring_1" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="1.6" velocity="1" />
   </joint>
-  <link name="right_ring_2">
+  <link name="left_ring_2">
     <inertial>
       <origin rpy="0 0 0" xyz="0.000666830906754845 0.0256973412492289 -0.0060927714564012" />
       <mass value="0.0096859390369724" />
@@ -511,7 +511,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_ring_2.STL" />
+        <mesh filename="inspire/meshes/left_ring_2.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -520,19 +520,19 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_ring_2.STL" />
+        <mesh filename="inspire/meshes/left_ring_2.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_ring_2_joint" type="revolute">
+  <joint name="left_ring_2_joint" type="revolute">
     <origin rpy="0 0 0" xyz="-0.0031431 0.032624 -0.00055" />
-    <parent link="right_ring_1" />
-    <child link="right_ring_2" />
+    <parent link="left_ring_1" />
+    <child link="left_ring_2" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="3.14" velocity="1" />
-    <mimic joint="right_ring_1_joint" multiplier="1.05" offset="0" />
+    <mimic joint="left_ring_1_joint" multiplier="1.05" offset="0" />
   </joint>
-  <link name="right_little_1">
+  <link name="left_little_1">
     <inertial>
       <origin rpy="0 0 0" xyz="-0.00316844591541324 0.0120823779446085 -0.00664923024026526" />
       <mass value="0.00719994987013217" />
@@ -541,7 +541,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_little_1.STL" />
+        <mesh filename="inspire/meshes/left_little_1.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -550,18 +550,18 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_little_1.STL" />
+        <mesh filename="inspire/meshes/left_little_1.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_little_1_joint" type="revolute">
+  <joint name="left_little_1_joint" type="revolute">
     <origin rpy="-1.6755 0 -1.5708" xyz="-0.025916 0.00056467 -0.15365" />
     <parent link="base_link" />
-    <child link="right_little_1" />
+    <child link="left_little_1" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="1.6" velocity="1" />
   </joint>
-  <link name="right_little_2">
+  <link name="left_little_2">
     <inertial>
       <origin rpy="0 0 0" xyz="0.0204417303421136 -0.00469494170410353 -0.00609999668427265" />
       <mass value="0.0075928240732547" />
@@ -570,7 +570,7 @@
     <visual>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_little_2.STL" />
+        <mesh filename="inspire/meshes/left_little_2.STL" />
       </geometry>
       <material name="">
         <color rgba="1 1 1 1" />
@@ -579,17 +579,17 @@
     <collision>
       <origin rpy="0 0 0" xyz="0 0 0" />
       <geometry>
-        <mesh filename="inspire/meshes/right_little_2.STL" />
+        <mesh filename="inspire/meshes/left_little_2.STL" />
       </geometry>
     </collision>
   </link>
-  <joint name="right_little_2_joint" type="revolute">
+  <joint name="left_little_2_joint" type="revolute">
     <origin rpy="0 0 1.5708" xyz="-0.005182 0.032363 -0.00055" />
-    <parent link="right_little_1" />
-    <child link="right_little_2" />
+    <parent link="left_little_1" />
+    <child link="left_little_2" />
     <axis xyz="0 0 1" />
     <limit effort="10" lower="0" upper="3.14" velocity="1" />
-    <mimic joint="right_little_1_joint" multiplier="1.18" offset="0" />
+    <mimic joint="left_little_1_joint" multiplier="1.18" offset="0" />
   </joint>
   <gazebo>
     <plugin filename="libgazebo_ros_control.so" name="gazebo_ros_control">
@@ -600,9 +600,9 @@
     </plugin>
   </gazebo>
   <gazebo>
-    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="right_thumb_3_joint_mimic_joint_plugin">
-      <joint>right_thumb_2_joint</joint>
-      <mimicJoint>right_thumb_3_joint</mimicJoint>
+    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="left_thumb_3_joint_mimic_joint_plugin">
+      <joint>left_thumb_2_joint</joint>
+      <mimicJoint>left_thumb_3_joint</mimicJoint>
       <hasPID />
       <multiplier>1.0</multiplier>
       <offset>0</offset>
@@ -611,9 +611,9 @@
     </plugin>
   </gazebo>
   <gazebo>
-    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="right_thumb_4_joint_mimic_joint_plugin">
-      <joint>right_thumb_2_joint</joint>
-      <mimicJoint>right_thumb_4_joint</mimicJoint>
+    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="left_thumb_4_joint_mimic_joint_plugin">
+      <joint>left_thumb_2_joint</joint>
+      <mimicJoint>left_thumb_4_joint</mimicJoint>
       <hasPID />
       <multiplier>1.2</multiplier>
       <offset>0</offset>
@@ -622,9 +622,9 @@
     </plugin>
   </gazebo>
   <gazebo>
-    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="right_index_2_joint_mimic_joint_plugin">
-      <joint>right_index_1_joint</joint>
-      <mimicJoint>right_index_2_joint</mimicJoint>
+    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="left_index_2_joint_mimic_joint_plugin">
+      <joint>left_index_1_joint</joint>
+      <mimicJoint>left_index_2_joint</mimicJoint>
       <hasPID />
       <multiplier>1.0</multiplier>
       <offset>0</offset>
@@ -633,9 +633,9 @@
     </plugin>
   </gazebo>
   <gazebo>
-    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="right_middle_2_joint_mimic_joint_plugin">
-      <joint>right_middle_1_joint</joint>
-      <mimicJoint>right_middle_2_joint</mimicJoint>
+    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="left_middle_2_joint_mimic_joint_plugin">
+      <joint>left_middle_1_joint</joint>
+      <mimicJoint>left_middle_2_joint</mimicJoint>
       <hasPID />
       <multiplier>1.0</multiplier>
       <offset>0</offset>
@@ -644,9 +644,9 @@
     </plugin>
   </gazebo>
   <gazebo>
-    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="right_ring_2_joint_mimic_joint_plugin">
-      <joint>right_ring_1_joint</joint>
-      <mimicJoint>right_ring_2_joint</mimicJoint>
+    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="left_ring_2_joint_mimic_joint_plugin">
+      <joint>left_ring_1_joint</joint>
+      <mimicJoint>left_ring_2_joint</mimicJoint>
       <hasPID />
       <multiplier>1.0</multiplier>
       <offset>0</offset>
@@ -655,9 +655,9 @@
     </plugin>
   </gazebo>
   <gazebo>
-    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="right_little_2_joint_mimic_joint_plugin">
-      <joint>right_little_1_joint</joint>
-      <mimicJoint>right_little_2_joint</mimicJoint>
+    <plugin filename="libroboticsgroup_gazebo_mimic_joint_plugin.so" name="left_little_2_joint_mimic_joint_plugin">
+      <joint>left_little_1_joint</joint>
+      <mimicJoint>left_little_2_joint</mimicJoint>
       <hasPID />
       <multiplier>1.0</multiplier>
       <offset>0</offset>
@@ -668,6 +668,6 @@
   <joint name="arm_to_hand" type="fixed">
     <parent link="link6" />
     <child link="wrist" />
-    <origin rpy="3.14159 0.00000 0.00000" xyz="0.00000 0.00000 0.0350" />
+    <origin rpy="3.14159 0.00000 0.00000" xyz="0.00450 0 0.0350" />
   </joint>
 </robot>

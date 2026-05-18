@@ -193,6 +193,9 @@ class InspireControllerIP:
             if len(val) < 6:
                 print("No data received.")
                 return
+            if reg_name == 'forceAct':
+                # firmware returns signed int16 but pymodbus reads as uint16
+                val = [(v - 65536) if v >= 32768 else v for v in val]
             return val
         
         elif reg_name in ['errCode', 'statusCode', 'temp']:
@@ -215,8 +218,18 @@ class InspireControllerIP:
 
     def get_qpos(self):
         with self.lock:
-            current_hand_angles = np.asarray(self.read6('angleAct'))            
-            return current_hand_angles            
+            current_hand_angles = np.asarray(self.read6('angleAct'))
+            return current_hand_angles
+
+    def get_data(self):
+        qpos = self.get_qpos()
+        with self.lock:
+            action = self.target_action.copy()
+        return {
+            'qpos': qpos,
+            'action': action,
+            'time': time.time()
+        }
     
     def get_force(self):
         with self.lock:
@@ -281,6 +294,20 @@ class InspireControllerIP:
     def move(self, action):
         with self.lock:
             self.target_action = action.copy()
+
+    def calibrate_force(self, timeout=10.0, poll_interval=0.2):
+        # Hand must be open / not touching anything. Writes 1 to register
+        # forceClb (1009); firmware flips it to a non-1 value (0 or 255) when done.
+        with self.lock:
+            self.write_register(regdict['forceClb'], [1])
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            with self.lock:
+                v = self.read_register(regdict['forceClb'], 1)
+            if v and v[0] != 1:
+                return v[0]
+            time.sleep(poll_interval)
+        raise RuntimeError("Force calibration timed out")
     
     def save(self):
         with self.lock:

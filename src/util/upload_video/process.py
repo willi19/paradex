@@ -136,7 +136,8 @@ class VideoProgressMonitor:
             host='0.0.0.0',
             port=self.web_port,
             debug=False,
-            use_reloader=False
+            use_reloader=False,
+            allow_unsafe_werkzeug=True,
         )
 
 

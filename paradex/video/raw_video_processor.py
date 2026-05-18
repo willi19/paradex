@@ -131,7 +131,9 @@ def undistort_raw_video(video_path, progress_dict, video_id):
         if not ret:
             break
 
-        if not (frame[:30, 30][::2, ::2] == 255).all():
+        patch = frame[:30, :30]
+        is_dropped = (patch[::2, ::2] == 255).all() and (patch[1::2, 1::2] == 0).all()
+        if not is_dropped:
             frame = apply_undistort_map(frame, mapx, mapy)
         ffmpeg_proc.stdin.write(frame.tobytes())
         last_frame += 1

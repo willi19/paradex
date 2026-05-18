@@ -22,10 +22,10 @@ def process_video(video_path):
         output_path = os.path.join(output_dir, f"frame_{frame_idx:06d}.jpg")
         if os.path.exists(output_path):
             continue
-        # Skip white frames
+        # Skip dropped frames (checkerboard sentinel)
         if frame.shape[0] >= 30 and frame.shape[1] >= 30:
             test = frame[:30, :30]
-            if (test[::2, ::2] == 255).all():
+            if (test[::2, ::2] == 255).all() and (test[1::2, 1::2] == 0).all():
                 continue
         
         cv2.imwrite(output_path, frame, [cv2.IMWRITE_JPEG_QUALITY, 95])

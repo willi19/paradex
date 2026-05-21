@@ -15,6 +15,44 @@ def apply_undistort_map(img, mapx, mapy):
     undistorted_img = cv2.remap(img, mapx, mapy, cv2.INTER_LINEAR)
     return undistorted_img
 
+
+def precompute_undistort_map_torch(intrinsic, device='cuda'):
+    """GPU undistort grid for torch.nn.functional.grid_sample.
+
+    Returns (new_cammtx, grid_tensor of shape (1, H, W, 2) on `device`).
+    """
+    import torch
+    cammtx = np.array(intrinsic["original_intrinsics"])
+    dist_coef = np.array(intrinsic["dist_params"])
+    w, h = intrinsic["width"], intrinsic["height"]
+    new_cammtx = intrinsic['intrinsics_undistort']
+    mapx, mapy = cv2.initUndistortRectifyMap(
+        cammtx, dist_coef, None, new_cammtx, (w, h), cv2.CV_32FC1)
+    grid_x = (mapx / (w - 1)) * 2 - 1
+    grid_y = (mapy / (h - 1)) * 2 - 1
+    grid = np.stack([grid_x, grid_y], axis=-1)[None]
+    grid_tensor = torch.from_numpy(grid).to(device=device, dtype=torch.float32)
+    return new_cammtx, grid_tensor
+
+
+def apply_undistort_torch(img_bgr, grid_tensor):
+    """Undistort a uint8 HxWx3 BGR frame via grid_sample on the grid's device."""
+    import torch
+    device = grid_tensor.device
+    t = (torch.from_numpy(img_bgr)
+         .to(device=device)
+         .permute(2, 0, 1)
+         .unsqueeze(0)
+         .float())
+    out = torch.nn.functional.grid_sample(
+        t, grid_tensor, mode='bilinear', padding_mode='zeros', align_corners=True)
+    return (out.squeeze(0)
+            .permute(1, 2, 0)
+            .clamp(0, 255)
+            .to(torch.uint8)
+            .cpu()
+            .numpy())
+
 def undistort_img(img, intrinsic):
     """
     Undistort image using intrinsic parameters.

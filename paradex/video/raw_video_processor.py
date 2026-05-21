@@ -7,7 +7,7 @@ import time
 from multiprocessing import Pool, Manager, cpu_count
 
 from paradex.utils.path import capture_path_list, shared_dir, home_path
-from paradex.image.undistort import precomute_undistort_map, apply_undistort_map
+from paradex.image.undistort import precompute_undistort_map_torch, apply_undistort_torch
 from paradex.calibration.utils import load_camparam
 from paradex.utils.upload_file import rsync_copy
 
@@ -91,7 +91,7 @@ def undistort_raw_video(video_path, progress_dict, video_id):
         
     try:
         intrinsics, _ = load_camparam(os.path.join(shared_dir, root_name))
-        _, mapx, mapy = precomute_undistort_map(intrinsics[serial_num])
+        _, grid_tensor = precompute_undistort_map_torch(intrinsics[serial_num])
 
     except Exception as e:
         update_progress(progress_dict, video_id, {
@@ -117,9 +117,9 @@ def undistort_raw_video(video_path, progress_dict, video_id):
             '-f', 'rawvideo', '-pix_fmt', 'bgr24',
             '-s', f'{w}x{h}', '-r', str(fps),
             '-i', '-',
-            '-c:v', 'libx264', '-preset', 'medium',
-            '-crf', '15', '-pix_fmt', 'yuv420p',
-            '-g', '30', '-tune', 'film',
+            '-c:v', 'h264_nvenc', '-preset', 'p4', '-tune', 'hq',
+            '-rc', 'vbr', '-cq', '19', '-b:v', '0',
+            '-pix_fmt', 'yuv420p', '-g', '30',
             out_path,
         ],
         stdin=subprocess.PIPE,
@@ -143,7 +143,7 @@ def undistort_raw_video(video_path, progress_dict, video_id):
         patch = frame[:30, :30]
         is_dropped = (patch[::2, ::2] == 255).all() and (patch[1::2, 1::2] == 0).all()
         if not is_dropped:
-            frame = apply_undistort_map(frame, mapx, mapy)
+            frame = apply_undistort_torch(frame, grid_tensor)
         t2 = time.perf_counter()
 
         try:

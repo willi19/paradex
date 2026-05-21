@@ -4,12 +4,25 @@ Main PC에서 실행: Worker PC들의 진행상황을 수집하고 웹으로 표
 
 from flask import Flask, render_template, jsonify
 from flask_socketio import SocketIO
+import subprocess
 import time
 from threading import Thread
 import os
 
 from paradex.io.capture_pc.data_sender import DataCollector
-from paradex.io.capture_pc.ssh import run_script
+from paradex.io.capture_pc.ssh import run_script, ssh_port
+from paradex.utils.system import get_pc_list, get_pc_ip
+
+
+def kill_remote_clients():
+    """capture PC 들에 남은 client.py 좀비를 정리해서 ZMQ 1234 점유 해제."""
+    for pc_name in get_pc_list():
+        ip = get_pc_ip(pc_name)
+        subprocess.run(
+            f"ssh -p {ssh_port} {pc_name}@{ip} "
+            f"'pkill -f \"src/util/upload_video/client.py\"; sleep 0.5'",
+            shell=True,
+        )
 
 class VideoProgressMonitor:
     """비디오 처리 진행상황 웹 모니터"""
@@ -142,6 +155,7 @@ class VideoProgressMonitor:
 
 
 if __name__ == "__main__":
+    kill_remote_clients()
     run_script('python src/util/upload_video/client.py', log=True)
     monitor = VideoProgressMonitor(web_port=8081, zmq_port=1234)
     monitor.start()

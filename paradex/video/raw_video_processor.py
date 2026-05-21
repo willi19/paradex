@@ -117,9 +117,9 @@ def undistort_raw_video(video_path, progress_dict, video_id):
             '-f', 'rawvideo', '-pix_fmt', 'bgr24',
             '-s', f'{w}x{h}', '-r', str(fps),
             '-i', '-',
-            '-c:v', 'h264_nvenc', '-preset', 'p4', '-tune', 'hq',
-            '-rc', 'vbr', '-cq', '19', '-b:v', '0',
-            '-pix_fmt', 'yuv420p', '-g', '30',
+            '-c:v', 'libx264', '-preset', 'medium',
+            '-crf', '15', '-pix_fmt', 'yuv420p',
+            '-g', '30', '-tune', 'film',
             out_path,
         ],
         stdin=subprocess.PIPE,
@@ -226,7 +226,7 @@ def get_raw_videopath_list():
 class RawVideoProcessor:
     def __init__(self,):
         self.videopath_list = get_raw_videopath_list()
-        self.num_workers = cpu_count()
+        self.num_workers = min(4, cpu_count())
         
         # Manager로 공유 상태 생성
         manager = Manager()

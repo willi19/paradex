@@ -142,6 +142,6 @@ class VideoProgressMonitor:
 
 
 if __name__ == "__main__":
-    run_script('python src/util/upload_video/client.py')
+    run_script('python src/util/upload_video/client.py', log=True)
     monitor = VideoProgressMonitor(web_port=8081, zmq_port=1234)
     monitor.start()

@@ -109,25 +109,34 @@ def undistort_raw_video(video_path, progress_dict, video_id):
     w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     
+    ffmpeg_log_path = f"{out_path}.ffmpeg.log"
+    ffmpeg_log = open(ffmpeg_log_path, "w")
     ffmpeg_proc = subprocess.Popen(
         [
             'ffmpeg', '-y', '-loglevel', 'error',
             '-f', 'rawvideo', '-pix_fmt', 'bgr24',
             '-s', f'{w}x{h}', '-r', str(fps),
             '-i', '-',
-            '-c:v', 'libx264', '-preset', 'medium',
-            '-crf', '15', '-pix_fmt', 'yuv420p',
-            '-g', '30', '-tune', 'film',
+            '-c:v', 'h264_nvenc', '-preset', 'p4', '-tune', 'hq',
+            '-rc', 'vbr', '-cq', '19', '-b:v', '0',
+            '-pix_fmt', 'yuv420p', '-g', '30',
             out_path,
         ],
         stdin=subprocess.PIPE,
+        stderr=ffmpeg_log,
     )
 
     last_frame = 0
     start_time = time.time()
+    read_sum = 0.0
+    undistort_sum = 0.0
+    write_sum = 0.0
+    broken_pipe = False
 
     while True:
+        t0 = time.perf_counter()
         ret, frame = cap.read()
+        t1 = time.perf_counter()
         if not ret:
             break
 
@@ -135,9 +144,20 @@ def undistort_raw_video(video_path, progress_dict, video_id):
         is_dropped = (patch[::2, ::2] == 255).all() and (patch[1::2, 1::2] == 0).all()
         if not is_dropped:
             frame = apply_undistort_map(frame, mapx, mapy)
-        ffmpeg_proc.stdin.write(frame.tobytes())
+        t2 = time.perf_counter()
+
+        try:
+            ffmpeg_proc.stdin.write(frame.tobytes())
+        except BrokenPipeError:
+            broken_pipe = True
+            break
+        t3 = time.perf_counter()
+
+        read_sum += (t1 - t0)
+        undistort_sum += (t2 - t1)
+        write_sum += (t3 - t2)
         last_frame += 1
-        
+
         # 진행상황 업데이트 (매 30프레임마다)
         if last_frame % 30 == 0 or last_frame == num_frame:
             elapsed = time.time() - start_time
@@ -149,12 +169,31 @@ def undistort_raw_video(video_path, progress_dict, video_id):
                 'progress': (last_frame / num_frame * 100) if num_frame > 0 else 0,
                 'fps': fps_actual,
                 'eta': eta,
+                'avg_read_ms': (read_sum / 30) * 1000,
+                'avg_undistort_ms': (undistort_sum / 30) * 1000,
+                'avg_write_ms': (write_sum / 30) * 1000,
                 'message': f'Processing... {last_frame}/{num_frame} frames'
             })
-        
-    ffmpeg_proc.stdin.close()
-    ffmpeg_proc.wait()
+            read_sum = 0.0
+            undistort_sum = 0.0
+            write_sum = 0.0
+
+    try:
+        ffmpeg_proc.stdin.close()
+    except BrokenPipeError:
+        broken_pipe = True
+    rc = ffmpeg_proc.wait()
+    ffmpeg_log.close()
     cap.release()
+
+    if broken_pipe or rc != 0:
+        update_progress(progress_dict, video_id, {
+            'status': 'failed',
+            'message': f'ffmpeg rc={rc}{" (broken pipe)" if broken_pipe else ""}, see {ffmpeg_log_path}'
+        })
+        if os.path.exists(out_path):
+            os.remove(out_path)
+        return f"{video_path}: ffmpeg failed rc={rc}, log={ffmpeg_log_path}"
     
     # 완료 상태 업데이트
     update_progress(progress_dict, video_id, {

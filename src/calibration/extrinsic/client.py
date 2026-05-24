@@ -1,5 +1,5 @@
 import time
-import cv2
+import io, cv2
 from threading import Event
 import os
 import numpy as np
@@ -70,7 +70,13 @@ while not exit_event.is_set():
                     'data_index': len(binary_data)
                 })
                 # Add binary data
-                binary_data.append(encoded_image)
+                # ensure we store raw bytes for zmq
+                try:
+                    img_bytes = encoded_image.tobytes()
+                except Exception:
+                    # fallback: convert via ndarray buffer
+                    img_bytes = bytes(encoded_image)
+                binary_data.append(img_bytes)
                 last_frame_ids[camera_name] = frame_id
                 
                 meta_data.append({
@@ -92,6 +98,13 @@ while not exit_event.is_set():
                 
                 
     if meta_data:
-        dp.send_data(meta_data, binary_data)
+        # debug logging and safe send
+        try:
+            print(f"[client] Sending meta_items={len(meta_data)} binaries={len(binary_data)}")
+            dp.send_data(meta_data, binary_data)
+        except Exception as e:
+            print(f"[client] Error sending data: {e}")
+            import traceback
+            traceback.print_exc()
 
     time.sleep(0.01)  # Small sleep to prevent busy-waiting

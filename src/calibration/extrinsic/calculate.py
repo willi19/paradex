@@ -141,34 +141,43 @@ def generate_db(database_path, intrinsics_dict, serial_list, keypoint_dict):
     db.commit()
     db.close()
 
-def run_calibration(name):
+def run_calibration(name, lock_intrinsic=True):
     root_dir = os.path.join(extrinsic_dir, name)
     index_list = sorted(os.listdir(root_dir))
-    
+
     keypoint_dict_distort = load_keypoint(root_dir)
     intrinsics_dict = load_current_intrinsic()
-    
+
     serial_list = []
     for kypt_dict in keypoint_dict_distort.values():
         for serial_num in kypt_dict.keys():
             if serial_num not in serial_list:
                 serial_list.append(serial_num)
     num_cameras = len(serial_list)
-    
+
 
     out_pose_dir = os.path.join(root_dir, index_list[0], "colmap")
     os.makedirs(out_pose_dir, exist_ok=True)
 
     database_path = out_pose_dir + "/database.db"
-    
+
     generate_db(database_path, intrinsics_dict, serial_list, keypoint_dict_distort)
-    
-    options = {
-        'ba_refine_principal_point': True,
-        'ba_refine_extra_params': True,
-        'ba_refine_focal_length': True,
-        'max_extra_param': 4,
-    }
+
+    if lock_intrinsic:
+        options = {
+            'ba_refine_principal_point': False,
+            'ba_refine_extra_params': False,
+            'ba_refine_focal_length': False,
+        }
+        print("[run_calibration] intrinsic LOCKED during BA")
+    else:
+        options = {
+            'ba_refine_principal_point': True,
+            'ba_refine_extra_params': True,
+            'ba_refine_focal_length': True,
+            'max_extra_param': 4,
+        }
+        print("[run_calibration] intrinsic FREE to refine during BA")
     Options = pycolmap.IncrementalPipelineOptions(options)
     
     maps = pycolmap.incremental_mapping(database_path, ".", out_pose_dir, options=Options)
@@ -264,7 +273,11 @@ def debug(name, refine=True):
         
         kypt_3d_id = np.load(os.path.join(extrinsic_dir, name, index, "kypt_3d_id.npy"))
         kypt_3d_cor = np.load(os.path.join(extrinsic_dir, name, index, "kypt_3d_cor.npy"))
-        
+
+        if kypt_3d_cor.size == 0:
+            print(f"[debug] Skipping {index}: no triangulated 3D keypoints")
+            continue
+
         proj_kypt_3d = img_dict_undistort.project_pointcloud(kypt_3d_cor)
         
         if refine:
@@ -336,15 +349,18 @@ def debug(name, refine=True):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Manage timestamped directories.")
     parser.add_argument("--name", type=str, help="Name of the directory to detect keypoint.")
-    
+    parser.add_argument("--refine-intrinsic", action="store_true",
+                        help="Let BA refine intrinsics (default: locked).")
+
     args = parser.parse_args()
-    
+
     if args.name is None:
         name = find_latest_directory(extrinsic_dir)
     else:
         name = args.name
 
-    run_calibration(name)
+    lock_intrinsic = not args.refine_intrinsic
+    run_calibration(name, lock_intrinsic=lock_intrinsic)
     index_list = sorted(os.listdir(os.path.join(extrinsic_dir, name)))
     out_pose_dir = os.path.join(extrinsic_dir, name, index_list[0], "colmap")
     intrinsics, extrinsics = load_colmap_camparam(out_pose_dir)
@@ -358,8 +374,8 @@ if __name__ == "__main__":
             f.write(f"{serial_num} : mean {np.mean(proj)}, max{np.max(proj)} \n")
     
     new_name = find_latest_directory(extrinsic_dir)
-    index_list = sorted(os.listdir(os.path.join(extrinsic_dir, new_name)))  
-    run_calibration(new_name)
+    index_list = sorted(os.listdir(os.path.join(extrinsic_dir, new_name)))
+    run_calibration(new_name, lock_intrinsic=lock_intrinsic)
     undistort(new_name)
     save_kypt_3d(new_name)
     length = get_length(new_name)

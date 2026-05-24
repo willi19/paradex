@@ -7,6 +7,7 @@ Much simpler than ROUTER-DEALER:
 - Fire and forget
 """
 
+import os
 import zmq
 import json
 import time
@@ -14,10 +15,14 @@ import threading
 from datetime import datetime
 from typing import Dict, Any, Optional, Callable, List
 
+# Default ZMQ port can be overridden with environment variable PARADEX_ZMQ_PORT
+# Use 1234 as the default ZMQ data port (web monitor uses 1235)
+DEFAULT_ZMQ_PORT = int(os.environ.get('PARADEX_ZMQ_PORT', '1234'))
+
 from paradex.utils.system import get_pc_list, get_pc_ip
 
 class DataPublisher():
-    def __init__(self, port: int=1234, name: Optional[str] = None):
+    def __init__(self, port: Optional[int]=None, name: Optional[str] = None):
         """
         Initialize data publisher.
         
@@ -25,20 +30,20 @@ class DataPublisher():
             port: Port number to bind the PUB socket
             name: Optional identifier for this publisher
         """
-        self.port = port
-        self.name = name or f"publisher_{port}"
-        
+        self.port = DEFAULT_ZMQ_PORT if port is None else port
+        self.name = name or f"publisher_{self.port}"
+
         # ZMQ PUB socket
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.PUB)
         self.socket.bind(f"tcp://*:{self.port}")
-        
+
         # Publishing control
         self.publishing = False
         self.publish_thread = None
-        
+
         print(f"[{self.name}] Publisher started on port {self.port}")
-        
+
         # Give subscribers time to connect
         time.sleep(0.1)
 
@@ -75,7 +80,7 @@ class DataCollector:
     def __init__(
         self,
         pc_list: Dict[str, Dict[str, str]] = None,
-        port: int = 1234
+        port: Optional[int] = None
     ):
         """
         Initialize data collector.
@@ -84,7 +89,7 @@ class DataCollector:
             port: Port to connect to on each client PC
         """
         self.pc_list = pc_list or get_pc_list()
-        self.port = port
+        self.port = DEFAULT_ZMQ_PORT if port is None else port
         
         # ZMQ setup
         self.context = zmq.Context()

@@ -58,7 +58,20 @@ def run_script(script: str, pc_list = None, log=False):
             logoutput = 'test.log'
         else:
             logoutput = '/dev/null'
-            
+        # If the target IP is local, run the script directly instead of ssh (avoid password prompt)
+        if ip in ("127.0.0.1", "localhost", "::1"):
+            # Build a single shell command that activates the conda env and runs the script in background
+            local_cmd = (
+                f"cd {repo_path} && bash -i -c 'source ~/anaconda3/etc/profile.d/conda.sh && conda activate flir_env && {script} </dev/null > {logoutput} 2>&1 &'"
+            )
+            try:
+                # Use shell to run the command in background similarly to remote nohup
+                subprocess.run(local_cmd, shell=True, check=True)
+                print(f"[{pc_name}] Launched locally: {script}")
+            except subprocess.CalledProcessError as e:
+                print(f"[{pc_name}] Failed to launch locally: {e}")
+            continue
+
         remote_cmd = (
             f"cd {repo_path} && "    
             f"nohup bash -i -c '"

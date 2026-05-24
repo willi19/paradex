@@ -6,7 +6,7 @@ from paradex.io.capture_pc.data_sender import DataPublisher
 class VideoProgressPublisher:
     """비디오 처리 진행상황을 실시간으로 Main PC에 전송"""
     
-    def __init__(self, port=1234):
+    def __init__(self, port=1235):
         self.processor = RawVideoProcessor()
         self.publisher = DataPublisher(port=port, name="video_processor")
         

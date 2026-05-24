@@ -7,7 +7,7 @@ from paradex.io.capture_pc.data_sender import DataPublisher
 from paradex.io.capture_pc.command_sender import CommandReceiver
 
 # Initialize components
-dp = DataPublisher(port=1234, name="camera_stream")
+dp = DataPublisher(name="camera_stream")
 exit_event = Event()
 cr = CommandReceiver(event_dict={"exit": exit_event}, port=6890)
 

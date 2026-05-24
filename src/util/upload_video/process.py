@@ -14,7 +14,7 @@ from paradex.io.capture_pc.ssh import run_script
 class VideoProgressMonitor:
     """비디오 처리 진행상황 웹 모니터"""
     
-    def __init__(self, web_port=8080, zmq_port=1234):
+    def __init__(self, web_port=8080, zmq_port=1235):
         self.web_port = web_port
         self.zmq_port = zmq_port
         
@@ -142,5 +142,5 @@ class VideoProgressMonitor:
 
 if __name__ == "__main__":
     run_script('python src/util/upload_video/client.py')
-    monitor = VideoProgressMonitor(web_port=8081, zmq_port=1234)
+    monitor = VideoProgressMonitor(web_port=8081, zmq_port=1235)
     monitor.start()

@@ -56,20 +56,25 @@ while True:
                 # Decode JPEG
                 nparr = np.frombuffer(image_bytes, np.uint8)
                 image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-                
+
                 if image is not None:
                     img_dict[item_name] = image
                     img_text[item_name] = str(frame_id)
                 
-        
+
         elif item_data.get('type') == 'charuco_detection':
             data = item_data.get('data')
             serial_num = item_name.split("_")[0]
             corners = np.frombuffer(data, dtype=np.float32).reshape(-1, 2)
             if serial_num not in saved_corner_img:
-                saved_corner_img[serial_num] = np.zeros((1536 // 8, 2048 // 8, 3), dtype=np.uint8)
+                # initialize saved corner image at the incoming image resolution if available
+                if serial_num in img_dict:
+                    ih, iw = img_dict[serial_num].shape[:2]
+                else:
+                    ih, iw = 1536, 2048
+                saved_corner_img[serial_num] = np.zeros((ih, iw, 3), dtype=np.uint8)
                 saved_corner_mask[serial_num] = np.zeros((0, 2), dtype=np.int32)
-                
+
             cur_state[serial_num] = (corners, frame_id)
 
     if img_dict:
@@ -91,7 +96,8 @@ while True:
         key = cv2.waitKey(1)
 
     else:
-        blank_image = np.ones((600, 800, 3), dtype=np.uint)*500
+        # create a proper 8-bit white background for OpenCV display
+        blank_image = np.ones((600, 800, 3), dtype=np.uint8) * 255
         cv2.putText(blank_image, "Waiting for stream...", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
         cv2.imshow("Merged Stream", blank_image)
         key = cv2.waitKey(1)

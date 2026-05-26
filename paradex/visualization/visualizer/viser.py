@@ -293,6 +293,15 @@ class ViserViewer():
             
         time.sleep(1.0 / self.gui_framerate.value)
     
+    def stop_viewer(self):
+        """Stop the underlying viser websocket server. Safe no-op if the
+        server has already been closed or doesn't expose a stop method."""
+        try:
+            if hasattr(self, "server") and self.server is not None:
+                self.server.stop()
+        except Exception as e:
+            print(f"[ViserViewer.stop_viewer] {e!r}")
+
     def start_viewer(self, use_thread=False):
         if use_thread:
             thread = threading.Thread(target=self._viewer_loop, daemon=True)

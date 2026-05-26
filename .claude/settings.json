@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ssh -p 77 -o BatchMode=yes -o ConnectTimeout=5 capture1@192.168.0.101 \"echo OK\")"
+    ]
+  }
+}

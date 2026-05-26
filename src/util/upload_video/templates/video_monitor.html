@@ -406,8 +406,13 @@
 
         // UI 업데이트
         function updateUI(videos) {
+            // 사용자가 텍스트를 선택 중이면 DOM 재생성으로 selection 이 풀리지 않게 갱신 건너뜀
+            const sel = window.getSelection();
+            if (sel && sel.toString().length > 0) {
+                return;
+            }
             const videoList = document.getElementById('video-list');
-            
+
             // 필터링
             const filteredVideos = Object.entries(videos).filter(([name, info]) => {
                 if (currentFilter === 'all') return true;

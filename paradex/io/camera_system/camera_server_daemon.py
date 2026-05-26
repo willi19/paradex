@@ -17,7 +17,11 @@ class camera_server_daemon:
         self.ctx = zmq.Context()
 
         self.current_controller = None
-        
+        self.last_action = None
+        self.last_action_time = None
+        self.last_mode = None
+        self.cameras_running = False
+
         self.state = "idle"
 
         threading.Thread(target=self.pingpong_thread, daemon=True).start()
@@ -69,27 +73,32 @@ class camera_server_daemon:
     def execute_command(self, cmd):
         action = cmd.get('action')
         controller_name = cmd.get('controller_name')
-        
+
         if controller_name != self.current_controller and self.current_controller is not None:
             print(f"[Warning] {controller_name} tried to access, but locked by {self.current_controller}")
             return {"status":"error", "msg":f"locked by {self.current_controller}"}
-        
+
+        self.last_action = action
+        self.last_action_time = time.time()
+
         if action == "register":
             self.current_controller = controller_name
             return {"status":"ok", "msg":"registered"}
 
         if self.current_controller is None:
             return {"status":"error", "msg":"no active controller"}
-        
+
         if action == "start":
             try:
+                self.last_mode = cmd.get('mode')
                 self.camera_loader.start(
                             cmd.get('mode'),
                             cmd.get('syncMode'),
                             cmd.get('save_path'),
                             cmd.get('fps', 30)
                         )
-                
+                self.cameras_running = True
+
                 return {"status":"ok", "msg":"started"}
 
             except:
@@ -98,6 +107,7 @@ class camera_server_daemon:
         if action == "stop":
             try:
                 self.camera_loader.stop()
+                self.cameras_running = False
                 return {"status":"ok", "msg":"stopped"}
             except:
                 return {"status":"error", "msg":"stop failed"}
@@ -105,6 +115,7 @@ class camera_server_daemon:
         if action == "end":
             try:
                 self.current_controller = None
+                self.last_mode = None
                 return {"status":"ok", "msg":"ended"}
             except:
                 return {"status":"error", "msg":"end failed"}
@@ -139,18 +150,38 @@ class camera_server_daemon:
                 
             except zmq.Again:
                 if self.current_controller is not None:
-                    self.camera_loader.stop()
+                    idle = (time.time() - self.last_action_time) if self.last_action_time else -1
+                    released = self.current_controller
+                    last_act = self.last_action
+                    mode = self.last_mode
+                    running = self.cameras_running
+                    if running:
+                        self.camera_loader.stop()
+                        self.cameras_running = False
                     self.current_controller = None
-                    print("[Error] Command socket timeout. Camera loader stopped and controller released.")
-                    
+                    self.last_mode = None
+                    print(
+                        f"[Info] Idle timeout (>5s, actual={idle:.1f}s): "
+                        f"released controller='{released}' last_action='{last_act}' "
+                        f"mode='{mode}' cameras_were_running={running}. "
+                        f"Cause: controller did not send heartbeat/end within 5s."
+                    )
+
             except Exception as e:
-                self.camera_loader.stop()
+                if self.cameras_running:
+                    self.camera_loader.stop()
+                    self.cameras_running = False
+                released = self.current_controller
+                last_act = self.last_action
                 self.current_controller = None
-                
+                self.last_mode = None
+
                 traceback.print_exc()
                 self.command_socket.send_json({
-                    'status': 'error', 
+                    'status': 'error',
                     'msg': f'{type(e).__name__}: {str(e)} traceback : {traceback.format_exc()}'
                 })
-                print("[Error] Exception in command thread. Camera loader stopped and controller released.")
-                print("response: ", response)
+                print(
+                    f"[Error] Exception in command thread: {type(e).__name__}: {e}. "
+                    f"Released controller='{released}' last_action='{last_act}'."
+                )

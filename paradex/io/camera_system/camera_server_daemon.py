@@ -138,7 +138,7 @@ class camera_server_daemon:
 
     def command_thread(self):
         self.command_socket = self.ctx.socket(zmq.REP)
-        self.command_socket.setsockopt(zmq.RCVTIMEO, 5000)  # 5 second timeout
+        self.command_socket.setsockopt(zmq.RCVTIMEO, 15000)  # 15 second timeout
         self.command_socket.bind(f"tcp://*:{self.command_port}")
         
         while True:
@@ -161,10 +161,10 @@ class camera_server_daemon:
                     self.current_controller = None
                     self.last_mode = None
                     print(
-                        f"[Info] Idle timeout (>5s, actual={idle:.1f}s): "
+                        f"[Info] Idle timeout (>15s, actual={idle:.1f}s): "
                         f"released controller='{released}' last_action='{last_act}' "
                         f"mode='{mode}' cameras_were_running={running}. "
-                        f"Cause: controller did not send heartbeat/end within 5s."
+                        f"Cause: controller did not send heartbeat/end within 15s."
                     )
 
             except Exception as e:

@@ -1,7 +1,7 @@
 import zmq
 from datetime import datetime
 import time
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 
 from paradex.utils.system import get_pc_list, get_pc_ip
 
@@ -69,19 +69,27 @@ class remote_camera_controller:
             socket.close()
     
     def send_command(self, cmd):
-        """명령 전송 및 응답 수신"""
+        """명령 전송 및 응답 수신 (PC 병렬 처리)"""
         cmd['controller_name'] = self.name
         response = {}
-        
-        for pc, socket in self.command_sockets.items():
+        response_lock = Lock()
+
+        def _send_to_one(pc, socket):
             try:
                 socket.send_json(cmd)
-                response[pc] = socket.recv_json()
+                resp = socket.recv_json()
+            except zmq.ZMQError:
+                resp = {'status': 'error', 'msg': 'no response'}
+            with response_lock:
+                response[pc] = resp
 
-            except zmq.ZMQError as e:
-                # print(f"{pc}: No response in send_command - {e}")
-                response[pc] = {'status':'error', 'msg':'no response'}
-        
+        threads = [Thread(target=_send_to_one, args=(pc, sock))
+                   for pc, sock in self.command_sockets.items()]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
         return response
             
     def register(self):

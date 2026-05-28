@@ -21,7 +21,7 @@ BOARD_COLORS = [
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
 
-run_script("python src/calibration/extrinsic/client.py")
+# run_script("python src/calibration/extrinsic/client.py")
 
 rcc = remote_camera_controller("extrinsic_calibration")
 dc = DataCollector()
@@ -91,7 +91,7 @@ while True:
         key = cv2.waitKey(1)
 
     else:
-        blank_image = np.ones((600, 800, 3), dtype=np.uint)*500
+        blank_image = np.ones((600, 800, 3), dtype=np.uint8)*255
         cv2.putText(blank_image, "Waiting for stream...", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
         cv2.imshow("Merged Stream", blank_image)
         key = cv2.waitKey(1)
@@ -101,11 +101,11 @@ while True:
     
     elif key == ord('c'):
         capture_idx = time.strftime("%Y%m%d_%H%M%S", time.localtime())
-        os.makedirs(os.path.join(extrinsic_dir, filename, str(capture_idx)), exist_ok=True)
-        os.makedirs(os.path.join(extrinsic_dir, filename, str(capture_idx), "markers_2d"), exist_ok=True)
-        os.makedirs(os.path.join(extrinsic_dir, filename, str(capture_idx), "images"), exist_ok=True)
-        
-        cs.send_command("save", True)
+        save_path = os.path.join(extrinsic_dir, filename, str(capture_idx))
+        os.makedirs(os.path.join(save_path, "markers_2d"), exist_ok=True)
+        os.makedirs(os.path.join(save_path, "images"), exist_ok=True)
+
+        cs.send_command("save", True, cmd_info={"save_path": save_path})
         save_num += 1
         for serial_num in cur_state.keys():
             corners, frame = cur_state[serial_num]

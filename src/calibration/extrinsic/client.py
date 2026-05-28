@@ -8,8 +8,6 @@ from paradex.io.camera_system.camera_reader import MultiCameraReader
 from paradex.io.capture_pc.data_sender import DataPublisher
 from paradex.io.capture_pc.command_sender import CommandReceiver
 from paradex.image.aruco import detect_charuco, merge_charuco_detection
-from paradex.calibration.utils import extrinsic_dir
-from paradex.utils.file_io import find_latest_directory
 
 dp = DataPublisher(port=1234, name="camera_stream")
 
@@ -20,9 +18,6 @@ cr = CommandReceiver(event_dict={"exit": exit_event, "save": save_event}, port=6
 reader = MultiCameraReader()
 last_frame_ids = {name: 0 for name in reader.camera_names}
 last_frame_dict = {name: None for name in reader.camera_names}
-
-root_name = find_latest_directory(extrinsic_dir)
-root_dir = os.path.join(extrinsic_dir, root_name)
 
 save_remain = len(reader.camera_names)
 save_id = {name:0 for name in reader.camera_names}
@@ -40,20 +35,22 @@ while not exit_event.is_set():
             merged_detect_result = merge_charuco_detection(detect_result)
             
             if save_event.is_set():
-                save_name = find_latest_directory(root_dir)
-                save_path = os.path.join(root_dir, save_name)
-                
-                if os.path.exists(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy")):
-                    print(f"Data for camera {camera_name} already saved, skipping.", save_remain)
-                    continue  # Already saved for this camera
-                
-                np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), merged_detect_result["checkerCorner"])
-                np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), merged_detect_result["checkerIDs"])
+                save_path = cr.event_info.get("save", {}).get("save_path")
 
-                cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), cur_image)
-                print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
-                save_remain -= 1
-                save_id[camera_name] += 1
+                if save_path is None:
+                    print(f"[WARN] save event set but no save_path in event_info, skipping.")
+                elif os.path.exists(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy")):
+                    print(f"Data for camera {camera_name} already saved, skipping.", save_remain)
+                    save_remain -= 1
+                    save_id[camera_name] += 1
+                else:
+                    np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), merged_detect_result["checkerCorner"])
+                    np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), merged_detect_result["checkerIDs"])
+
+                    cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), cur_image)
+                    print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
+                    save_remain -= 1
+                    save_id[camera_name] += 1
 
             cur_image = cv2.resize(cur_image, (cur_image.shape[1]//8, cur_image.shape[0]//8))
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]

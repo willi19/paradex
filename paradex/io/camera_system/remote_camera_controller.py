@@ -37,8 +37,10 @@ class remote_camera_controller:
             
             socket = self.ctx.socket(zmq.REQ)
             socket.setsockopt(zmq.LINGER, 0)
-            socket.setsockopt(zmq.RCVTIMEO, 1000) 
+            socket.setsockopt(zmq.RCVTIMEO, 1000)
             socket.setsockopt(zmq.SNDTIMEO, 1000)
+            socket.setsockopt(zmq.REQ_RELAXED, 1)
+            socket.setsockopt(zmq.REQ_CORRELATE, 1)
             socket.connect(f"tcp://{get_pc_ip(pc)}:{self.command_port}")
             self.command_sockets[pc] = socket
             print(f"{pc}: Command socket connected")
@@ -74,8 +76,12 @@ class remote_camera_controller:
         response = {}
         response_lock = Lock()
 
+        timeout_ms = 10000 if cmd.get('action') in ('start', 'stop') else 1000
+
         def _send_to_one(pc, socket):
             try:
+                socket.setsockopt(zmq.RCVTIMEO, timeout_ms)
+                socket.setsockopt(zmq.SNDTIMEO, timeout_ms)
                 socket.send_json(cmd)
                 resp = socket.recv_json()
             except zmq.ZMQError:

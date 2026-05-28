@@ -465,6 +465,7 @@ paradex/robot/robot_wrapper.py
 paradex/robot/robot_wrapper_updating.py
 paradex/robot/urdf.py
 paradex/robot/utils.py
+paradex/robot/xarm_kinematic_calib.py
 paradex/simulator/__init__.py
 paradex/simulator/isaac.py
 paradex/transforms/__init__.py

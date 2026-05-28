@@ -20,7 +20,7 @@ reader = MultiCameraReader()
 last_frame_ids = {name: 0 for name in reader.camera_names}
 last_frame_dict = {name: None for name in reader.camera_names}
 
-save_remain = len(reader.camera_names)
+saved_this_round = set()
 save_id = {name:0 for name in reader.camera_names}
 
 while not exit_event.is_set():
@@ -35,7 +35,7 @@ while not exit_event.is_set():
             detect_result = detect_charuco(cur_image)
             merged_detect_result = merge_charuco_detection(detect_result)
             
-            if save_event.is_set():
+            if save_event.is_set() and camera_name not in saved_this_round:
                 info = cr.event_info.get("save", {})
                 filename = info.get("filename")
                 capture_idx = info.get("capture_idx")
@@ -43,17 +43,16 @@ while not exit_event.is_set():
 
                 if save_path is None:
                     print(f"[WARN] save event set but no save_path in event_info, skipping.")
-                elif os.path.exists(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy")):
-                    print(f"Data for camera {camera_name} already saved, skipping.", save_remain)
-                    save_remain -= 1
-                    save_id[camera_name] += 1
                 else:
-                    np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), merged_detect_result["checkerCorner"])
-                    np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), merged_detect_result["checkerIDs"])
-
-                    cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), cur_image)
-                    print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
-                    save_remain -= 1
+                    corner_file = os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy")
+                    if os.path.exists(corner_file):
+                        print(f"Data for camera {camera_name} already saved, skipping.")
+                    else:
+                        np.save(corner_file, merged_detect_result["checkerCorner"])
+                        np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), merged_detect_result["checkerIDs"])
+                        cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), cur_image)
+                        print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
+                    saved_this_round.add(camera_name)
                     save_id[camera_name] += 1
 
             cur_image = cv2.resize(cur_image, (cur_image.shape[1]//8, cur_image.shape[0]//8))
@@ -86,9 +85,9 @@ while not exit_event.is_set():
                     np.array(merged_detect_result["checkerCorner"], dtype=np.float32).tobytes()
                 )
         
-    if save_event.is_set() and save_remain == 0:
+    if save_event.is_set() and len(saved_this_round) >= len(reader.camera_names):
         save_event.clear()
-        save_remain = len(reader.camera_names)
+        saved_this_round = set()
         print("Completed saving data for all cameras.")
                 
                 

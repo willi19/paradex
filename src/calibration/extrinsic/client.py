@@ -8,6 +8,7 @@ from paradex.io.camera_system.camera_reader import MultiCameraReader
 from paradex.io.capture_pc.data_sender import DataPublisher
 from paradex.io.capture_pc.command_sender import CommandReceiver
 from paradex.image.aruco import detect_charuco, merge_charuco_detection
+from paradex.calibration.utils import extrinsic_dir
 
 dp = DataPublisher(port=1234, name="camera_stream")
 
@@ -35,7 +36,10 @@ while not exit_event.is_set():
             merged_detect_result = merge_charuco_detection(detect_result)
             
             if save_event.is_set():
-                save_path = cr.event_info.get("save", {}).get("save_path")
+                info = cr.event_info.get("save", {})
+                filename = info.get("filename")
+                capture_idx = info.get("capture_idx")
+                save_path = os.path.join(extrinsic_dir, filename, capture_idx) if filename and capture_idx else None
 
                 if save_path is None:
                     print(f"[WARN] save event set but no save_path in event_info, skipping.")

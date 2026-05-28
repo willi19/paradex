@@ -105,7 +105,7 @@ while True:
         os.makedirs(os.path.join(save_path, "markers_2d"), exist_ok=True)
         os.makedirs(os.path.join(save_path, "images"), exist_ok=True)
 
-        cs.send_command("save", True, cmd_info={"save_path": save_path})
+        cs.send_command("save", True, cmd_info={"filename": filename, "capture_idx": str(capture_idx)})
         save_num += 1
         for serial_num in cur_state.keys():
             corners, frame = cur_state[serial_num]

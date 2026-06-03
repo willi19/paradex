@@ -3,6 +3,7 @@ import glob
 import subprocess
 from pathlib import Path
 import cv2
+import numpy as np
 import time
 from multiprocessing import Pool, Manager, cpu_count
 
@@ -141,8 +142,10 @@ def undistort_raw_video(video_path, progress_dict, video_id):
             break
 
         patch = frame[:30, :30]
-        is_dropped = (patch[::2, ::2] == 255).all() and (patch[1::2, 1::2] == 0).all()
-        if not is_dropped:
+        is_dropped = (patch[::2, ::2] > 240).all() and (patch[1::2, 1::2] < 15).all()
+        if is_dropped:
+            frame = np.zeros_like(frame)
+        else:
             frame = apply_undistort_torch(frame, grid_tensor)
         t2 = time.perf_counter()
 

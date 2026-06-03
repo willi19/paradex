@@ -73,6 +73,22 @@ class camera_server_daemon:
     def execute_command(self, cmd):
         action = cmd.get('action')
         controller_name = cmd.get('controller_name')
+        force = cmd.get('force', False)
+
+        if action == "register":
+            prev = self.current_controller
+            if self.cameras_running:
+                try:
+                    self.camera_loader.stop()
+                except Exception as e:
+                    print(f"[Warning] stop on register failed: {e}")
+                self.cameras_running = False
+            self.current_controller = controller_name
+            self.last_action = action
+            self.last_action_time = time.time()
+            if prev and prev != controller_name:
+                print(f"[Info] controller takeover: '{prev}' -> '{controller_name}' (force={force})")
+            return {"status":"ok", "msg":"registered"}
 
         if controller_name != self.current_controller and self.current_controller is not None:
             print(f"[Warning] {controller_name} tried to access, but locked by {self.current_controller}")
@@ -81,14 +97,11 @@ class camera_server_daemon:
         self.last_action = action
         self.last_action_time = time.time()
 
-        if action == "register":
-            self.current_controller = controller_name
-            return {"status":"ok", "msg":"registered"}
-
         if self.current_controller is None:
             return {"status":"error", "msg":"no active controller"}
 
         if action == "start":
+            t0 = time.time()
             try:
                 self.last_mode = cmd.get('mode')
                 self.camera_loader.start(
@@ -98,19 +111,27 @@ class camera_server_daemon:
                             cmd.get('fps', 30)
                         )
                 self.cameras_running = True
-
+                dt = time.time() - t0
+                print(f"[Info] start completed in {dt:.2f}s mode={cmd.get('mode')} sync={cmd.get('syncMode')} fps={cmd.get('fps',30)}")
                 return {"status":"ok", "msg":"started"}
 
-            except:
-                return {"status":"error", "msg":"start failed"}
+            except Exception as e:
+                dt = time.time() - t0
+                traceback.print_exc()
+                return {"status":"error", "msg":f"start failed after {dt:.2f}s: {type(e).__name__}:{e}"}
 
         if action == "stop":
+            t0 = time.time()
             try:
                 self.camera_loader.stop()
                 self.cameras_running = False
+                dt = time.time() - t0
+                print(f"[Info] stop completed in {dt:.2f}s")
                 return {"status":"ok", "msg":"stopped"}
-            except:
-                return {"status":"error", "msg":"stop failed"}
+            except Exception as e:
+                dt = time.time() - t0
+                traceback.print_exc()
+                return {"status":"error", "msg":f"stop failed after {dt:.2f}s: {type(e).__name__}:{e}"}
 
         if action == "end":
             try:
@@ -121,10 +142,15 @@ class camera_server_daemon:
                 return {"status":"error", "msg":"end failed"}
 
         if action == "heartbeat":
-            if len(self.camera_loader.get_all_errors()) == 0:
+            t0 = time.time()
+            errs = self.camera_loader.get_all_errors()
+            dt = time.time() - t0
+            if dt > 0.5:
+                print(f"[Warning] heartbeat get_all_errors took {dt*1000:.0f}ms (>500ms)")
+            if len(errs) == 0:
                 return {"status":"ok", "msg":"heartbeat received"}
             else:
-                return {"status":"error", "msg":"camera errors detected"}
+                return {"status":"error", "msg":f"camera errors detected: {errs}"}
 
         if action == "reload":
             try:

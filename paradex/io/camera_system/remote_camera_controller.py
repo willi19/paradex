@@ -45,6 +45,8 @@ class remote_camera_controller:
             self.command_sockets[pc] = socket
             print(f"{pc}: Command socket connected")
 
+        self.last_err = {pc: None for pc in self.pc_list}
+
         if failed_pcs:
             raise ConnectionError(
                 f"다음 PC들이 응답하지 않습니다: {failed_pcs}\n"
@@ -76,7 +78,7 @@ class remote_camera_controller:
         response = {}
         response_lock = Lock()
 
-        timeout_ms = 10000 if cmd.get('action') in ('start', 'stop') else 1000
+        timeout_ms = 10000 if cmd.get('action') in ('start', 'stop') else 2000
 
         def _send_to_one(pc, socket):
             try:
@@ -84,8 +86,12 @@ class remote_camera_controller:
                 socket.setsockopt(zmq.SNDTIMEO, timeout_ms)
                 socket.send_json(cmd)
                 resp = socket.recv_json()
-            except zmq.ZMQError:
-                resp = {'status': 'error', 'msg': 'no response'}
+            except zmq.Again:
+                resp = {'status': 'error', 'msg': 'timeout', 'errno': 'EAGAIN'}
+            except zmq.ZMQError as e:
+                resp = {'status': 'error',
+                        'msg': f'zmq:{e.errno}:{zmq.strerror(e.errno)}',
+                        'errno': e.errno}
             with response_lock:
                 response[pc] = resp
 
@@ -130,7 +136,12 @@ class remote_camera_controller:
             if resp['status'] == 'error':
                 print(f"{pc}: {resp['msg']}")
                 self.error_event.set()
-        
+
+    def force_takeover(self):
+        """다른 controller 가 lock 잡고 있어도 강제로 register 재시도."""
+        cmd = {'action': 'register', 'force': True}
+        return self.send_command(cmd)
+
     def run(self):
         self.initialize()
         
@@ -154,12 +165,20 @@ class remote_camera_controller:
             response = self.send_command(cmd)
             if cmd['action'] in ['start', 'stop']:
                 self.sending_event.set()
-            
+
             for pc, resp in response.items():
                 if resp['status'] == 'error':
-                    print(f"{pc}: {resp['msg']}")
                     self.error_event.set()
-                    
+                    msg = resp['msg']
+                    prev = self.last_err.get(pc)
+                    if prev != msg:
+                        print(f"[{pc}] {cmd['action']} failed: {msg}")
+                        self.last_err[pc] = msg
+                else:
+                    if self.last_err.get(pc) is not None:
+                        print(f"[{pc}] recovered after {self.last_err[pc]}")
+                        self.last_err[pc] = None
+
             time.sleep(0.1)
             
         self.send_command({'action': 'end'})

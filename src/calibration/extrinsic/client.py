@@ -1,8 +1,15 @@
 import time
 import cv2
-from threading import Event
+from threading import Event, Thread
 import os
 import numpy as np
+
+
+def _save_camera_data(save_path, camera_name, corners, ids, image, frame_id):
+    np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), corners)
+    np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), ids)
+    cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), image)
+    print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
 
 from paradex.io.camera_system.camera_reader import MultiCameraReader
 from paradex.io.capture_pc.data_sender import DataPublisher
@@ -48,10 +55,13 @@ while not exit_event.is_set():
                     if os.path.exists(corner_file):
                         print(f"Data for camera {camera_name} already saved, skipping.")
                     else:
-                        np.save(corner_file, merged_detect_result["checkerCorner"])
-                        np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), merged_detect_result["checkerIDs"])
-                        cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), cur_image)
-                        print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
+                        Thread(target=_save_camera_data, args=(
+                            save_path, camera_name,
+                            merged_detect_result["checkerCorner"].copy(),
+                            merged_detect_result["checkerIDs"].copy(),
+                            cur_image.copy(),
+                            frame_id,
+                        ), daemon=True).start()
                     saved_this_round.add(camera_name)
                     save_id[camera_name] += 1
 

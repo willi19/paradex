@@ -235,9 +235,10 @@ class PyspinCamera():
     def stop(self):
         """
         Stop image acquisition. Camera connection remains active.
-        
+
         Note: Only stops acquiring images. Use release() to disconnect camera.
         """
+        self._abort_streaming()
         self.cam.EndAcquisition()
         # Flush buffer command (있으면)
         try:
@@ -246,8 +247,19 @@ class PyspinCamera():
                 image.Release()
         except ps.SpinnakerException:
             pass  # 버퍼가 비면 예외 발생
-        
+
         return
+
+    def _abort_streaming(self):
+        """trigger 끊김 등으로 EndAcquisition 이 packet 대기로 hang 되는 것 방지.
+        StreamAbortStreaming 으로 stream socket 강제 해제."""
+        try:
+            tlstream_nodemap = self.cam.GetTLStreamNodeMap()
+            abort_node = ps.CCommandPtr(tlstream_nodemap.GetNode('StreamAbortStreaming'))
+            if ps.IsAvailable(abort_node) and ps.IsWritable(abort_node):
+                abort_node.Execute()
+        except ps.SpinnakerException:
+            pass
     
     def release(self):
         """Release camera resources. Call stop() first. Cannot reuse after."""

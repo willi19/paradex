@@ -12,7 +12,7 @@ from paradex.calibration.Tsai_Lenz import solve_ax_xb, solve_axb_cpu
 from paradex.robot.utils import get_robot_urdf_path
 from paradex.robot.robot_wrapper import RobotWrapper
 from paradex.image.image_dict import ImageDict
-from paradex.image.aruco import merge_charuco_detection, find_common_indices, detect_charuco
+from paradex.image.aruco import merge_charuco_detection, find_common_indices, detect_charuco, boardinfo_dict
 from paradex.transforms.conversion import SOLVE_XA_B
 from paradex.visualization.robot import RobotModule
 
@@ -73,18 +73,43 @@ def compute_fk(name, arm):
         eef = robot_wrapper.compute_forward_kinematics(qpos, link_list=["link6"])['link6']
         np.save(os.path.join(root_dir, index, "eef_fk.npy"), eef)
 
+def _floor_board_id_range(floor_board_key="3"):
+    offset = 0
+    for b_id, cfg in boardinfo_dict.items():
+        n_corners = (cfg["numX"] - 1) * (cfg["numY"] - 1)
+        if b_id == floor_board_key:
+            return (offset, offset + n_corners)
+        offset += n_corners
+    return None
+
+
+def _load_filtered_charuco(root_dir, index, excluded_range):
+    ids = np.load(os.path.join(root_dir, index, "charuco_3d_ids.npy"))
+    cors = np.load(os.path.join(root_dir, index, "charuco_3d_corners.npy"))
+    if excluded_range is not None:
+        mask = (ids < excluded_range[0]) | (ids >= excluded_range[1])
+        ids = ids[mask]
+        cors = cors[mask]
+    return ids, cors
+
+
 def compute_motion(name):
     motion_wrt_cam = []
     motion_wrt_robot = []
-    
+
     root_dir = os.path.join(handeye_calib_path, name)
     index_list = os.listdir(root_dir)
     index_list.sort()
-    
+
     eef_list = [np.load(os.path.join(root_dir, index, "eef_fk.npy")) for index in index_list]
-    
-    charuco_id_list = [np.load(os.path.join(root_dir, index, "charuco_3d_ids.npy")) for index in index_list]
-    charuco_cor_list = [np.load(os.path.join(root_dir, index, "charuco_3d_corners.npy")) for index in index_list]
+
+    excluded_range = _floor_board_id_range("1")
+    charuco_id_list = []
+    charuco_cor_list = []
+    for index in index_list:
+        ids, cors = _load_filtered_charuco(root_dir, index, excluded_range)
+        charuco_id_list.append(ids)
+        charuco_cor_list.append(cors)
     
     for i in range(1, len(index_list)):
         eef = eef_list[i]
@@ -118,22 +143,23 @@ def debug(name, arm):
     
     rm = RobotModule(get_robot_urdf_path(arm_name=arm))
     intrinsic, extrinsic = load_camparam(os.path.join(root_dir, "0"))
-    
+
+    excluded_range = _floor_board_id_range("1")
+
     for index in index_list:
         eef = np.load(os.path.join(root_dir, index, "eef_fk.npy"))
         eef_from_robot = np.load(os.path.join(root_dir, index, "eef.npy"))
         # FK error
         eef_error = np.linalg.inv(eef) @ eef_from_robot
         trans_error = np.linalg.norm(eef_error[:3, 3]) * 1000
-        
+
         # Rotation error (degrees)
         R_error = eef_error[:3, :3]
         angle_error = np.arccos((np.trace(R_error) - 1) / 2) * 180 / np.pi
-        
+
         print(f"fk error {index}: trans={trans_error:.2f}mm, rot={angle_error:.2f}deg")
-        
-        charuco_3d_cor = np.load(os.path.join(root_dir, index, "charuco_3d_corners.npy"))
-        charuco_id_cor = np.load(os.path.join(root_dir, index, "charuco_3d_ids.npy"))
+
+        charuco_id_cor, charuco_3d_cor = _load_filtered_charuco(root_dir, index, excluded_range)
         
         for mid, cor in zip(charuco_id_cor, charuco_3d_cor):
             if mid not in marker_pos:

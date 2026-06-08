@@ -22,11 +22,17 @@ def undistort_raw_video(video_path, progress_dict, video_id):
     """progress_dict로 진행상황 업데이트"""
     
     serial_num = os.path.basename(video_path).split(".")[0]
-    # video_path = .../{session}/raw/{stage}/videos/{serial}.avi
-    videos_dir = os.path.dirname(video_path)
-    stage_dir = os.path.dirname(videos_dir)
-    stage = os.path.basename(stage_dir)
-    raw_dir = os.path.dirname(stage_dir)
+    # Two supported layouts:
+    #   new: .../{session}/raw/{stage}/videos/{serial}.avi
+    #   old: .../{session}/raw/videos/{serial}.avi          (stage = "")
+    videos_dir = os.path.dirname(video_path)            # .../raw/[{stage}/]videos
+    parent_dir = os.path.dirname(videos_dir)            # .../raw[/{stage}]
+    if os.path.basename(parent_dir) == "raw":
+        stage = ""
+        raw_dir = parent_dir
+    else:
+        stage = os.path.basename(parent_dir)
+        raw_dir = os.path.dirname(parent_dir)
     root_dir = os.path.dirname(raw_dir)
 
     root_name = root_dir
@@ -227,7 +233,10 @@ def get_raw_videopath_list():
     videopath_list = []
     for video_dir in capture_path_list:
         print(f"Searching raw videos in {video_dir}...")
+        # New layout: raw/{stage}/videos/*.avi
         videopath_list += glob.glob(os.path.join(video_dir, "**/raw/*/videos/*.avi"), recursive=True)
+        # Old layout: raw/videos/*.avi (stage-less)
+        videopath_list += glob.glob(os.path.join(video_dir, "**/raw/videos/*.avi"), recursive=True)
     return videopath_list
 
 

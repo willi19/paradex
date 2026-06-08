@@ -54,28 +54,34 @@ class CaptureSession():
             
         else:
             self.teleop_device = None
-            
+
         self.save_path = None
-            
-    def start(self, save_path, mode="video", fps=30, exposure_time=None, gain=None): # Start recording on all sensors
+        self.stage = None
+
+    def start(self, save_path, mode="video", fps=30, exposure_time=None, gain=None, stage=None): # Start recording on all sensors
         self.save_path = save_path
-        os.makedirs(os.path.join(shared_dir, save_path, "raw"), exist_ok=True)
+        self.stage = stage
+        # raw_rel is the directory under save_path that holds per-session data.
+        # When stage is provided, layout matches what the upload processor
+        # expects: raw/{stage}/videos vs raw/{stage}/arm vs ...
+        raw_rel = os.path.join("raw", stage) if stage else "raw"
+        os.makedirs(os.path.join(shared_dir, save_path, raw_rel), exist_ok=True)
 
         if self.arm is not None:
-            self.arm.start(os.path.join(shared_dir, save_path, "raw", "arm"))
+            self.arm.start(os.path.join(shared_dir, save_path, raw_rel, "arm"))
 
         if self.hand is not None:
-            self.hand.start(os.path.join(shared_dir, save_path, "raw", "hand"))
+            self.hand.start(os.path.join(shared_dir, save_path, raw_rel, "hand"))
 
         if self.teleop_device is not None:
-            self.teleop_device.start(os.path.join(shared_dir, save_path, "raw", "teleop"))
+            self.teleop_device.start(os.path.join(shared_dir, save_path, raw_rel, "teleop"))
             self.state_hist = []
             self.state_time = []
 
         if self.camera is not None:
-            self.camera.start(mode, True, os.path.join(save_path, "raw"), fps=fps, exposure_time=exposure_time, gain=gain)
+            self.camera.start(mode, True, os.path.join(save_path, raw_rel), fps=fps, exposure_time=exposure_time, gain=gain)
             if self.timestamp_monitor is not None:
-                self.timestamp_monitor.start(os.path.join(shared_dir, save_path, "raw", "timestamps"))
+                self.timestamp_monitor.start(os.path.join(shared_dir, save_path, raw_rel, "timestamps"))
             self.sync_generator.start(fps=fps)
         
     def stop(self):
@@ -86,9 +92,10 @@ class CaptureSession():
             
         if self.teleop_device is not None:
             self.teleop_device.stop()
-            os.makedirs(os.path.join(shared_dir, self.save_path, "raw", "state"), exist_ok=True)
-            np.save(os.path.join(shared_dir, self.save_path, "raw", "state", "state_hist.npy"), np.array(self.state_hist))
-            np.save(os.path.join(shared_dir, self.save_path, "raw", "state", "state_time.npy"), np.array(self.state_time))
+            raw_rel = os.path.join("raw", self.stage) if self.stage else "raw"
+            os.makedirs(os.path.join(shared_dir, self.save_path, raw_rel, "state"), exist_ok=True)
+            np.save(os.path.join(shared_dir, self.save_path, raw_rel, "state", "state_hist.npy"), np.array(self.state_hist))
+            np.save(os.path.join(shared_dir, self.save_path, raw_rel, "state", "state_time.npy"), np.array(self.state_time))
 
         if self.camera is not None:
             self.camera.stop()
@@ -98,8 +105,9 @@ class CaptureSession():
         
             save_current_camparam(os.path.join(shared_dir, self.save_path))
             save_current_C2R(os.path.join(shared_dir, self.save_path))
-        
+
         self.save_path = None
+        self.stage = None
 
     def end(self):
         if self.arm is not None:

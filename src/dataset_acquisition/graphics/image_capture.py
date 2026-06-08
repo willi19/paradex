@@ -21,7 +21,7 @@ from paradex.io.camera_system.remote_camera_controller import remote_camera_cont
 from paradex.io.robot_controller import get_arm
 from paradex.utils.path import shared_dir
 
-DEFAULT_TRAJ = os.path.expanduser("~/mcc_minimal/traj/dynamic/xarm/seed42_fwd500.npz")
+DEFAULT_TRAJ = os.path.expanduser("~/mcc_minimal/traj/dynamic/xarm/seed42_fwd100.npz")
 DEFAULT_EXPOSURES = [2500, 8000, 16000, 30000]    # us
 DEFAULT_GAINS = [0.0, 3.0, 6.0, 9.0, 12.0]        # dB
 RESET_SPEED_RAD_S = 0.35                          # ~20 deg/s

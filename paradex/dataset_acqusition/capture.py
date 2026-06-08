@@ -57,7 +57,7 @@ class CaptureSession():
             
         self.save_path = None
             
-    def start(self, save_path, mode="video", fps=30, exposure_time=None): # Start recording on all sensors
+    def start(self, save_path, mode="video", fps=30, exposure_time=None, gain=None): # Start recording on all sensors
         self.save_path = save_path
         os.makedirs(os.path.join(shared_dir, save_path, "raw"), exist_ok=True)
 
@@ -73,7 +73,7 @@ class CaptureSession():
             self.state_time = []
 
         if self.camera is not None:
-            self.camera.start(mode, True, os.path.join(save_path, "raw"), fps=fps, exposure_time=exposure_time)
+            self.camera.start(mode, True, os.path.join(save_path, "raw"), fps=fps, exposure_time=exposure_time, gain=gain)
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.start(os.path.join(shared_dir, save_path, "raw", "timestamps"))
             self.sync_generator.start(fps=fps)

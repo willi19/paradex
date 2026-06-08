@@ -108,12 +108,13 @@ class remote_camera_controller:
         cmd = {'action': 'register'}
         self.send_command(cmd)
         
-    def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None):
+    def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None):
         self.mode = mode
         self.syncMode = syncMode
         self.save_path = save_path
         self.fps = fps
         self.exposure_time = exposure_time
+        self.gain = gain
 
         self.sending_event.clear()
         self.start_event.set()
@@ -156,7 +157,8 @@ class remote_camera_controller:
                     'syncMode': self.syncMode,
                     'save_path': self.save_path,
                     'fps': self.fps,
-                    'exposure_time': self.exposure_time
+                    'exposure_time': self.exposure_time,
+                    'gain': self.gain
                 }
                 self.start_event.clear()
                 

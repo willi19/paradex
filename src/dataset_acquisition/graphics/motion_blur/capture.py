@@ -1,10 +1,9 @@
 """Graphics — Motion Blur Capture.
 
 Sweeps (exposure_time us) × (joint speed deg/s) over a fixed pre-generated
-joint trajectory. Captures one sync video per cell. Also captures sharp
-single-frame images at trajectory start/end pose for reference.
+joint trajectory. One sync video per cell.
 
-trajectory file: ~/mcc_minimal/traj/dynamic/xarm/seed42.npz (key `q_deg`)
+trajectory file: ~/mcc_minimal/traj/dynamic/xarm/seed42_fwd500.npz (key `q_deg`)
 """
 import argparse
 import json
@@ -21,17 +20,10 @@ from paradex.utils.path import shared_dir
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from replay import replay_q_deg, reset_to  # noqa: E402
 
-DEFAULT_TRAJ = os.path.expanduser("~/mcc_minimal/traj/dynamic/xarm/seed42.npz")
+DEFAULT_TRAJ = os.path.expanduser("~/mcc_minimal/traj/dynamic/xarm/seed42_fwd500.npz")
 DEFAULT_EXPOSURES = [2500, 8000, 16000, 30000]   # us
-DEFAULT_SPEEDS = [10, 30, 60, 120]               # deg/s
-SHARP_EXPOSURE = 2500                            # us
+DEFAULT_SPEEDS = [30]                            # deg/s
 RESET_SPEED_RAD_S = 0.35                         # ~20 deg/s
-
-
-def _capture_sharp(cs, save_path):
-    cs.start(save_path, mode="image", fps=30, exposure_time=SHARP_EXPOSURE)
-    time.sleep(2.0)
-    cs.stop()
 
 
 def _capture_trial(cs, save_path, q_deg, exposure_us, speed_deg_s, fps):
@@ -65,7 +57,6 @@ def main():
         "n_waypoints": int(len(q_deg)),
         "exposures_us": list(map(int, args.exposures)),
         "speeds_deg_s": list(map(float, args.speeds)),
-        "sharp_exposure_us": SHARP_EXPOSURE,
         "fps": args.fps,
         "q_start_deg": q_deg[0].tolist(),
         "q_end_deg": q_deg[-1].tolist(),
@@ -78,17 +69,12 @@ def main():
     try:
         reset_to(cs.arm, q_deg[0], speed_rad_s=RESET_SPEED_RAD_S)
         time.sleep(1.0)
-        _capture_sharp(cs, os.path.join(base, "sharp", "start"))
 
         for exp in args.exposures:
             for spd in args.speeds:
                 trial = os.path.join(base, "trials", f"exp{int(exp)}_spd{int(spd)}")
                 print(f"=== trial exposure={exp}us speed={spd}deg/s -> {trial}")
                 _capture_trial(cs, trial, q_deg, exp, spd, args.fps)
-
-        reset_to(cs.arm, q_deg[-1], speed_rad_s=RESET_SPEED_RAD_S)
-        time.sleep(1.0)
-        _capture_sharp(cs, os.path.join(base, "sharp", "end"))
 
         reset_to(cs.arm, q_deg[0], speed_rad_s=RESET_SPEED_RAD_S)
     finally:

@@ -414,6 +414,20 @@ class PyspinCamera():
         triggerOverlap = self._get_node(self.nodeMap, "TriggerOverlap", "enum", readable=True, writable=True)
         self._set_node_value(triggerOverlap, "enum", "ReadOut")
 
+        # Disable per-camera frame-rate cap so a stale AcquisitionFrameRate
+        # value (e.g. 10 left by a previous free-run session) doesn't throttle
+        # hardware-triggered acquisition.
+        try:
+            rate_auto = self._get_node(self.nodeMap, "AcquisitionFrameRateAuto", "enum", readable=True, writable=True)
+            self._set_node_value(rate_auto, "enum", "Off")
+        except Exception:
+            pass
+        try:
+            rate_enable = self._get_node(self.nodeMap, "AcquisitionFrameRateEnable", "bool", readable=True, writable=True)
+            self._set_node_value(rate_enable, "bool", False)
+        except Exception:
+            pass
+
     def _configurePacketDelay(self) -> None:
         """configure GigE Vision packet delay.
         
@@ -756,6 +770,20 @@ class PyspinTimestampMonitor():
 
         triggerOverlap = self._get_node(self.nodeMap, "TriggerOverlap", "enum", readable=True, writable=True)
         self._set_node_value(triggerOverlap, "enum", "ReadOut")
+
+        # Disable per-camera frame-rate cap so a stale AcquisitionFrameRate
+        # value (e.g. 10 left by a previous free-run session) doesn't throttle
+        # hardware-triggered acquisition.
+        try:
+            rate_auto = self._get_node(self.nodeMap, "AcquisitionFrameRateAuto", "enum", readable=True, writable=True)
+            self._set_node_value(rate_auto, "enum", "Off")
+        except Exception:
+            pass
+        try:
+            rate_enable = self._get_node(self.nodeMap, "AcquisitionFrameRateEnable", "bool", readable=True, writable=True)
+            self._set_node_value(rate_enable, "bool", False)
+        except Exception:
+            pass
 
     def _configurePacketDelay(self) -> None:
         """configure GigE Vision packet delay.

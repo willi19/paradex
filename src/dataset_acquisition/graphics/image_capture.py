@@ -23,7 +23,7 @@ from paradex.utils.path import shared_dir
 
 DEFAULT_TRAJ = os.path.expanduser("~/mcc_minimal/traj/dynamic/xarm/seed42_fwd100.npz")
 DEFAULT_EXPOSURES = [2500, 8000, 16000, 30000]    # us
-DEFAULT_GAINS = [0.0, 3.0, 6.0, 9.0, 12.0]        # dB
+DEFAULT_GAINS = [12.0, 6.0, 0.0, 0.0]             # dB, paired 1:1 with exposures (matches motion_blur)
 RESET_SPEED_RAD_S = 0.35                          # ~20 deg/s
 
 
@@ -36,19 +36,29 @@ def main():
     p.add_argument("--name", required=True)
     p.add_argument("--traj", default=DEFAULT_TRAJ)
     p.add_argument("--pose_idx", type=int, default=0,
-                   help="index into q_deg (negative ok, e.g. -1 for last)")
+                   help="index into q_deg (negative ok, e.g. -1 for last). Ignored if --pose_rad given.")
+    p.add_argument("--pose_rad", type=float, nargs=6, default=None,
+                   help="6 joint angles in radians. Overrides --traj/--pose_idx.")
     p.add_argument("--exposures", type=int, nargs="+", default=DEFAULT_EXPOSURES, help="us")
-    p.add_argument("--gains", type=float, nargs="+", default=DEFAULT_GAINS, help="dB")
+    p.add_argument("--gains", type=float, nargs="+", default=DEFAULT_GAINS,
+                   help="dB, paired 1:1 with --exposures")
     p.add_argument("--settle", type=float, default=1.5, help="seconds after pose reset")
     args = p.parse_args()
 
-    d = np.load(args.traj)
-    q_deg = np.asarray(d["q_deg"], dtype=float)
-    target = q_deg[args.pose_idx]
-    print(f"target pose (q_deg[{args.pose_idx}]) = {target.tolist()}")
+    if len(args.gains) != len(args.exposures):
+        raise SystemExit(f"--gains length ({len(args.gains)}) must equal --exposures length ({len(args.exposures)})")
+
+    if args.pose_rad is not None:
+        target = np.rad2deg(np.asarray(args.pose_rad, dtype=float))
+        print(f"target pose (rad input) = {args.pose_rad}  → deg {target.tolist()}")
+    else:
+        d = np.load(args.traj)
+        q_deg = np.asarray(d["q_deg"], dtype=float)
+        target = q_deg[args.pose_idx]
+        print(f"target pose (q_deg[{args.pose_idx}]) = {target.tolist()}")
 
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    rel_base = os.path.join("capture", "graphics", "sharp_grid", args.name, timestamp)
+    rel_base = os.path.join("capture", "graphics", "sharp", args.name, timestamp)
     base_abs = os.path.join(shared_dir, rel_base)
     os.makedirs(base_abs, exist_ok=True)
 
@@ -63,14 +73,13 @@ def main():
         np.save(os.path.join(base_abs, "ee_pose.npy"), snap["position"])
         print(f"saved xarm snapshot @ {base_abs}")
 
-        for exp in args.exposures:
-            for gain in args.gains:
-                cell_rel = os.path.join("shared_data", rel_base,
-                                        f"exp{int(exp)}_gain{gain:g}", "raw")
-                print(f"=== exp={exp}us gain={gain}dB -> ~/{cell_rel}")
-                camera.start("image", False, cell_rel,
-                             exposure_time=exp, gain=gain)
-                camera.stop()
+        for exp, gain in zip(args.exposures, args.gains):
+            cell_rel = os.path.join("shared_data", rel_base,
+                                    f"exp{int(exp)}_gain{gain:g}", "raw")
+            print(f"=== exp={exp}us gain={gain}dB -> ~/{cell_rel}")
+            camera.start("image", False, cell_rel,
+                         exposure_time=exp, gain=gain)
+            camera.stop()
 
         meta = {
             "traj": args.traj,
@@ -89,21 +98,20 @@ def main():
         # Reorganize: by_serial/{serial}/exp{exp}_gain{gain}.png
         by_serial = os.path.join(base_abs, "by_serial")
         os.makedirs(by_serial, exist_ok=True)
-        for exp in args.exposures:
-            for gain in args.gains:
-                cell_imgs_dir = os.path.join(
-                    base_abs, f"exp{int(exp)}_gain{gain:g}", "raw", "images")
-                for src in glob.glob(os.path.join(cell_imgs_dir, "*.png")):
-                    serial = os.path.splitext(os.path.basename(src))[0]
-                    dst_dir = os.path.join(by_serial, serial)
-                    os.makedirs(dst_dir, exist_ok=True)
-                    dst = os.path.join(dst_dir, f"exp{int(exp)}_gain{gain:g}.png")
-                    try:
-                        if os.path.exists(dst):
-                            os.remove(dst)
-                        os.link(src, dst)
-                    except OSError:
-                        shutil.copyfile(src, dst)
+        for exp, gain in zip(args.exposures, args.gains):
+            cell_imgs_dir = os.path.join(
+                base_abs, f"exp{int(exp)}_gain{gain:g}", "raw", "images")
+            for src in glob.glob(os.path.join(cell_imgs_dir, "*.png")):
+                serial = os.path.splitext(os.path.basename(src))[0]
+                dst_dir = os.path.join(by_serial, serial)
+                os.makedirs(dst_dir, exist_ok=True)
+                dst = os.path.join(dst_dir, f"exp{int(exp)}_gain{gain:g}.png")
+                try:
+                    if os.path.exists(dst):
+                        os.remove(dst)
+                    os.link(src, dst)
+                except OSError:
+                    shutil.copyfile(src, dst)
         print(f"reorganized → {by_serial}/{{serial}}/exp_gain.png")
     finally:
         camera.end()

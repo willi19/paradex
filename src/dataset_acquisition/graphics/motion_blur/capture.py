@@ -23,7 +23,7 @@ from replay import replay_q_deg, reset_to  # noqa: E402
 DEFAULT_TRAJ = os.path.expanduser("~/mcc_minimal/traj/dynamic/xarm/seed42_fwd100.npz")
 DEFAULT_EXPOSURES = [2500, 8000, 16000, 30000]   # us
 DEFAULT_GAINS = [12.0, 6.0, 0.0, 0.0]            # dB, paired 1:1 with exposures
-DEFAULT_SPEEDS = [30]                            # deg/s
+DEFAULT_SPEEDS = [60]                            # deg/s
 RESET_SPEED_RAD_S = 0.35                         # ~20 deg/s
 
 

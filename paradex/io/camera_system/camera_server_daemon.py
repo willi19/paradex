@@ -108,11 +108,12 @@ class camera_server_daemon:
                             cmd.get('mode'),
                             cmd.get('syncMode'),
                             cmd.get('save_path'),
-                            cmd.get('fps', 30)
+                            cmd.get('fps', 30),
+                            cmd.get('exposure_time')
                         )
                 self.cameras_running = True
                 dt = time.time() - t0
-                print(f"[Info] start completed in {dt:.2f}s mode={cmd.get('mode')} sync={cmd.get('syncMode')} fps={cmd.get('fps',30)}")
+                print(f"[Info] start completed in {dt:.2f}s mode={cmd.get('mode')} sync={cmd.get('syncMode')} fps={cmd.get('fps',30)} exposure_time={cmd.get('exposure_time')}")
                 return {"status":"ok", "msg":"started"}
 
             except Exception as e:

@@ -140,7 +140,7 @@ class Camera():
         self.image_array_a.fill(0)
         self.image_array_b.fill(0)
         
-    def start(self, mode, syncMode, save_path=None, fps=30):
+    def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None):
         if fps < 0 and mode in ["video", "full"] and syncMode is False:
             self.event["error"].set()
             self.event["error_reset"].clear()
@@ -170,6 +170,7 @@ class Camera():
         self.mode = mode
         self.syncMode = syncMode
         self.fps = fps
+        self.exposure_time = exposure_time
         self.last_frame_id = 0
         
         if save_path is not None:
@@ -232,7 +233,7 @@ class Camera():
             video_writer = cv2.VideoWriter(self.save_path, fourcc, fps=self.fps, frameSize=(self.frame_shape[1], self.frame_shape[0]))        
         
         try:
-            self.camera.start("continuous", self.syncMode, self.fps)
+            self.camera.start("continuous", self.syncMode, self.fps, exposure_time=self.exposure_time)
         
         except Exception as e:
             self.event["error"].set()
@@ -319,7 +320,7 @@ class Camera():
         self.event["stop"].set()
     
     def single_acquire(self):
-        self.camera.start("single", self.syncMode)
+        self.camera.start("single", self.syncMode, exposure_time=self.exposure_time)
         self.event["acquisition"].set()
         
         frame, _ = self.camera.get_image()

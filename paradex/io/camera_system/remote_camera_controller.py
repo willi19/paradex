@@ -78,7 +78,7 @@ class remote_camera_controller:
         response = {}
         response_lock = Lock()
 
-        timeout_ms = 10000 if cmd.get('action') in ('start', 'stop') else 2000
+        timeout_ms = 30000 if cmd.get('action') in ('start', 'stop') else 2000
 
         def _send_to_one(pc, socket):
             try:
@@ -108,15 +108,16 @@ class remote_camera_controller:
         cmd = {'action': 'register'}
         self.send_command(cmd)
         
-    def start(self, mode, syncMode, save_path=None, fps=30):
+    def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None):
         self.mode = mode
         self.syncMode = syncMode
         self.save_path = save_path
         self.fps = fps
-        
+        self.exposure_time = exposure_time
+
         self.sending_event.clear()
         self.start_event.set()
-        
+
         self.sending_event.wait()
 
     def stop(self):
@@ -154,7 +155,8 @@ class remote_camera_controller:
                     'mode': self.mode,
                     'syncMode': self.syncMode,
                     'save_path': self.save_path,
-                    'fps': self.fps
+                    'fps': self.fps,
+                    'exposure_time': self.exposure_time
                 }
                 self.start_event.clear()
                 

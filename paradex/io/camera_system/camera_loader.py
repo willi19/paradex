@@ -38,7 +38,7 @@ class CameraLoader:
         self.cameralist = [Camera("pyspin", serial) for serial in serial_list]
         self.camera_names = self.camera_names + serial_list
     
-    def start(self, mode, syncMode, save_path=None, fps=30):
+    def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None):
         if mode == "image":
             save_paths = [os.path.join(home_path, save_path, "images") for _ in self.cameralist]
             print(save_paths)
@@ -56,7 +56,7 @@ class CameraLoader:
         print("starting cameras... cameras:", self.camera_names)
         threads = []
         for camera, path in zip(self.cameralist, save_paths):
-            t = Thread(target=camera.start, args=(mode, syncMode, path, fps))
+            t = Thread(target=camera.start, args=(mode, syncMode, path, fps, exposure_time))
             threads.append(t)
             
         for t in threads:

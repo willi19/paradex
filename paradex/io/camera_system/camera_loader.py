@@ -49,8 +49,31 @@ class CameraLoader:
                 
         self.cameralist = [Camera("pyspin", serial) for serial in serial_list]
         self.camera_names = self.camera_names + serial_list
+
+    def _already_running(self, mode):
+        if not self.cameralist:
+            return False
+        for camera in self.cameralist:
+            is_running = (
+                camera.event["start"].is_set()
+                and camera.event["acquisition"].is_set()
+                and getattr(camera, "mode", None) == mode
+            )
+            if not is_running:
+                return False
+        return True
+
+    def _clear_errors(self):
+        for camera in self.cameralist:
+            if camera.event["error"].is_set():
+                camera.error_reset()
     
     def start(self, mode, syncMode, save_path=None, fps=30):
+        if mode == "stream" and self._already_running(mode):
+            self._clear_errors()
+            print("stream cameras already running; reusing existing acquisition.")
+            return
+
         if mode == "image":
             save_paths = [os.path.join(home_path, save_path, "images") for _ in self.cameralist]
             print(save_paths)

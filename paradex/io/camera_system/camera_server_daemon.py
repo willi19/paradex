@@ -112,15 +112,21 @@ class camera_server_daemon:
                 
                 return {"status":"ok", "msg":"started"}
 
-            except:
-                return {"status":"error", "msg":"start failed"}
+            except Exception as e:
+                tb = traceback.format_exc()
+                print("[ERROR] camera_loader.start failed:")
+                print(tb)
+                return {"status":"error", "msg":f"start failed: {e}"}
 
         if action == "stop":
             try:
                 self.camera_loader.stop()
                 return {"status":"ok", "msg":"stopped"}
-            except:
-                return {"status":"error", "msg":"stop failed"}
+            except Exception as e:
+                tb = traceback.format_exc()
+                print("[ERROR] camera_loader.stop failed:")
+                print(tb)
+                return {"status":"error", "msg":f"stop failed: {e}"}
 
         if action == "end":
             try:

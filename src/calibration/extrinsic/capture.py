@@ -21,14 +21,18 @@ BOARD_COLORS = [
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
 
-run_script("python src/calibration/extrinsic/client.py")
-
 rcc = remote_camera_controller("extrinsic_calibration")
 dc = DataCollector()
 dc.start()
 
-cs = CommandSender()
 rcc.start("stream", False, fps=30)
+# server side now creates the shared memory for each camera.
+# Wait a bit so SHM is ready before client.py attaches to it.
+time.sleep(1.5)
+
+run_script("python src/calibration/extrinsic/client.py")
+
+cs = CommandSender()
 
 saved_corner_img = {}# serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
 saved_corner_mask = {}
@@ -91,7 +95,7 @@ while True:
         key = cv2.waitKey(1)
 
     else:
-        blank_image = np.ones((600, 800, 3), dtype=np.uint)*500
+        blank_image = np.full((600, 800, 3), 255, dtype=np.uint8)
         cv2.putText(blank_image, "Waiting for stream...", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
         cv2.imshow("Merged Stream", blank_image)
         key = cv2.waitKey(1)
@@ -105,7 +109,7 @@ while True:
         os.makedirs(os.path.join(extrinsic_dir, filename, str(capture_idx), "markers_2d"), exist_ok=True)
         os.makedirs(os.path.join(extrinsic_dir, filename, str(capture_idx), "images"), exist_ok=True)
         
-        cs.send_command("save", True)
+        cs.send_command("save", True, cmd_info={"capture_idx": str(capture_idx)})
         save_num += 1
         for serial_num in cur_state.keys():
             corners, frame = cur_state[serial_num]

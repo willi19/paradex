@@ -114,7 +114,11 @@ class XArmController:
                     qpos = action.copy()
                 else:
                     cart = homo2cart(action)
-                    success, qpos = self.arm.get_inverse_kinematics(cart)
+                    # cart rpy is radians (homo2cart uses as_euler default=rad);
+                    # without input_is_radian=True the SDK mis-reads it as deg,
+                    # and without return_is_radian=True qpos comes back in deg.
+                    success, qpos = self.arm.get_inverse_kinematics(
+                        cart, input_is_radian=True, return_is_radian=True)
                     qpos = np.array(qpos)
                     if success != 0:
                         print("ik not success")

@@ -3,6 +3,7 @@ import os
 home_path = os.path.expanduser("~")
 pc_name = os.path.basename(home_path)
 shared_dir = os.path.join(home_path, "shared_data")
+local_shared_dir = os.path.join(home_path, "shared_data_local")
 capture_path_list = [os.path.join(home_path, f"captures{i}") for i in range(1,3)]
 
 download_dir = os.path.join(home_path, "download")

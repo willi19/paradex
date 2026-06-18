@@ -262,7 +262,12 @@ class PyspinCamera():
         
         Note: Only stops acquiring images. Use release() to disconnect camera.
         """
-        self.cam.EndAcquisition()
+        try:
+            self.cam.EndAcquisition()
+        except ps.SpinnakerException as e:
+            msg = str(e).lower()
+            if "not started" not in msg and "not acquiring" not in msg:
+                raise
         # Flush buffer command (있으면)
         try:
             while True:

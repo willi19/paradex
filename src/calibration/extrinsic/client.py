@@ -40,17 +40,36 @@ while not exit_event.is_set():
             merged_detect_result = merge_charuco_detection(detect_result)
             
             if save_event.is_set():
-                save_name = find_latest_directory(root_dir)
+                # Prefer capture_idx delivered in the save command itself
+                # (eliminates the NFS-listdir race on slow networks). Fall back
+                # to filesystem discovery if main didn't pass it.
+                save_name = cr.event_info.get("save", {}).get("capture_idx")
+                if not save_name:
+                    for _ in range(20):  # retry up to ~2s for NFS to catch up
+                        save_name = find_latest_directory(root_dir)
+                        if save_name:
+                            break
+                        time.sleep(0.1)
+                if not save_name:
+                    print(f"[client] could not resolve save dir under {root_dir}; skipping")
+                    save_event.clear()
+                    save_remain = len(reader.camera_names)
+                    continue
                 save_path = os.path.join(root_dir, save_name)
-                
+                os.makedirs(os.path.join(save_path, "markers_2d"), exist_ok=True)
+                os.makedirs(os.path.join(save_path, "images"), exist_ok=True)
+
                 if os.path.exists(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy")):
                     print(f"Data for camera {camera_name} already saved, skipping.", save_remain)
                     continue  # Already saved for this camera
-                
+
                 np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), merged_detect_result["checkerCorner"])
                 np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), merged_detect_result["checkerIDs"])
 
-                cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), cur_image)
+                # JPEG Q95 ~ 5-10MB PNG -> ~500KB. extrinsic uses corner.npy
+                # for actual calibration; the image file is visual-only.
+                cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.jpg"),
+                            cur_image, [int(cv2.IMWRITE_JPEG_QUALITY), 95])
                 print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
                 save_remain -= 1
                 save_id[camera_name] += 1
@@ -69,8 +88,13 @@ while not exit_event.is_set():
                     'shape': tuple(int(x) for x in image.shape),
                     'data_index': len(binary_data)
                 })
-                # Add binary data
-                binary_data.append(encoded_image)
+                # cv2.imencode returns np.ndarray; convert to bytes explicitly
+                # for ZMQ multipart safety (was added on vlm_dex_camera branch).
+                try:
+                    img_bytes = encoded_image.tobytes()
+                except Exception:
+                    img_bytes = bytes(encoded_image)
+                binary_data.append(img_bytes)
                 last_frame_ids[camera_name] = frame_id
                 
                 meta_data.append({
@@ -92,6 +116,11 @@ while not exit_event.is_set():
                 
                 
     if meta_data:
-        dp.send_data(meta_data, binary_data)
+        try:
+            dp.send_data(meta_data, binary_data)
+        except Exception as e:
+            print(f"[client] Error sending data: {e}")
+            import traceback
+            traceback.print_exc()
 
     time.sleep(0.01)  # Small sleep to prevent busy-waiting

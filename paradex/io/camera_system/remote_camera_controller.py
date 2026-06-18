@@ -36,6 +36,24 @@ class remote_camera_controller:
         self.run_thread.start()
 
         
+    def _new_command_socket(self, pc):
+        """Create a fresh REQ socket bound to pc's command port.
+
+        Pulled out so send_command can rebuild a broken socket: once a REQ
+        socket times out without receiving its REP, it sits in EFSM
+        (illegal state) and every subsequent send_json raises ZMQError. The
+        only safe recovery is close + new socket. This is the actual cause
+        of stream_owner getting stuck in error_event after recording — the
+        daemon blocks ~5s flushing .avi files, the 1s heartbeat REQ times
+        out, and the socket is dead from then on.
+        """
+        socket = self.ctx.socket(zmq.REQ)
+        socket.setsockopt(zmq.LINGER, 0)
+        socket.setsockopt(zmq.RCVTIMEO, 1000)
+        socket.setsockopt(zmq.SNDTIMEO, 1000)
+        socket.connect(f"tcp://{get_pc_ip(pc)}:{self.command_port}")
+        return socket
+
     def initialize(self):
         self.ctx = zmq.Context()
         self.command_sockets = {}
@@ -45,13 +63,8 @@ class remote_camera_controller:
             if not self.check_server_alive(pc):
                 failed_pcs.append(pc)
                 continue
-            
-            socket = self.ctx.socket(zmq.REQ)
-            socket.setsockopt(zmq.LINGER, 0)
-            socket.setsockopt(zmq.RCVTIMEO, 1000) 
-            socket.setsockopt(zmq.SNDTIMEO, 1000)
-            socket.connect(f"tcp://{get_pc_ip(pc)}:{self.command_port}")
-            self.command_sockets[pc] = socket
+
+            self.command_sockets[pc] = self._new_command_socket(pc)
             print(f"{pc}: Command socket connected")
 
         if failed_pcs:
@@ -81,19 +94,64 @@ class remote_camera_controller:
             socket.close()
     
     def send_command(self, cmd):
-        """명령 전송 및 응답 수신"""
+        """명령 전송 및 응답 수신.
+
+        On any ZMQ error (send/recv timeout, EFSM after a previous timeout),
+        the REQ socket is closed and rebuilt before reporting the error so
+        the NEXT heartbeat can succeed. Without this, a single timeout —
+        e.g. caused by the daemon blocking 5s on record_stop's AVI flush —
+        wedges the socket in EFSM permanently and stream_owner sees endless
+        "no response" until it restarts the entire stream.
+
+        For record_start / record_stop the daemon synchronously waits for
+        every camera's VideoWriter to release (up to flush_timeout=5s per
+        camera), so the 1s heartbeat timeout will trip every time. We
+        temporarily raise RCVTIMEO for those actions so the legitimate
+        long flush isn't misreported as a failure.
+        """
         cmd['controller_name'] = self.name
         response = {}
-        
-        for pc, socket in self.command_sockets.items():
+
+        # AVI flush on daemon side can legitimately take >1s; give it slack
+        # before declaring a timeout.
+        long_actions = {'record_start', 'record_stop', 'start', 'stop'}
+        long_timeout_ms = 15000 if cmd.get('action') in long_actions else None
+
+        for pc in list(self.command_sockets.keys()):
+            socket = self.command_sockets[pc]
+            old_rcv = None
+            if long_timeout_ms is not None:
+                try:
+                    old_rcv = socket.getsockopt(zmq.RCVTIMEO)
+                    socket.setsockopt(zmq.RCVTIMEO, long_timeout_ms)
+                except Exception:
+                    old_rcv = None
             try:
                 socket.send_json(cmd)
                 response[pc] = socket.recv_json()
-
             except zmq.ZMQError as e:
-                # print(f"{pc}: No response in send_command - {e}")
-                response[pc] = {'status':'error', 'msg':'no response'}
-        
+                response[pc] = {'status': 'error', 'msg': f'no response ({e})'}
+                # Rebuild the wedged socket so the next round has a fresh
+                # REQ-REP state machine to work with.
+                try:
+                    socket.close(linger=0)
+                except Exception:
+                    pass
+                try:
+                    self.command_sockets[pc] = self._new_command_socket(pc)
+                except Exception as rebuild_err:
+                    print(f"{pc}: socket rebuild failed: {rebuild_err}")
+                    # Drop the broken entry; check_server_alive on next
+                    # full restart will recreate it.
+                    self.command_sockets.pop(pc, None)
+                continue
+            # Restore the short heartbeat timeout on the still-healthy socket.
+            if old_rcv is not None:
+                try:
+                    self.command_sockets[pc].setsockopt(zmq.RCVTIMEO, old_rcv)
+                except Exception:
+                    pass
+
         return response
             
     def register(self):
@@ -115,6 +173,19 @@ class remote_camera_controller:
         self.sending_event.clear()
         self.stop_event.set()
         self.sending_event.wait()
+
+    def release(self):
+        """Release the daemon controller lock without stopping cameras.
+
+        Useful for viewer-style clients that want to disconnect/reconnect
+        without tearing down an already-running stream.
+        """
+        response = self.send_command({'action': 'end'})
+        for pc, resp in response.items():
+            if resp['status'] == 'error':
+                print(f"{pc}: {resp['msg']}")
+                self.error_event.set()
+        return response
 
     def record_start(self, save_path, fps=30):
         """Arm .avi recording on the (already-streaming) daemon. Non-blocking
@@ -186,10 +257,18 @@ class remote_camera_controller:
             if cmd['action'] in ['start', 'stop', 'record_start', 'record_stop']:
                 self.sending_event.set()
 
+            any_error = False
             for pc, resp in response.items():
                 if resp['status'] == 'error':
                     print(f"{pc}: {resp['msg']}")
-                    self.error_event.set()
+                    any_error = True
+            # error_event reflects the *current* round, not stale failures —
+            # one transient ZMQ timeout no longer sticks forever and trips
+            # stream_owner's auto-restart.
+            if any_error:
+                self.error_event.set()
+            else:
+                self.error_event.clear()
 
             time.sleep(0.1)
 

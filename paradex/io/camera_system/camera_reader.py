@@ -10,7 +10,10 @@ from paradex.utils.path import pc_name
 
 class CameraReader:
     """Shared memory에서 카메라 이미지를 읽어오는 클래스"""
-    
+
+    # Must match Camera.JPEG_MAX_BYTES on the writer side.
+    JPEG_MAX_BYTES = 1_000_000
+
     def __init__(self, camera_name, frame_shape=(1536, 2048, 3), timeout=5.0):
         """
         Args:
@@ -21,66 +24,140 @@ class CameraReader:
         self.name = camera_name
         self.frame_shape = frame_shape
         self.timeout = timeout
-        
+
+        # JPEG mirror — set by _connect_shared_memory(); None when the daemon
+        # is an older build that only writes raw shm (backward compat).
+        self.jpeg_buf_a = None
+        self.jpeg_buf_b = None
+        self.jlen_a = None
+        self.jlen_b = None
+        self.jpeg_shm_a = None
+        self.jpeg_shm_b = None
+        self.jlen_shm_a = None
+        self.jlen_shm_b = None
+
         self._connect_shared_memory()
     
     def _connect_shared_memory(self):
         """기존 shared memory에 연결"""
         start_time = time.time()
+        last_error = None
         
         while time.time() - start_time < self.timeout:
-            # Buffer 2개에 연결
-            self.image_shm_a = shared_memory.SharedMemory(
-                name=self.name + "_image_a"
-            )
-            unregister(self.image_shm_a._name, "shared_memory")
+            try:
+                # Buffer 2개에 연결
+                self.image_shm_a = shared_memory.SharedMemory(
+                    name=self.name + "_image_a"
+                )
+                unregister(self.image_shm_a._name, "shared_memory")
 
-            self.image_shm_b = shared_memory.SharedMemory(
-                name=self.name + "_image_b"
-            )
-            unregister(self.image_shm_b._name, "shared_memory")
-            
-            # Frame ID 2개에 연결
-            self.fid_shm_a = shared_memory.SharedMemory(
-                name=self.name + "_fid_a"
-            )
-            unregister(self.fid_shm_a._name, "shared_memory")
+                self.image_shm_b = shared_memory.SharedMemory(
+                    name=self.name + "_image_b"
+                )
+                unregister(self.image_shm_b._name, "shared_memory")
+                
+                # Frame ID 2개에 연결
+                self.fid_shm_a = shared_memory.SharedMemory(
+                    name=self.name + "_fid_a"
+                )
+                unregister(self.fid_shm_a._name, "shared_memory")
 
-            self.fid_shm_b = shared_memory.SharedMemory(
-                name=self.name + "_fid_b"
-            )
-            unregister(self.fid_shm_b._name, "shared_memory")
-            
-            # Write buffer flag에 연결
-            self.write_flag_shm = shared_memory.SharedMemory(
-                name=self.name + "_flag"
-            )
-            unregister(self.write_flag_shm._name, "shared_memory")
-            
-            # Arrays 생성
-            self.image_array_a = np.ndarray(
-                self.frame_shape, dtype=np.uint8, buffer=self.image_shm_a.buf
-            )
-            self.image_array_b = np.ndarray(
-                self.frame_shape, dtype=np.uint8, buffer=self.image_shm_b.buf
-            )
-            self.fid_array_a = np.ndarray(
-                (1,), dtype=np.int64, buffer=self.fid_shm_a.buf
-            )
-            self.fid_array_b = np.ndarray(
-                (1,), dtype=np.int64, buffer=self.fid_shm_b.buf
-            )
-            self.write_flag = np.ndarray(
-                (1,), dtype=np.uint8, buffer=self.write_flag_shm.buf
-            )
-            
+                self.fid_shm_b = shared_memory.SharedMemory(
+                    name=self.name + "_fid_b"
+                )
+                unregister(self.fid_shm_b._name, "shared_memory")
+                
+                # Write buffer flag에 연결
+                self.write_flag_shm = shared_memory.SharedMemory(
+                    name=self.name + "_flag"
+                )
+                unregister(self.write_flag_shm._name, "shared_memory")
+                
+                # Arrays 생성
+                self.image_array_a = np.ndarray(
+                    self.frame_shape, dtype=np.uint8, buffer=self.image_shm_a.buf
+                )
+                self.image_array_b = np.ndarray(
+                    self.frame_shape, dtype=np.uint8, buffer=self.image_shm_b.buf
+                )
+                self.fid_array_a = np.ndarray(
+                    (1,), dtype=np.int64, buffer=self.fid_shm_a.buf
+                )
+                self.fid_array_b = np.ndarray(
+                    (1,), dtype=np.int64, buffer=self.fid_shm_b.buf
+                )
+                self.write_flag = np.ndarray(
+                    (1,), dtype=np.uint8, buffer=self.write_flag_shm.buf
+                )
+
+            except FileNotFoundError:
+                last_error = "shared memory is not ready"
+                self._close_partial_shared_memory()
+                time.sleep(0.05)
+                continue
+            except Exception as e:
+                last_error = repr(e)
+                self._close_partial_shared_memory()
+                time.sleep(0.05)
+                continue
+
+            try:
+                # Optional: JPEG mirror. Older daemons don't publish these; skip
+                # silently so old shm layouts still work.
+                self.jpeg_shm_a = shared_memory.SharedMemory(name=self.name + "_jpeg_a")
+                unregister(self.jpeg_shm_a._name, "shared_memory")
+                self.jpeg_shm_b = shared_memory.SharedMemory(name=self.name + "_jpeg_b")
+                unregister(self.jpeg_shm_b._name, "shared_memory")
+                self.jlen_shm_a = shared_memory.SharedMemory(name=self.name + "_jlen_a")
+                unregister(self.jlen_shm_a._name, "shared_memory")
+                self.jlen_shm_b = shared_memory.SharedMemory(name=self.name + "_jlen_b")
+                unregister(self.jlen_shm_b._name, "shared_memory")
+
+                self.jpeg_buf_a = np.ndarray(
+                    (self.JPEG_MAX_BYTES,), dtype=np.uint8, buffer=self.jpeg_shm_a.buf,
+                )
+                self.jpeg_buf_b = np.ndarray(
+                    (self.JPEG_MAX_BYTES,), dtype=np.uint8, buffer=self.jpeg_shm_b.buf,
+                )
+                self.jlen_a = np.ndarray((1,), dtype=np.int32, buffer=self.jlen_shm_a.buf)
+                self.jlen_b = np.ndarray((1,), dtype=np.int32, buffer=self.jlen_shm_b.buf)
+            except FileNotFoundError:
+                # Older daemon without JPEG mirror; get_jpeg() will return None.
+                for attr in ("jpeg_shm_a", "jpeg_shm_b", "jlen_shm_a", "jlen_shm_b"):
+                    shm = getattr(self, attr, None)
+                    if shm is not None:
+                        try:
+                            shm.close()
+                        except Exception:
+                            pass
+                self.jpeg_shm_a = self.jpeg_shm_b = None
+                self.jlen_shm_a = self.jlen_shm_b = None
+                self.jpeg_buf_a = self.jpeg_buf_b = None
+                self.jlen_a = self.jlen_b = None
+
             print(f"Successfully connected to shared memory for camera: {self.name}")
             return
         
         raise RuntimeError(
             f"Failed to connect to shared memory for camera '{self.name}' "
-            f"within {self.timeout} seconds. Make sure the camera is initialized."
+            f"within {self.timeout} seconds. Make sure the camera is initialized. "
+            f"Last error: {last_error}"
         )
+
+    def _close_partial_shared_memory(self):
+        """Close any shm handles opened during a failed connection attempt."""
+        for attr in (
+            "image_shm_a", "image_shm_b", "fid_shm_a", "fid_shm_b",
+            "write_flag_shm", "jpeg_shm_a", "jpeg_shm_b",
+            "jlen_shm_a", "jlen_shm_b",
+        ):
+            shm = getattr(self, attr, None)
+            if shm is not None:
+                try:
+                    shm.close()
+                except Exception:
+                    pass
+                setattr(self, attr, None)
     
     def get_image(self, copy=True):
         """
@@ -145,6 +222,32 @@ class CameraReader:
         """현재 frame ID만 가져옴"""
         _, frame_id = self.get_image(copy=False)
         return frame_id
+
+    def get_jpeg(self):
+        """현재 읽을 수 있는 버퍼의 JPEG bytes + frame_id 반환.
+
+        Returns:
+            (bytes, frame_id): JPEG-encoded frame and its frame ID.
+            (None, frame_id): daemon이 JPEG mirror 미지원 또는 이번 frame이
+                              너무 커서 encode가 skip된 경우 (length=0).
+        """
+        if self.jpeg_buf_a is None:
+            return None, self.get_frame_id()
+
+        # Pair with the same buffer the raw path would pick.
+        if self.write_flag[0] == 0:
+            jbuf = self.jpeg_buf_b
+            jlen = int(self.jlen_b[0])
+            frame_id = int(self.fid_array_b[0])
+        else:
+            jbuf = self.jpeg_buf_a
+            jlen = int(self.jlen_a[0])
+            frame_id = int(self.fid_array_a[0])
+
+        if jlen <= 0:
+            return None, frame_id
+        # Copy out — caller may hold the bytes past the next write toggle.
+        return bytes(jbuf[:jlen]), frame_id
     
     def close(self):
         # """Shared memory 연결 해제"""
@@ -153,13 +256,21 @@ class CameraReader:
         self.fid_array_a = None
         self.fid_array_b = None
         self.write_flag = None
-        
+        self.jpeg_buf_a = None
+        self.jpeg_buf_b = None
+        self.jlen_a = None
+        self.jlen_b = None
+
         self.image_shm_a.close()
         self.image_shm_b.close()
         self.fid_shm_a.close()
         self.fid_shm_b.close()
         self.write_flag_shm.close()
-        
+        for shm in (self.jpeg_shm_a, self.jpeg_shm_b,
+                    self.jlen_shm_a, self.jlen_shm_b):
+            if shm is not None:
+                shm.close()
+
         print(f"Closed shared memory connection for camera: {self.name}")
 
 class MultiCameraReader:

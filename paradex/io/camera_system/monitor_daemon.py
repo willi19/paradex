@@ -4,7 +4,7 @@ from flask import Flask, render_template, jsonify
 from threading import Thread
 
 from paradex.utils.system import get_pc_list, get_pc_ip
-from paradex.io.capture_pc.ssh import run_script
+from paradex.io.capture_pc.ssh import cleanup_camera_processes, run_script
 
 class pc_state:
     DISCONNECTED = 0
@@ -12,7 +12,7 @@ class pc_state:
     RUNNING = 2
 
 class CameraMonitor:
-    def __init__(self, web_port=8080, ping_interval=1.0):
+    def __init__(self, web_port=8080, ping_interval=1.0, clean_remote=False):
         self.ping_port = 5480       # ping-pong
         self.monitor_port = 5481    # SUB로 상태 받기
         self.command_port = 5482    # command (사용 안 함)
@@ -33,6 +33,9 @@ class CameraMonitor:
         self.setup_routes()
         
         # 초기화
+        if clean_remote:
+            cleanup_camera_processes(self.pc_list, force=True)
+            time.sleep(0.5)
         self.initialize()
         self.setup_monitor_sockets()
         

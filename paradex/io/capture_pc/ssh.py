@@ -1,6 +1,7 @@
 import subprocess
 import json
 import os
+import shlex
 from paradex.utils.path import home_path
 from paradex.utils.system import get_pc_list, get_pc_ip
 
@@ -73,3 +74,35 @@ def run_script(script: str, pc_list = None, log=False):
             subprocess.run(ssh_cmd, shell=True, check=True)
         except subprocess.CalledProcessError as e:
             print(f"[{pc_name}] Failed: {e}")
+
+
+def cleanup_camera_processes(pc_list=None, force=True):
+    """Stop stale capture-PC camera processes before starting fresh daemons.
+
+    Restrict matching to known paradex camera entrypoints so unrelated Python
+    jobs on the capture PCs are left alone.
+    """
+    if pc_list is None:
+        pc_list = get_pc_list()
+
+    patterns = [
+        "src/camera/server_daemon.py",
+        "src/capture/camera/stream_client.py",
+    ]
+    signal = "-KILL" if force else "-TERM"
+
+    for pc_name in pc_list:
+        ip = get_pc_ip(pc_name)
+        commands = [
+            f"pkill {signal} -f -- {shlex.quote(pattern)} || true"
+            for pattern in patterns
+        ]
+        remote_cmd = " && ".join(commands)
+        ssh_cmd = [
+            "ssh", "-p", str(ssh_port), f"{pc_name}@{ip}", remote_cmd,
+        ]
+        print(f"[{pc_name}] stopping stale camera processes ...")
+        try:
+            subprocess.run(ssh_cmd, check=True)
+        except subprocess.CalledProcessError as e:
+            print(f"[{pc_name}] cleanup failed: {e}")

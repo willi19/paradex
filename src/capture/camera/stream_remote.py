@@ -1,3 +1,4 @@
+import argparse
 from threading import Event
 import time
 import cv2
@@ -8,9 +9,46 @@ from paradex.io.capture_pc.ssh import run_script
 from paradex.io.capture_pc.data_sender import DataCollector
 from paradex.io.capture_pc.command_sender import CommandSender
 from paradex.utils.keyboard_listener import listen_keyboard
+from paradex.utils.system import get_camera_list, get_pc_list
 from paradex.image.merge import merge_image
 
-run_script("python src/capture/camera/stream_client.py")
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--cameras",
+    type=str,
+    default=None,
+    help="comma-separated camera serials to display, e.g. 26053248,26053260",
+)
+parser.add_argument(
+    "--resize-divisor",
+    type=int,
+    default=8,
+    help="downsample width/height before transfer; use 4 for 512x384",
+)
+args = parser.parse_args()
+if args.resize_divisor < 1:
+    raise ValueError("--resize-divisor must be >= 1")
+selected_cameras = (
+    {serial.strip() for serial in args.cameras.split(",") if serial.strip()}
+    if args.cameras
+    else None
+)
+
+stream_cmd = (
+    "python src/capture/camera/stream_client.py "
+    f"--resize-divisor {args.resize_divisor}"
+)
+stream_pcs = None
+if selected_cameras is not None:
+    stream_cmd += f" --cameras {','.join(sorted(selected_cameras))}"
+    stream_pcs = [
+        pc for pc in get_pc_list()
+        if selected_cameras.intersection(get_camera_list(pc))
+    ]
+    if not stream_pcs:
+        raise SystemExit(f"No capture PC owns requested cameras: {sorted(selected_cameras)}")
+
+run_script(stream_cmd, pc_list=stream_pcs)
 
 rcc = remote_camera_controller("stream_main.py")
 dc = DataCollector()
@@ -28,11 +66,15 @@ rcc.start("stream", False, fps=10)
 
 img_dict = {}
 img_text = {}
+if selected_cameras is not None:
+    print(f"Displaying cameras: {sorted(selected_cameras)}")
 
 while not exit_event.is_set():        
     all_data = dc.get_data()
     print(all_data.keys())
     for item_name, item_data in all_data.items():
+        if selected_cameras is not None and item_name not in selected_cameras:
+            continue
         # Only process image type data
         if item_data.get('type') != 'image':
             continue

@@ -7,6 +7,11 @@ import os
 import traceback
 
 class Camera():
+    # JPEG shm geometry: keep MAX large enough for 2048x1536 q=85 worst case
+    # (~1 MB). Layout per buffer: [4B little-endian length | JPEG bytes ...].
+    JPEG_MAX_BYTES = 1_000_000
+    JPEG_QUALITY = 85
+
     def __init__(self, cam_type, name, frame_shape=(1536, 2048, 3)):
         self.event = {
             "start": Event(),
@@ -59,7 +64,12 @@ class Camera():
             self.name + "_image_b",
             self.name + "_fid_a",
             self.name + "_fid_b",
-            self.name + "_flag"
+            self.name + "_flag",
+            # JPEG-encoded mirror (added for low-bandwidth consumers)
+            self.name + "_jpeg_a",
+            self.name + "_jpeg_b",
+            self.name + "_jlen_a",
+            self.name + "_jlen_b",
         ]
         print("unlink existing shm if any:", shm_names)
         for shm_name in shm_names:
@@ -100,11 +110,11 @@ class Camera():
         
         # Write buffer flag (0 or 1)
         self.write_flag_shm = shared_memory.SharedMemory(
-            create=True, 
-            size=1, 
+            create=True,
+            size=1,
             name=self.name + "_flag"
         )
-        
+
         # Arrays
         self.image_array_a = np.ndarray(
             self.frame_shape, dtype=np.uint8, buffer=self.image_shm_a.buf
@@ -122,6 +132,31 @@ class Camera():
             (1,), dtype=np.uint8, buffer=self.write_flag_shm.buf
         )
         self.write_flag[0] = 0
+
+        # JPEG mirror: separate double-buffer alongside raw, sharing the same
+        # write_flag so a reader gets matched raw/JPEG for any given frame.
+        self.jpeg_shm_a = shared_memory.SharedMemory(
+            create=True, size=self.JPEG_MAX_BYTES, name=self.name + "_jpeg_a",
+        )
+        self.jpeg_shm_b = shared_memory.SharedMemory(
+            create=True, size=self.JPEG_MAX_BYTES, name=self.name + "_jpeg_b",
+        )
+        self.jlen_shm_a = shared_memory.SharedMemory(
+            create=True, size=4, name=self.name + "_jlen_a",
+        )
+        self.jlen_shm_b = shared_memory.SharedMemory(
+            create=True, size=4, name=self.name + "_jlen_b",
+        )
+        self.jpeg_buf_a = np.ndarray(
+            (self.JPEG_MAX_BYTES,), dtype=np.uint8, buffer=self.jpeg_shm_a.buf,
+        )
+        self.jpeg_buf_b = np.ndarray(
+            (self.JPEG_MAX_BYTES,), dtype=np.uint8, buffer=self.jpeg_shm_b.buf,
+        )
+        self.jlen_a = np.ndarray((1,), dtype=np.int32, buffer=self.jlen_shm_a.buf)
+        self.jlen_b = np.ndarray((1,), dtype=np.int32, buffer=self.jlen_shm_b.buf)
+        self.jlen_a[0] = 0
+        self.jlen_b[0] = 0
     
     def release_shared_memory(self):
         self.image_array_a = None
@@ -129,30 +164,39 @@ class Camera():
         self.fid_array_a = None
         self.fid_array_b = None
         self.write_flag   = None
+        self.jpeg_buf_a = None
+        self.jpeg_buf_b = None
+        self.jlen_a = None
+        self.jlen_b = None
 
-        self.image_shm_a.close()
-        self.image_shm_a.unlink()
-        
-        self.image_shm_b.close()
-        self.image_shm_b.unlink()
-        
-        self.fid_shm_a.close()
-        self.fid_shm_a.unlink()
-        
-        self.fid_shm_b.close()
-        self.fid_shm_b.unlink()
-        
-        self.write_flag_shm.close()
-        self.write_flag_shm.unlink()
+        for attr in (
+            "image_shm_a", "image_shm_b", "fid_shm_a", "fid_shm_b",
+            "write_flag_shm", "jpeg_shm_a", "jpeg_shm_b",
+            "jlen_shm_a", "jlen_shm_b",
+        ):
+            shm = getattr(self, attr, None)
+            if shm is None:
+                continue
+            try:
+                shm.close()
+            except Exception:
+                pass
+            try:
+                shm.unlink()
+            except FileNotFoundError:
+                pass
+            setattr(self, attr, None)
         print(f"[INFO] Camera {self.name} shared memory released.")
-        
+
     def clear_shared_memory(self):
         self.fid_array_a[0] = 0
         self.fid_array_b[0] = 0
         self.write_flag[0] = 0
-        
+
         self.image_array_a.fill(0)
         self.image_array_b.fill(0)
+        self.jlen_a[0] = 0
+        self.jlen_b[0] = 0
 
     def _resolve_video_path(self, save_path):
         """Resolve a save_path (dir or file) to a concrete .avi file path."""
@@ -381,14 +425,32 @@ class Camera():
                     rec_prev_fid = current_frame_id
 
                 if stream:
+                    # Encode once; raw + JPEG share the same flag toggle so
+                    # downstream readers always see a matched (raw, jpeg) pair.
+                    ok, jpg = cv2.imencode(
+                        '.jpg', frame,
+                        [cv2.IMWRITE_JPEG_QUALITY, self.JPEG_QUALITY],
+                    )
+                    jlen = int(jpg.size) if ok else 0
+                    if jlen > self.JPEG_MAX_BYTES:
+                        # Bigger than the slot — keep raw only, clear length so
+                        # readers skip this frame on the JPEG path.
+                        jlen = 0
+
                     # Write to shared memory
                     if self.write_flag[0] == 0:
                         np.copyto(self.image_array_a, frame)
                         self.fid_array_a[0] = current_frame_id
+                        if jlen > 0:
+                            self.jpeg_buf_a[:jlen] = jpg.reshape(-1)
+                        self.jlen_a[0] = jlen
                         self.write_flag[0] = 1
                     else:
                         np.copyto(self.image_array_b, frame)
                         self.fid_array_b[0] = current_frame_id
+                        if jlen > 0:
+                            self.jpeg_buf_b[:jlen] = jpg.reshape(-1)
+                        self.jlen_b[0] = jlen
                         self.write_flag[0] = 0
 
                 self.last_frame_id = current_frame_id
@@ -408,16 +470,27 @@ class Camera():
                 self.event["error_reset"].wait()
                 break
 
-        self.camera.stop()
-        self.event["acquisition"].clear()
+        try:
+            self.camera.stop()
+        except Exception as e:
+            self.event["error"].set()
+            self.event["error_reset"].clear()
+            self.last_error = str(e)
+            self.last_traceback = traceback.format_exc()
+            print(f"[ERROR] Camera {self.name} exception occurred during stop:")
+            print(f"Exception Type: {type(e).__name__}")
+            print(f"Exception Message: {str(e)}")
+            print(self.last_traceback)
+        finally:
+            self.event["acquisition"].clear()
 
-        if stream:
-            self.clear_shared_memory()
+            if stream:
+                self.clear_shared_memory()
 
-        _close_writer(video_writer)
-        video_writer = None
+            _close_writer(video_writer)
+            video_writer = None
 
-        self.event["stop"].set()
+            self.event["stop"].set()
     
     def single_acquire(self):
         self.camera.start("single", self.syncMode)

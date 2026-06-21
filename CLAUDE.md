@@ -110,6 +110,31 @@ capture = CaptureSession(camera=True, arm="xarm", hand="allegro", teleop="xsens"
 Detailed API references are stored in Claude's memory directory (`~/.claude/projects/.../memory/`):
 - `visualization.md` — ViserViewer, RobotModule, Open3DVideoRenderer, skeleton visualizers
 
+## When doing X, look at Y (task map)
+
+Every `src/<app>/` leaf dir has a `CLAUDE.md` (orientation for you) + `README.md` (run steps for humans). Use this map to jump to the right one.
+
+| If the task is... | Start here | Notes |
+|-------------------|-----------|-------|
+| Calibrate cameras (extrinsic) | [`src/calibration/extrinsic/`](src/calibration/extrinsic/CLAUDE.md) | Charuco + COLMAP; needs intrinsic first. `capture.py` (main PC) → `calculate.py`. |
+| Calibrate camera→robot (hand-eye) | [`src/calibration/handeye/`](src/calibration/handeye/CLAUDE.md) | Tsai-Lenz AX=XB; needs extrinsic first. Produces `C2R.npy`. |
+| Calibrate xArm kinematics | [`src/calibration/`](src/calibration/CLAUDE.md) | `xarm_kinematic_calibration.py` patches URDFs from live arm. |
+| Capture images/video/stream | [`src/capture/camera/`](src/capture/camera/CLAUDE.md) | Main-PC `*_remote.py` drives capture-PC daemons in [`src/camera/`](src/camera/CLAUDE.md). |
+| Run camera daemons on capture PCs | [`src/camera/`](src/camera/CLAUDE.md) | `server_daemon.py` must be up before any orchestrator connects. |
+| Capture robot demos (teleop/teaching) | [`src/capture/robot/`](src/capture/robot/CLAUDE.md) | XSens teleop or manual xArm teaching. |
+| Build a labeled dataset | [`src/dataset_acquisition/`](src/dataset_acquisition/CLAUDE.md) | Pick the pipeline (graphics/motion_blur/hri/miyungpa/object_turntable); built on `CaptureSession`. |
+| Post-process captured data | [`src/process/`](src/process/CLAUDE.md) | `miyungpa` (sync+overlay+contact), `object_turntable` (COLMAP). Some files have known bugs — see their docs. |
+| Estimate 6D object pose | [`src/object6d/`](src/object6d/CLAUDE.md) | LoFTR/template matching; needs external `_object_6d_tracking`. |
+| Run grasp inference/eval | [`src/inference/`](src/inference/CLAUDE.md) | 6D pose → grasp → IK → execute. Watch for scratch `asdf.py` files. |
+| Validate a subsystem | [`src/validate/`](src/validate/CLAUDE.md) | Smoke tests for cameras/sync/robots/teleop; mirror `paradex.io`. |
+| Make charuco boards | [`src/util/marker/`](src/util/marker/CLAUDE.md) | Printable A4 PDFs. |
+| Register an object's markers | [`src/util/register_object/`](src/util/register_object/CLAUDE.md) | Produces `marker_offset` table for 6D pose. |
+| Merge/replay/visualize a robot URDF | [`src/util/robot/`](src/util/robot/CLAUDE.md) | URDF merge, Viser replay. |
+| Upload/undistort raw video | [`src/util/upload_video/`](src/util/upload_video/CLAUDE.md) | Distributed; dashboard on main PC. |
+
+Full application index: [`src/README.md`](src/README.md) / [`src/CLAUDE.md`](src/CLAUDE.md).
+Generated API reference (Sphinx): [`docs/index.html`](docs/index.html). Project landing page: [`index.html`](index.html).
+
 ## Important Notes
 - Calibration order: intrinsic -> extrinsic -> handeye_calibration
 - Camera serial numbers are string keys everywhere

@@ -26,6 +26,10 @@ from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
 from paradex.calibration.utils import get_handeye_calib_traj, handeye_calib_path_openarm, save_current_camparam
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
 from paradex.utils.file_io import remove_home
+from paradex.utils.system import get_pc_list
+
+EXCLUDED_PCS = {"capture12"}
+pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
 
 
 def str2bool(value: str | bool) -> bool:
@@ -422,7 +426,7 @@ def main() -> None:
     root_dir = os.path.join(handeye_calib_path_openarm, datetime.now().strftime("%Y%m%d_%H%M%S"))
     os.makedirs(root_dir, exist_ok=True)
 
-    rcc = remote_camera_controller("handeye_calibration")
+    rcc = remote_camera_controller("handeye_calibration", pc_list=pc_list)
     save_current_camparam(os.path.join(root_dir, "0"))
 
     args.root_dir = root_dir

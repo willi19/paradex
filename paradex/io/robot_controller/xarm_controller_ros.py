@@ -7,6 +7,7 @@ from scipy.spatial.transform import Rotation
 import transforms3d as t3d
 
 import rclpy
+from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
 from sensor_msgs.msg import JointState
 from xarm_msgs.srv import GetFloat32List, MoveCartesian, SetInt16
@@ -48,6 +49,23 @@ def homo2aa(h):
     return np.concatenate([t, axis * angle])
 
 
+_shared_executor = None
+_shared_executor_thread = None
+_shared_executor_lock = Lock()
+
+
+def _ensure_shared_executor():
+    global _shared_executor, _shared_executor_thread
+    with _shared_executor_lock:
+        if _shared_executor is None:
+            _shared_executor = MultiThreadedExecutor(num_threads=4)
+            _shared_executor_thread = Thread(
+                target=_shared_executor.spin, daemon=True
+            )
+            _shared_executor_thread.start()
+        return _shared_executor
+
+
 class XArmControllerROS(Node):
     def __init__(
         self,
@@ -57,6 +75,8 @@ class XArmControllerROS(Node):
         record_fps=135,
         is_tool_coord=False,
         servo_api="cartesian_aa",
+        namespace=None,
+        track_action_qpos=False,
     ):
         del ip  # kept for compatibility with existing network_info schema
 
@@ -66,11 +86,19 @@ class XArmControllerROS(Node):
         else:
             self._owns_rclpy = False
 
-        super().__init__("xarm_controller_ros")
+        self.namespace = namespace.strip("/") if namespace else None
+        node_name = (
+            f"xarm_controller_ros_{self.namespace}" if self.namespace else "xarm_controller_ros"
+        )
+        super().__init__(node_name)
 
         self.fps = float(fps)
         self.save_fps = float(record_fps)
         self.is_tool_coord = bool(is_tool_coord)
+        # When True, control_loop calls get_servo_angle after every cartesian
+        # servo command to record action_qpos. Off by default to keep the
+        # control loop tight (one fewer ROS service call per iteration).
+        self.track_action_qpos = bool(track_action_qpos)
         self.servo_api = str(servo_api).strip().lower()
         if self.servo_api not in ("cartesian_aa", "angle_j"):
             self.get_logger().warning(
@@ -80,7 +108,10 @@ class XArmControllerROS(Node):
         self._warned_joint_fallback = False
         self._warned_pose_in_joint_mode = False
         self.hw_ns = hw_ns.strip("/")
-        base = f"/{self.hw_ns}"
+        if self.namespace:
+            base = f"/{self.namespace}/{self.hw_ns}"
+        else:
+            base = f"/{self.hw_ns}"
 
         self.lock = Lock()
         self.exit_event = Event()
@@ -92,6 +123,7 @@ class XArmControllerROS(Node):
         self.latest_qpos = None
         self.latest_qvel = None
         self.latest_torque = None
+        self.latest_action_qpos = None
         self.latest_joint_time = None
         self.last_pose_homo = np.eye(4, dtype=np.float64)
         self.latest_pose_time = None
@@ -117,8 +149,8 @@ class XArmControllerROS(Node):
                 RobotMsg, f"{base}/robot_states", self._robot_state_cb, 10
             )
 
-        self.spin_thread = Thread(target=self._spin, daemon=True)
-        self.spin_thread.start()
+        executor = _ensure_shared_executor()
+        executor.add_node(self)
 
         self.reset()
         self.connect_event.set()
@@ -127,12 +159,6 @@ class XArmControllerROS(Node):
         self.control_thread.start()
         self.record_thread = Thread(target=self.record_loop, daemon=True)
         self.record_thread.start()
-
-    def _spin(self):
-        try:
-            rclpy.spin(self)
-        except Exception:
-            self.error_event.set()
 
     def _joint_state_cb(self, msg):
         with self.lock:
@@ -153,6 +179,7 @@ class XArmControllerROS(Node):
             (self.cli_set_mode, "set_mode"),
             (self.cli_set_state, "set_state"),
             (self.cli_get_position, "get_position"),
+            (self.cli_get_servo_angle, "get_servo_angle"),
             (self.cli_set_servo_cart_aa, "set_servo_cartesian_aa"),
         ]
         if self.cli_set_servo_angle_j is not None:
@@ -163,10 +190,9 @@ class XArmControllerROS(Node):
 
     def _call_sync(self, client, req, timeout_sec=1.0):
         future = client.call_async(req)
-        deadline = time.time() + float(timeout_sec)
-        while rclpy.ok() and time.time() < deadline and not future.done():
-            time.sleep(0.001)
-        if not future.done():
+        done_event = Event()
+        future.add_done_callback(lambda _f: done_event.set())
+        if not done_event.wait(timeout=float(timeout_sec)):
             return None
         return future.result()
 
@@ -190,9 +216,11 @@ class XArmControllerROS(Node):
         if res_pos is None or res_pos.ret != 0 or len(res_pos.datas) < 6:
             raise RuntimeError("get_position failed")
 
+        action_qpos = self._get_servo_angle()
         with self.lock:
             self.last_pose_homo = cart2homo(np.asarray(res_pos.datas[:6], dtype=np.float64))
             self.action = self.last_pose_homo.copy()
+            self.latest_action_qpos = action_qpos
 
     def _send_servo_aa(self, aa):
         req = MoveCartesian.Request()
@@ -215,6 +243,13 @@ class XArmControllerROS(Node):
         if hasattr(req, "radius"):
             req.radius = 0.0
         return self._call_sync(self.cli_set_servo_angle_j, req, timeout_sec=0.3)
+
+    def _get_servo_angle(self):
+        req = GetFloat32List.Request()
+        res = self._call_sync(self.cli_get_servo_angle, req, timeout_sec=0.3)
+        if res is None or res.ret != 0 or len(res.datas) < 6:
+            return None
+        return np.asarray(res.datas[:6], dtype=np.float64)
 
     def control_loop(self):
         while not self.exit_event.is_set():
@@ -261,6 +296,19 @@ class XArmControllerROS(Node):
             elif res.ret != 0:
                 self.get_logger().warning(f"{cmd_name} ret={res.ret}, msg={res.message}")
                 self.error_event.set()
+            else:
+                if use_joint_servo:
+                    action_qpos = aa.copy()
+                elif self.track_action_qpos:
+                    action_qpos = self._get_servo_angle()
+                    if action_qpos is None:
+                        self.get_logger().warning("get_servo_angle timeout/failed after servo command")
+                        self.error_event.set()
+                else:
+                    action_qpos = None
+                if action_qpos is not None:
+                    with self.lock:
+                        self.latest_action_qpos = action_qpos.copy()
 
             elapsed = time.perf_counter() - start_time
             time.sleep(max(0.0, (1.0 / self.fps) - elapsed))
@@ -274,6 +322,7 @@ class XArmControllerROS(Node):
                 qpos = None if self.latest_qpos is None else self.latest_qpos.copy()
                 qvel = None if self.latest_qvel is None else self.latest_qvel.copy()
                 torque = None if self.latest_torque is None else self.latest_torque.copy()
+                action_qpos = None if self.latest_action_qpos is None else self.latest_action_qpos.copy()
                 sample_time = self.latest_joint_time if self.latest_joint_time is not None else time.time()
                 action = self.action.copy()
 
@@ -298,7 +347,9 @@ class XArmControllerROS(Node):
                     )
                     self.data["action"].append(action_homo.copy())
                     self.data["action_qpos"].append(
-                        qpos.copy() if qpos is not None else np.full(6, np.nan, dtype=np.float64)
+                        action_qpos.copy()
+                        if action_qpos is not None
+                        else np.full(6, np.nan, dtype=np.float64)
                     )
 
             elapsed = time.perf_counter() - start_time
@@ -342,10 +393,15 @@ class XArmControllerROS(Node):
         if self.save_event.is_set():
             self.stop()
 
+        global _shared_executor
+        if _shared_executor is not None:
+            try:
+                _shared_executor.remove_node(self)
+            except Exception:
+                pass
         self.destroy_node()
         if self._owns_rclpy and rclpy.ok():
             rclpy.shutdown()
-        self.spin_thread.join(timeout=2.0)
 
     def move(self, action, is_servo=True):
         del is_servo  # kept for compatibility with the legacy controller signature

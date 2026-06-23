@@ -35,34 +35,18 @@ def load_series(data_dir: str, candidates: Tuple[str, ...]) -> Tuple[np.ndarray,
 
 
 
-# def resample_to(times_src: np.ndarray, data_src: np.ndarray, times_dst: np.ndarray) -> np.ndarray:
-#     # Simple per-joint linear interpolation onto destination timestamps.
-#     if data_src.shape[0] == times_dst.shape[0] and np.allclose(times_src, times_dst):
-#         return data_src
-#     order = np.argsort(times_src)
-#     times_src = times_src[order]
-#     data_src = data_src[order]
-#     out = np.zeros((times_dst.shape[0], data_src.shape[1]), dtype=float)
-#     for j in range(data_src.shape[1]):
-#         out[:, j] = np.interp(times_dst, times_src, data_src[:, j])
-#     return out
-
-def resample_to(data_times, data, pc_times):
-    """
-    2-pointer 방식으로 pc_times와 가장 가까운 data_times의 데이터를 매칭
-    """
-    synced_data = []
-    n = len(pc_times)
-    m = len(data_times)
-
-    i = 0  # pc_times pointer
-    j = 0  # data_times pointer
-
-    while i < n:
-        # data_times[j]가 pc_time[i]보다 작으면 j를 앞으로
-        while j + 1 < m and abs(data_times[j + 1] - pc_times[i]) <= abs(data_times[j] - pc_times[i]):
-            j += 1
-        synced_data.append(data[j])
-        i += 1
-
-    return np.array(synced_data)
+def resample_to(times_src: np.ndarray, data_src: np.ndarray, times_dst: np.ndarray) -> np.ndarray:
+    """Linear interpolation onto destination timestamps."""
+    if data_src.shape[0] == times_dst.shape[0] and np.allclose(times_src, times_dst):
+        return data_src
+    times_src = np.asarray(times_src, dtype=float)
+    times_dst = np.asarray(times_dst, dtype=float)
+    data_src = np.asarray(data_src, dtype=float)
+    order = np.argsort(times_src)
+    times_src = times_src[order]
+    data_src = data_src[order]
+    flat = data_src.reshape(data_src.shape[0], -1)
+    out = np.zeros((times_dst.shape[0], flat.shape[1]), dtype=float)
+    for j in range(flat.shape[1]):
+        out[:, j] = np.interp(times_dst, times_src, flat[:, j])
+    return out.reshape((times_dst.shape[0],) + data_src.shape[1:])

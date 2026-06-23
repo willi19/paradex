@@ -40,7 +40,11 @@ class ViserViewer():
         self.server.gui.configure_theme(dark_mode=True)
 
         self.server.scene.set_up_direction(self.up_direction)
-        # self.server.scene.set_background_color((255, 255, 255))
+        # client.get_render() returns just the 3D scene; without a backdrop the
+        # output uses a white default. Push a uniform dark image as the scene
+        # background so renders match the interactive dark theme.
+        dark = np.full((2, 2, 3), 25, dtype=np.uint8)
+        self.server.scene.set_background_image(dark)
         self.server.scene.world_axes
 
         @self.server.on_client_connect

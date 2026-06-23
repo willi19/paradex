@@ -10,9 +10,12 @@ from paradex.calibration.utils import save_current_camparam, handeye_calib_path,
 from paradex.io.capture_pc.ssh import run_script
 from paradex.io.capture_pc.data_sender import DataCollector
 from paradex.io.capture_pc.command_sender import CommandSender
-from paradex.utils.system import network_info
+from paradex.utils.system import network_info, get_pc_list
 from paradex.utils.path import shared_dir
 from paradex.utils.file_io import remove_home
+
+EXCLUDED_PCS = {}
+pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -22,7 +25,7 @@ if __name__ == "__main__":
     name = network_info[args.arm]["name"]
     if name == "xarm":
         from paradex.io.robot_controller.xarm_controller import XArmController
-        controller = XArmController(**network_info["xarm"]["param"])
+        controller = XArmController(ip=network_info["xarm"]["param"]["ip"])
     else:
         raise NotImplementedError(f"Robot controller for {name} is not implemented.")
     
@@ -30,7 +33,7 @@ if __name__ == "__main__":
     root_name = os.path.basename(root_dir)
     os.makedirs(root_dir, exist_ok=True)
     
-    rcc = remote_camera_controller("handeye_calibration")
+    rcc = remote_camera_controller("handeye_calibration", pc_list=pc_list)
     save_current_camparam(os.path.join(root_dir, "0"))
     file_list = [file_name for file_name in os.listdir(get_handeye_calib_traj(args.arm)) if "_qpos" in file_name]
     file_list.sort(key=lambda x: int(x.split("_")[0]))

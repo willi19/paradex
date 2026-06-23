@@ -232,13 +232,13 @@ class InspireControllerIP:
             return self.read_all_tactile()
         
     def move_hand(self):
-        self.fps = 100
+        self.fps = 50
         # self.open_modbus()
         self.hand_lock = Lock()
 
-        # self.write6('speedSet', [1000, 1000, 1000, 1000, 1000, 1000])
-        # self.write6('forceSet', [500, 500, 500, 500, 500, 500])
-        # self.write6('angleSet', [1000, 1000, 1000, 1000, 1000, 1000])
+        # self.write6('speedSet', [1000, 1000, 1000, 1000, 500])
+        # self.write6('angleSet', [1000, 1000, 1000, 1000,  1000, 1000])
+        # self.write6('forceSet', [500, 500, 500, 500, 500,1000, 1000])
         
         # self.write_register(1009, 1)
         # while True:

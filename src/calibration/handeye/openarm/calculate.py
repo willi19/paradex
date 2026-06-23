@@ -19,6 +19,21 @@ from paradex.transforms.conversion import SOLVE_XA_B
 from paradex.visualization.robot import RobotModule
 
 
+EXCLUDED_SERIALS = {
+    "25452066",
+    "25452062",
+    # capture12 (excluded due to PC issue)
+    "23022639",
+    "22684737",
+    "23173282",
+    "22684210",
+}
+
+
+def _filter_serials(images):
+    return {s: img for s, img in images.items() if s not in EXCLUDED_SERIALS}
+
+
 def _str2bool(v):
     if isinstance(v, bool):
         return v
@@ -112,9 +127,11 @@ def undistort_and_detect_charuco(name, side, intrinsic, extrinsic):
         os.makedirs(os.path.join(root_dir, index, "undistort", "images"), exist_ok=True)
         if img_dict is None:
             img_dict = ImageDict.from_path(os.path.join(root_dir, index))
+            img_dict.images = _filter_serials(img_dict.images)
             img_dict.set_camparam(intrinsic, extrinsic)
         else:
             img_dict.update_path(os.path.join(root_dir, index))
+            img_dict.images = _filter_serials(img_dict.images)
             img_dict.set_camparam(intrinsic, extrinsic)
         
         print(f"Undistorting and detecting charuco for index {index}...")
@@ -268,9 +285,11 @@ def debug(name, arm, side, eef_link, robot_wrt_cam_world):
         
         if img_dict is None:
             img_dict = ImageDict.from_path(os.path.join(root_dir, index, "undistort"))
+            img_dict.images = _filter_serials(img_dict.images)
             img_dict.set_camparam(intrinsic, extrinsic)
         else:
             img_dict.update_path(os.path.join(root_dir, index, "undistort"))
+            img_dict.images = _filter_serials(img_dict.images)
         
         qpos = np.load(os.path.join(root_dir, index, "qpos.npy"))
         # qpos = np.load(f"./system/current/hecalib/openarm/temp/{int(index) + 1}_qpos.npy")

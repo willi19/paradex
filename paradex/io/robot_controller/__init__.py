@@ -8,15 +8,15 @@ def get_arm(arm_name, **kwargs):
         # from .xarm_controller import XArmController
         # return XArmController(**network_info[arm_name]["param"])
         from .xarm_controller_ros import XArmControllerROS
-        return XArmControllerROS(**network_info["xarm"]["param"], **kwargs)
+        return XArmControllerROS(**{**network_info["xarm"]["param"], **kwargs})
     if arm_name == "xarm_ik":
         from .xarm_controller_ros_ik import XArmControllerROSIK
-        return XArmControllerROSIK(**network_info["xarm"]["param"], **kwargs)
+        return XArmControllerROSIK(**{**network_info["xarm"]["param"], **kwargs})
     if arm_name == "openarm":
         from .openarm_state_receiver import OpenArmStateReceiver
         return OpenArmStateReceiver()
 
-def get_hand(hand_name, tactile = False, ip = False):
+def get_hand(hand_name, tactile = False, ip = False, hand_side="right"):
     if hand_name == "inspire":
         if ip:
             from .deprecated.inspire_controller_ip import InspireControllerIP
@@ -29,11 +29,15 @@ def get_hand(hand_name, tactile = False, ip = False):
             # from .inspire_f1_controller import InspireF1Controller
             # return InspireF1Controller(**network_info["inspire_f1"]["param"], tactile=tactile)
         from .inspire_f1_state_receiver import InspireF1Controller
-        return InspireF1Controller(hand_side="right")
+        return InspireF1Controller(hand_side=hand_side)
         
     if hand_name == "allegro":
         from .allegro_controller_ros2 import AllegroController
         return AllegroController(**network_info[hand_name]["param"])
+
+    if hand_name == "allegro_v5":
+        from .allegro_v5_controller_ros2 import AllegroController
+        return AllegroController(hand_side=hand_side, tactile=tactile)
 
     if hand_name == "kistar":
         from .kistarcontroller import KistarController

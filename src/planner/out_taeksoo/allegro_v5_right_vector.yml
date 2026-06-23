@@ -1,0 +1,8 @@
+retargeting:
+  type: vector
+  urdf_path: allegro_v5_right.urdf
+  target_origin_link_names: [palm_link, palm_link, palm_link, palm_link]
+  target_task_link_names: [link_15_0_tip, link_3_0_tip, link_7_0_tip, link_11_0_tip]
+  scaling_factor: 1.1
+  target_link_human_indices: [[9, 9, 9, 9], [4, 8, 12, 16]]
+  low_pass_alpha: 0.2

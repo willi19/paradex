@@ -17,8 +17,13 @@ from paradex.transforms.conversion import SOLVE_XA_B
 from paradex.visualization.robot import RobotModule
 
 EXCLUDED_SERIALS = {
-    "25452066",
-    "25452062",
+    # "25452066",
+    # "25452062",
+    # # capture12 (excluded due to PC issue)
+    # "23022639",
+    # "22684737",
+    # "23173282",
+    # "22684210",
 }
 
 

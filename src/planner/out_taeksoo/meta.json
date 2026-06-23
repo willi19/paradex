@@ -1,0 +1,44 @@
+{
+  "bundle": "src/planner/collab_bundle/predictions.npz",
+  "source_serial": "23029839",
+  "calib_name": null,
+  "T": 81,
+  "world_from_cam0": [
+    [
+      0.9988551879227918,
+      0.0370919919217528,
+      0.03020757678134399,
+      0.07915366208414185
+    ],
+    [
+      -0.03710239263148651,
+      0.9993114457783993,
+      -0.00021632684627846576,
+      0.31618481899620354
+    ],
+    [
+      -0.030194801220461486,
+      -0.000904694181494979,
+      0.9995436236141446,
+      -0.12967345438818448
+    ],
+    [
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  ],
+  "sides": {
+    "right": {
+      "qpos": "qpos_right.npy",
+      "joint_names": "joint_names_right.json",
+      "joints_world": "joints_world_right.npy",
+      "verts_world": "verts_world_right.npy",
+      "faces": "faces_right.npy",
+      "valid": "valid_right.npy",
+      "n_valid": 81,
+      "n_dof": 16
+    }
+  }
+}

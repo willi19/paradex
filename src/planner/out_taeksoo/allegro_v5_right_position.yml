@@ -1,0 +1,6 @@
+retargeting:
+  type: position
+  urdf_path: allegro_v5_right.urdf
+  target_link_names: [palm_link, link_15_0_tip, link_3_0_tip, link_7_0_tip, link_11_0_tip]
+  target_link_human_indices: [9, 4, 8, 12, 16]
+  low_pass_alpha: 0.2

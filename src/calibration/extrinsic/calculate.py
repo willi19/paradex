@@ -15,8 +15,13 @@ from paradex.calibration.utils import cam_param_dir, extrinsic_dir, load_current
 from paradex.image.image_dict import ImageDict
 
 EXCLUDED_SERIALS = {
-    "25452066",
-    "25452062",
+    # "25452066",
+    # "25452062",
+    # capture12 (excluded due to PC issue)
+    # "23022639",
+    # "22684737",
+    # "23173282",
+    # "22684210",
 }
 
 

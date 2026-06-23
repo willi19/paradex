@@ -29,7 +29,7 @@ save_id = {name:0 for name in reader.camera_names}
 
 while not exit_event.is_set():
     images_data = reader.get_images(copy=False)
-    
+
     meta_data = []
     binary_data = []
 

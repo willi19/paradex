@@ -12,23 +12,28 @@ from paradex.image.merge import merge_image
 from paradex.image.overlay import overlay_mask
 from paradex.calibration.utils import extrinsic_dir
 from paradex.image.aruco import draw_charuco
+from paradex.utils.system import get_pc_list
+
+EXCLUDED_PCS = {}
+pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
 
 BOARD_COLORS = [
-    (0, 0, 255), 
+    (0, 0, 255),
     (0, 255, 0)
 ]
 
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
 
-run_script("python src/calibration/extrinsic/client.py")
+rcc = remote_camera_controller("extrinsic_calibration", pc_list=pc_list)
+rcc.start("stream", False, fps=30)
 
-rcc = remote_camera_controller("extrinsic_calibration")
-dc = DataCollector()
+run_script("python src/calibration/extrinsic/client.py", pc_list=pc_list, log=True)
+
+dc = DataCollector(pc_list=pc_list)
 dc.start()
 
-cs = CommandSender()
-rcc.start("stream", False, fps=30)
+cs = CommandSender(pc_list=pc_list)
 
 saved_corner_img = {}# serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
 saved_corner_mask = {}

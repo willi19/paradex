@@ -24,6 +24,31 @@ from paradex.robot.inspire import inspire_action_to_qpos, inspire_f1_action_to_q
 logging.getLogger("yourdfpy.urdf").setLevel(logging.ERROR)
 
 
+def oneeuro_filter(x: np.ndarray, t: np.ndarray,
+                   min_cutoff: float = 1.0, beta: float = 0.007,
+                   dcutoff: float = 1.0) -> np.ndarray:
+    # x: [T, D], t: [T]. Per-dof One-Euro filter.
+    x = np.asarray(x, dtype=float)
+    t = np.asarray(t, dtype=float).reshape(-1)
+    assert x.shape[0] == t.shape[0] and x.ndim == 2
+    T, D = x.shape
+    out = np.empty_like(x)
+    out[0] = x[0]
+    dx_prev = np.zeros(D, dtype=float)
+    two_pi = 2.0 * np.pi
+    for i in range(1, T):
+        dt = max(float(t[i] - t[i - 1]), 1e-6)
+        # derivative estimate + smoothing
+        dx = (x[i] - out[i - 1]) / dt
+        a_d = 1.0 / (1.0 + 1.0 / (two_pi * dcutoff * dt))
+        dx_hat = a_d * dx + (1.0 - a_d) * dx_prev
+        cutoff = min_cutoff + beta * np.abs(dx_hat)
+        a = 1.0 / (1.0 + 1.0 / (two_pi * cutoff * dt))
+        out[i] = a * x[i] + (1.0 - a) * out[i - 1]
+        dx_prev = dx_hat
+    return out
+
+
 KISTAR_JOINT_ENCODER_LIMITS = np.array(
     [
         (0.0, 4096.0),      # J00
@@ -847,6 +872,22 @@ def _set_robot_arm_visibility(vis: ViserViewer, robot_name: str, visible: bool) 
             mesh_handle.visible = visible
 
 
+def _remove_robot_arm_meshes(vis: ViserViewer, robot_name: str) -> None:
+    robot = vis.robot_dict.get(robot_name)
+    if robot is None or not hasattr(robot, "_meshes"):
+        return
+
+    arm_mesh_files = {"base.obj", "link1.obj", "link2.obj", "link3.obj", "link4.obj", "link5.obj", "link6.obj"}
+    to_remove = []
+    for mesh_name, mesh_handle in robot._meshes.items():
+        mesh_file = mesh_name.rsplit("/", 1)[-1]
+        if mesh_file in arm_mesh_files:
+            mesh_handle.remove()
+            to_remove.append(mesh_name)
+    for k in to_remove:
+        del robot._meshes[k]
+
+
 def _set_robot_hand_opacity(vis: ViserViewer, robot_name: str, opacity: float) -> None:
     robot = vis.robot_dict.get(robot_name)
     if robot is None or not hasattr(robot, "_meshes"):
@@ -963,8 +1004,8 @@ def compute_contact_arrow(tm, vids):
 def make_arrow_mesh(start, direction, length, color_rgba):
     if length < 1e-6:
         return None
-    shaft_radius = 0.005
-    head_radius = 0.006
+    shaft_radius = 0.002
+    head_radius = 0.003
     shaft_height = length * 0.7
     head_height = length * 0.35
     shaft = trimesh.creation.cylinder(radius=shaft_radius, height=shaft_height)
@@ -1028,8 +1069,10 @@ def main():
     
     parser.add_argument("--object-mesh", type=str, default=None, help="Mesh file for the object.")
     parser.add_argument("--visualize-object", action="store_true")
+    parser.add_argument("--use-refine", action="store_true", help="Use sequence_refine_output/refined_world_poses/pose_XXXXXX.txt per-frame poses.")
     parser.add_argument("--fix-object-position", action="store_true")
     parser.add_argument("--object-pos-path", default=None)
+    parser.add_argument("--canonical-hand", action="store_true", help="Show hand only at canonical (zero) qpos with tactile arrows.")
     parser.add_argument("--transparent-robot", action="store_true")
     parser.add_argument("--hand-alpha", type=float, default=1.0, help="Hand mesh opacity [0,1].")
     
@@ -1044,6 +1087,31 @@ def main():
     parser.add_argument("--end-frame", type=int, default=-1, help="Inclusive end frame id on the master timeline. <0 means no upper bound.")
     parser.add_argument("--arm_time_offset", type=float, default=0.28)
     parser.add_argument("--tactile_time_offset", type=float, default=0.0)
+    parser.add_argument("--use-refined", action="store_true",
+                        help="Shortcut: enable both --use-refined-arm and --use-refined-hand.")
+    parser.add_argument("--use-refined-arm", action="store_true",
+                        help="Use frame-aligned arm qpos from <capture_root>/processed/arm/position.npy (skips arm resample and arm_time_offset).")
+    parser.add_argument("--refined-arm-path", type=str, default=None,
+                        help="Override path to refined arm position.npy. Defaults to <capture_root>/processed/arm/position.npy.")
+    parser.add_argument("--use-refined-hand", action="store_true",
+                        help="Use frame-aligned hand qpos from <capture_root>/processed/hand/position.npy (skips hand resample).")
+    parser.add_argument("--refined-hand-path", type=str, default=None,
+                        help="Override path to refined hand position.npy. Defaults to <capture_root>/processed/hand/position.npy.")
+    parser.add_argument("--smooth-arm", type=str, default="none",
+                        choices=["none", "savgol", "gaussian", "oneeuro"],
+                        help="Temporal smoothing applied to refined arm qpos for visualization.")
+    parser.add_argument("--oneeuro-min-cutoff", type=float, default=4.0,
+                        help="OneEuro min_cutoff (Hz). Lower => stronger smoothing at low speeds.")
+    parser.add_argument("--oneeuro-beta", type=float, default=0.05,
+                        help="OneEuro beta. Higher => less lag on fast motion.")
+    parser.add_argument("--oneeuro-dcutoff", type=float, default=1.0,
+                        help="OneEuro derivative cutoff (Hz).")
+    parser.add_argument("--smooth-window", type=int, default=9,
+                        help="Savgol window length (odd) or gaussian truncation window.")
+    parser.add_argument("--smooth-polyorder", type=int, default=2,
+                        help="Savgol polynomial order.")
+    parser.add_argument("--smooth-sigma", type=float, default=1.5,
+                        help="Gaussian sigma (frames).")
     
     parser.add_argument("--show-cameras", type=str2bool, default=True, help="Show camera frustums in the same scene.")
     parser.add_argument("--camera-ids", type=str, default=None, help="Comma-separated camera IDs to visualize.")
@@ -1068,6 +1136,10 @@ def main():
     parser.add_argument("--gaussian-max-points", type=int, default=150000, help="Max points per gaussian frame (0 means no limit).")
     args = parser.parse_args()
     object_name = args.object
+
+    if args.use_refined:
+        args.use_refined_arm = True
+        args.use_refined_hand = True
 
     
 
@@ -1115,6 +1187,9 @@ def main():
         hand_action, hand_time = load_series(hand_dir, ("position.npy", "action.npy"))
     elif args.hand == "inspire_f1" or args.hand == "_inspire_f1":
         hand_action, hand_time = load_series(hand_dir, ("right_joint_states.npy",))
+        hand_time_file = os.path.join(hand_dir, "right_joint_states_time.npy")
+        if os.path.exists(hand_time_file):
+            hand_time = np.load(hand_time_file, allow_pickle=True).astype(float)
     elif args.hand == "allegro":
         hand_action, hand_time = load_series(hand_dir, ("position.npy", ))
     elif args.hand == "kistar":
@@ -1142,6 +1217,8 @@ def main():
         hand_qpos = hand_action
 
     full_qpos = np.concatenate([arm_qpos, hand_qpos], axis=1)
+    arm_dof_full = arm_qpos.shape[1]
+    hand_dof_full = hand_qpos.shape[1]
 
     tactile_seq = None
     tactile_force_seq = None
@@ -1166,14 +1243,105 @@ def main():
             tactile_seq = normalize_tactile_sequence(tactile_payload, TACTILE_LAYOUT)
             tactile_index = build_tactile_index_from_layout(TACTILE_LAYOUT)
 
+    # Build master timeline from camera timestamps (pc_time) using fill_framedrop logic.
+    if os.path.exists(timestamp_path) and os.path.exists(frame_id_path):
+        video_times = np.load(timestamp_path)
+        video_frame_ids = np.load(frame_id_path)
+        qpos_video = resample_to(arm_time, full_qpos, video_times)
+    else:
+        video_times = arm_time
+        video_frame_ids = np.arange(1, full_qpos.shape[0] + 1, dtype=int)
+        qpos_video = full_qpos
+
+    # Override arm portion with frame-aligned refined qpos (no resample, no offset).
+    if args.use_refined_arm:
+        refined_arm_path = args.refined_arm_path or os.path.join(
+            capture_root, "processed", "arm", "position.npy"
+        )
+        if not os.path.exists(refined_arm_path):
+            raise FileNotFoundError(f"Refined arm qpos not found: {refined_arm_path}")
+        refined_arm = np.load(refined_arm_path)
+        if refined_arm.ndim != 2:
+            raise ValueError(f"Refined arm qpos must be 2D, got shape {refined_arm.shape}")
+        if args.smooth_arm == "savgol":
+            from scipy.signal import savgol_filter
+            win = args.smooth_window if args.smooth_window % 2 == 1 else args.smooth_window + 1
+            win = min(win, refined_arm.shape[0] - (1 - refined_arm.shape[0] % 2))
+            if win >= args.smooth_polyorder + 2:
+                refined_arm = savgol_filter(refined_arm, win, args.smooth_polyorder, axis=0)
+                print(f"[viz] savgol smoothed refined arm (win={win}, poly={args.smooth_polyorder})")
+            else:
+                print(f"[viz] skip savgol: too few frames ({refined_arm.shape[0]})")
+        elif args.smooth_arm == "gaussian":
+            from scipy.ndimage import gaussian_filter1d
+            refined_arm = gaussian_filter1d(refined_arm, sigma=args.smooth_sigma, axis=0, mode="nearest")
+            print(f"[viz] gaussian smoothed refined arm (sigma={args.smooth_sigma})")
+        elif args.smooth_arm == "oneeuro":
+            if refined_arm.shape[0] != len(video_times):
+                t_axis = np.arange(refined_arm.shape[0], dtype=float) / 30.0
+            else:
+                t_axis = np.asarray(video_times, dtype=float)
+            refined_arm = oneeuro_filter(
+                refined_arm, t_axis,
+                min_cutoff=args.oneeuro_min_cutoff,
+                beta=args.oneeuro_beta,
+                dcutoff=args.oneeuro_dcutoff,
+            )
+            print(f"[viz] oneeuro smoothed refined arm "
+                  f"(min_cutoff={args.oneeuro_min_cutoff}, beta={args.oneeuro_beta}, dcutoff={args.oneeuro_dcutoff})")
+        arm_dof = refined_arm.shape[1]
+        if refined_arm.shape[0] != qpos_video.shape[0]:
+            raise ValueError(
+                f"Refined arm length {refined_arm.shape[0]} != video frame count {qpos_video.shape[0]}"
+            )
+        if arm_dof > qpos_video.shape[1]:
+            raise ValueError(
+                f"Refined arm dof {arm_dof} > full qpos dof {qpos_video.shape[1]}"
+            )
+        qpos_video = qpos_video.copy()
+        qpos_video[:, :arm_dof] = refined_arm
+        print(f"[viz] using refined arm qpos from {refined_arm_path} shape={refined_arm.shape}")
+
+    if args.use_refined_hand:
+        refined_hand_path = args.refined_hand_path or os.path.join(
+            capture_root, "processed", "hand", "position.npy"
+        )
+        if not os.path.exists(refined_hand_path):
+            raise FileNotFoundError(f"Refined hand qpos not found: {refined_hand_path}")
+        refined_hand = np.load(refined_hand_path)
+        if refined_hand.ndim != 2:
+            raise ValueError(f"Refined hand qpos must be 2D, got shape {refined_hand.shape}")
+        if refined_hand.shape[0] != qpos_video.shape[0]:
+            raise ValueError(
+                f"Refined hand length {refined_hand.shape[0]} != video frame count {qpos_video.shape[0]}"
+            )
+        if refined_hand.shape[1] != hand_dof_full:
+            raise ValueError(
+                f"Refined hand dof {refined_hand.shape[1]} != expected hand dof {hand_dof_full}"
+            )
+        qpos_video = qpos_video.copy()
+        qpos_video[:, arm_dof_full:arm_dof_full + hand_dof_full] = refined_hand
+        print(f"[viz] using refined hand qpos from {refined_hand_path} shape={refined_hand.shape}")
+
     obj_traj = None
     fixed_object_pose = None
     if args.visualize_object:
         if args.fix_object_position:
-            # if args.object_pos_path is None:
-            #     raise ValueError("--object-pos-path is required when --fix-object-position is set.")
             fixed_object_pose = load_object_pose_txt(object_pos_path)
             print(f"Loaded fixed object pose from {object_pos_path}")
+        elif args.use_refine:
+            refine_dir = os.path.join(capture_root, "sequence_refine_output", "refined_world_poses")
+            poses = []
+            last_pose = None
+            for fid in video_frame_ids:
+                pose_path = os.path.join(refine_dir, f"pose_{int(fid):06d}.txt")
+                if os.path.exists(pose_path):
+                    last_pose = load_object_pose_txt(pose_path)
+                elif last_pose is None:
+                    raise FileNotFoundError(f"No refined pose found for first frame: {pose_path}")
+                poses.append(last_pose)
+            obj_traj = np.stack(poses, axis=0)
+            print(f"Loaded refined object poses: {obj_traj.shape[0]} frames from {refine_dir}")
         else:
             try:
                 obj_traj_path = os.path.join(object_track_dir, "obj_T_frames.npz")
@@ -1188,18 +1356,6 @@ def main():
                     obj_traj_path = os.path.join(capture_root, "video_tracking_output", "192.168.0.13_5560", "all_poses_world.npz")
                     obj_traj = load_object_world_trajectory_npz(obj_traj_path)
                     print(f"Loaded object trajectory with {obj_traj.shape[0]} frames from {obj_traj_path}")
-
-    # Build master timeline from camera timestamps (pc_time) using fill_framedrop logic.
-    
-    
-    if os.path.exists(timestamp_path) and os.path.exists(frame_id_path):
-        video_times = np.load(timestamp_path)
-        video_frame_ids = np.load(frame_id_path)
-        qpos_video = resample_to(arm_time, full_qpos, video_times)
-    else:
-        video_times = arm_time
-        video_frame_ids = np.arange(1, full_qpos.shape[0] + 1, dtype=int)
-        qpos_video = full_qpos
     if args.frame_offset != 0:
         shifted = np.zeros_like(qpos_video)
         max_idx = len(qpos_video) - 1
@@ -1212,6 +1368,9 @@ def main():
         if fixed_object_pose is not None:
             fixed_object_pose_cam = r2c @ fixed_object_pose
             obj_traj = np.tile(fixed_object_pose_cam[None, :, :], (len(video_times), 1, 1))
+        elif args.use_refine:
+            # Already per-frame aligned to video_frame_ids, just apply r2c.
+            obj_traj = np.einsum("ij,tjk->tik", r2c, obj_traj)
         else:
             # Snap object trajectory onto the master timeline (assume uniform spacing across its original length).
             obj_time = np.linspace(video_times[0], video_times[-1], obj_traj.shape[0])
@@ -1273,7 +1432,7 @@ def main():
         urdf_path = os.path.join(rsc_path, "robot", "xarm_kistar.urdf")
     else:
         raise ValueError("Invalid hand name")
-    
+
     link_color_map = build_link_color_map(urdf_path)
     tactile_robot = RobotModule(urdf_path) if args.visualize_tactile else None
     zone_arrow_color: Dict[str, np.ndarray] = {}
@@ -1302,23 +1461,31 @@ def main():
     else:
         arrow_handles = {}
 
+    if args.canonical_hand:
+        # Override qpos to zero (canonical pose), hide arm later
+        num_joints = RobotModule(urdf_path).get_num_joints()
+        qpos_video = np.zeros((len(video_times), num_joints), dtype=float)
+
     vis = ViserViewer(scene_title = f"{args.hand}_{args.object}")
-    
+
     vis.add_floor(height=0.0)
     vis.add_robot("robot", urdf_path)
     if robot_link_rgba:
         _apply_robot_mesh_colors(vis, "robot", robot_link_rgba)
-    if args.hand_alpha < 0.999:
-        _set_robot_hand_opacity(vis, "robot", args.hand_alpha)
-    if args.transparent_robot:
-        _set_robot_arm_visibility(vis, "robot", False)
-    if obj_mesh is not None and obj_traj is not None:
+    if args.canonical_hand:
+        _remove_robot_arm_meshes(vis, "robot")
+    else:
+        if args.hand_alpha < 0.999:
+            _set_robot_hand_opacity(vis, "robot", args.hand_alpha)
+        if args.transparent_robot:
+            _set_robot_arm_visibility(vis, "robot", False)
+    if obj_mesh is not None and obj_traj is not None and not args.canonical_hand:
         vis.add_object(object_name, obj_mesh, obj_traj[0], opacity=args.object_alpha)
         if object_name in vis.obj_dict:
             vis.obj_dict[object_name]["frame"].show_axes = False
     camera_handles = {}
     camera_image_root = None
-    if args.show_cameras:
+    if args.show_cameras and not args.canonical_hand:
         selected_camera_ids = parse_camera_ids(args.camera_ids)
         camera_image_root = (
             args.camera_image_root
@@ -1342,7 +1509,7 @@ def main():
             selected_ids=selected_camera_ids,
         )
         print(f"[INFO] camera visualization added={n_added}, skipped={n_skipped}")
-    vis.add_traj("traj", {"robot": qpos_video}, {object_name: obj_traj} if obj_traj is not None else {})
+    vis.add_traj("traj", {"robot": qpos_video}, {object_name: obj_traj} if obj_traj is not None and not args.canonical_hand else {})
 
     gaussian_paths: List[str] = []
     gaussian_by_frame: Dict[int, str] = {}

@@ -149,6 +149,7 @@ class XArmControllerROSIK(Node):
         ik_tol=1e-4,
         ik_step_size=0.5,
         ik_damping=1e-5,
+        namespace=None,
     ):
         del ip
 
@@ -158,13 +159,20 @@ class XArmControllerROSIK(Node):
         else:
             self._owns_rclpy = False
 
-        super().__init__("xarm_controller_ros_ik")
+        self.namespace = namespace.strip("/") if namespace else None
+        node_name = (
+            f"xarm_controller_ros_ik_{self.namespace}" if self.namespace else "xarm_controller_ros_ik"
+        )
+        super().__init__(node_name)
 
         self.fps = float(fps)
         self.save_fps = float(record_fps)
         self.is_tool_coord = bool(is_tool_coord)
         self.hw_ns = hw_ns.strip("/")
-        base = f"/{self.hw_ns}"
+        if self.namespace:
+            base = f"/{self.namespace}/{self.hw_ns}"
+        else:
+            base = f"/{self.hw_ns}"
 
         if urdf_path is None:
             urdf_path = os.path.abspath(
@@ -204,6 +212,7 @@ class XArmControllerROSIK(Node):
         self.last_pose_homo = np.eye(4, dtype=np.float64)
         self.latest_pose_time = None
         self.last_cmd_qpos = np.zeros(6, dtype=np.float64)
+        self.latest_action_qpos = None
 
         self.action = self.last_pose_homo.copy()
         self.data = None
@@ -338,10 +347,6 @@ class XArmControllerROSIK(Node):
                 q_seed = q_last
 
             q_cmd, ik_success, ik_iter, ik_error = self.ik_solver.solve(target_homo, q_seed)
-            print(q_cmd)
-            print(q_cmd)
-            print(q_cmd)
-            print(q_cmd)
             if not ik_success:
                 self.get_logger().warning(
                     f"IK failed (iter={ik_iter}, err={ik_error:.3e}); command skipped"
@@ -358,9 +363,10 @@ class XArmControllerROSIK(Node):
             elif res.ret != 0:
                 self.get_logger().warning(f"set_servo_angle_j ret={res.ret}, msg={res.message}")
                 self.error_event.set()
-
-            with self.lock:
-                self.last_cmd_qpos = q_cmd.copy()
+            else:
+                with self.lock:
+                    self.last_cmd_qpos = q_cmd.copy()
+                    self.latest_action_qpos = q_cmd.copy()
 
             elapsed = time.perf_counter() - start_time
             time.sleep(max(0.0, (1.0 / self.fps) - elapsed))
@@ -374,6 +380,7 @@ class XArmControllerROSIK(Node):
                 qpos = None if self.latest_qpos is None else self.latest_qpos.copy()
                 qvel = None if self.latest_qvel is None else self.latest_qvel.copy()
                 torque = None if self.latest_torque is None else self.latest_torque.copy()
+                action_qpos = None if self.latest_action_qpos is None else self.latest_action_qpos.copy()
                 sample_time = self.latest_joint_time if self.latest_joint_time is not None else time.time()
                 action = self.action.copy()
 
@@ -398,7 +405,9 @@ class XArmControllerROSIK(Node):
                     )
                     self.data["action"].append(action_homo.copy())
                     self.data["action_qpos"].append(
-                        qpos.copy() if qpos is not None else np.full(6, np.nan, dtype=np.float64)
+                        action_qpos.copy()
+                        if action_qpos is not None
+                        else np.full(6, np.nan, dtype=np.float64)
                     )
 
             elapsed = time.perf_counter() - start_time

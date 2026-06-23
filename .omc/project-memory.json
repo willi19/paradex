@@ -1,0 +1,401 @@
+{
+  "version": "1.0.0",
+  "lastScanned": 1781688148812,
+  "projectRoot": "/home/temp_id/paradex",
+  "techStack": {
+    "languages": [
+      {
+        "name": "Python",
+        "version": null,
+        "confidence": "high",
+        "markers": [
+          "requirements.txt"
+        ]
+      }
+    ],
+    "frameworks": [],
+    "packageManager": "pip",
+    "runtime": null
+  },
+  "build": {
+    "buildCommand": null,
+    "testCommand": null,
+    "lintCommand": null,
+    "devCommand": null,
+    "scripts": {}
+  },
+  "conventions": {
+    "namingStyle": null,
+    "importStyle": null,
+    "testPattern": null,
+    "fileOrganization": null
+  },
+  "structure": {
+    "isMonorepo": false,
+    "workspaces": [],
+    "mainDirectories": [
+      "docs",
+      "src"
+    ],
+    "gitBranches": null
+  },
+  "customNotes": [],
+  "directoryMap": {
+    "__pycache__": {
+      "path": "__pycache__",
+      "purpose": null,
+      "fileCount": 2,
+      "lastAccessed": 1781688148806,
+      "keyFiles": [
+        "setup.cpython-38.pyc",
+        "tmp30.cpython-312.pyc"
+      ]
+    },
+    "bodex": {
+      "path": "bodex",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1781688148808,
+      "keyFiles": [
+        "scale010_grasp.npy"
+      ]
+    },
+    "colmap": {
+      "path": "colmap",
+      "purpose": null,
+      "fileCount": 9,
+      "lastAccessed": 1781688148808,
+      "keyFiles": [
+        "CHANGELOG.txt",
+        "CMakeLists.txt",
+        "CONTRIBUTING.md",
+        "COPYING.txt",
+        "README.md"
+      ]
+    },
+    "curobo": {
+      "path": "curobo",
+      "purpose": null,
+      "fileCount": 12,
+      "lastAccessed": 1781688148809,
+      "keyFiles": [
+        "CHANGELOG.md",
+        "CODEOWNERS",
+        "LICENSE",
+        "LICENSE_ASSETS",
+        "MANIFEST.in"
+      ]
+    },
+    "data": {
+      "path": "data",
+      "purpose": "Data files",
+      "fileCount": 0,
+      "lastAccessed": 1781688148809,
+      "keyFiles": []
+    },
+    "docs": {
+      "path": "docs",
+      "purpose": "Documentation",
+      "fileCount": 10,
+      "lastAccessed": 1781688148809,
+      "keyFiles": [
+        "Makefile",
+        "conf.py",
+        "genindex.html",
+        "index.html",
+        "index.rst"
+      ]
+    },
+    "jisoo_test": {
+      "path": "jisoo_test",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1781688148809,
+      "keyFiles": [
+        "gui_controller.py",
+        "test_insys.py",
+        "test_insys_inspire.py",
+        "visualize_trajectory.py"
+      ]
+    },
+    "lookup": {
+      "path": "lookup",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1781688148809,
+      "keyFiles": []
+    },
+    "paradex": {
+      "path": "paradex",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1781688148809,
+      "keyFiles": [
+        "__init__.py"
+      ]
+    },
+    "paradex.egg-info": {
+      "path": "paradex.egg-info",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1781688148809,
+      "keyFiles": [
+        "PKG-INFO",
+        "SOURCES.txt",
+        "dependency_links.txt",
+        "top_level.txt"
+      ]
+    },
+    "rendered": {
+      "path": "rendered",
+      "purpose": null,
+      "fileCount": 341,
+      "lastAccessed": 1781688148810,
+      "keyFiles": [
+        "00007.jpeg",
+        "00062.jpeg",
+        "00063.jpeg",
+        "00064.jpeg",
+        "00065.jpeg"
+      ]
+    },
+    "rendered_video": {
+      "path": "rendered_video",
+      "purpose": null,
+      "fileCount": 36,
+      "lastAccessed": 1781688148810,
+      "keyFiles": [
+        "bbasket.zip",
+        "book_no_filter_vs_filter.mp4",
+        "book_side_by_side.mp4",
+        "book_side_by_side_numbered.mp4",
+        "rendered.mp4"
+      ]
+    },
+    "rsc": {
+      "path": "rsc",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1781688148810,
+      "keyFiles": []
+    },
+    "script": {
+      "path": "script",
+      "purpose": null,
+      "fileCount": 8,
+      "lastAccessed": 1781688148810,
+      "keyFiles": [
+        "allegro.txt",
+        "allegro_ros2.txt",
+        "build_docs.sh",
+        "finger_calibration.sh",
+        "grid_image.sh"
+      ]
+    },
+    "src": {
+      "path": "src",
+      "purpose": "Source code",
+      "fileCount": 0,
+      "lastAccessed": 1781688148810,
+      "keyFiles": []
+    },
+    "system": {
+      "path": "system",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1781688148810,
+      "keyFiles": [
+        "README.md"
+      ]
+    },
+    "thirdparty": {
+      "path": "thirdparty",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1781688148810,
+      "keyFiles": []
+    },
+    "tmp": {
+      "path": "tmp",
+      "purpose": null,
+      "fileCount": 25,
+      "lastAccessed": 1781688148810,
+      "keyFiles": [
+        "add_frame_no.py",
+        "change.py",
+        "concat_book.py",
+        "concat_two_videos.py",
+        "crop_video.sh"
+      ]
+    },
+    "tools": {
+      "path": "tools",
+      "purpose": null,
+      "fileCount": 4,
+      "lastAccessed": 1781688148810,
+      "keyFiles": [
+        "make_random_video_grid.py",
+        "run_inspire_f1_ethercat.py",
+        "sample_one_video_per_videos_dir.py",
+        "urdf_viser_visualizer.py"
+      ]
+    },
+    "xarm_hecalib_compare_20260403_024512": {
+      "path": "xarm_hecalib_compare_20260403_024512",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1781688148810,
+      "keyFiles": []
+    },
+    "xarm_hecalib_compare_20260403_024521": {
+      "path": "xarm_hecalib_compare_20260403_024521",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1781688148810,
+      "keyFiles": []
+    },
+    "xarm_hecalib_compare_20260403_024528": {
+      "path": "xarm_hecalib_compare_20260403_024528",
+      "purpose": null,
+      "fileCount": 0,
+      "lastAccessed": 1781688148810,
+      "keyFiles": []
+    },
+    "xarm_hecalib_compare_20260403_024533": {
+      "path": "xarm_hecalib_compare_20260403_024533",
+      "purpose": null,
+      "fileCount": 45,
+      "lastAccessed": 1781688148810,
+      "keyFiles": [
+        "00_compare.npz",
+        "01_compare.npz",
+        "02_compare.npz",
+        "03_compare.npz",
+        "04_compare.npz"
+      ]
+    },
+    "xarm_hecalib_compare_20260403_024619": {
+      "path": "xarm_hecalib_compare_20260403_024619",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1781688148811,
+      "keyFiles": [
+        "failures.txt"
+      ]
+    },
+    "xarm_hecalib_compare_sdk_20260403_025002": {
+      "path": "xarm_hecalib_compare_sdk_20260403_025002",
+      "purpose": null,
+      "fileCount": 1,
+      "lastAccessed": 1781688148811,
+      "keyFiles": [
+        "failures.txt"
+      ]
+    }
+  },
+  "hotPaths": [
+    {
+      "path": "src/dataset_acquisition/h2r/capture_object6d_allegro_v5.py",
+      "accessCount": 36,
+      "lastAccessed": 1779863716860,
+      "type": "file"
+    },
+    {
+      "path": "src/dataset_acquisition/h2r/capture_object6d.py",
+      "accessCount": 3,
+      "lastAccessed": 1780390069754,
+      "type": "file"
+    },
+    {
+      "path": "paradex/visualization/visualizer/viser.py",
+      "accessCount": 3,
+      "lastAccessed": 1780390764423,
+      "type": "file"
+    },
+    {
+      "path": "rsc/curobo/content/configs/robot/spheres/xarm_allegro_v5.yml",
+      "accessCount": 2,
+      "lastAccessed": 1779815814196,
+      "type": "file"
+    },
+    {
+      "path": "paradex/io/camera_system/remote_camera_controller.py",
+      "accessCount": 2,
+      "lastAccessed": 1779816359675,
+      "type": "file"
+    },
+    {
+      "path": "rsc/curobo/content/configs/robot/xarm_allegro.yml",
+      "accessCount": 1,
+      "lastAccessed": 1779792966449,
+      "type": "file"
+    },
+    {
+      "path": "rsc/curobo/content/configs/robot/xarm_inspire_f1_new.yml",
+      "accessCount": 1,
+      "lastAccessed": 1779792967392,
+      "type": "file"
+    },
+    {
+      "path": "rsc/robot/spheres/xarm_allegro.yml",
+      "accessCount": 1,
+      "lastAccessed": 1779792967483,
+      "type": "file"
+    },
+    {
+      "path": "paradex/io/robot_controller/__init__.py",
+      "accessCount": 1,
+      "lastAccessed": 1779792996727,
+      "type": "file"
+    },
+    {
+      "path": "paradex/io/robot_controller/allegro_v5_controller_ros2.py",
+      "accessCount": 1,
+      "lastAccessed": 1779793000279,
+      "type": "file"
+    },
+    {
+      "path": "src/object6d/capture_rcc.py",
+      "accessCount": 1,
+      "lastAccessed": 1779793033105,
+      "type": "file"
+    },
+    {
+      "path": "rsc/curobo/content/configs/robot/xarm_allegro_v5.yml",
+      "accessCount": 1,
+      "lastAccessed": 1779793301768,
+      "type": "file"
+    },
+    {
+      "path": "src/dataset_acquisition/h2r/diagnose_home_pose.py",
+      "accessCount": 1,
+      "lastAccessed": 1779815758743,
+      "type": "file"
+    },
+    {
+      "path": "paradex/dataset_acqusition/capture.py",
+      "accessCount": 1,
+      "lastAccessed": 1779816338336,
+      "type": "file"
+    },
+    {
+      "path": "paradex/visualization/visualizer/viser_server.py",
+      "accessCount": 1,
+      "lastAccessed": 1779863661347,
+      "type": "file"
+    },
+    {
+      "path": "paradex/visualization/visualizer/viser_client.py",
+      "accessCount": 1,
+      "lastAccessed": 1779863677693,
+      "type": "file"
+    },
+    {
+      "path": "paradex/io/camera_system/camera_server_daemon.py",
+      "accessCount": 1,
+      "lastAccessed": 1779866451074,
+      "type": "file"
+    }
+  ],
+  "userDirectives": []
+}

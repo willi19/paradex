@@ -2,6 +2,7 @@ import zmq
 from datetime import datetime
 import time
 from threading import Thread, Event
+from concurrent.futures import ThreadPoolExecutor
 
 from paradex.utils.system import get_pc_list, get_pc_ip
 
@@ -37,8 +38,10 @@ class remote_camera_controller:
             
             socket = self.ctx.socket(zmq.REQ)
             socket.setsockopt(zmq.LINGER, 0)
-            socket.setsockopt(zmq.RCVTIMEO, 1000) 
-            socket.setsockopt(zmq.SNDTIMEO, 1000)
+            # camera_loader.start/stop joins per-camera threads server-side and
+            # can take several seconds with many cameras; keep timeout generous.
+            socket.setsockopt(zmq.RCVTIMEO, 10000)
+            socket.setsockopt(zmq.SNDTIMEO, 10000)
             socket.connect(f"tcp://{get_pc_ip(pc)}:{self.command_port}")
             self.command_sockets[pc] = socket
             print(f"{pc}: Command socket connected")
@@ -48,7 +51,7 @@ class remote_camera_controller:
                 f"다음 PC들이 응답하지 않습니다: {failed_pcs}\n"
                 f"각 PC에서 'python src/camera/server_daemon.py'를 실행하세요."
             )
-        
+
         self.register()
     
     def check_server_alive(self, pc):
@@ -69,20 +72,22 @@ class remote_camera_controller:
             socket.close()
     
     def send_command(self, cmd):
-        """명령 전송 및 응답 수신"""
+        """명령 전송 및 응답 수신 (PC별 병렬)"""
         cmd['controller_name'] = self.name
-        response = {}
-        
-        for pc, socket in self.command_sockets.items():
+
+        def _one(pc, socket):
             try:
                 socket.send_json(cmd)
-                response[pc] = socket.recv_json()
+                return pc, socket.recv_json()
+            except zmq.ZMQError:
+                return pc, {'status': 'error', 'msg': 'no response'}
 
-            except zmq.ZMQError as e:
-                # print(f"{pc}: No response in send_command - {e}")
-                response[pc] = {'status':'error', 'msg':'no response'}
-        
-        return response
+        if not self.command_sockets:
+            return {}
+
+        with ThreadPoolExecutor(max_workers=len(self.command_sockets)) as ex:
+            futures = [ex.submit(_one, pc, s) for pc, s in self.command_sockets.items()]
+            return {pc: resp for pc, resp in (f.result() for f in futures)}
             
     def register(self):
         cmd = {'action': 'register'}

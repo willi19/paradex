@@ -2,6 +2,7 @@ import os
 import argparse
 import json
 import time
+import numpy as np
 from collections import deque
 from threading import Event, Lock, Thread
 
@@ -12,14 +13,19 @@ from paradex.dataset_acqusition.capture import CaptureSession
 from paradex.utils.path import shared_dir
 from paradex.utils.file_io import find_latest_index
 from paradex.utils.keyboard_listener import listen_keyboard
+from paradex.utils.system import get_pc_list
 from paradex.io.robot_controller.inspire_f1_tactile_plotter import InspireF1RealtimeTactilePlotter
+
+EXCLUDED_PCS = {}
+camera_pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
 
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--device', choices=['xsens', 'occulus'], default="xsens")
+parser.add_argument('--camera', type=str, default=True)
 parser.add_argument('--arm', type=str, default="xarm")
 parser.add_argument('--hand', type=str, default="inspire_f1")
-parser.add_argument('--capture_root', type=str, default="eccv2026")
+parser.add_argument('--capture_root', type=str, default="eccv2026/allegro_v5")
 parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--tactile', action="store_true")
 parser.add_argument('--ip', action="store_true")
@@ -48,8 +54,23 @@ listen_keyboard(
 print("Keyboard control: c=start, s=stop, q=exit, y=grasp success, n=grasp fail")
 print("In keyboard_control mode, gesture states 2/3 do not control session start/stop/exit.")
 
+
+def wait_for_grasp_result():
+    grasp_yes_event.clear()
+    grasp_no_event.clear()
+    print("Grasp success? Press y or n, then Enter.")
+
+    while not exit_event.is_set():
+        if grasp_yes_event.is_set():
+            return "y"
+        if grasp_no_event.is_set():
+            return "n"
+        time.sleep(0.01)
+
+    return "n"
+
 cs = CaptureSession(
-    camera=True,
+    camera=args.camera,
     realsense=False,
     arm=args.arm,
     hand=args.hand,
@@ -58,7 +79,7 @@ cs = CaptureSession(
     events=events,
     tactile=args.tactile,
     ip=args.ip,
-    arm_kwargs={"servo_api": args.xarm_servo_api} if args.arm == "xarm" else None,
+    camera_pc_list=camera_pc_list,
 )
 
 tactile_plotter = None
@@ -102,19 +123,20 @@ while not exit_event.is_set():
     cs.stop()
     print("Stopped recording session:", name)
 
-    grasp_input = "n"
-    if grasp_yes_event.is_set() and not grasp_no_event.is_set():
-        grasp_input = "y"
-    elif grasp_no_event.is_set():
-        grasp_input = "n"
+    timestamp_npy_path = os.path.join(episode_abs_path, "raw", "timestamps", "timestamp.npy")
+    if os.path.exists(timestamp_npy_path):
+        print(f"timestamp.npy length: {len(np.load(timestamp_npy_path))}")
+    else:
+        print(f"timestamp.npy not found at {timestamp_npy_path}")
 
+    save_event.clear()
+    stop_event.clear()
+
+    grasp_input = wait_for_grasp_result()
     if grasp_input == "y":
         success_count += 1
     else:
         fail_count += 1
-
-    save_event.clear()
-    stop_event.clear()
 
     os.makedirs(episode_abs_path, exist_ok=True)
     grasp_json_path = os.path.join(episode_abs_path, "grasp_result.json")
@@ -131,18 +153,18 @@ while not exit_event.is_set():
     grasp_no_event.clear()
     
     
-    # paired_human_episode = int(input(f"Enter the episode number of paired human sequence for {args.name}: "))
-    # paired_info_json_path = os.path.join(shared_dir, episode_rel_path, "paired_human_episode.json")
+    paired_human_episode = int(input(f"Enter the episode number of paired human sequence for {args.name}: "))
+    paired_info_json_path = os.path.join(shared_dir, episode_rel_path, "paired_human_episode.json")
     
-    # with open(paired_info_json_path, "w") as f:
-    #     json.dump(
-    #         {
-    #             "human hand episode": last_idx,
-    #             "paired human episode": paired_human_episode,
-    #         },
-    #         f,
-    #         indent=2,
-    #     )
+    with open(paired_info_json_path, "w") as f:
+        json.dump(
+            {
+                "human hand episode": last_idx,
+                "paired human episode": paired_human_episode,
+            },
+            f,
+            indent=2,
+        )
         
     
         

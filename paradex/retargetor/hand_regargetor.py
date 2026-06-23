@@ -154,7 +154,7 @@ def inspire_f1_deprecated(hand_pose_frame):
         
 
 
-def inspire_f1(hand_pose_frame: Dict[str, np.ndarray]):
+def inspire_f1(hand_pose_frame: Dict[str, np.ndarray], is_right: bool = True):
     required = [
         "wrist",
         "thumb_metacarpal",
@@ -189,39 +189,24 @@ def inspire_f1(hand_pose_frame: Dict[str, np.ndarray]):
             if norm < 1e-8:
                 return None
             tip_direction = tip_direction / norm
-            
-            # right hand
-            inspire_angles[5] = 660 * tip_direction[0] + 700
-            if tip_direction[0] < 0:
-                # 0.6, 1.4 -> 1100, 1350
-                # 0.8, 1.4 -> 1100, 1200
-                # inspire_angles[4] = 300 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 930
-                inspire_angles[4] = 165 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 968
-            else: 
-                # -1.3, -0.1 -> 1100, 1350
-                # inspire_angles[4] = 200 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1370          
-                inspire_angles[4] = 1350
-                
-            # else:
-            #     inspire_angles[5] = -500 * tip_direction[0] + 850
-            #     if tip_direction[0] > 0:
-            #         # -0.4, -1.4
-            #         # -0.6, -1.4 -> 1100, 1200
-            #         # inspire_angles[4] = -250 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1000
-            #         inspire_angles[4] = -125 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1025
-            #     else: 
-            #         # -1.3, -0.1 -> 1100, 1350
-            #         # inspire_angles[4] = 200 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1370          
-            #         inspire_angles[4] = 1350
 
-
-            # inspire_angles[4] = 1350
+            if is_right:
+                inspire_angles[5] = 660 * tip_direction[0] + 700
+                if tip_direction[0] < 0:
+                    inspire_angles[4] = 165 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 968
+                else:
+                    inspire_angles[4] = 1350
+            else:
+                inspire_angles[5] = -500 * tip_direction[0] + 850
+                if tip_direction[0] > 0:
+                    inspire_angles[4] = -125 * np.arctan(tip_direction[2] / abs(tip_direction[0])) + 1025
+                else:
+                    inspire_angles[4] = 1350
 
     inspire_angles = np.clip(np.rint(inspire_angles), 0, 1740).astype(np.int32)
     inspire_angles[5] = np.clip(inspire_angles[5], 600, 1800)
     inspire_angles[4] = np.clip(inspire_angles[4], 1100, 1350)
 
-    
     return inspire_angles
 
 
@@ -320,3 +305,56 @@ def kistar(hand_pose_frame):
 
     # fixed joints: 1,4,8,12 are already 0
     return kistar_raw
+
+
+def allegro_v5(hand_pose_frame):
+    hand_joint_angle = np.zeros((20,3))
+    allegro_angles = np.zeros(16)
+    # for finger_id in range(4):
+    #     for joint_id in range(4):
+    #         if joint_id == 0:
+    #             rot_mat = np.linalg.inv(hand_pose_frame[0,:3,:3]) @ hand_pose_frame[finger_id * 4 + joint_id + 1, :3,:3]
+    #         else:
+    #             rot_mat = np.linalg.inv(hand_pose_frame[hand_index.hand_index_parent[finger_id * 4 + joint_id+1], :3,:3]) @ hand_pose_frame[finger_id * 4 + joint_id + 1, :3,:3]
+    #         hand_joint_angle[finger_id * 4 + joint_id + 1] = Rotation.from_matrix(rot_mat).as_euler("zyx")
+    
+    # zyx euler angle in hand frame = zxy axis angle in robot frame
+    
+    # Ring
+    joint_name_list = ["metacarpal", "proximal", "intermediate","distal"]
+    for i, finger_name in enumerate(["index", "middle", "ring"]):
+        metacarpal = finger_name + "_metacarpal"
+        distal = finger_name + "_distal"
+        
+        tip_position = (np.linalg.inv(hand_pose_frame["wrist"]) @ hand_pose_frame[distal])[:3, 3]
+        finger_base_position = (np.linalg.inv(hand_pose_frame["wrist"]) @ hand_pose_frame[metacarpal])[:3, 3]
+        
+        tip_position = tip_position - finger_base_position
+        tip_direction  = tip_position / np.linalg.norm(tip_position)
+
+        if tip_direction[1] > 0.9:
+            allegro_angles[4*i] = 0
+        else:
+            allegro_angles[4*i] = np.arctan(tip_direction[0] / tip_direction[2]) * (0.9-tip_direction[1])
+        
+        for j in range(3):
+            parent_name = finger_name + "_" + joint_name_list[j]
+            joint_name = finger_name + "_" + joint_name_list[j+1]
+            rot_mat = np.linalg.inv(hand_pose_frame[parent_name][:3,:3]) @ hand_pose_frame[joint_name][:3,:3]
+            v = rot_mat[1, 1] if rot_mat[2, 1] >= 0 else 1
+            v = max(-1, min(1, v))
+            allegro_angles[4*i+j+1] = np.arccos(v)
+        allegro_angles[4*i+1] = (allegro_angles[4*i+1]-0.35) * 1.5
+
+
+    # Thumb
+    thumb_meta = np.dot(hand_pose_frame["wrist"][:3,:3].T, hand_pose_frame["thumb_metacarpal"][:3,:3])
+    thumb_meta_angle = R.from_matrix(thumb_meta).as_euler("xyz")
+    allegro_angles[12] = thumb_meta_angle[0] 
+    allegro_angles[13] = -thumb_meta_angle[2]-1.57
+
+    for i, (parent_name, joint_name) in enumerate([("thumb_metacarpal", "thumb_proximal"),("thumb_proximal", "thumb_distal")]):
+        rot_mat = np.linalg.inv(hand_pose_frame[parent_name][:3,:3]) @ hand_pose_frame[joint_name][:3,:3]
+        allegro_angles[14+i] = rot_mat[2, 1] * 1.2
+
+    return allegro_angles

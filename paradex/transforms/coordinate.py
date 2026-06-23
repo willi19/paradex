@@ -12,7 +12,7 @@ DEVICE2WRIST = {
                      [0, 0, 1, -0.01],
                      [0, -1, 0, 0],
                      [0, 0, 0, 1]]),
-    "xarm_left":np.array([[1, 0 ,0 ,0],
+    "xarm_Left":np.array([[1, 0 ,0 ,0],
                     [0, 0, -1, -0.01],
                     [0, -1, 0, 0],
                     [0, 0, 0, 1]]),
@@ -30,7 +30,10 @@ DEVICE2WRIST = {
                         [0, 0, 1, 0.04], #0.095 0.035
                         [1, 0, 0, 0],
                         [0, 0, 0, 1]]), # fix this to connector latter, This is where connector is from global wrist
-    
+        "allegro_v5":np.array([[0, 1 ,0 ,0],
+                        [0, 0, 1, 0.04], #0.095 0.035
+                        [1, 0, 0, 0],
+                        [0, 0, 0, 1]]), 
     "inspire":np.array([[1, 0 ,0 ,0],
                         [0, 0, -1, 0.025],
                         [0, 1, 0, 0],

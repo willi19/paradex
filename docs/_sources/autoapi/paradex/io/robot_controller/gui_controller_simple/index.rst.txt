@@ -1,0 +1,66 @@
+paradex.io.robot_controller.gui_controller_simple
+=================================================
+
+.. py:module:: paradex.io.robot_controller.gui_controller_simple
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: QposTrajectoryGUIController(robot_controller, hand_controller, home_qpos: numpy.ndarray, traj_qpos: numpy.ndarray, dt: float = 0.01)
+
+   Arm(6) + Hand(16) 로 이루어진 qpos trajectory 만으로 제어하는 단순 GUI.
+   - Home Pose 보내기
+   - Trajectory 실행하기
+
+   :param robot_controller: XArmController 와 같은 인터페이스 (move, get_data, end)
+   :param hand_controller: AllegroController 와 같은 인터페이스 (move, end)
+   :param home_qpos: (22,) = [arm6, hand16]
+   :param traj_qpos: (T, 22) = [arm6, hand16] trajectory
+   :param dt: trajectory 한 스텝당 시간 간격 (초 단위, 기본 0.01s)
+
+
+   .. py:attribute:: robot
+
+
+   .. py:attribute:: hand
+
+
+   .. py:attribute:: home_qpos
+
+
+   .. py:attribute:: traj_qpos
+
+
+   .. py:attribute:: dt
+
+
+   .. py:attribute:: cart_delta
+      :value: 1.0
+
+
+
+   .. py:attribute:: angle_delta
+      :value: 0.01
+
+
+
+   .. py:attribute:: button_states
+
+
+   .. py:attribute:: traj_index
+      :value: 0.0
+
+
+
+   .. py:attribute:: root
+
+
+   .. py:method:: run()
+
+      GUI 메인 루프 실행
+
+
+

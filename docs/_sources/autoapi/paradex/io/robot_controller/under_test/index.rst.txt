@@ -1,0 +1,30 @@
+paradex.io.robot_controller.under_test
+======================================
+
+.. py:module:: paradex.io.robot_controller.under_test
+
+.. autoapi-nested-parse::
+
+   Inspire Hand RH56 Control Library
+
+   A Python library for controlling the Inspire Hand robotic hands.
+   Supports both RH56dfq (legacy) and RH56DFTP models.
+
+
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/paradex/io/robot_controller/under_test/cli/index
+   /autoapi/paradex/io/robot_controller/under_test/exceptions/index
+   /autoapi/paradex/io/robot_controller/under_test/hand_demo/index
+   /autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index
+   /autoapi/paradex/io/robot_controller/under_test/inspire_hand_ip_demo/index
+   /autoapi/paradex/io/robot_controller/under_test/modbus/index
+   /autoapi/paradex/io/robot_controller/under_test/verify_tactile/index
+   /autoapi/paradex/io/robot_controller/under_test/visualize_contact/index
+
+

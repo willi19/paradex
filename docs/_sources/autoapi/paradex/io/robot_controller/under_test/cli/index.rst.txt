@@ -1,0 +1,46 @@
+paradex.io.robot_controller.under_test.cli
+==========================================
+
+.. py:module:: paradex.io.robot_controller.under_test.cli
+
+.. autoapi-nested-parse::
+
+   Command-line interface for controlling the Inspire Hand.
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: create_parser() -> argparse.ArgumentParser
+
+   Create the command-line argument parser.
+
+
+.. py:function:: get_finger_by_name(hand: hand_rh56dftp.InspireHandRH56DFTP, finger_name: str)
+
+   Get a finger object by its name.
+
+
+.. py:function:: print_finger_status(finger, header=None)
+
+   Print the status of a finger.
+
+
+.. py:function:: print_hand_status(hand: hand_rh56dftp.InspireHandRH56DFTP)
+
+   Print the status of all fingers.
+
+
+.. py:function:: interactive_mode(hand: hand_rh56dftp.InspireHandRH56DFTP)
+
+   Start interactive control mode.
+
+
+.. py:function:: main(args: Optional[List[str]] = None)
+
+   Main entry point for the command-line interface.
+
+

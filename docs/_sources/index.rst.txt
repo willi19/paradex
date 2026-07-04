@@ -1,37 +1,17 @@
 Paradex Documentation
 =====================
 
-Paradex is a robotic data collection and control system.
+Paradex is a distributed multi-camera vision and robot control framework for
+dexterous manipulation research.
+
+The **API Reference** (in the sidebar) is generated automatically from the
+``paradex`` package source, so it always matches the code. For application
+scripts and run steps see the per-app ``README.md`` files under ``src/`` in the
+repository.
 
 .. toctree::
    :maxdepth: 2
-   :caption: I/O Module
-   
-   io/robot_controller
-   io/camera
-   io/teleop
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Computer Vision
-   
-   vision/image
-   vision/geometry
-   vision/colmap
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Robot
-   
-   robot/robot_wrapper
-   robot/curobo
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Visualization
-   
-   visualization/viewer
-   visualization/renderer
+   :caption: API Reference
 
 Indices
 -------

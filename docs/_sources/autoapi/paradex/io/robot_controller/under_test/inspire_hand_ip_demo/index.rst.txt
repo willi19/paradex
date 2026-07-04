@@ -1,0 +1,59 @@
+paradex.io.robot_controller.under_test.inspire_hand_ip_demo
+===========================================================
+
+.. py:module:: paradex.io.robot_controller.under_test.inspire_hand_ip_demo
+
+.. autoapi-nested-parse::
+
+   Demo script for the Inspire Hand via IP connection.
+   Demonstrates connection, pose reading/writing, force reading, and tactile sensor reading.
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: parse_args()
+
+.. py:function:: print_pose(hand: inspire_controller_ip.InspireControllerIP)
+
+   Print the current pose of the hand.
+
+
+.. py:function:: print_force_info(hand: inspire_controller_ip.InspireControllerIP)
+
+   Print force information from the hand.
+
+
+.. py:function:: basic_demo(hand: inspire_controller_ip.InspireControllerIP)
+
+   Run a basic demo showing connection, pose reading, and pose writing.
+
+
+.. py:function:: pose_demo(hand: inspire_controller_ip.InspireControllerIP)
+
+   Demonstrate pose reading and writing.
+
+
+.. py:function:: force_demo(hand: inspire_controller_ip.InspireControllerIP)
+
+   Demonstrate force information reading.
+
+
+.. py:function:: full_demo(hand: inspire_controller_ip.InspireControllerIP)
+
+   Run a comprehensive demo showing all features.
+
+
+.. py:function:: tactile_demo(hand: inspire_controller_ip.InspireControllerIP)
+
+   Demonstrate tactile information reading.
+
+
+.. py:function:: main()
+
+   Main demo function.
+
+

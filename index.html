@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Paradex — Multi-camera vision &amp; robot control framework</title>
+  <meta name="description" content="Paradex is a distributed multi-camera vision and robot control framework for dexterous manipulation research: calibration, capture, dataset acquisition, 6D pose, and grasp inference." />
+  <link rel="stylesheet" href="assets/style.css" />
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav">
+      <span class="brand">paradex</span>
+      <div class="nav-links">
+        <a href="#overview">Overview</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#apps">Applications</a>
+        <a href="#guide">Guide</a>
+        <a href="#quickstart">Quick start</a>
+        <a href="docs/index.html">API docs</a>
+        <a href="https://github.com/willi19/paradex" class="ghlink">GitHub ↗</a>
+      </div>
+    </nav>
+
+    <div class="hero-inner">
+      <h1>Paradex</h1>
+      <p class="tagline">A distributed multi-camera vision &amp; robot control framework for dexterous manipulation research.</p>
+      <div class="cta">
+        <a class="btn primary" href="#quickstart">Get started</a>
+        <a class="btn" href="docs/index.html">API reference</a>
+        <a class="btn ghost" href="https://github.com/willi19/paradex">View on GitHub</a>
+      </div>
+      <div class="pills">
+        <span>6 capture PCs + 1 main PC</span>
+        <span>Flir cameras (PySpin)</span>
+        <span>XArm · Allegro · Inspire</span>
+        <span>COLMAP · Pinocchio · CuRobo</span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <section id="overview" class="section">
+      <h2>What is Paradex?</h2>
+      <p class="lead">
+        Paradex orchestrates a synchronized multi-camera rig and robot hardware to capture, process, and
+        reason about dexterous manipulation. It splits into a reusable library and application scripts:
+      </p>
+      <div class="two-col">
+        <div class="card">
+          <h3><code>paradex/</code> — library</h3>
+          <p>General-purpose, reusable modules: calibration, camera IO, robot control, transforms, simulation, retargeting, and visualization.</p>
+          <a href="docs/index.html">Browse the API reference →</a>
+        </div>
+        <div class="card">
+          <h3><code>src/</code> — applications</h3>
+          <p>Concrete workflows that combine library modules: calibrate → capture → process → infer. Each app ships a human README and a Claude orientation file.</p>
+          <a href="https://github.com/willi19/paradex/blob/main/src/README.md">Application index →</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="architecture" class="section alt">
+      <h2>Architecture</h2>
+      <div class="arch">
+        <div class="arch-flow">
+          <span class="node">Calibrate</span><span class="arrow">→</span>
+          <span class="node">Capture</span><span class="arrow">→</span>
+          <span class="node">Process</span><span class="arrow">→</span>
+          <span class="node">Infer</span>
+        </div>
+        <p class="muted">Validation harnesses sanity-check any stage in isolation.</p>
+      </div>
+      <ul class="facts">
+        <li><strong>Distributed:</strong> capture PCs run camera daemons; the main PC orchestrates over SSH/TCP/UDP.</li>
+        <li><strong>Hardware sync:</strong> UTGE900 signal generator drives synchronized multi-camera capture.</li>
+        <li><strong>Robots:</strong> XArm / Franka arms; Allegro (ROS2) &amp; Inspire (IP socket) hands.</li>
+        <li><strong>Vision:</strong> ArUco/Charuco detection, COLMAP reconstruction, triangulation, undistortion.</li>
+      </ul>
+    </section>
+
+    <section id="apps" class="section">
+      <h2>Applications</h2>
+      <p class="lead">Every group has a <em>README.md</em> (run steps for humans) and a <em>CLAUDE.md</em> (orientation for Claude).</p>
+      <div class="grid">
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/src/calibration/README.md">
+          <h3>Calibration</h3>
+          <p>Intrinsic → extrinsic → hand-eye (camera→robot). Charuco + COLMAP + Tsai-Lenz.</p>
+        </a>
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/src/camera/README.md">
+          <h3>Camera daemons</h3>
+          <p>Capture-PC command server &amp; status dashboard.</p>
+        </a>
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/src/capture/README.md">
+          <h3>Capture</h3>
+          <p>Image / video / stream capture and robot teleop &amp; teaching.</p>
+        </a>
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/src/dataset_acquisition/README.md">
+          <h3>Dataset acquisition</h3>
+          <p>Per-dataset pipelines: graphics, motion blur, HRI, miyungpa, object turntable.</p>
+        </a>
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/src/process/README.md">
+          <h3>Process</h3>
+          <p>Sync + overlay + contact; COLMAP reconstruction from turntable scans.</p>
+        </a>
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/src/object6d/README.md">
+          <h3>6D object pose</h3>
+          <p>Multi-view LoFTR / template matching + camera-to-robot validation.</p>
+        </a>
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/src/inference/README.md">
+          <h3>Inference</h3>
+          <p>Grasp inference &amp; evaluation: bodex, grasp_eval, grasp_w_gui.</p>
+        </a>
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/src/util/README.md">
+          <h3>Utilities</h3>
+          <p>Charuco generation, object registration, URDF tools, video upload.</p>
+        </a>
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/src/validate/README.md">
+          <h3>Validation</h3>
+          <p>Smoke tests for cameras, sync, robots, teleop, and calibration quality.</p>
+        </a>
+      </div>
+    </section>
+
+    <section id="guide" class="section">
+      <h2>Application guide</h2>
+      <p class="lead">
+        Detailed, per-label docs — built up one application at a time. Each label is a
+        <code>src/</code> <strong>application</strong>; the <strong><code>paradex/</code></strong>
+        modules it builds on are <strong>reference</strong> and link into the
+        <a href="docs/index.html">API docs</a>.
+      </p>
+
+      <article id="label-camera" class="label">
+        <div class="label-head">
+          <h3>Camera daemons <span class="tag">src/camera</span></h3>
+          <span class="badge">runs on each capture PC</span>
+        </div>
+        <p>
+          Long-running daemons that expose each capture PC's cameras to the network. The main PC
+          drives them through the <code>*_remote.py</code> orchestrators in <code>src/capture/camera</code>.
+          Start these <em>before</em> any orchestrator connects, or the controller raises a
+          <code>ConnectionError</code> naming the unreachable PC.
+        </p>
+        <div class="label-grid">
+          <div>
+            <h4>Scripts</h4>
+            <ul>
+              <li><code>server_daemon.py</code> — ZMQ command server wrapping one <code>CameraLoader</code>; handles <code>register / start / stop / heartbeat / reload / end</code>.</li>
+              <li><code>monitor_daemon.py</code> — Flask web dashboard of per-PC camera + controller status (port 1234).</li>
+            </ul>
+            <h4>Ports</h4>
+            <ul>
+              <li><code>5480</code> — ping/pong (REP)</li>
+              <li><code>5481</code> — status broadcast (PUB)</li>
+              <li><code>5482</code> — commands (REP)</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Run (on each capture PC)</h4>
+            <pre><code>python src/camera/server_daemon.py
+python src/camera/monitor_daemon.py   # dashboard :1234</code></pre>
+            <h4>Builds on (reference)</h4>
+            <ul>
+              <li><code>paradex.io.camera_system.camera_server_daemon</code></li>
+              <li><code>paradex.io.camera_system.monitor_daemon</code></li>
+              <li><code>paradex.io.camera_system.camera_loader.CameraLoader</code></li>
+            </ul>
+            <p><a href="https://github.com/willi19/paradex/blob/main/src/camera/README.md">Full README →</a></p>
+          </div>
+        </div>
+      </article>
+
+      <p class="muted">More labels (calibration, capture, …) are being added here incrementally.</p>
+    </section>
+
+    <section id="quickstart" class="section alt">
+      <h2>Quick start</h2>
+      <div class="two-col">
+        <div>
+          <h3>Install</h3>
+          <pre><code>git clone https://github.com/willi19/paradex.git
+cd paradex
+pip install -e .</code></pre>
+          <h3>Calibrate (run in order)</h3>
+          <pre><code># 1. extrinsic (main PC; press 'c' to capture, 'q' to quit)
+python src/calibration/extrinsic/capture.py
+python src/calibration/extrinsic/calculate.py
+
+# 2. hand-eye (camera → robot)
+python src/calibration/handeye/capture.py --arm xarm
+python src/calibration/handeye/calculate.py --arm xarm</code></pre>
+        </div>
+        <div>
+          <h3>Capture (distributed)</h3>
+          <pre><code># on each capture PC
+python src/camera/server_daemon.py
+
+# on the main PC
+python src/capture/camera/image_remote.py  --save_path dataset/001
+python src/capture/camera/video_remote.py  --save_path dataset/001 --sync_mode</code></pre>
+          <h3>Process &amp; infer</h3>
+          <pre><code>python src/process/object_turntable/extract_video.py
+# extract_charuco → get_rotation → extract_mask_sam3 → generate_colmap
+python src/inference/grasp_w_gui/object6d.py</code></pre>
+          <p class="muted">Exact args, keyboard controls, and main-vs-capture-PC roles are in each app's README.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="docs" class="section">
+      <h2>Documentation</h2>
+      <div class="grid three">
+        <a class="appcard" href="docs/index.html">
+          <h3>API reference</h3>
+          <p>Generated Sphinx docs for the <code>paradex/</code> library.</p>
+        </a>
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/README.md">
+          <h3>Project README</h3>
+          <p>Setup, configuration, and contributing.</p>
+        </a>
+        <a class="appcard" href="https://github.com/willi19/paradex/blob/main/CLAUDE.md">
+          <h3>CLAUDE.md</h3>
+          <p>Project guide + "when doing X, look at Y" task map.</p>
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Paradex — multi-camera vision &amp; robot control framework</span>
+    <a href="https://github.com/willi19/paradex">github.com/willi19/paradex</a>
+  </footer>
+</body>
+</html>

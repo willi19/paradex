@@ -1,0 +1,65 @@
+paradex.io.camera_system.camera_loader
+======================================
+
+.. py:module:: paradex.io.camera_system.camera_loader
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: RETRY_COUNT
+   :value: 5
+
+
+.. py:data:: RETRY_DELAY
+   :value: 2
+
+
+.. py:data:: DEFAULT_GAIN
+   :value: 3.0
+
+
+.. py:data:: DEFAULT_EXPOSURE
+   :value: 2500.0
+
+
+.. py:class:: CameraLoader(types=['pyspin'])
+
+   .. py:attribute:: cameralist
+      :value: []
+
+
+
+   .. py:attribute:: camera_names
+      :value: []
+
+
+
+   .. py:attribute:: cam_config
+
+
+   .. py:method:: load_pyspin_camera(serial_list=None)
+
+
+   .. py:method:: start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+
+
+   .. py:method:: stop()
+
+
+   .. py:method:: end()
+
+
+   .. py:method:: get_status_list()
+
+
+   .. py:method:: get_all_errors()
+
+      모든 카메라의 에러 정보 반환
+
+
+

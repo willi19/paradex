@@ -8,6 +8,8 @@ paradex.io.robot_controller.xarm_controller
 
 
 
+
+
 Module Contents
 ---------------
 
@@ -15,39 +17,15 @@ Module Contents
    :value: 6
 
 
-.. py:class:: XArmController
+.. py:function:: homo2cart(h)
+
+.. py:function:: cart2homo(cart)
+
+.. py:function:: homo2aa(h)
+
+.. py:class:: XArmController(ip)
 
    .. py:attribute:: xarm_ip_address
-
-
-   .. py:attribute:: save_path
-      :value: None
-
-
-
-   .. py:attribute:: lock
-
-
-   .. py:attribute:: exit
-
-
-   .. py:attribute:: start_event
-
-
-   .. py:attribute:: save_event
-
-
-   .. py:attribute:: target_action
-
-
-   .. py:attribute:: homing
-      :value: False
-
-
-
-   .. py:attribute:: init
-      :value: False
-
 
 
    .. py:attribute:: fps
@@ -55,59 +33,54 @@ Module Contents
 
 
 
-   .. py:attribute:: robot_model
+   .. py:attribute:: lock
 
 
-   .. py:attribute:: last_link_id
+   .. py:attribute:: exit_event
 
 
-   .. py:attribute:: mode_change
-      :value: False
+   .. py:attribute:: save_event
 
+
+   .. py:attribute:: error_event
+
+
+   .. py:attribute:: connect_event
+
+
+   .. py:attribute:: position_control_event
 
 
    .. py:attribute:: thread
 
 
-   .. py:method:: is_ready()
+   .. py:method:: control_loop()
 
 
-   .. py:method:: start(save_path=None)
+   .. py:method:: start(save_path)
 
 
-   .. py:method:: end()
+   .. py:method:: stop()
 
 
-   .. py:method:: wait_for_save()
+   .. py:method:: end(set_break=False)
 
 
-   .. py:method:: home_robot(homepose)
+   .. py:method:: move(action, is_servo=True, speed=None)
 
 
-   .. py:method:: set_action(action)
+   .. py:method:: clear_error()
 
+      Clear errors/warnings and re-enable servo mode without reconnecting.
 
-   .. py:method:: homo2cart(h)
-
-
-   .. py:method:: homo2aa(h)
-
-
-   .. py:method:: get_qpos()
-
-
-   .. py:method:: get_position()
 
 
    .. py:method:: reset()
 
 
-   .. py:method:: move_arm()
+   .. py:method:: get_data()
 
 
-   .. py:method:: save()
-
-
-   .. py:method:: quit(set_break=True)
+   .. py:method:: is_error()
 
 

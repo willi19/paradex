@@ -15,6 +15,7 @@ extensions = [
 
 autoapi_dirs = ['../paradex']
 autoapi_type = 'python'
+autoapi_python_use_implicit_namespaces = True
 
 # 문법 에러 있는 파일들 제외
 autoapi_ignore = [

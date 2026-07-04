@@ -1,0 +1,44 @@
+paradex.image.undistort
+=======================
+
+.. py:module:: paradex.image.undistort
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: precomute_undistort_map(intrinsic)
+
+.. py:function:: apply_undistort_map(img, mapx, mapy)
+
+.. py:function:: precompute_undistort_map_torch(intrinsic, device='cuda')
+
+   GPU undistort grid for torch.nn.functional.grid_sample.
+
+   Returns (new_cammtx, grid_tensor of shape (1, H, W, 2) on `device`).
+
+
+.. py:function:: apply_undistort_torch(img_bgr, grid_tensor)
+
+   Undistort a uint8 HxWx3 BGR frame via grid_sample on the grid's device.
+
+
+.. py:function:: undistort_img(img, intrinsic)
+
+   Undistort image using intrinsic parameters.
+
+   :param img: Image to undistort
+   :type img: np.ndarray
+   :param intrinsic: Intrinsic parameters
+   :type intrinsic: dict
+
+   :returns: Undistorted image
+   :rtype: undistorted_img (np.ndarray)
+
+
+.. py:function:: undistort_points(pts, intrinsic)
+
+.. py:function:: remap_corners(corners, cammtx, dist_coef, sn, img=None)
+

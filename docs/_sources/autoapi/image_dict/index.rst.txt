@@ -1,6 +1,0 @@
-image_dict
-==========
-
-.. py:module:: image_dict
-
-

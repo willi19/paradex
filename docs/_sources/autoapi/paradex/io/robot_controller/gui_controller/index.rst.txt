@@ -1,0 +1,186 @@
+paradex.io.robot_controller.gui_controller
+==========================================
+
+.. py:module:: paradex.io.robot_controller.gui_controller
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: WaypointType(*args, **kwds)
+
+   Bases: :py:obj:`enum.Enum`
+
+
+   Create a collection of name/value pairs.
+
+   Example enumeration:
+
+   >>> class Color(Enum):
+   ...     RED = 1
+   ...     BLUE = 2
+   ...     GREEN = 3
+
+   Access them by:
+
+   - attribute access:
+
+     >>> Color.RED
+     <Color.RED: 1>
+
+   - value lookup:
+
+     >>> Color(1)
+     <Color.RED: 1>
+
+   - name lookup:
+
+     >>> Color['RED']
+     <Color.RED: 1>
+
+   Enumerations can be iterated over, and know how many members they have:
+
+   >>> len(Color)
+   3
+
+   >>> list(Color)
+   [<Color.RED: 1>, <Color.BLUE: 2>, <Color.GREEN: 3>]
+
+   Methods can be added to enumerations, and members can have their own
+   attributes -- see the documentation for details.
+
+
+   .. py:attribute:: JOINT
+      :value: 'joint'
+
+
+
+   .. py:attribute:: CARTESIAN
+      :value: 'cartesian'
+
+
+
+.. py:class:: Waypoint(name, wp_type, target=None, hand_qpos=None, threshold=None, repeat_ticks=0)
+
+   .. py:attribute:: type
+
+
+   .. py:attribute:: target
+      :value: None
+
+
+
+   .. py:attribute:: hand_qpos
+      :value: None
+
+
+
+   .. py:attribute:: name
+
+
+   .. py:attribute:: trajectory
+      :value: None
+
+
+
+   .. py:attribute:: hand_trajectory
+      :value: None
+
+
+
+   .. py:attribute:: robot_step
+      :value: 0
+
+
+
+   .. py:attribute:: hand_step
+      :value: 0
+
+
+
+   .. py:attribute:: repeat_ticks
+      :value: 0
+
+
+
+   .. py:attribute:: repeat_count
+      :value: 0
+
+
+
+   .. py:attribute:: reached
+      :value: False
+
+
+
+.. py:class:: RobotGUIController(robot_controller, hand_controller)
+
+   .. py:attribute:: robot
+
+
+   .. py:attribute:: hand
+
+
+   .. py:attribute:: joint_vel_limit
+      :value: 0.06
+
+
+
+   .. py:attribute:: cart_vel_limit
+      :value: 1.0
+
+
+
+   .. py:attribute:: rot_vel_limit
+      :value: 0.01
+
+
+
+   .. py:attribute:: hand_vel_limit
+      :value: 0.05
+
+
+
+   .. py:attribute:: waypoint_queue
+
+
+   .. py:attribute:: current_waypoint
+      :value: None
+
+
+
+   .. py:attribute:: manual_override
+      :value: False
+
+
+
+   .. py:attribute:: auto_execute
+      :value: False
+
+
+
+   .. py:attribute:: button_states
+
+
+   .. py:attribute:: running
+      :value: True
+
+
+
+   .. py:attribute:: root
+
+
+   .. py:method:: stop_and_clear()
+
+
+   .. py:method:: add_waypoint(name, wp_type, target=None, hand_qpos=None, threshold=None, repeat_ticks=10)
+
+
+   .. py:method:: clear_queue()
+
+
+   .. py:method:: run()
+
+

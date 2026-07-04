@@ -1,0 +1,38 @@
+paradex.dataset_acqusition.capture
+==================================
+
+.. py:module:: paradex.dataset_acqusition.capture
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: CaptureSession(camera=False, arm=None, hand=None, teleop=None, hand_ip=False)
+
+   .. py:attribute:: save_path
+      :value: None
+
+
+
+   .. py:attribute:: stage
+      :value: None
+
+
+
+   .. py:method:: start(save_path, mode='video', fps=30, exposure_time=None, gain=None, stage=None)
+
+
+   .. py:method:: stop()
+
+
+   .. py:method:: end()
+
+
+   .. py:method:: teleop()
+
+
+   .. py:method:: move(action_dict)
+
+

@@ -12,101 +12,94 @@ Module Contents
 ---------------
 
 .. py:data:: JOINT_STATE_TOPIC
-   :value: '/allegroHand/joint_states'
+   :value: '/joint_states'
 
 
-.. py:data:: GRAV_COMP_TOPIC
-   :value: '/allegroHand/grav_comp_torques'
-
-
-.. py:data:: COMM_JOINT_STATE_TOPIC
-   :value: '/allegroHand/commanded_joint_states'
-
-
-.. py:data:: JOINT_COMM_TOPIC
-   :value: '/allegroHand/joint_cmd'
+.. py:data:: COMMAND_TOPIC
+   :value: '/allegro_hand_position_controller/commands'
 
 
 .. py:data:: MAX_ANGLE
    :value: 2.1
 
 
-.. py:data:: MAX_TORQUE
-   :value: 0.3
+.. py:data:: action_dof
+   :value: 16
 
 
 .. py:data:: DEFAULT_VAL
    :value: None
 
 
-.. py:data:: action_dof
-   :value: 16
+.. py:data:: JS_TO_CMD
+   :value: [8, 6, 10, 3, 5, 2, 0, 1, 7, 15, 14, 12, 11, 13, 4, 9]
 
 
 .. py:class:: AllegroController
+
+   Bases: :py:obj:`rclpy.node.Node`
+
 
    .. py:attribute:: current_joint_pose
       :value: None
 
 
 
-   .. py:attribute:: grav_comp
-      :value: None
+   .. py:attribute:: save_event
 
 
-
-   .. py:attribute:: cmd_joint_state
-      :value: None
+   .. py:attribute:: exit_event
 
 
-
-   .. py:attribute:: capture_path
-      :value: None
-
-
-
-   .. py:attribute:: allegro_home_pose
-
-
-   .. py:attribute:: target_action
-
-
-   .. py:attribute:: exit
+   .. py:attribute:: connection_event
 
 
    .. py:attribute:: lock
 
 
+   .. py:attribute:: sub_js
+
+
+   .. py:attribute:: pub_cmd
+
+
+   .. py:attribute:: action
+
+
+   .. py:attribute:: joint_value
+
+
+   .. py:attribute:: spin_thread
+
+
    .. py:attribute:: thread
+
+
+   .. py:method:: control_loop()
 
 
    .. py:method:: start(save_path)
 
 
+   .. py:method:: stop()
+
+
    .. py:method:: end()
 
 
-   .. py:method:: move(desired_action=np.zeros(action_dof), absolute=True)
-
-
-   .. py:method:: set_homepose(allegro_home_pose)
-
-
-   .. py:method:: home_robot()
+   .. py:method:: move(action)
 
 
    .. py:method:: get_data()
 
+      Get current hand state
 
-   .. py:method:: move_hand()
+      :returns:
 
+                Dictionary containing:
+                    - 'qpos': Current joint positions (16,)
+                    - 'action': Current target action (16,)
+      :rtype: dict
 
-   .. py:method:: set_target_action(action)
-
-
-   .. py:method:: save()
-
-
-   .. py:method:: quit()
 
 

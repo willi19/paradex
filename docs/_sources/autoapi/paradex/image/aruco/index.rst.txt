@@ -1,0 +1,63 @@
+paradex.image.aruco
+===================
+
+.. py:module:: paradex.image.aruco
+
+.. autoapi-nested-parse::
+
+   ArUco and CharUco marker detection module (optimized version)
+   - Caching for faster repeated detection
+   - Safe handling of empty detections
+   - Cleaner merging of multi-board results
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: aruco_dict
+
+.. py:data:: boardinfo_dict
+
+.. py:function:: get_aruco_detector(dict_type: str)
+
+.. py:function:: get_charuco_detector()
+
+.. py:function:: detect_aruco(img, dict_type='6X6_1000') -> Tuple[List[numpy.ndarray], numpy.ndarray]
+
+.. py:function:: check_boardinfo_valid(boardinfo)
+
+.. py:function:: detect_charuco(img)
+
+.. py:function:: get_adjecent_ids()
+
+.. py:function:: merge_charuco_detection(detection_list)
+
+.. py:function:: draw_charuco(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids=None)
+
+.. py:function:: draw_aruco(img, kypt, ids=None, color=(255, 0, 0))
+
+.. py:function:: draw_keypoint(img, kypt, color=(255, 0, 0))
+
+.. py:function:: find_common_indices(ids1, ids2)
+
+   Find indices such that corners can be directly matched.
+
+   Usage:
+       idx1, idx2 = find_common_points(ids1, ids2)
+       matched_cor1 = cor1[idx1]
+       matched_cor2 = cor2[idx2]
+       # Now matched_cor1[i] corresponds to matched_cor2[i]
+
+   :returns: indices for array1
+             idx2: indices for array2
+             (Both sorted by ID to ensure correspondence)
+   :rtype: idx1
+
+
+.. py:function:: get_board_cor()
+

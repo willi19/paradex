@@ -12,7 +12,6 @@ class camera_server_daemon:
         self.ping_port = 5480
         self.monitor_port = 5481
         self.command_port = 5482
-        self.connection_port = 5483
 
         self.ctx = zmq.Context()
 
@@ -44,17 +43,6 @@ class camera_server_daemon:
             try:
                 _ = self.ping_socket.recv_string(flags=zmq.NOBLOCK)
                 self.ping_socket.send_string("pong")
-            except zmq.ZMQError:
-                time.sleep(0.1)
-
-    def connection_thread(self):
-        self.connection_socket = self.ctx.socket(zmq.REP)
-        self.connection_socket.bind(f"tcp://*:{self.connection_port}")
-
-        while True:
-            try:
-                _ = self.connection_socket.recv_string(flags=zmq.NOBLOCK)
-                self.connection_socket.send_string("connected")
             except zmq.ZMQError:
                 time.sleep(0.1)
 
@@ -140,7 +128,7 @@ class camera_server_daemon:
                 self.current_controller = None
                 self.last_mode = None
                 return {"status":"ok", "msg":"ended"}
-            except:
+            except Exception:
                 return {"status":"error", "msg":"end failed"}
 
         if action == "heartbeat":
@@ -158,7 +146,7 @@ class camera_server_daemon:
             try:
                 self.reload_cameras()
                 return {"status":"ok", "msg":"cameras reloaded"}
-            except:
+            except Exception:
                 return {"status":"error", "msg":"reload failed"}
             
         return {"status":"error", "msg":"unknown action"}

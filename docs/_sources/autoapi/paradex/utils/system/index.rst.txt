@@ -1,0 +1,29 @@
+paradex.utils.system
+====================
+
+.. py:module:: paradex.utils.system
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: config_dir
+
+.. py:data:: pc_info
+
+.. py:data:: network_info
+
+.. py:data:: pc_name
+
+.. py:function:: get_pc_ip(pc_name: str) -> str
+
+.. py:function:: get_camera_list(pc_name: str = pc_name) -> list
+
+.. py:function:: get_pc_list() -> list
+
+.. py:function:: get_camera_config() -> dict
+

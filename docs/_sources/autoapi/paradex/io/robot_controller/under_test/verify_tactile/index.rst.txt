@@ -1,0 +1,13 @@
+paradex.io.robot_controller.under_test.verify_tactile
+=====================================================
+
+.. py:module:: paradex.io.robot_controller.under_test.verify_tactile
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: test_tactile_reading()
+

@@ -15,8 +15,7 @@ class CameraMonitor:
     def __init__(self, web_port=8080, ping_interval=1.0):
         self.ping_port = 5480       # ping-pong
         self.monitor_port = 5481    # SUB로 상태 받기
-        self.command_port = 5482    # command (사용 안 함)
-        
+
         self.pc_list = get_pc_list()
         self.web_port = web_port
         self.ping_interval = ping_interval

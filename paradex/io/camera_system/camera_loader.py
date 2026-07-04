@@ -4,19 +4,25 @@ import time
 
 from paradex.io.camera_system.camera import Camera
 from paradex.utils.path import home_path, capture_path_list
-from paradex.utils.system import get_camera_list
+from paradex.utils.system import get_camera_list, get_camera_config
 
 RETRY_COUNT = 5
 RETRY_DELAY = 2  # seconds
+
+# Fallback per-camera params when a serial is absent from camera.json.
+DEFAULT_GAIN = 3.0
+DEFAULT_EXPOSURE = 2500.0
 
 class CameraLoader:
     def __init__(self, types=["pyspin"]):
         self.cameralist = []
         self.camera_names = []
-        
+        # Per-serial gain/exposure baseline (system/current/camera.json).
+        self.cam_config = get_camera_config()
+
         for cam_type in types:
             if cam_type == "pyspin":
-                self.load_pyspin_camera()        
+                self.load_pyspin_camera()
     
     def load_pyspin_camera(self, serial_list=None):
         from paradex.io.camera_system.pyspin import get_serial_list, autoforce_ip
@@ -41,7 +47,7 @@ class CameraLoader:
     def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None):
         if mode == "image":
             save_paths = [os.path.join(home_path, save_path, "images") for _ in self.cameralist]
-            print(save_paths)
+            print("image save paths:", save_paths)
             for path in save_paths:
                 os.makedirs(path, exist_ok=True)
 
@@ -56,7 +62,14 @@ class CameraLoader:
         print("starting cameras... cameras:", self.camera_names)
         threads = []
         for camera, path in zip(self.cameralist, save_paths):
-            t = Thread(target=camera.start, args=(mode, syncMode, path, fps, exposure_time, gain))
+            # Resolve deterministically: explicit arg > camera.json baseline > default.
+            # None means "use the camera.json baseline", never "keep whatever was last
+            # set" — so a prior override (e.g. an exposure sweep) can't silently leak
+            # into the next capture.
+            cfg = self.cam_config.get(camera.name, {})
+            cam_exposure = exposure_time if exposure_time is not None else cfg.get("exposure", DEFAULT_EXPOSURE)
+            cam_gain = gain if gain is not None else cfg.get("gain", DEFAULT_GAIN)
+            t = Thread(target=camera.start, args=(mode, syncMode, path, fps, cam_exposure, cam_gain))
             threads.append(t)
             
         for t in threads:
@@ -66,29 +79,19 @@ class CameraLoader:
             t.join()
         print("all cameras started.")
     
+    def _broadcast(self, method_name):
+        """Call `method_name` on every camera in parallel and wait for all to finish."""
+        threads = [Thread(target=getattr(camera, method_name)) for camera in self.cameralist]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
     def stop(self):
-        threads = []
-        for camera in self.cameralist:
-            t = Thread(target=camera.stop)
-            threads.append(t)
-            
-        for t in threads:
-            t.start()
-        
-        for t in threads:
-            t.join()
-    
+        self._broadcast("stop")
+
     def end(self):
-        threads = []
-        for camera in self.cameralist:
-            t = Thread(target=camera.end)
-            threads.append(t)
-            
-        for t in threads:
-            t.start()
-        
-        for t in threads:
-            t.join()
+        self._broadcast("end")
 
     def get_status_list(self):
         status_list = []

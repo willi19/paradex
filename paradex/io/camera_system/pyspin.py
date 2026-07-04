@@ -9,8 +9,14 @@ import traceback
 from paradex.utils.system import get_camera_config
 
 cam_info = get_camera_config()
-    
+
 system = ps.System.GetInstance()
+
+# Max time to wait for a frame in get_image(). On timeout GetNextImage raises
+# SpinnakerException and we return (None, None) so the acquisition loop can
+# re-check its start/exit events instead of blocking forever (LAN drop, trigger
+# stop, etc.). TODO: move to system config (see design/camera-recording-redesign.md P3).
+GRAB_TIMEOUT_MS = 1000
 
 def get_serial_list():
     cam_list = system.GetCameras()
@@ -60,12 +66,12 @@ def load_timestamp_monitor(serialnum):
     
     if serialnum in cam_info:
         gain = cam_info[serialnum]["gain"]
-        exposure = cam_info[serialnum]["exposure_time"]
+        exposure = cam_info[serialnum]["exposure"]  # camera.json key is "exposure"
 
     else:
         gain = 3.0
         exposure = 2500.0
-    
+
     cam = PyspinTimestampMonitor(camPtr, gain, exposure)
     
     cam_list.Clear()
@@ -160,24 +166,19 @@ class PyspinCamera():
         
     def get_image(self):
         """Get next image from camera.
-    
-        Image mode: Retries with 100ms timeout, auto-restarts on failure.
-        Video/Stream mode: Blocks until image available.
-        
-        :return: Raw image pointer (call Release() after use)
-        :rtype: PySpin.ImagePtr
+
+        Waits up to GRAB_TIMEOUT_MS for a frame. On timeout (no frame arrived —
+        LAN drop, trigger stopped, etc.) GetNextImage raises a SpinnakerException;
+        we catch it and return (None, None) so the acquisition loop can re-check
+        its start/exit events instead of hanging forever.
+
+        :return: (frame ndarray or None, frame_data dict or None)
         """
-        # if self.mode == "single":
-        #     while True:
-        #         try:
-        #             pImageRaw = self.cam.GetNextImage()
-        #             return self._spin2cv(pImageRaw, pImageRaw.GetHeight(), pImageRaw.GetWidth())
-                    
-        #         except:
-        #             self.stop()
-        #             self.start()
-        # else:
-        pImageRaw = self.cam.GetNextImage()
+        try:
+            pImageRaw = self.cam.GetNextImage(GRAB_TIMEOUT_MS)
+        except ps.SpinnakerException:
+            return None, None
+
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
         
         if frame_data['frameID'] % 1 == 0:

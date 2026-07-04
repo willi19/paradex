@@ -1,0 +1,43 @@
+paradex.io.robot_controller.under_test.visualize_contact
+========================================================
+
+.. py:module:: paradex.io.robot_controller.under_test.visualize_contact
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: MODBUS_IP
+   :value: '192.168.11.210'
+
+
+.. py:data:: MODBUS_PORT
+   :value: 6000
+
+
+.. py:data:: TOUCH_SENSOR_BASE_ADDR
+   :value: 3000
+
+
+.. py:data:: TOTAL_REG_COUNT
+   :value: 2124
+
+
+.. py:data:: data_queue
+
+.. py:data:: SENSOR_LAYOUT
+
+.. py:function:: parse_tactile_data(registers)
+
+.. py:function:: show_tactile_heatmap(data_dict)
+
+.. py:function:: read_modbus_data(client)
+
+.. py:function:: process_data(raw_data)
+
+.. py:function:: main()
+

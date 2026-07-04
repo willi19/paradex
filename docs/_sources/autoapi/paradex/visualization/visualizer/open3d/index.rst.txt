@@ -1,0 +1,6 @@
+paradex.visualization.visualizer.open3d
+=======================================
+
+.. py:module:: paradex.visualization.visualizer.open3d
+
+

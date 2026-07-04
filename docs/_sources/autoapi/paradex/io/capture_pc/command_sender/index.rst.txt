@@ -1,0 +1,83 @@
+paradex.io.capture_pc.command_sender
+====================================
+
+.. py:module:: paradex.io.capture_pc.command_sender
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: CommandSender(pc_list: Optional[list] = None, port: int = 6890, timeout: int = 60000)
+
+   Send commands to multiple PCs using REQ-REP pattern.
+
+   Usage:
+       sender = CommandSender(
+           pc_info={"pc1": {"ip": "192.168.1.10"}},
+           port=5482
+       )
+
+       sender.send_command({'action': 'start'})
+
+
+   .. py:attribute:: pc_list
+
+
+   .. py:attribute:: port
+      :value: 6890
+
+
+
+   .. py:attribute:: context
+
+
+   .. py:attribute:: sockets
+
+
+   .. py:method:: send_command(cmd: str, wait=False, cmd_info={}) -> None
+
+      Send command to all PCs and wait for responses.
+
+
+
+   .. py:method:: end()
+
+
+.. py:class:: CommandReceiver(event_dict: Optional[Dict[str, threading.Event]] = None, port: int = 6890)
+
+   .. py:attribute:: port
+      :value: 6890
+
+
+
+   .. py:attribute:: event_dict
+
+
+   .. py:attribute:: event_info
+
+
+   .. py:attribute:: context
+
+
+   .. py:attribute:: socket
+
+
+   .. py:attribute:: thread
+      :value: None
+
+
+
+   .. py:attribute:: exit_event
+
+
+   .. py:method:: start() -> None
+
+
+   .. py:method:: end() -> None
+
+      Clean up resources.
+
+
+

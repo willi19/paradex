@@ -23,6 +23,16 @@ Module Contents
 
 .. py:data:: command
 
+.. py:data:: TOUCH_SENSOR_BASE_ADDR
+   :value: 3000
+
+
+.. py:data:: TOTAL_REG_COUNT
+   :value: 2124
+
+
+.. py:data:: SENSOR_LAYOUT
+
 .. py:function:: data2bytes(data)
 
 .. py:function:: num2str(num)
@@ -31,38 +41,45 @@ Module Contents
 
 .. py:function:: data2str(data)
 
-.. py:class:: InspireController
-
-   .. py:attribute:: capture_path
-      :value: None
-
-
+.. py:class:: InspireController(addr)
 
    .. py:attribute:: home_pose
 
 
-   .. py:attribute:: exit
+   .. py:attribute:: save_event
+
+
+   .. py:attribute:: exit_event
+
+
+   .. py:attribute:: connection_event
 
 
    .. py:attribute:: lock
 
 
-   .. py:attribute:: target_action
+   .. py:attribute:: action
+
+
+   .. py:attribute:: joint_value
+
+
+   .. py:attribute:: addr
 
 
    .. py:attribute:: thread
 
 
-   .. py:method:: start(save_path=None)
+   .. py:method:: control_loop()
+
+
+   .. py:method:: start(save_path)
+
+
+   .. py:method:: stop()
 
 
    .. py:method:: end()
-
-
-   .. py:method:: set_homepose(home_pose)
-
-
-   .. py:method:: home_robot(home_pose=None)
 
 
    .. py:method:: open_serial()
@@ -74,21 +91,15 @@ Module Contents
    .. py:method:: read6(command_name)
 
 
-   .. py:method:: get_qpos()
+   .. py:method:: get_data()
 
 
    .. py:method:: get_force()
 
 
-   .. py:method:: move_hand()
+   .. py:method:: move(action)
 
 
-   .. py:method:: set_target_action(action)
-
-
-   .. py:method:: save()
-
-
-   .. py:method:: quit()
+   .. py:method:: is_error()
 
 

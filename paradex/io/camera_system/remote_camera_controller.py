@@ -11,10 +11,9 @@ class remote_camera_controller:
 
         self.pc_list = get_pc_list() if pc_list is None else pc_list
         
-        self.ping_port = 5480    
-        self.command_port = 5482   
-        self.connection_port = 5483
-        
+        self.ping_port = 5480
+        self.command_port = 5482
+
         self.exit_event = Event()
         self.start_event = Event()
         self.stop_event = Event()   

@@ -1,0 +1,61 @@
+paradex.robot.xarm_kinematic_calib
+==================================
+
+.. py:module:: paradex.robot.xarm_kinematic_calib
+
+.. autoapi-nested-parse::
+
+   Read per-unit kinematic calibration from xArm controller and apply to URDF.
+
+   For xArm/UF850 produced after August 2023, UFACTORY performs per-unit
+   kinematic calibration at the factory and stores the resulting offsets in
+   the controller register. Reading these values via TCP/Modbus (port 502)
+   and writing them into the URDF joint origins makes URDF FK match the
+   robot's actual end-effector pose.
+
+   Protocol matches xarm_ros2/xarm_description/config/kinematics/gen_kinematics_params.py.
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: read_xarm_kinematic_params(robot_ip: str, timeout: float = 3.0) -> dict
+
+   Connect to xArm controller and read factory kinematic calibration.
+
+   Returns a dict shaped like::
+
+       {
+           "robot_dof": 6,
+           "robot_name": "xarm6",
+           "kinematics": {
+               "joint1": {"x": .., "y": .., "z": .., "roll": .., "pitch": .., "yaw": ..},
+               ...
+           },
+       }
+
+
+.. py:function:: save_kinematic_yaml(params: dict, path: str) -> None
+
+   Save calibration in the xarm_ros2-compatible YAML format.
+
+
+.. py:function:: load_kinematic_yaml(path: str) -> dict
+
+   Load YAML and return the joint -> {x,y,z,roll,pitch,yaw} mapping.
+
+
+.. py:function:: apply_kinematics_to_urdf(urdf_path: str, kinematic_params: dict, joint_names=None) -> dict
+
+   Patch joint origins in a URDF in-place.
+
+   On first call, backs up the original to ``{urdf_path}.original``. On
+   every call, parses the backup (not the live file) so re-running is
+   idempotent and never compounds edits.
+
+   Returns a diff summary: {joint_name: {"d_xyz_mm": [..], "d_rpy_deg": [..]}}.
+
+

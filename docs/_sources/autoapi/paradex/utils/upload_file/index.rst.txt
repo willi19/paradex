@@ -9,10 +9,36 @@ paradex.utils.upload_file
 Module Contents
 ---------------
 
-.. py:function:: copy_file(src, dst)
+.. py:function:: rsync_copy(src, dst, move=False, resume=True, dry_run=False, compress=False, checksum=True, verbose=False)
 
-.. py:function:: copy_file_with_progress(src, dst, total_size, copied_size)
+   rsync를 사용한 안전한 파일/디렉토리 복사
 
-   Copy a file with progress tracking, overwriting in case of corruption.
+   :param src: 소스 경로
+   :param dst: 목적지 경로
+   :param move: 복사 후 원본 삭제
+   :param dry_run: 실제 복사 안 하고 테스트만
+   :param compress: 전송 중 압축 (느린 네트워크에 유용)
+   :param checksum: 체크섬 기반 검증
+   :param verbose: 상세 출력
+
+
+.. py:function:: check_rsync_installed()
+
+   rsync 설치 여부 확인
+
+
+.. py:function:: get_file_size(path)
+
+   파일 또는 디렉토리 크기 계산
+
+
+.. py:function:: format_size(size)
+
+   바이트를 human-readable로 변환
+
+
+.. py:function:: estimate_time(src)
+
+   예상 전송 시간 계산 (참고용)
 
 

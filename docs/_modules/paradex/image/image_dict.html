@@ -1,0 +1,912 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="../../../">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="../../../genindex.html" /><link rel="search" title="Search" href="../../../search.html" />
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
+        <title>paradex.image.image_dict - paradex 0.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=55bf9381" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=580074bf" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=8dab3a3b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=56614cd1" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="../../../index.html"><div class="brand">paradex 0.0.0 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../index.html">
+  
+  
+  <span class="sidebar-brand-text">paradex 0.0.0 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="../../../search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../../autoapi/index.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../../autoapi/paradex/index.html">paradex</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of paradex</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/calibration/index.html">paradex.calibration</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of paradex.calibration</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/calibration/Tsai_Lenz/index.html">paradex.calibration.Tsai_Lenz</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/calibration/colmap/index.html">paradex.calibration.colmap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/calibration/utils/index.html">paradex.calibration.utils</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/dataset_acqusition/index.html">paradex.dataset_acqusition</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of paradex.dataset_acqusition</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/dataset_acqusition/capture/index.html">paradex.dataset_acqusition.capture</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/dataset_acqusition/match_sync/index.html">paradex.dataset_acqusition.match_sync</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/image/index.html">paradex.image</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of paradex.image</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/image/aruco/index.html">paradex.image.aruco</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/image/grid/index.html">paradex.image.grid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/image/image_dict/index.html">paradex.image.image_dict</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/image/merge/index.html">paradex.image.merge</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/image/overlay/index.html">paradex.image.overlay</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/image/projection/index.html">paradex.image.projection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/image/undistort/index.html">paradex.image.undistort</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/io/index.html">paradex.io</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of paradex.io</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../autoapi/paradex/io/capture_pc/index.html">paradex.io.capture_pc</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/io/capture_pc/command_sender/index.html">paradex.io.capture_pc.command_sender</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/io/capture_pc/data_sender/index.html">paradex.io.capture_pc.data_sender</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/io/capture_pc/processor/index.html">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/io/capture_pc/ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+</ul>
+</li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/allegro_controller/index.html">paradex.io.robot_controller.allegro_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/gui_controller/index.html">paradex.io.robot_controller.gui_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/gui_controller_simple/index.html">paradex.io.robot_controller.gui_controller_simple</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/inspire_controller/index.html">paradex.io.robot_controller.inspire_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html">paradex.io.robot_controller.inspire_controller_ip</a></li>
+<li class="toctree-l5 has-children"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/under_test/index.html">paradex.io.robot_controller.under_test</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller.under_test</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l6"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/under_test/cli/index.html">paradex.io.robot_controller.under_test.cli</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/under_test/exceptions/index.html">paradex.io.robot_controller.under_test.exceptions</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/under_test/hand_demo/index.html">paradex.io.robot_controller.under_test.hand_demo</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html">paradex.io.robot_controller.under_test.hand_rh56dftp</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/under_test/inspire_hand_ip_demo/index.html">paradex.io.robot_controller.under_test.inspire_hand_ip_demo</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/under_test/modbus/index.html">paradex.io.robot_controller.under_test.modbus</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/under_test/verify_tactile/index.html">paradex.io.robot_controller.under_test.verify_tactile</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/under_test/visualize_contact/index.html">paradex.io.robot_controller.under_test.visualize_contact</a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/io/robot_controller/xarm_controller/index.html">paradex.io.robot_controller.xarm_controller</a></li>
+</ul>
+</li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../autoapi/paradex/io/teleop/index.html">paradex.io.teleop</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of paradex.io.teleop</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5 has-children"><a class="reference internal" href="../../../autoapi/paradex/io/teleop/xsens/index.html">paradex.io.teleop.xsens</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of paradex.io.teleop.xsens</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l6"><a class="reference internal" href="../../../autoapi/paradex/io/teleop/xsens/receiver/index.html">paradex.io.teleop.xsens.receiver</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/process/index.html">paradex.process</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of paradex.process</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/process/distributed/index.html">paradex.process.distributed</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/process/processor/index.html">paradex.process.processor</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/retargetor/index.html">paradex.retargetor</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of paradex.retargetor</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/retargetor/hand_regargetor/index.html">paradex.retargetor.hand_regargetor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/retargetor/state/index.html">paradex.retargetor.state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/retargetor/unimanual/index.html">paradex.retargetor.unimanual</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/robot/index.html">paradex.robot</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of paradex.robot</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/robot/curobo/index.html">paradex.robot.curobo</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/robot/inspire/index.html">paradex.robot.inspire</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/robot/mimic_joint/index.html">paradex.robot.mimic_joint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/robot/robot_wrapper/index.html">paradex.robot.robot_wrapper</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/robot/robot_wrapper_updating/index.html">paradex.robot.robot_wrapper_updating</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/robot/urdf/index.html">paradex.robot.urdf</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/robot/utils/index.html">paradex.robot.utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/robot/xarm_kinematic_calib/index.html">paradex.robot.xarm_kinematic_calib</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/simulator/index.html">paradex.simulator</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of paradex.simulator</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/simulator/isaac/index.html">paradex.simulator.isaac</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/transforms/index.html">paradex.transforms</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><div class="visually-hidden">Toggle navigation of paradex.transforms</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/transforms/conversion/index.html">paradex.transforms.conversion</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/transforms/coordinate/index.html">paradex.transforms.coordinate</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/transforms/triangulate/index.html">paradex.transforms.triangulate</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/file_io/index.html">paradex.utils.file_io</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/path/index.html">paradex.utils.path</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/system/index.html">paradex.utils.system</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/upload_file/index.html">paradex.utils.upload_file</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/video/index.html">paradex.video</a><input class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><div class="visually-hidden">Toggle navigation of paradex.video</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/video/raw_video_processor/index.html">paradex.video.raw_video_processor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/video/util/index.html">paradex.video.util</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/visualization/robot/index.html">paradex.visualization.robot</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <h1>Source code for paradex.image.image_dict</h1><div class="highlight"><pre>
+<span></span><span class="c1"># paradex/image/collection.py</span>
+<span class="sd">&quot;&quot;&quot;Image collection with batch operations&quot;&quot;&quot;</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Union</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">pathlib</span><span class="w"> </span><span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">cv2</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.calibration.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_camparam</span><span class="p">,</span> <span class="n">load_current_camparam</span><span class="p">,</span> <span class="n">get_cammtx</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.image.undistort</span><span class="w"> </span><span class="kn">import</span> <span class="n">apply_undistort_map</span><span class="p">,</span> <span class="n">precomute_undistort_map</span><span class="p">,</span> <span class="n">undistort_img</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.image.overlay</span><span class="w"> </span><span class="kn">import</span> <span class="n">overlay_mask</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.image.aruco</span><span class="w"> </span><span class="kn">import</span> <span class="n">detect_aruco</span><span class="p">,</span> <span class="n">detect_charuco</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.transforms.triangulate</span><span class="w"> </span><span class="kn">import</span> <span class="n">triangulation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.image.merge</span><span class="w"> </span><span class="kn">import</span> <span class="n">merge_image</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.visualization.deprecated.shape</span><span class="w"> </span><span class="kn">import</span> <span class="n">draw_mask</span>
+
+<div class="viewcode-block" id="ImageDict">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">ImageDict</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                 <span class="n">images</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> 
+                 <span class="n">intrinsic</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">extrinsic</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                 <span class="n">path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Args:</span>
+<span class="sd">            images: Dictionary mapping camera serial numbers to images</span>
+<span class="sd">            intrinsic: Camera intrinsic parameters per serial number</span>
+<span class="sd">            extrinsic: Camera extrinsic parameters per serial number</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">images</span> <span class="o">=</span> <span class="n">images</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span> <span class="o">=</span> <span class="n">intrinsic</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span> <span class="o">=</span> <span class="n">extrinsic</span> <span class="ow">or</span> <span class="p">{}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span> <span class="o">=</span> <span class="p">{}</span>  <span class="c1"># For caching results of operations</span>
+    
+<div class="viewcode-block" id="ImageDict.from_path">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.from_path">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_path</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> 
+                  <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;ImageDict&#39;</span><span class="p">:</span>
+        
+        <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">images_dir</span> <span class="o">=</span> <span class="kc">None</span>
+        
+        <span class="k">if</span> <span class="p">(</span><span class="n">path</span> <span class="o">/</span> <span class="s2">&quot;images&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">images_dir</span> <span class="o">=</span> <span class="n">path</span> <span class="o">/</span> <span class="s2">&quot;images&quot;</span>
+        
+        <span class="k">elif</span> <span class="p">(</span><span class="n">path</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span> <span class="o">/</span> <span class="s2">&quot;images&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span> <span class="c1"># undistorted images</span>
+            <span class="n">images_dir</span> <span class="o">=</span> <span class="n">path</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span> <span class="o">/</span> <span class="s2">&quot;images&quot;</span>
+        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">images_dir</span> <span class="o">=</span> <span class="n">path</span>
+        
+        <span class="n">calib_dir</span> <span class="o">=</span> <span class="n">path</span> <span class="k">if</span> <span class="p">(</span><span class="n">path</span> <span class="o">/</span> <span class="s2">&quot;cam_param&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="k">else</span> <span class="kc">None</span>
+        
+        <span class="c1"># Load images</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">{}</span> 
+        
+        <span class="k">for</span> <span class="n">img_file</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">images_dir</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">img_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpeg&#39;</span><span class="p">,</span> <span class="s1">&#39;.bmp&#39;</span><span class="p">,</span> <span class="s1">&#39;.tiff&#39;</span><span class="p">)):</span>
+                <span class="n">serial</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">img_file</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>  <span class="c1"># filename without extension</span>
+                <span class="n">img</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">images_dir</span> <span class="o">/</span> <span class="n">img_file</span><span class="p">))</span>
+                <span class="k">if</span> <span class="n">img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">images</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">img</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">images</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No images found in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="ne">ValueError</span>
+        <span class="c1"># Load calibration</span>
+        <span class="n">intrinsic</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">extrinsic</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="k">if</span> <span class="n">calib_dir</span><span class="p">:</span>
+            <span class="n">intrinsic</span><span class="p">,</span> <span class="n">extrinsic</span> <span class="o">=</span> <span class="n">load_camparam</span><span class="p">(</span><span class="n">calib_dir</span><span class="p">)</span>
+            
+        <span class="n">ret</span> <span class="o">=</span>  <span class="bp">cls</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="n">intrinsic</span><span class="p">,</span> <span class="n">extrinsic</span><span class="p">,</span> <span class="n">path</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ret</span></div>
+
+        
+    <span class="c1"># Dictionary-like interface</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__getitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">serial</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Get image by serial number&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__setitem__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">serial</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">img</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set image by serial number&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">img</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Number of cameras&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">)</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__iter__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Iterate over (serial, image) pairs&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">iter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">items</span><span class="p">())</span>
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__contains__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">serial</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Check if serial number exists&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">serial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span>
+    
+<div class="viewcode-block" id="ImageDict.update">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.update">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">images</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update images with another dictionary&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">images</span><span class="p">)</span></div>
+
+        
+<div class="viewcode-block" id="ImageDict.update_path">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.update_path">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">update_path</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">],</span> <span class="n">reload_images</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update path and optionally reload images.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            path: New path</span>
+<span class="sd">            reload_images: If True, reload images from new path</span>
+<span class="sd">            </span>
+<span class="sd">        Note:</span>
+<span class="sd">            Preserves undistort maps if calibration hasn&#39;t changed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">reload_images</span><span class="p">:</span>
+            <span class="k">return</span>
+        
+        <span class="n">images_dir</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">images_dir</span> <span class="o">/</span> <span class="s2">&quot;images&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">images_dir</span> <span class="o">=</span> <span class="n">images_dir</span> <span class="o">/</span> <span class="s2">&quot;images&quot;</span>
+        <span class="k">elif</span> <span class="p">(</span><span class="n">images_dir</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span> <span class="o">/</span> <span class="s2">&quot;images&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">images_dir</span> <span class="o">=</span> <span class="n">images_dir</span> <span class="o">/</span> <span class="s2">&quot;raw&quot;</span> <span class="o">/</span> <span class="s2">&quot;images&quot;</span>
+        
+        <span class="n">new_images</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">img_file</span> <span class="ow">in</span> <span class="n">os</span><span class="o">.</span><span class="n">listdir</span><span class="p">(</span><span class="n">images_dir</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">img_file</span><span class="o">.</span><span class="n">endswith</span><span class="p">((</span><span class="s1">&#39;.png&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;.jpeg&#39;</span><span class="p">,</span> <span class="s1">&#39;.bmp&#39;</span><span class="p">,</span> <span class="s1">&#39;.tiff&#39;</span><span class="p">)):</span>
+                <span class="n">serial</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">img_file</span><span class="p">)</span><span class="o">.</span><span class="n">stem</span>
+                <span class="k">if</span> <span class="n">serial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">serial_list</span><span class="p">:</span>  <span class="c1"># Only load existing serials</span>
+                    <span class="n">img</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">images_dir</span> <span class="o">/</span> <span class="n">img_file</span><span class="p">))</span>
+                    <span class="k">if</span> <span class="n">img</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                        <span class="n">new_images</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">img</span>
+        
+        <span class="bp">self</span><span class="o">.</span><span class="n">images</span> <span class="o">=</span> <span class="n">new_images</span></div>
+
+        
+<div class="viewcode-block" id="ImageDict.set_camparam">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.set_camparam">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_camparam</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
+                     <span class="n">intrinsic</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">],</span> 
+                     <span class="n">extrinsic</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Set camera parameters&quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span> <span class="o">=</span> <span class="n">intrinsic</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span> <span class="o">=</span> <span class="n">extrinsic</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">serial_list</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;List of camera serial numbers&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">keys</span><span class="p">())</span>
+    
+<div class="viewcode-block" id="ImageDict.keys">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.keys">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">keys</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="ImageDict.values">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.values">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">values</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">values</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="ImageDict.items">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.items">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">items</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">items</span><span class="p">()</span></div>
+
+    
+<div class="viewcode-block" id="ImageDict.load_current_camparam">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.load_current_camparam">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">load_current_camparam</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="n">intrinsic</span><span class="p">,</span> <span class="n">extrinsic</span> <span class="o">=</span> <span class="n">load_current_camparam</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span> <span class="o">=</span> <span class="n">intrinsic</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span> <span class="o">=</span> <span class="n">extrinsic</span></div>
+
+    
+<div class="viewcode-block" id="ImageDict.copy">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.copy">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">copy</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;ImageDict&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Create a deep copy of ImageDict&quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+        <span class="k">return</span> <span class="n">ImageDict</span><span class="p">(</span>
+            <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">),</span>
+            <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">),</span>
+            <span class="n">copy</span><span class="o">.</span><span class="n">deepcopy</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">)</span>
+        <span class="p">)</span></div>
+
+    
+    <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;ImageDict(serials=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">serials</span><span class="si">}</span><span class="s2">, n_cameras=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+    
+<div class="viewcode-block" id="ImageDict.save">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.save">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">save_path</span> <span class="o">=</span> <span class="n">path</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span>
+        <span class="k">if</span> <span class="n">save_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No path specified for saving images.&quot;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="s2">&quot;images&quot;</span><span class="p">),</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        
+        <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="n">img</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">serial</span><span class="si">}</span><span class="s2">.png&quot;</span>
+            <span class="n">cv2</span><span class="o">.</span><span class="n">imwrite</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="s2">&quot;images&quot;</span><span class="p">,</span> <span class="n">filename</span><span class="p">),</span> <span class="n">img</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImageDict.save_camparam">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.save_camparam">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">save_camparam</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">save_path</span> <span class="o">=</span> <span class="n">path</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span>
+        <span class="k">if</span> <span class="n">save_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;No path specified for saving camera parameters.&quot;</span><span class="p">)</span>
+
+        <span class="n">calib_path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span> <span class="o">/</span> <span class="s2">&quot;cam_param&quot;</span>
+        <span class="n">calib_path</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">intrinsic_path</span> <span class="o">=</span> <span class="n">calib_path</span> <span class="o">/</span> <span class="s2">&quot;intrinsics.json&quot;</span>
+        <span class="n">extrinsic_path</span> <span class="o">=</span> <span class="n">calib_path</span> <span class="o">/</span> <span class="s2">&quot;extrinsics.json&quot;</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">intrinsic_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>     
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">extrinsic_path</span><span class="p">,</span> <span class="s1">&#39;w&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">f</span><span class="p">:</span>
+                <span class="n">json</span><span class="o">.</span><span class="n">dump</span><span class="p">({</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span> <span class="n">f</span><span class="p">,</span> <span class="n">indent</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="ImageDict.apply">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.apply">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">use_camparam</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply a single-image function to all images.</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            func: Function with signature func(img, **kwargs) -&gt; result</span>
+<span class="sd">            cache_key: Optional key to cache results</span>
+<span class="sd">            **kwargs: Additional arguments passed to func</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            Dictionary mapping serial numbers to results</span>
+<span class="sd">            </span>
+<span class="sd">        Example:</span>
+<span class="sd">            &gt;&gt;&gt; from paradex.image.detection import detect_aruco</span>
+<span class="sd">            &gt;&gt;&gt; results = img_dict.apply(detect_aruco, dict_type=&#39;6X6_1000&#39;)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
+        
+        <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="n">img</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">use_camparam</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">serial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span> <span class="ow">and</span> <span class="n">serial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">:</span>
+                    <span class="n">results</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span>
+                        <span class="n">img</span><span class="p">,</span> 
+                        <span class="n">intrinsic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">[</span><span class="n">serial</span><span class="p">],</span>
+                        <span class="n">extrinsic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">[</span><span class="n">serial</span><span class="p">],</span>
+                        <span class="o">**</span><span class="n">kwargs</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Camera parameters not found for serial </span><span class="si">{</span><span class="n">serial</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">results</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">results</span></div>
+
+    
+<div class="viewcode-block" id="ImageDict.map_images">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.map_images">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">map_images</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">use_camparam</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;ImageDict&#39;</span><span class="p">:</span>
+        <span class="n">new_images</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="n">img</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">use_camparam</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">serial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span> <span class="ow">and</span> <span class="n">serial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">:</span>
+                    <span class="n">new_images</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span>
+                        <span class="n">img</span><span class="p">,</span> 
+                        <span class="n">intrinsic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">[</span><span class="n">serial</span><span class="p">],</span>
+                        <span class="n">extrinsic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">[</span><span class="n">serial</span><span class="p">],</span>
+                        <span class="o">**</span><span class="n">kwargs</span>
+                    <span class="p">)</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Camera parameters not found for serial </span><span class="si">{</span><span class="n">serial</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">new_images</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">func</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                
+        <span class="k">return</span> <span class="n">ImageDict</span><span class="p">(</span><span class="n">new_images</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span></div>
+
+    
+    <span class="c1"># Image processing operations</span>
+<div class="viewcode-block" id="ImageDict.undistort">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.undistort">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">undistort</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save_path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;ImageDict&#39;</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="n">img</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="s1">&#39;undistort_map&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;undistort_map&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">for</span> <span class="n">serial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;undistort_map&#39;</span><span class="p">][</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">precomute_undistort_map</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">[</span><span class="n">serial</span><span class="p">])</span>
+            <span class="k">if</span> <span class="n">serial</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Intrinsic parameters not found for serial </span><span class="si">{</span><span class="n">serial</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="n">undistort_image</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">serial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+            <span class="n">undistort_image</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">apply_undistort_map</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="n">serial</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;undistort_map&#39;</span><span class="p">][</span><span class="n">serial</span><span class="p">][</span><span class="mi">1</span><span class="p">],</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;undistort_map&#39;</span><span class="p">][</span><span class="n">serial</span><span class="p">][</span><span class="mi">2</span><span class="p">]</span>
+            <span class="p">)</span>
+
+        <span class="n">undistort_image_dict</span> <span class="o">=</span> <span class="n">ImageDict</span><span class="p">(</span><span class="n">undistort_image</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">,</span> <span class="n">save_path</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">save_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">undistort_image_dict</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="ow">not</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span> <span class="o">/</span> <span class="s2">&quot;images&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
+            <span class="n">undistort_image_dict</span><span class="o">.</span><span class="n">save</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+            
+        <span class="k">return</span> <span class="n">undistort_image_dict</span></div>
+
+    
+    <span class="c1"># # Multi-view geometry</span>
+<div class="viewcode-block" id="ImageDict.triangulate_markers">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.triangulate_markers">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">triangulate_markers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dict_type</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s1">&#39;6X6_1000&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Triangulate ArUco markers from multiple views&quot;&quot;&quot;</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;proj_mtx&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_cammtx</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">)</span>
+            
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="n">func</span><span class="o">=</span><span class="n">detect_aruco</span><span class="p">,</span>
+            <span class="n">dict_type</span><span class="o">=</span><span class="n">dict_type</span>
+        <span class="p">)</span>
+        
+        <span class="n">marker_2d</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="p">(</span><span class="n">kypts</span><span class="p">,</span> <span class="n">ids</span><span class="p">)</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">ids</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">continue</span>
+            
+            <span class="k">for</span> <span class="nb">id</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ids</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">kypts</span><span class="p">):</span>
+                <span class="n">k</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">marker_2d</span><span class="p">:</span>
+                    <span class="n">marker_2d</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;2d&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;cammtx&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+                <span class="n">cammtx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">][</span><span class="n">serial</span><span class="p">]</span>
+                <span class="n">marker_2d</span><span class="p">[</span><span class="nb">id</span><span class="p">][</span><span class="s2">&quot;2d&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+                <span class="n">marker_2d</span><span class="p">[</span><span class="nb">id</span><span class="p">][</span><span class="s2">&quot;cammtx&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cammtx</span><span class="p">)</span>
+
+        <span class="n">marker_3d</span> <span class="o">=</span> <span class="p">{</span><span class="nb">id</span><span class="p">:</span> <span class="n">triangulation</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">marker_2d</span><span class="p">[</span><span class="nb">id</span><span class="p">][</span><span class="s2">&quot;2d&quot;</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">marker_2d</span><span class="p">[</span><span class="nb">id</span><span class="p">][</span><span class="s2">&quot;cammtx&quot;</span><span class="p">]))</span>
+                     <span class="k">for</span> <span class="nb">id</span> <span class="ow">in</span> <span class="n">marker_2d</span><span class="p">}</span>
+        <span class="k">for</span> <span class="nb">id</span> <span class="ow">in</span> <span class="n">marker_2d</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">marker_3d</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="k">del</span> <span class="n">marker_3d</span><span class="p">[</span><span class="nb">id</span><span class="p">]</span>
+                
+        <span class="k">return</span> <span class="n">marker_2d</span><span class="p">,</span> <span class="n">marker_3d</span></div>
+
+
+<div class="viewcode-block" id="ImageDict.triangulate_charuco">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.triangulate_charuco">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">triangulate_charuco</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Triangulate ChArUco corners from multiple views&quot;&quot;&quot;</span>
+        
+        <span class="k">if</span> <span class="s1">&#39;proj_mtx&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_cammtx</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">)</span>
+            
+        <span class="n">result</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span>
+            <span class="n">func</span><span class="o">=</span><span class="n">detect_charuco</span>
+        <span class="p">)</span>
+        
+        <span class="n">charuco_2d</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="n">det_dict</span> <span class="ow">in</span> <span class="n">result</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">board_id</span> <span class="ow">in</span> <span class="n">det_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">():</span>
+                <span class="n">kypts</span> <span class="o">=</span> <span class="n">det_dict</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="s2">&quot;checkerCorner&quot;</span><span class="p">]</span>
+                <span class="n">ids</span> <span class="o">=</span> <span class="n">det_dict</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="s2">&quot;checkerIDs&quot;</span><span class="p">]</span>
+                
+                <span class="k">if</span> <span class="n">ids</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="nb">len</span><span class="p">(</span><span class="n">ids</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                
+                <span class="k">if</span> <span class="n">board_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">charuco_2d</span><span class="p">:</span>
+                    <span class="n">charuco_2d</span><span class="p">[</span><span class="n">board_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                    
+                <span class="k">for</span> <span class="nb">id</span><span class="p">,</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">ids</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="n">kypts</span><span class="p">):</span>
+                    <span class="n">k</span> <span class="o">=</span> <span class="n">k</span><span class="o">.</span><span class="n">squeeze</span><span class="p">()</span>
+                    <span class="k">if</span> <span class="nb">id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">charuco_2d</span><span class="p">[</span><span class="n">board_id</span><span class="p">]:</span>
+                        <span class="n">charuco_2d</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="nb">id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;2d&quot;</span><span class="p">:</span> <span class="p">[],</span> <span class="s2">&quot;cammtx&quot;</span><span class="p">:</span> <span class="p">[]}</span>
+                    <span class="n">cammtx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">][</span><span class="n">serial</span><span class="p">]</span>
+                    <span class="n">charuco_2d</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="nb">id</span><span class="p">][</span><span class="s2">&quot;2d&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">k</span><span class="p">)</span>
+                    <span class="n">charuco_2d</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="nb">id</span><span class="p">][</span><span class="s2">&quot;cammtx&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">cammtx</span><span class="p">)</span>
+
+        <span class="n">charuco_3d</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">board_id</span><span class="p">,</span> <span class="n">ids</span> <span class="ow">in</span> <span class="n">charuco_2d</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">charuco_3d</span><span class="p">[</span><span class="n">board_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;checkerIDs&#39;</span><span class="p">:</span> <span class="p">[],</span> <span class="s1">&#39;checkerCorner&#39;</span><span class="p">:</span> <span class="p">[]}</span>
+            <span class="k">for</span> <span class="nb">id</span><span class="p">,</span> <span class="n">data</span> <span class="ow">in</span> <span class="n">ids</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">pt3d</span> <span class="o">=</span> <span class="n">triangulation</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;2d&quot;</span><span class="p">]),</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s2">&quot;cammtx&quot;</span><span class="p">]))</span>
+                <span class="k">if</span> <span class="n">board_id</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">charuco_3d</span><span class="p">:</span>
+                    <span class="n">charuco_3d</span><span class="p">[</span><span class="n">board_id</span><span class="p">]</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">if</span> <span class="n">pt3d</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="n">charuco_3d</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="s1">&#39;checkerIDs&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span>
+                    <span class="n">charuco_3d</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="s1">&#39;checkerCorner&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pt3d</span><span class="p">)</span>
+            <span class="n">charuco_3d</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="s1">&#39;checkerIDs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">charuco_3d</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="s1">&#39;checkerIDs&#39;</span><span class="p">])</span>
+            <span class="n">charuco_3d</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="s1">&#39;checkerCorner&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">charuco_3d</span><span class="p">[</span><span class="n">board_id</span><span class="p">][</span><span class="s1">&#39;checkerCorner&#39;</span><span class="p">])</span>
+            
+        <span class="k">return</span> <span class="n">charuco_3d</span></div>
+
+    
+<div class="viewcode-block" id="ImageDict.traingulate_points">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.traingulate_points">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">traingulate_points</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">points_2d</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Triangulate 3D points from multiple views</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            points_2d: Dict mapping serial numbers to Nx2 arrays of 2D points   </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            points_3d: Nx3 array of triangulated 3D points</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_cammtx</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">)</span>
+        
+        <span class="n">proj_mtxs</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">pts_2d_list</span> <span class="o">=</span> <span class="p">[]</span>
+        
+        <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="n">pts_2d</span> <span class="ow">in</span> <span class="n">points_2d</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">serial</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">]:</span>
+                <span class="n">proj_mtxs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">][</span><span class="n">serial</span><span class="p">])</span>
+                <span class="n">pts_2d_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pts_2d</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Projection matrix not found for serial </span><span class="si">{</span><span class="n">serial</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        
+        <span class="n">points_3d</span> <span class="o">=</span> <span class="n">triangulation</span><span class="p">(</span>
+            <span class="n">points_2d</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">pts_2d_list</span><span class="p">),</span>  <span class="c1"># List of Nx2 arrays</span>
+            <span class="n">proj_mtx</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">proj_mtxs</span><span class="p">)</span>      <span class="c1"># List of 3x4 projection matrices</span>
+        <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">points_3d</span></div>
+
+        
+<div class="viewcode-block" id="ImageDict.project_pointcloud">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.project_pointcloud">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">project_pointcloud</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">points_3d</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Project 3D points onto all camera views&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_cammtx</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="n">points_3d</span><span class="o">.</span><span class="n">ndim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">points_3d</span> <span class="o">=</span> <span class="n">points_3d</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        
+        <span class="n">proj_points</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="n">proj_mtx</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">homog_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">hstack</span><span class="p">((</span><span class="n">points_3d</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">points_3d</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="mi">1</span><span class="p">))))</span>  <span class="c1"># Nx4</span>
+            <span class="n">img_points_homog</span> <span class="o">=</span> <span class="p">(</span><span class="n">proj_mtx</span> <span class="o">@</span> <span class="n">homog_points</span><span class="o">.</span><span class="n">T</span><span class="p">)</span><span class="o">.</span><span class="n">T</span>  <span class="c1"># Nx3</span>
+            <span class="n">img_points</span> <span class="o">=</span> <span class="n">img_points_homog</span><span class="p">[:,</span> <span class="p">:</span><span class="mi">2</span><span class="p">]</span> <span class="o">/</span> <span class="n">img_points_homog</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">:</span><span class="mi">3</span><span class="p">]</span>  <span class="c1"># Nx2</span>
+            <span class="n">proj_points</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">img_points</span>
+        
+        <span class="k">return</span> <span class="n">proj_points</span></div>
+
+
+<div class="viewcode-block" id="ImageDict.project_mesh">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.project_mesh">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">project_mesh</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="nb">object</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">):</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;proj_mtx&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_cammtx</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">)</span>
+        
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;render&#39;</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">paradex.image.projection</span><span class="w"> </span><span class="kn">import</span> <span class="n">BatchRenderer</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;render&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">BatchRenderer</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span>
+            <span class="p">)</span>
+        <span class="n">renderer</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cache</span><span class="p">[</span><span class="s1">&#39;render&#39;</span><span class="p">]</span>
+        <span class="c1"># if type(object) == list:</span>
+        <span class="c1">#     return renderer.render_multi(object) # color_dict, mask_dict, depth_dict, id_dict</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">mask</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span>  <span class="n">renderer</span><span class="o">.</span><span class="n">render</span><span class="p">(</span><span class="nb">object</span><span class="p">)</span> <span class="c1"># color_dict, mask_dict, depth_dict</span>
+        
+        <span class="n">start_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">images</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="n">m</span> <span class="ow">in</span> <span class="n">mask</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">images</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">overlay_mask</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">[</span><span class="n">serial</span><span class="p">],</span> <span class="n">m</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">color</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+            <span class="c1"># images[serial] = draw_mask(self.images[serial],m, color=color)</span>
+        <span class="n">new_img_dict</span> <span class="o">=</span> <span class="n">ImageDict</span><span class="p">(</span><span class="n">images</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">new_img_dict</span></div>
+
+        
+            
+<div class="viewcode-block" id="ImageDict.merge">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.merge">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">merge</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">image_text</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="p">{})</span> <span class="o">-&gt;</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Merge all images into a grid layout&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">merge_image</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="p">,</span> <span class="n">image_text</span><span class="p">)</span></div>
+
+    
+<div class="viewcode-block" id="ImageDict.draw_keypoint">
+<a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.draw_keypoint">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">draw_keypoint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">keypoints</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> 
+                      <span class="n">color</span><span class="p">:</span> <span class="nb">tuple</span> <span class="o">=</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">255</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> 
+                      <span class="n">radius</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">3</span><span class="p">,</span> 
+                      <span class="n">thickness</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s1">&#39;ImageDict&#39;</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Draw keypoints on images</span>
+<span class="sd">        </span>
+<span class="sd">        Args:</span>
+<span class="sd">            keypoints: Dict mapping serial numbers to Nx2 arrays of keypoints</span>
+<span class="sd">            color: Color of keypoints</span>
+<span class="sd">            radius: Radius of keypoint circles</span>
+<span class="sd">            thickness: Thickness of circle outline (-1 for filled)</span>
+<span class="sd">            </span>
+<span class="sd">        Returns:</span>
+<span class="sd">            New ImageDict with keypoints drawn</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">new_images</span> <span class="o">=</span> <span class="p">{</span><span class="n">serial</span><span class="p">:</span> <span class="n">img</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span> <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="n">img</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">images</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
+        <span class="k">for</span> <span class="n">serial</span><span class="p">,</span> <span class="n">img</span> <span class="ow">in</span> <span class="n">new_images</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">serial</span> <span class="ow">in</span> <span class="n">keypoints</span><span class="p">:</span>
+                <span class="k">for</span> <span class="n">pt</span> <span class="ow">in</span> <span class="n">keypoints</span><span class="p">[</span><span class="n">serial</span><span class="p">]:</span>
+                    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="nb">map</span><span class="p">(</span><span class="nb">int</span><span class="p">,</span> <span class="n">pt</span><span class="p">)</span>
+                    <span class="n">cv2</span><span class="o">.</span><span class="n">circle</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">),</span> <span class="n">radius</span><span class="p">,</span> <span class="n">color</span><span class="p">,</span> <span class="n">thickness</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">ImageDict</span><span class="p">(</span><span class="n">new_images</span><span class="p">,</span> <span class="n">intrinsic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">intrinsic</span><span class="p">,</span> <span class="n">extrinsic</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">extrinsic</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">path</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          
+          
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, Mingi Choi
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="../../../_static/documentation_options.js?v=7026087e"></script>
+    <script src="../../../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../../../_static/scripts/furo.js?v=46bd48cc"></script>
+    </body>
+</html>

@@ -1,0 +1,128 @@
+paradex.io.robot_controller.under_test.modbus
+=============================================
+
+.. py:module:: paradex.io.robot_controller.under_test.modbus
+
+.. autoapi-nested-parse::
+
+   Modbus RTU communication protocol for the Inspire Hand.
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ModbusFunction
+
+   Bases: :py:obj:`enum.IntEnum`
+
+
+   Modbus function codes
+
+
+   .. py:attribute:: READ_HOLDING_REGISTERS
+      :value: 3
+
+
+
+   .. py:attribute:: WRITE_SINGLE_REGISTER
+      :value: 6
+
+
+
+   .. py:attribute:: WRITE_MULTIPLE_REGISTERS
+      :value: 16
+
+
+
+.. py:class:: ModbusClient(port: str = '/dev/ttyUSB0', baudrate: int = 115200, slave_id: int = 1)
+
+   Low-level Modbus RTU client for communication with the Inspire Hand.
+
+
+   .. py:attribute:: port
+      :value: '/dev/ttyUSB0'
+
+
+
+   .. py:attribute:: baudrate
+      :value: 115200
+
+
+
+   .. py:attribute:: slave_id
+      :value: 1
+
+
+
+   .. py:attribute:: ser
+      :value: None
+
+
+
+   .. py:attribute:: debug
+      :value: False
+
+
+
+   .. py:method:: connect() -> bool
+
+      Connect to the device.
+
+      :returns: True if connection successful, False otherwise
+
+      :raises ConnectionError: If there's an issue connecting to the device
+
+
+
+   .. py:method:: disconnect() -> None
+
+      Disconnect from the device.
+
+
+
+   .. py:method:: read_holding_registers(address: int, num_registers: int = 1) -> Optional[List[int]]
+
+      Read holding registers (Modbus function 0x03).
+
+      :param address: Starting register address
+      :param num_registers: Number of registers to read
+      :param one register: 2 bytes
+
+      :returns: List of register values if successful, None otherwise
+
+      :raises ConnectionError: If not connected to device
+      :raises CommandError: If command fails
+
+
+
+   .. py:method:: write_single_register(address: int, value: int) -> bool
+
+      Write to a single holding register (Modbus function 0x06).
+
+      :param address: Register address
+      :param value: Value to write (0-65535)
+
+      :returns: True if successful
+
+      :raises ConnectionError: If not connected to device
+      :raises CommandError: If command fails
+
+
+
+   .. py:method:: write_multiple_registers(address: int, values: List[int]) -> bool
+
+      Write to multiple holding registers (Modbus function 0x10).
+
+      :param address: Starting register address
+      :param values: List of values to write
+
+      :returns: True if successful
+
+      :raises ConnectionError: If not connected to device
+      :raises CommandError: If command fails
+
+
+

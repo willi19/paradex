@@ -6,10 +6,14 @@ paradex.utils.keyboard_listener
 
 
 
+
+
 Module Contents
 ---------------
 
-.. py:function:: run(event_dict)
+.. py:data:: stop_event
 
 .. py:function:: listen_keyboard(event_dict)
+
+.. py:function:: stop_listening()
 

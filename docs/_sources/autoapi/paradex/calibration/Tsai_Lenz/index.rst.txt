@@ -1,0 +1,30 @@
+paradex.calibration.Tsai_Lenz
+=============================
+
+.. py:module:: paradex.calibration.Tsai_Lenz
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: logR(T)
+
+.. py:function:: solve_axb_cpu(A, B)
+
+.. py:function:: solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.001, verbose=False)
+
+   Solve AX = XB using PyTorch gradient descent
+
+   :param A_list: List of 4x4 numpy arrays (camera poses)
+   :param B_list: List of 4x4 numpy arrays (robot poses)
+   :param max_epochs: Maximum number of training epochs
+   :param learning_rate: Learning rate for optimization
+   :param verbose: Print progress
+
+   :returns: 4x4 numpy array (hand-to-camera transformation)
+             losses: List of loss values during training
+   :rtype: X
+
+

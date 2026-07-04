@@ -9,6 +9,7 @@ Assorted standalone utilities for the Paradex pipeline: calibration-board printi
 | [`register_object/`](register_object) | Compute object marker-offset tables (marker positions in the object frame) for 6D pose recovery. | `box.py`, `pringles.py` |
 | [`robot/`](robot) | Build combined arm+hand URDFs, visualize link geometry/collision spheres, replay live arm pose in Viser. | `merge_urdf.py`, `replay.py`, `visualize.py` |
 | [`upload_video/`](upload_video) | Distributed raw-video processing with a live Flask/SocketIO web dashboard. | `process.py` (main PC) + `client.py` (capture PC) |
+| [`camera_tuning/`](camera_tuning) | Live per-camera gain/exposure tuner (adjust while viewing, save to `camera.json`). | `live_tuner.py` (capture PC) |
 
 ## Quick commands
 ```bash
@@ -26,6 +27,9 @@ python src/util/robot/visualize.py            # edit link/robot in source
 
 # Video processing monitor (main PC; auto-launches clients via SSH)
 python src/util/upload_video/process.py        # dashboard at http://localhost:8081
+
+# Live per-camera gain/exposure tuner (capture PC, needs a display)
+python src/util/camera_tuning/live_tuner.py
 ```
 
 ## Notes

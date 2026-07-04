@@ -17,6 +17,9 @@ controller, and hardware sync via the UTGE900 signal generator + timestamp monit
 | `signal_generator.py` | Start UTGE900 at 30 fps for 5 s, then stop. |
 | `signal_generator_debug.py` | Byte-identical duplicate of `signal_generator.py`. |
 | `timestamp.py` | Run `TimestampMonitor` + UTGE900 together for 10 s to verify trigger timestamps; `q` to quit. |
+| `sync_check.py` | **Verify multi-camera hardware sync**: start trigger + cameras in sync mode, check that `frame_id`s stay aligned across cameras (spread ≤ tolerance). |
+| `hang_recovery.py` | **Validate the P4 hang fix** on hardware: induce "no frames" (sync mode, no trigger / LAN pull) and assert `stop()`/`end()` return within a bound (watchdog reports HANG=FAIL). |
+| `hang_recovery_mock.py` | Same fix, **no hardware**: fakes PySpin and checks `get_image()` uses a finite timeout and returns `(None, None)` on frame loss. Runnable anywhere. |
 | `sync.py` | **Empty file** (placeholder). |
 
 ## Usage
@@ -38,6 +41,13 @@ python src/validate/camera_system/remote_camera_controller.py  # record video on
 # Hardware sync (main PC, talks to signal-generator IP from network_info)
 python src/validate/camera_system/signal_generator.py  # 30 fps for 5 s
 python src/validate/camera_system/timestamp.py         # signal gen + timestamp monitor, 10 s ('q' quits)
+
+# Sync check + P4 hang-fix validation (capture PC)
+python src/validate/camera_system/sync_check.py            # frame_id alignment across cameras
+python src/validate/camera_system/sync_check.py --view     # + live merged view
+python src/validate/camera_system/hang_recovery.py         # no-trigger + normal stop must not hang
+python src/validate/camera_system/hang_recovery.py --interactive   # + LAN-pull test
+python src/validate/camera_system/hang_recovery_mock.py    # logic only, no hardware (PASS here)
 ```
 
 Keyboard: `timestamp.py` uses `q` to set the end event; `remote_camera_controller.py`

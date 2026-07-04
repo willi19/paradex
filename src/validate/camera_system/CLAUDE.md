@@ -21,6 +21,9 @@ camera stack so you can confirm hardware/daemons/sync work before a real capture
 - `signal_generator.py` / `signal_generator_debug.py` — IDENTICAL: `UTGE900(**network_info["signal_generator"]["param"]).start(fps=30)`, 5 s, stop/end.
 - `timestamp.py` — `TimestampMonitor(**network_info["timestamp"]["param"]).start("tmp")` + `UTGE900.start(fps=30)`,
   `listen_keyboard({"q": end_event})`, 10 s, stop/end.
+- `sync_check.py` — starts `UTGE900` + `CameraLoader.start("stream", True)` + `MultiCameraReader`; polls `get_images` and asserts the `frame_id` spread across cameras stays ≤ `--tolerance` (default 1). `--view` shows the merged feed with frame ids. Per-PC check.
+- `hang_recovery.py` — validates the P4 fix on hardware. Each timed `stop()`/`end()` runs under a watchdog thread, so a hung (pre-fix) call is reported as `HANG DETECTED (FAIL)` instead of blocking the script. Test 1 = sync mode with NO trigger (frame loss); needs `GRAB_TIMEOUT_MS` from `pyspin`.
+- `hang_recovery_mock.py` — no-hardware logic test: injects fake `PySpin`/`cv2` into `sys.modules`, then checks `PyspinCamera.get_image()` passes a finite `GRAB_TIMEOUT_MS` and returns `(None, None)` when `GetNextImage` raises. Runs anywhere (needs repo on `PYTHONPATH`).
 - `sync.py` — EMPTY (0 bytes).
 
 ## paradex modules used

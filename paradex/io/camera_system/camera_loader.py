@@ -41,7 +41,7 @@ class CameraLoader:
     def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None):
         if mode == "image":
             save_paths = [os.path.join(home_path, save_path, "images") for _ in self.cameralist]
-            print(save_paths)
+            print("image save paths:", save_paths)
             for path in save_paths:
                 os.makedirs(path, exist_ok=True)
 
@@ -66,29 +66,19 @@ class CameraLoader:
             t.join()
         print("all cameras started.")
     
+    def _broadcast(self, method_name):
+        """Call `method_name` on every camera in parallel and wait for all to finish."""
+        threads = [Thread(target=getattr(camera, method_name)) for camera in self.cameralist]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
     def stop(self):
-        threads = []
-        for camera in self.cameralist:
-            t = Thread(target=camera.stop)
-            threads.append(t)
-            
-        for t in threads:
-            t.start()
-        
-        for t in threads:
-            t.join()
-    
+        self._broadcast("stop")
+
     def end(self):
-        threads = []
-        for camera in self.cameralist:
-            t = Thread(target=camera.end)
-            threads.append(t)
-            
-        for t in threads:
-            t.start()
-        
-        for t in threads:
-            t.join()
+        self._broadcast("end")
 
     def get_status_list(self):
         status_list = []

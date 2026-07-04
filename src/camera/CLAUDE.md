@@ -8,8 +8,8 @@ cameras to the network. The main PC drives them via the `*_remote.py` scripts in
 ## Files
 - `server_daemon.py` — instantiates `camera_server_daemon()` (ZMQ server wrapping
   one `CameraLoader`) then sleeps forever. Capture-PC role. Receives `register /
-  start / stop / heartbeat / reload / end` commands. Ports: ping 5480, command
-  5482, connection 5483.
+  start / stop / heartbeat / reload / end` commands. Ports: ping 5480 (REP),
+  monitor 5481 (PUB status), command 5482 (REP).
 - `monitor_daemon.py` — one-liner: `CameraMonitor(web_port=1234)`. Capture-PC role.
   Web dashboard of camera status.
 

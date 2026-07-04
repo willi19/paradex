@@ -1,13 +1,13 @@
 <!doctype html>
 <html class="no-js" lang="en" data-content_root="./">
-  <head>
-<meta charset="utf-8"/>
+  <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
-    <meta name="color-scheme" content="light dark"><link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="#" />
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="API Reference" href="autoapi/index.html" /><link rel="prev" title="Paradex Documentation" href="index.html" />
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
-<meta name="robots" content="noindex" />
-<title>Search - paradex 0.0.0 documentation</title><link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
+        <title>Implementation Overview - paradex 0.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=580074bf" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=8dab3a3b" />
@@ -180,7 +180,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -194,15 +194,15 @@
   
   <span class="sidebar-brand-text">paradex 0.0.0 documentation</span>
   
-</a><form class="sidebar-search-container" method="get" action="#" role="search">
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="overview.html">Implementation Overview</a></li>
+<ul class="current">
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Implementation Overview</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -339,7 +339,13 @@
           <span>Back to top</span>
         </a>
         <div class="content-icon-container">
-          <div class="theme-toggle-container theme-toggle-content">
+          <div class="view-this-page">
+  <a class="muted-link" href="_sources/overview.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
             <button class="theme-toggle">
               <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
               <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
@@ -348,31 +354,196 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          
-<noscript>
-<div class="admonition error">
-  <p class="admonition-title">Error</p>
-  <p>
-    Please activate JavaScript to enable the search functionality.
-  </p>
+          <section id="implementation-overview">
+<h1>Implementation Overview<a class="headerlink" href="#implementation-overview" title="Link to this heading">¶</a></h1>
+<p>A visual tour of how Paradex’s camera system actually works — read this <strong>before</strong>
+diving into the code so the files make sense. For the full redesign proposal see
+<a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md"><code class="docutils literal notranslate"><span class="pre">design/camera-recording-redesign.md</span></code></a>;
+for the per-symbol API see the <a class="reference internal" href="autoapi/index.html"><span class="doc">API Reference</span></a>.</p>
+<section id="big-picture-a-distributed-rig">
+<h2>Big picture — a distributed rig<a class="headerlink" href="#big-picture-a-distributed-rig" title="Link to this heading">¶</a></h2>
+<p>Cameras are spread across ~6 <strong>capture PCs</strong> (bandwidth: one GigE camera nearly
+fills a NIC). The <strong>main PC</strong> never touches a camera directly — it sends commands to
+a daemon on each capture PC. All cameras fire on one shared <strong>hardware trigger</strong> so
+frames are synchronized regardless of which PC they hang off.</p>
+<pre  class="mermaid">
+        flowchart LR
+    subgraph Main[&quot;Main PC&quot;]
+      ORCH[&quot;capture / inference&lt;br/&gt;scripts&quot;]
+      RCC[&quot;remote_camera_controller&quot;]
+      ORCH --&gt; RCC
+    end
+    subgraph Cap[&quot;Capture PC (×6)&quot;]
+      D[&quot;server_daemon&quot;]
+      CL[&quot;CameraLoader&quot;]
+      CAM[&quot;Camera × k (PySpin)&quot;]
+      D --&gt; CL --&gt; CAM
+    end
+    GEN[&quot;UTGE900&lt;br/&gt;signal generator&quot;]
+    RCC -- &quot;ZMQ: register / start / stop / heartbeat&quot; --&gt; D
+    GEN -. &quot;hardware trigger (electrical)&quot; .-&gt; CAM
+    </pre></section>
+<section id="talking-to-a-capture-pc">
+<h2>Talking to a capture PC<a class="headerlink" href="#talking-to-a-capture-pc" title="Link to this heading">¶</a></h2>
+<p>The controller holds a <strong>single-controller lock</strong> on each daemon. It starts a mode,
+then sends heartbeats; if it goes silent for 15 s the daemon auto-releases and stops
+the cameras (a safety net — but see the hang section below).</p>
+<pre  class="mermaid">
+        sequenceDiagram
+    participant M as Main PC (controller)
+    participant D as Capture PC (daemon)
+    M-&gt;&gt;D: register (take lock)
+    M-&gt;&gt;D: start(mode, sync, save_path, fps, exposure, gain)
+    D-&gt;&gt;D: CameraLoader.start → per-camera acquisition
+    loop every ~0.1 s
+      M-&gt;&gt;D: heartbeat
+      D--&gt;&gt;M: ok  /  camera errors
+    end
+    M-&gt;&gt;D: stop
+    M-&gt;&gt;D: end (release lock)
+    </pre></section>
+<section id="inside-one-camera-acquisition-vs-sinks">
+<h2>Inside one camera: acquisition vs. sinks<a class="headerlink" href="#inside-one-camera-acquisition-vs-sinks" title="Link to this heading">¶</a></h2>
+<p>This is the key mental model. Each camera runs <strong>one capture thread</strong> that grabs
+frames in a loop; where those frames go (the <em>sinks</em>) depends on the mode:</p>
+<ul class="simple">
+<li><p><strong>stream</strong> → a double-buffered <strong>shared-memory</strong> block that live consumers read
+(e.g. 6D-pose init) via <code class="docutils literal notranslate"><span class="pre">MultiCameraReader</span></code>.</p></li>
+<li><p><strong>video</strong> / <strong>full</strong> → an <code class="docutils literal notranslate"><span class="pre">.avi</span></code> on disk (<code class="docutils literal notranslate"><span class="pre">full</span></code> = video <strong>and</strong> SHM at once).</p></li>
+<li><p><strong>image</strong> → one still frame.</p></li>
+</ul>
+<pre  class="mermaid">
+        flowchart TD
+    T[&quot;capture thread&lt;br/&gt;continuous_acquire()&quot;] --&gt; G[&quot;get_image()&lt;br/&gt;GetNextImage(GRAB_TIMEOUT_MS)&quot;]
+    G --&gt;|frame| SHM[&quot;SHM double-buffer&lt;br/&gt;(stream / full)&quot;]
+    G --&gt;|frame| VID[&quot;cv2.VideoWriter .avi&lt;br/&gt;(video / full)&quot;]
+    G -.-&gt;|no frame → (None, None)| T
+    SHM --&gt; R[&quot;MultiCameraReader → consumers&quot;]
+    VID --&gt; DISK[&quot;capture disk&quot;]
+    </pre><blockquote>
+<div><p>The <code class="docutils literal notranslate"><span class="pre">mode</span></code> argument couples <em>what the camera does</em> with <em>where frames go</em>. The
+<a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md">redesign</a>
+proposes splitting these so recording can toggle without restarting acquisition.</p>
+</div></blockquote>
+</section>
+<section id="hardware-sync-matching-frame-ids">
+<h2>Hardware sync = matching frame ids<a class="headerlink" href="#hardware-sync-matching-frame-ids" title="Link to this heading">¶</a></h2>
+<p>Every trigger pulse increments the frame id on <strong>all</strong> cameras at once, so at any
+instant they should report the same id. <code class="docutils literal notranslate"><span class="pre">sync_check.py</span></code> verifies this by measuring
+the spread of frame ids across cameras — a persistent spread means a camera is
+dropping or isn’t triggered.</p>
+<pre  class="mermaid">
+        flowchart LR
+    GEN[&quot;trigger pulse #N&quot;] --&gt; C1[&quot;cam A → frame #N&quot;]
+    GEN --&gt; C2[&quot;cam B → frame #N&quot;]
+    GEN --&gt; C3[&quot;cam C → frame #N&quot;]
+    C1 &amp; C2 &amp; C3 --&gt; CHK[&quot;spread = max-min id&lt;br/&gt;0-1 = in sync&quot;]
+    </pre></section>
+<section id="why-cameras-used-to-hang-and-the-fix">
+<h2>Why cameras used to hang (and the fix)<a class="headerlink" href="#why-cameras-used-to-hang-and-the-fix" title="Link to this heading">¶</a></h2>
+<p>When frames stopped arriving (LAN drop, trigger off) the old <code class="docutils literal notranslate"><span class="pre">get_image()</span></code> blocked
+<strong>forever</strong>, so the whole daemon wedged and the next run couldn’t start cameras —
+even after <code class="docutils literal notranslate"><span class="pre">pkill</span></code>.</p>
+<pre  class="mermaid">
+        flowchart TD
+    subgraph Before[&quot;Before (the bug)&quot;]
+      A[&quot;LAN drop / trigger off&quot;] --&gt; B[&quot;GetNextImage() blocks forever&quot;]
+      B --&gt; C[&quot;loop never re-checks stop&quot;]
+      C --&gt; E[&quot;Camera.stop() waits forever → daemon hangs&quot;]
+    end
+    subgraph After[&quot;After (P4 fix)&quot;]
+      A2[&quot;LAN drop / trigger off&quot;] --&gt; B2[&quot;GetNextImage(1000ms) → (None, None)&quot;]
+      B2 --&gt; C2[&quot;loop re-checks start/exit&quot;]
+      C2 --&gt; E2[&quot;stop()/end() return (finite waits)&quot;]
+    end
+    </pre><p>Recovery if a camera is still wedged at the hardware level: run
+<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">src/camera/reset_cameras.py</span></code> from the main PC (force-kills + relaunches the
+daemons). Validate the fix with <code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/hang_recovery.py</span></code>.</p>
+</section>
+<section id="where-gain-exposure-come-from">
+<h2>Where gain / exposure come from<a class="headerlink" href="#where-gain-exposure-come-from" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">system/current/camera.json</span></code> holds a per-camera baseline. Resolution is
+deterministic — an explicit argument wins, otherwise the camera.json value, so a
+one-off override (e.g. an exposure sweep) can’t leak into the next capture. Tune it
+live with <code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code>.</p>
+<pre  class="mermaid">
+        flowchart LR
+    A[&quot;start(exposure=None, gain=None)&quot;] --&gt; B{&quot;explicit arg?&quot;}
+    B --&gt;|yes| U[&quot;use arg&quot;]
+    B --&gt;|no| C[&quot;camera.json[serial]&quot;]
+    C --&gt;|missing| D[&quot;default 2500us / 3dB&quot;]
+    </pre></section>
+<section id="where-to-look">
+<h2>Where to look<a class="headerlink" href="#where-to-look" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>I want to…</p></th>
+<th class="head"><p>File</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Drive cameras from the main PC</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/remote_camera_controller.py</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Understand the capture-PC daemon</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera_server_daemon.py</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>See the acquisition loop &amp; sinks</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera.py</span></code> (<code class="docutils literal notranslate"><span class="pre">continuous_acquire</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Low-level PySpin (grab, config, trigger)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/pyspin.py</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Multi-camera image resolution</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera_loader.py</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Validate the hang fix / sync</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/{hang_recovery,sync_check}.py</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Tune gain/exposure live</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Recover hung cameras</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/camera/reset_cameras.py</span></code></p></td>
+</tr>
+</tbody>
+</table>
 </div>
-</noscript>
-
-<div id="search-results"></div>
+</section>
+</section>
 
         </article>
       </div>
       <footer>
         
         <div class="related-pages">
-          
-          
+          <a class="next-page" href="autoapi/index.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">API Reference</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="index.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Home</div>
+                
+              </div>
+            </a>
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -391,8 +562,33 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Implementation Overview</a><ul>
+<li><a class="reference internal" href="#big-picture-a-distributed-rig">Big picture — a distributed rig</a></li>
+<li><a class="reference internal" href="#talking-to-a-capture-pc">Talking to a capture PC</a></li>
+<li><a class="reference internal" href="#inside-one-camera-acquisition-vs-sinks">Inside one camera: acquisition vs. sinks</a></li>
+<li><a class="reference internal" href="#hardware-sync-matching-frame-ids">Hardware sync = matching frame ids</a></li>
+<li><a class="reference internal" href="#why-cameras-used-to-hang-and-the-fix">Why cameras used to hang (and the fix)</a></li>
+<li><a class="reference internal" href="#where-gain-exposure-come-from">Where gain / exposure come from</a></li>
+<li><a class="reference internal" href="#where-to-look">Where to look</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>
@@ -837,8 +1033,5 @@ mermaid.initialize(
 
 window.addEventListener("load", load);
 window.runMermaid = runMermaid;</script>
-    
-<script src="_static/searchtools.js"></script>
-<script src="_static/language_data.js"></script>
-<script src="searchindex.js"></script></body>
+    </body>
 </html>

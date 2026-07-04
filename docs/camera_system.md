@@ -1,7 +1,9 @@
-# Implementation Overview
+# Camera System
 
-A visual tour of how Paradex's camera system actually works — read this **before**
-diving into the code so the files make sense. For the full redesign proposal see
+A visual tour of how Paradex's **camera subsystem** is implemented — read this
+**before** diving into the code so the files make sense. (Camera is just one
+subsystem of the wider rig; robot / capture / pipeline guides can sit alongside
+this one under "Guide".) For the full redesign proposal see
 [`design/camera-recording-redesign.md`](https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md);
 for the per-symbol API see the {doc}`API Reference <autoapi/index>`.
 

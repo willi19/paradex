@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="API Reference" href="autoapi/index.html" /><link rel="prev" title="Paradex Documentation" href="index.html" />
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
-        <title>Implementation Overview - paradex 0.0.0 documentation</title>
+        <title>Camera System - paradex 0.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=580074bf" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
@@ -202,7 +202,7 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul class="current">
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Implementation Overview</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Camera System</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -340,7 +340,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="_sources/overview.md.txt" title="View this page">
+  <a class="muted-link" href="_sources/camera_system.md.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -360,10 +360,12 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="implementation-overview">
-<h1>Implementation Overview<a class="headerlink" href="#implementation-overview" title="Link to this heading">¶</a></h1>
-<p>A visual tour of how Paradex’s camera system actually works — read this <strong>before</strong>
-diving into the code so the files make sense. For the full redesign proposal see
+          <section id="camera-system">
+<h1>Camera System<a class="headerlink" href="#camera-system" title="Link to this heading">¶</a></h1>
+<p>A visual tour of how Paradex’s <strong>camera subsystem</strong> is implemented — read this
+<strong>before</strong> diving into the code so the files make sense. (Camera is just one
+subsystem of the wider rig; robot / capture / pipeline guides can sit alongside
+this one under “Guide”.) For the full redesign proposal see
 <a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md"><code class="docutils literal notranslate"><span class="pre">design/camera-recording-redesign.md</span></code></a>;
 for the per-symbol API see the <a class="reference internal" href="autoapi/index.html"><span class="doc">API Reference</span></a>.</p>
 <section id="big-picture-a-distributed-rig">
@@ -574,7 +576,7 @@ live with <code class="docutils literal notranslate"><span class="pre">src/util/
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Implementation Overview</a><ul>
+<li><a class="reference internal" href="#">Camera System</a><ul>
 <li><a class="reference internal" href="#big-picture-a-distributed-rig">Big picture — a distributed rig</a></li>
 <li><a class="reference internal" href="#talking-to-a-capture-pc">Talking to a capture PC</a></li>
 <li><a class="reference internal" href="#inside-one-camera-acquisition-vs-sinks">Inside one camera: acquisition vs. sinks</a></li>

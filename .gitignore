@@ -49,7 +49,7 @@ thirdparty/EfficientLoFTR/ckpts/*.ckpt
 build/lib/paradex
 .vscode/settings.json
 
-test.claude-memory
+.claude-memory
 
 jisoo_test
 log

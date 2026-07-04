@@ -205,21 +205,28 @@ class Camera():
             return True, (self.last_error, self.last_traceback)
         return False, (None, None)
 
-    def stop(self):
+    def stop(self, timeout=5.0):
         self.event["start"].clear()
-        
+
         if self.event["error"].is_set():
             self.error_reset()
-            
-        self.event["stop"].wait()
+
+        if not self.event["stop"].wait(timeout=timeout):
+            print(f"[WARN] Camera {self.name} stop() timed out after {timeout}s "
+                  f"(acquire thread may be stuck); continuing without blocking.")
+            return
         print(f"[INFO] Camera {self.name} has been stopped.")
-           
-    def end(self):
+
+    def end(self, timeout=5.0):
         if self.event["start"].is_set():
-            self.stop()
-        
+            self.stop(timeout=timeout)
+
         self.event["exit"].set()
-        self.capture_thread.join()
+        self.capture_thread.join(timeout=timeout)
+        if self.capture_thread.is_alive():
+            print(f"[WARN] Camera {self.name} end(): capture thread still alive after "
+                  f"{timeout}s; not blocking daemon.")
+            return
         print(f"[INFO] Camera {self.name} has been successfully ended.")
     
     def continuous_acquire(self):
@@ -320,15 +327,25 @@ class Camera():
         
         self.event["stop"].set()
     
-    def single_acquire(self):
+    def single_acquire(self, max_attempts=5):
         self.camera.start("single", self.syncMode, gain=self.gain, exposure_time=self.exposure_time)
         self.event["acquisition"].set()
 
-        frame, _ = self.camera.get_image()
+        # get_image() now times out instead of blocking forever, so retry a few
+        # times to stay reliable on a transient miss without hanging on a dead link.
+        frame = None
+        for _ in range(max_attempts):
+            if self.event["exit"].is_set():
+                break
+            frame, _ = self.camera.get_image()
+            if frame is not None and getattr(frame, "size", 0) > 0:
+                break
+
         if frame is not None and getattr(frame, "size", 0) > 0:
             cv2.imwrite(self.save_path, frame)
         else:
-            print(f"[WARN] Camera {self.name}: single_acquire got empty frame, skipping write")
+            print(f"[WARN] Camera {self.name}: single_acquire got no frame after "
+                  f"{max_attempts} attempts, skipping write")
 
         self.event["acquisition"].clear()
         self.event["start"].clear()

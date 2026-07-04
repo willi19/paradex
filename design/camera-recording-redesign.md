@@ -246,9 +246,16 @@ sync generator 둘 다에 들어간다.
 
 ## 6. 단계별 계획 (각 단계 독립 배포 가능)
 
-0. **Hang 복구 (P4) — 최우선, 재설계와 독립.** 4.4의 (1) 유한 timeout grab을 먼저 넣고,
-   (2) stop/end 무한 대기 제거, (3) 데몬 hard-reset, (4) `reset_cameras` 스크립트. 이건
-   버그 수정이라 재설계를 기다릴 필요 없이 바로 착수 가능.
+0. **Hang 복구 (P4) — 최우선, 재설계와 독립.**
+   - ✅ (1) 유한 timeout grab — `get_image()`가 `GetNextImage(GRAB_TIMEOUT_MS)`로 바뀌어
+     timeout 시 `(None, None)` 리턴 → 루프가 start/exit 이벤트 재확인. `single_acquire`는
+     bounded retry로 보강.
+   - ✅ (2) stop/end 무한 대기 제거 — `Camera.stop(timeout)`/`end(timeout)`이 유한 대기 후
+     경고만 남기고 데몬을 안 막음.
+   - ⬜ (3) 데몬 hard-reset action + hung 감지(N초 무프레임 자동 복구).
+   - ⬜ (4) capture PC용 `reset_cameras` 스크립트.
+   - ⚠️ 하드웨어 검증 필요: `src/validate/camera_system/`로 sync=True + LAN 뽑기 재현 테스트.
+   - (겸사겸사) `load_timestamp_monitor`의 `exposure_time`→`exposure` 키 버그 수정.
 1. **Camera core (P1).** `Camera`에 `recording` Event + 런타임 VideoWriter 토글과
    `grab_still` 추가; live 동안 SHM 항상 켜짐. 단일 PC에서
    `src/validate/camera_system/camera.py`로 검증.

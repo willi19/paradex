@@ -15,6 +15,7 @@
         <a href="#overview">Overview</a>
         <a href="#architecture">Architecture</a>
         <a href="#apps">Applications</a>
+        <a href="#guide">Guide</a>
         <a href="#quickstart">Quick start</a>
         <a href="docs/index.html">API docs</a>
         <a href="https://github.com/willi19/paradex" class="ghlink">GitHub ↗</a>
@@ -119,6 +120,58 @@
           <p>Smoke tests for cameras, sync, robots, teleop, and calibration quality.</p>
         </a>
       </div>
+    </section>
+
+    <section id="guide" class="section">
+      <h2>Application guide</h2>
+      <p class="lead">
+        Detailed, per-label docs — built up one application at a time. Each label is a
+        <code>src/</code> <strong>application</strong>; the <strong><code>paradex/</code></strong>
+        modules it builds on are <strong>reference</strong> and link into the
+        <a href="docs/index.html">API docs</a>.
+      </p>
+
+      <article id="label-camera" class="label">
+        <div class="label-head">
+          <h3>Camera daemons <span class="tag">src/camera</span></h3>
+          <span class="badge">runs on each capture PC</span>
+        </div>
+        <p>
+          Long-running daemons that expose each capture PC's cameras to the network. The main PC
+          drives them through the <code>*_remote.py</code> orchestrators in <code>src/capture/camera</code>.
+          Start these <em>before</em> any orchestrator connects, or the controller raises a
+          <code>ConnectionError</code> naming the unreachable PC.
+        </p>
+        <div class="label-grid">
+          <div>
+            <h4>Scripts</h4>
+            <ul>
+              <li><code>server_daemon.py</code> — ZMQ command server wrapping one <code>CameraLoader</code>; handles <code>register / start / stop / heartbeat / reload / end</code>.</li>
+              <li><code>monitor_daemon.py</code> — Flask web dashboard of per-PC camera + controller status (port 1234).</li>
+            </ul>
+            <h4>Ports</h4>
+            <ul>
+              <li><code>5480</code> — ping/pong (REP)</li>
+              <li><code>5481</code> — status broadcast (PUB)</li>
+              <li><code>5482</code> — commands (REP)</li>
+            </ul>
+          </div>
+          <div>
+            <h4>Run (on each capture PC)</h4>
+            <pre><code>python src/camera/server_daemon.py
+python src/camera/monitor_daemon.py   # dashboard :1234</code></pre>
+            <h4>Builds on (reference)</h4>
+            <ul>
+              <li><code>paradex.io.camera_system.camera_server_daemon</code></li>
+              <li><code>paradex.io.camera_system.monitor_daemon</code></li>
+              <li><code>paradex.io.camera_system.camera_loader.CameraLoader</code></li>
+            </ul>
+            <p><a href="https://github.com/willi19/paradex/blob/main/src/camera/README.md">Full README →</a></p>
+          </div>
+        </div>
+      </article>
+
+      <p class="muted">More labels (calibration, capture, …) are being added here incrementally.</p>
     </section>
 
     <section id="quickstart" class="section alt">

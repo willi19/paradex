@@ -155,6 +155,49 @@ a:hover { text-decoration: underline; }
 .facts li { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
 .facts strong { color: var(--accent); }
 
+/* Per-label guide blocks */
+.label {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 26px;
+  margin-top: 26px;
+}
+.label-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 14px;
+  margin-bottom: 6px;
+}
+.label-head h3 { margin: 0; font-size: 1.3rem; }
+.tag {
+  font-family: "SFMono-Regular", Consolas, monospace;
+  font-size: .8rem;
+  color: #c8b9ff;
+  background: rgba(124,92,255,.12);
+  border-radius: 5px;
+  padding: 3px 8px;
+  margin-left: 8px;
+  font-weight: 400;
+}
+.badge {
+  font-size: .78rem;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+.label-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; margin-top: 16px; }
+.label h4 { margin: 18px 0 8px; font-size: .82rem; text-transform: uppercase; letter-spacing: .6px; color: var(--accent); }
+.label h4:first-child { margin-top: 0; }
+.label ul { margin: 0; padding-left: 18px; }
+.label li { margin: 5px 0; font-size: .92rem; color: #cdd9e5; }
+@media (max-width: 760px) { .label-grid { grid-template-columns: 1fr; } }
+
 /* Code */
 pre {
   background: var(--code-bg);

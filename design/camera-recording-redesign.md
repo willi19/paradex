@@ -252,8 +252,10 @@ sync generator 둘 다에 들어간다.
      bounded retry로 보강.
    - ✅ (2) stop/end 무한 대기 제거 — `Camera.stop(timeout)`/`end(timeout)`이 유한 대기 후
      경고만 남기고 데몬을 안 막음.
-   - ⬜ (3) 데몬 hard-reset action + hung 감지(N초 무프레임 자동 복구).
-   - ⬜ (4) capture PC용 `reset_cameras` 스크립트.
+   - ✅ (4) capture PC용 리셋 도구 — `src/camera/reset_cameras.py` (main PC에서 실행,
+     각 capture PC에 `pkill -9` 후 `server_daemon.py` 재기동).
+   - ⬜ (3) 데몬 hung 감지(N초 무프레임 자동 복구) — 데몬에 스레드 추가라 실기검증 전엔
+     보류. reset_cameras.py가 수동 복구는 커버.
    - ⚠️ 하드웨어 검증 필요: `src/validate/camera_system/`로 sync=True + LAN 뽑기 재현 테스트.
    - (겸사겸사) `load_timestamp_monitor`의 `exposure_time`→`exposure` 키 버그 수정.
 1. **Camera core (P1).** `Camera`에 `recording` Event + 런타임 VideoWriter 토글과

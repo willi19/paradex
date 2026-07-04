@@ -12,6 +12,9 @@ cameras to the network. The main PC drives them via the `*_remote.py` scripts in
   monitor 5481 (PUB status), command 5482 (REP).
 - `monitor_daemon.py` — one-liner: `CameraMonitor(web_port=1234)`. Capture-PC role.
   Web dashboard of camera status.
+- `reset_cameras.py` — **Main-PC** recovery. SSHes each capture PC, `pkill -9` the
+  daemons, then relaunches `server_daemon.py` via `run_script`. Use when cameras
+  hang and the next run can't start them. Args: `--pc_list`, `--no_restart`.
 
 ## paradex modules used
 - `paradex.io.camera_system.camera_server_daemon.camera_server_daemon`

@@ -1,0 +1,104 @@
+paradex.io.robot_controller.deprecated.gui_controller_prev
+==========================================================
+
+.. py:module:: paradex.io.robot_controller.deprecated.gui_controller_prev
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: RobotGUIController(robot_controller, hand_controller, predefined_poses=None, grasp_pose=None, approach_traj=None, lift_distance=100.0, place_distance=40.0)
+
+   .. py:attribute:: predefined_poses
+      :value: None
+
+
+
+   .. py:attribute:: predefined_hand_traj
+      :value: None
+
+
+
+   .. py:attribute:: approach_traj
+      :value: None
+
+
+
+   .. py:attribute:: lift_distance
+      :value: 100.0
+
+
+
+   .. py:attribute:: place_distance
+      :value: 40.0
+
+
+
+   .. py:attribute:: robot
+
+
+   .. py:attribute:: hand
+
+
+   .. py:attribute:: joint_delta
+      :value: 0.01
+
+
+
+   .. py:attribute:: cart_delta
+      :value: 1.0
+
+
+
+   .. py:attribute:: angle_delta
+      :value: 0.01
+
+
+
+   .. py:attribute:: hand_grasp_speed
+      :value: 0.005
+
+
+
+   .. py:attribute:: hand_grasp_progress
+      :value: 0.0
+
+
+
+   .. py:attribute:: place_state
+      :value: 0
+
+
+
+   .. py:attribute:: release_state
+      :value: 0
+
+
+
+   .. py:attribute:: button_states
+
+
+   .. py:attribute:: control_mode
+      :value: 'cartesian'
+
+
+
+   .. py:attribute:: running
+      :value: True
+
+
+
+   .. py:attribute:: control_thread
+
+
+   .. py:attribute:: root
+
+
+   .. py:method:: run()
+
+      GUI 메인 루프 실행
+
+
+

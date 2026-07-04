@@ -1,0 +1,16 @@
+paradex.dataset_acqusition
+==========================
+
+.. py:module:: paradex.dataset_acqusition
+
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/paradex/dataset_acqusition/capture/index
+   /autoapi/paradex/dataset_acqusition/match_sync/index
+
+

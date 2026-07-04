@@ -1,0 +1,89 @@
+paradex.io.camera_system.remote_camera_controller
+=================================================
+
+.. py:module:: paradex.io.camera_system.remote_camera_controller
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: remote_camera_controller(name, pc_list=None)
+
+   .. py:attribute:: name
+
+
+   .. py:attribute:: pc_list
+
+
+   .. py:attribute:: ping_port
+      :value: 5480
+
+
+
+   .. py:attribute:: command_port
+      :value: 5482
+
+
+
+   .. py:attribute:: exit_event
+
+
+   .. py:attribute:: start_event
+
+
+   .. py:attribute:: stop_event
+
+
+   .. py:attribute:: sending_event
+
+
+   .. py:attribute:: error_event
+
+
+   .. py:attribute:: run_thread
+
+
+   .. py:method:: initialize()
+
+
+   .. py:method:: check_server_alive(pc)
+
+      ping port로 서버 확인
+
+
+
+   .. py:method:: send_command(cmd)
+
+      명령 전송 및 응답 수신 (PC 병렬 처리)
+
+
+
+   .. py:method:: register()
+
+
+   .. py:method:: start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+
+
+   .. py:method:: stop()
+
+
+   .. py:method:: end()
+
+
+   .. py:method:: reload_cameras()
+
+
+   .. py:method:: force_takeover()
+
+      다른 controller 가 lock 잡고 있어도 강제로 register 재시도.
+
+
+
+   .. py:method:: run()
+
+
+   .. py:method:: is_error()
+
+

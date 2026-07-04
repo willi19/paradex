@@ -1,0 +1,124 @@
+paradex.io.capture_pc.data_sender
+=================================
+
+.. py:module:: paradex.io.capture_pc.data_sender
+
+.. autoapi-nested-parse::
+
+   Simplified data publishing system using PUB-SUB pattern.
+
+   Much simpler than ROUTER-DEALER:
+   - No registration handshake needed
+   - Just publish and subscribe
+   - Fire and forget
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: DataPublisher(port: int = 1234, name: Optional[str] = None)
+
+   .. py:attribute:: port
+      :value: 1234
+
+
+
+   .. py:attribute:: name
+      :value: 'publisher_1234'
+
+
+
+   .. py:attribute:: context
+
+
+   .. py:attribute:: socket
+
+
+   .. py:attribute:: publishing
+      :value: False
+
+
+
+   .. py:attribute:: publish_thread
+      :value: None
+
+
+
+   .. py:method:: send_data(metadata: List[Dict[str, Any]], data: List[bytes]) -> None
+
+      Publish data using multipart messages for efficient binary transmission.
+
+      :param metadata: Metadata dictionary for each camera (frame_id, shape, image_index)
+      :param data: List of binary image data (JPEG bytes)
+
+
+
+   .. py:method:: close() -> None
+
+      Clean up resources.
+
+
+
+.. py:class:: DataCollector(pc_list: Dict[str, Dict[str, str]] = None, port: int = 1234)
+
+   .. py:attribute:: pc_list
+
+
+   .. py:attribute:: port
+      :value: 1234
+
+
+
+   .. py:attribute:: context
+
+
+   .. py:attribute:: sockets
+
+
+   .. py:attribute:: poller
+
+
+   .. py:attribute:: latest_data
+
+
+   .. py:attribute:: collecting
+      :value: False
+
+
+
+   .. py:attribute:: collection_thread
+      :value: None
+
+
+
+   .. py:method:: start() -> None
+
+      Start collecting data from all PCs.
+
+
+
+   .. py:method:: stop() -> None
+
+      Stop collecting data.
+
+
+
+   .. py:method:: get_data(pc_name: Optional[str] = None) -> Any
+
+      Get the latest received data.
+
+      :param pc_name: Specific PC to get data from, or None for all PCs
+
+      :returns: Latest data from specified PC, or dict of all latest data
+
+
+
+   .. py:method:: end() -> None
+
+      Clean up resources.
+
+
+

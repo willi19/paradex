@@ -1,0 +1,24 @@
+paradex.transforms.triangulate
+==============================
+
+.. py:module:: paradex.transforms.triangulate
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: triangulation(corners: numpy.ndarray, projections: numpy.ndarray, threshold=1.5, iterations=100)
+
+   RANSAC-based triangulation to filter out outliers.
+
+   corners : Nx2 matrix (N cameras, 2D image coordinates)
+   projections : Nx3x4 matrix (N cameras)
+   threshold : Inlier threshold for reprojection error
+   iterations : Number of RANSAC iterations
+
+   :returns: (4, 3) matrix with filtered 3D keypoints
+   :rtype: best_kp3d
+
+

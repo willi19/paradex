@@ -1,0 +1,120 @@
+paradex.image.projection
+========================
+
+.. py:module:: paradex.image.projection
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: project_point(verts, cammtx, image, color=(255, 0, 0))
+
+.. py:function:: intr_opencv_to_opengl_proj(K, width, height, near=0.2, far=2.0)
+
+.. py:function:: transform_pos(mtx, pos)
+
+.. py:function:: mesh_to_obj_dict(mesh, device='cuda', texture_type='vertex_color')
+
+   Converts a Trimesh or Open3D mesh into a dict compatible with BatchRenderer.
+
+   :param mesh: trimesh.Trimesh or open3d.geometry.TriangleMesh
+   :param device: 'cuda' or 'cpu'
+   :param texture_type: 'vertex_color' or 'triangle_uvs'
+
+   :returns: dictionary with keys compatible with BatchRenderer
+   :rtype: obj_dict
+
+
+.. py:class:: BatchRenderer(intrinsics, extrinsics, near=0.01, far=2)
+
+   .. py:attribute:: glctx
+
+
+   .. py:attribute:: serial_list
+
+
+   .. py:attribute:: cam_extrs_t
+
+
+   .. py:attribute:: batch_size
+
+
+   .. py:attribute:: intr_opengl
+
+
+   .. py:attribute:: flip_z
+
+
+   .. py:attribute:: near
+      :value: 0.01
+
+
+
+   .. py:attribute:: far
+      :value: 2
+
+
+
+   .. py:method:: render_wvertexcolor(mtx, pos, pos_idx, vtx_col, col_idx)
+
+      Render with color and depth in single pass.
+
+
+
+   .. py:method:: render_wtexture(mtx, pos, pos_idx, uv, uv_idx, tex, enable_mip=False, max_mip_level=9)
+
+      Render with texture mapping.
+
+      :param mtx: (B, 4, 4) projection matrices
+      :param pos: (N, 3) vertex positions
+      :param pos_idx: (M, 3) face indices
+      :param uv: (B, U, 2) or (U, 2) texture coordinates
+      :param uv_idx: (V, 3) UV face indices
+      :param tex: (B, H, W, 3) or (H, W, 3) texture images
+      :param enable_mip: Use mipmapping for anti-aliasing
+      :param max_mip_level: Maximum mipmap level
+
+      :returns: (B, H, W, 3)
+                mask_soft: (B, H, W, 1)
+                depth: (B, H, W, 1)
+      :rtype: color
+
+
+
+   .. py:method:: render(mesh)
+
+      texture_type == 'vectex_color'
+          obj_dict = {'type':'vertex_color' ,'vtx_pos':, 'pos_idx':, 'vtx_col':, 'col_idx':}
+      texture_type == 'triangle_uvs'
+          obj_dict = {'type': triangle_uvs, 'vtx_pos':, 'pos_idx':, 'uvs':, 'uv_idx', 'texture' }
+
+
+
+   .. py:method:: render_multi(mesh_list)
+
+      Render multiple meshes in a single pass.
+
+      :param mesh_list: List of Trimesh or Open3D meshes
+      :param return_id: If True, return instance ID map
+      :param return_torch: Return torch tensors instead of numpy
+
+      :returns: {serial: (H, W, 3)} RGB images
+                mask_dict: {serial: (H, W, 1)} soft masks
+                depth_dict: {serial: (H, W, 1)} depth maps
+                id_dict: {serial: (H, W, 3)} optional ID maps (1-indexed, 0=background)
+      :rtype: color_dict
+
+      .. rubric:: Example
+
+      >>> meshes = [apple_mesh, orange_mesh, banana_mesh]
+      >>> colors, masks, depths, ids = renderer.render_multi(
+      ...     meshes, return_id=True
+      ... )
+      >>> # ids['cam_01'][y, x] = object ID at pixel (x, y)
+
+
+

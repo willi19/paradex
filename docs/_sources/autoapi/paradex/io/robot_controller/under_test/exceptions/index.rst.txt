@@ -1,0 +1,40 @@
+paradex.io.robot_controller.under_test.exceptions
+=================================================
+
+.. py:module:: paradex.io.robot_controller.under_test.exceptions
+
+.. autoapi-nested-parse::
+
+   Exceptions for the Inspire Hand library.
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:exception:: InspireHandError
+
+   Bases: :py:obj:`Exception`
+
+
+   Base exception for all Inspire Hand errors.
+
+
+.. py:exception:: ConnectionError
+
+   Bases: :py:obj:`InspireHandError`
+
+
+   Exception raised when there's an issue connecting to the hand.
+
+
+.. py:exception:: CommandError
+
+   Bases: :py:obj:`InspireHandError`
+
+
+   Exception raised when a command fails to execute.
+
+

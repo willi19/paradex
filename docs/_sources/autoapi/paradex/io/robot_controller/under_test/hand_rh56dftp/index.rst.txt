@@ -1,0 +1,548 @@
+paradex.io.robot_controller.under_test.hand_rh56dftp
+====================================================
+
+.. py:module:: paradex.io.robot_controller.under_test.hand_rh56dftp
+
+.. autoapi-nested-parse::
+
+   Main module for controlling the Inspire Hand RH56DFTP.
+   Based on the RH56DFTP User Manual V1.0.0.
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: RegisterRH56DFTP
+
+   Register addresses for the Inspire Hand RH56DFTP.
+
+   Note: These addresses should be verified against the RH56DFTP User Manual V1.0.0.
+   Update these values based on the actual register map from the manual.
+
+
+   .. py:attribute:: HAND_ID
+      :value: 1000
+
+
+
+   .. py:attribute:: BAUD_RATE
+      :value: 1002
+
+
+
+   .. py:attribute:: CLEAR_ERROR
+      :value: 1004
+
+
+
+   .. py:attribute:: SAVE
+      :value: 1005
+
+
+
+   .. py:attribute:: RESET_PARA
+      :value: 1006
+
+
+
+   .. py:attribute:: FORCE_SENSOR_CALIB
+      :value: 1009
+
+
+
+   .. py:attribute:: DEFAULT_SPEED_SET
+      :value: 1032
+
+
+
+   .. py:attribute:: DEFAULT_FORCE_SET
+      :value: 1033
+
+
+
+   .. py:attribute:: POS_SET
+      :value: 1474
+
+
+
+   .. py:attribute:: ANGLE_SET
+      :value: 1486
+
+
+
+   .. py:attribute:: FORCE_SET
+      :value: 1498
+
+
+
+   .. py:attribute:: SPEED_SET
+      :value: 1522
+
+
+
+   .. py:attribute:: POSE_MAX
+      :value: 2000
+
+
+
+   .. py:attribute:: ANGLE_MAX
+      :value: 1000
+
+
+
+   .. py:attribute:: SPEED_MAX
+      :value: 1000
+
+
+
+   .. py:attribute:: FORCE_MAX
+      :value: 3000
+
+
+
+   .. py:attribute:: POSE_ACT
+      :value: 1534
+
+
+
+   .. py:attribute:: ANGLE_ACT
+      :value: 1546
+
+
+
+   .. py:attribute:: FORCE_ACT
+      :value: 1582
+
+
+
+   .. py:attribute:: CURRENT
+      :value: 1594
+
+
+
+   .. py:attribute:: ERROR
+      :value: 1606
+
+
+
+   .. py:attribute:: STATUS
+      :value: 1612
+
+
+
+   .. py:attribute:: TEMP
+      :value: 1618
+
+
+
+   .. py:attribute:: LF_TOUCH
+      :value: 3000
+
+
+
+   .. py:attribute:: RF_TOUCH
+      :value: 3370
+
+
+
+   .. py:attribute:: MF_TOUCH
+      :value: 3740
+
+
+
+   .. py:attribute:: IF_TOUCH
+      :value: 4110
+
+
+
+   .. py:attribute:: TF_TOUCH
+      :value: 4480
+
+
+
+   .. py:attribute:: PALM_TOUCH
+      :value: 4900
+
+
+
+   .. py:attribute:: TACTILE_LENS
+
+
+.. py:class:: FingerID
+
+   Bases: :py:obj:`enum.IntEnum`
+
+
+   Finger IDs for the Inspire Hand RH56DFTP.
+
+
+   .. py:attribute:: LITTLE
+      :value: 0
+
+
+
+   .. py:attribute:: RING
+      :value: 1
+
+
+
+   .. py:attribute:: MIDDLE
+      :value: 2
+
+
+
+   .. py:attribute:: INDEX
+      :value: 3
+
+
+
+   .. py:attribute:: THUMB_BEND
+      :value: 4
+
+
+
+   .. py:attribute:: THUMB_ROTATE
+      :value: 5
+
+
+
+   .. py:attribute:: ALL
+      :value: 6
+
+
+
+.. py:class:: FingerStatus
+
+   Bases: :py:obj:`enum.IntEnum`
+
+
+   Status codes for fingers.
+
+
+   .. py:attribute:: UNCLENCHING
+      :value: 0
+
+
+
+   .. py:attribute:: GRASPING
+      :value: 1
+
+
+
+   .. py:attribute:: REACHED_TARGET
+      :value: 2
+
+
+
+   .. py:attribute:: REACHED_FORCE
+      :value: 3
+
+
+
+   .. py:attribute:: CURRENT_PROTECTION
+      :value: 5
+
+
+
+   .. py:attribute:: LOCKED_ROTOR
+      :value: 6
+
+
+
+   .. py:attribute:: FAULT
+      :value: 7
+
+
+
+.. py:class:: ErrorStatus
+
+   Bases: :py:obj:`enum.IntEnum`
+
+
+   Error codes for the Inspire Hand RH56DFTP.
+
+
+   .. py:attribute:: Locked_Rotor_Error
+      :value: 0
+
+
+
+   .. py:attribute:: Over_Temperature_Error
+      :value: 1
+
+
+
+   .. py:attribute:: Overcurrent_Error
+      :value: 2
+
+
+
+   .. py:attribute:: Abnormal_Operation_Motor
+      :value: 3
+
+
+
+   .. py:attribute:: Communication_Error
+      :value: 4
+
+
+
+.. py:class:: ContactStatus(contact_flags: int, contact_forces: List[int])
+
+   Contact status information for fingers.
+
+
+   .. py:attribute:: contact_flags
+
+
+   .. py:attribute:: contact_forces
+
+
+   .. py:method:: is_contact(finger_id: int) -> bool
+
+      Check if a specific finger is in contact.
+
+      :param finger_id: Finger ID (0-5)
+
+      :returns: True if finger is in contact, False otherwise
+
+
+
+   .. py:method:: get_contact_force(finger_id: int) -> int
+
+      Get contact force for a specific finger.
+
+      :param finger_id: Finger ID (0-5)
+
+      :returns: Contact force value for the finger
+
+
+
+   .. py:method:: get_all_contacts() -> Dict[int, bool]
+
+      Get contact status for all fingers.
+
+      :returns: Dictionary mapping finger ID to contact status
+
+
+
+.. py:class:: InspireHandRH56DFTP(port: str = '/dev/ttyUSB0', baudrate: int = 115200, slave_id: int = 1, debug: bool = False)
+
+   Interface for controlling the Inspire Hand RH56DFTP.
+
+   This class provides functionality for:
+   - Connection management
+   - Reading current pose
+   - Writing/executing pose
+   - Reading contact information
+
+
+   .. py:attribute:: modbus
+
+
+   .. py:method:: connect()
+
+      Context manager for connecting to the hand.
+
+      .. rubric:: Example
+
+      with hand.connect():
+          pose = hand.read_pose()
+          hand.write_pose([1000, 1000, 1000, 1000, 1000, 1000])
+
+
+
+   .. py:method:: open() -> None
+
+      Connect to the hand.
+
+      :raises ConnectionError: If connection fails
+
+
+
+   .. py:method:: close() -> None
+
+      Disconnect from the hand.
+
+
+
+   .. py:property:: is_connected
+      :type: bool
+
+
+      Check if the hand is connected.
+
+
+   .. py:method:: read_pose() -> List[int]
+
+      Read the current pose of all joints.
+
+      :returns: List of current pose values for all joints (typically 6 values for 6 DOF)
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+
+
+
+   .. py:method:: read_angles() -> List[int]
+
+      Read the current angles of all joints.
+
+      :returns: List of current angle values for all joints (0-1000, 0=closed, 1000=open)
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+
+
+
+   .. py:method:: read_error() -> List[int]
+
+      Read the current error code of the hand.
+
+      :returns: List of error codes for all joints
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+
+
+
+   .. py:method:: write_pose_by_id(id: int, pose: int) -> None
+
+      Write/execute a pose for all joints.
+
+      :param id: Joint ID (0-5)
+      :param pose: Pose value for the joint (0-2000, -1 for no action)
+      :param order of DOF: lf, rf, mf, if, thumb bending, thumb rotating
+      :param 0: open 2000: closed
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+      :raises ValueError: If pose values are invalid
+
+
+
+   .. py:method:: write_pose(pose: List[int]) -> None
+
+      Write/execute a pose for all joints.
+
+      :param pose: List of pose values for all joints (typically 6 values) (0-2000, -1 for no action)
+      :param order of DOF: lf, rf, mf, if, thumb bending, thumb rotating
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+      :raises ValueError: If pose values are invalid
+
+
+
+   .. py:method:: write_angle_by_id(id: int, angle: int) -> None
+
+      Write/execute a pose for all joints.
+
+      :param id: Joint ID (0-5)
+      :param angle: angle value for each joint (0-1000)
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+      :raises ValueError: If angle values are invalid
+
+
+
+   .. py:method:: write_angles(angles: List[int]) -> None
+
+      Write/execute angles for all joints.
+
+      :param angles: List of angle values for all joints (0-1000, 0=closed, 1000=open)
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+      :raises ValueError: If angle values are invalid
+
+
+
+   .. py:method:: set_joint_angle(joint_id: int, angle: int) -> None
+
+      Set the angle of a specific joint.
+
+      :param joint_id: Joint ID (0-5)
+      :param angle: Angle value (0-1000, 0=closed, 1000=open)
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+      :raises ValueError: If joint_id or angle is invalid
+
+
+
+   .. py:method:: set_speed(speed: int) -> None
+
+      Set the speed for all joints.
+
+      :param speed: Speed value (0-1000)
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+      :raises ValueError: If speed is invalid
+
+
+
+   .. py:method:: force_calibration()
+
+
+   .. py:method:: set_force_threshold(force: int) -> None
+
+      Set the force threshold for all joints.
+
+      :param force: Force threshold value (0-3000)
+      :param After the user set the angle of the index finger:
+      :param index finger will move towards:
+      :param until it reach the actual force in this force threshold:
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+      :raises ValueError: If force is invalid
+
+
+
+   .. py:method:: reset() -> None
+
+      Reset the hand (clear errors).
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+
+
+
+   .. py:method:: get_forces() -> List[int]
+
+      Read the actual forces applied by all joints.
+      Range: -4000~4000, unit g
+
+      :returns: List of force values for all joints
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+
+
+
+   .. py:method:: get_status() -> Dict[str, any]
+
+      Get comprehensive status information from the hand.
+
+      :returns: Dictionary containing pose, angles, forces, contact info, etc.
+
+      :raises ConnectionError: If not connected
+      :raises CommandError: If command fails
+
+
+
+   .. py:method:: read_tactile_data() -> Dict[str, any]
+
+      Read all tactile sensor data.
+      Reads the full range (3000-5123) to ensure data consistency.
+
+      :returns: Dictionary containing tactile data for all fingers and palm.
+
+
+

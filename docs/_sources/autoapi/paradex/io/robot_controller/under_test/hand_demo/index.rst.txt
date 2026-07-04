@@ -1,0 +1,59 @@
+paradex.io.robot_controller.under_test.hand_demo
+================================================
+
+.. py:module:: paradex.io.robot_controller.under_test.hand_demo
+
+.. autoapi-nested-parse::
+
+   Demo script for the Inspire Hand RH56DFTP.
+   Demonstrates connection, pose reading/writing, and contact information reading.
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: parse_args()
+
+.. py:function:: print_pose(hand: hand_rh56dftp.InspireHandRH56DFTP)
+
+   Print the current pose of the hand.
+
+
+.. py:function:: print_contact_info(hand: hand_rh56dftp.InspireHandRH56DFTP)
+
+   Print contact information from the hand.
+
+
+.. py:function:: basic_demo(hand: hand_rh56dftp.InspireHandRH56DFTP)
+
+   Run a basic demo showing connection, pose reading, and pose writing.
+
+
+.. py:function:: pose_demo(hand: hand_rh56dftp.InspireHandRH56DFTP)
+
+   Demonstrate pose reading and writing.
+
+
+.. py:function:: contact_demo(hand: hand_rh56dftp.InspireHandRH56DFTP)
+
+   Demonstrate contact information reading.
+
+
+.. py:function:: full_demo(hand: hand_rh56dftp.InspireHandRH56DFTP)
+
+   Run a comprehensive demo showing all features.
+
+
+.. py:function:: tactile_demo(hand: hand_rh56dftp.InspireHandRH56DFTP)
+
+   Demonstrate tactile information reading with visualization.
+
+
+.. py:function:: main()
+
+   Main demo function.
+
+

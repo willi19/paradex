@@ -1,0 +1,24 @@
+paradex.dataset_acqusition.match_sync
+=====================================
+
+.. py:module:: paradex.dataset_acqusition.match_sync
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: td
+   :value: 0.06666666666666667
+
+
+.. py:function:: fill_framedrop(frame_id, pc_time)
+
+.. py:function:: get_synced_data(pc_times, data, data_times)
+
+   2-pointer 방식으로 pc_times와 가장 가까운 data_times의 데이터를 매칭
+
+

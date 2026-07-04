@@ -9,7 +9,7 @@ paradex.retargetor.unimanual
 Module Contents
 ---------------
 
-.. py:class:: Retargetor(arm_name=None, hand_name=None, home_pose=None)
+.. py:class:: Retargetor(arm_name=None, hand_name=None)
 
    .. py:attribute:: arm_name
       :value: None
@@ -17,23 +17,6 @@ Module Contents
 
 
    .. py:attribute:: hand_name
-      :value: None
-
-
-
-   .. py:attribute:: home_pose
-
-
-   .. py:attribute:: cur_pose
-
-
-   .. py:attribute:: last_arm_pose
-
-
-   .. py:attribute:: init_robot_pose
-
-
-   .. py:attribute:: init_human_pose
       :value: None
 
 
@@ -46,9 +29,9 @@ Module Contents
    .. py:method:: get_action(data)
 
 
-   .. py:method:: reset()
+   .. py:method:: start(home_pose)
 
 
-   .. py:method:: pause()
+   .. py:method:: stop()
 
 

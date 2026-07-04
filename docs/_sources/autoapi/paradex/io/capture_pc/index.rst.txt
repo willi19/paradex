@@ -1,0 +1,18 @@
+paradex.io.capture_pc
+=====================
+
+.. py:module:: paradex.io.capture_pc
+
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/paradex/io/capture_pc/command_sender/index
+   /autoapi/paradex/io/capture_pc/data_sender/index
+   /autoapi/paradex/io/capture_pc/processor/index
+   /autoapi/paradex/io/capture_pc/ssh/index
+
+

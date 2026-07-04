@@ -6,62 +6,47 @@ paradex.video.raw_video_processor
 
 
 
+
+
 Module Contents
 ---------------
 
-.. py:class:: RawVideoProcessor(save_path, load_info=None, process_result=None, process_frame=None, preserve=True, overwrite=True)
+.. py:function:: update_progress(progress_dict, video_id, updates)
 
-   .. py:attribute:: save_path
+   Manager.dict 안전하게 업데이트
 
 
-   .. py:attribute:: manager
+.. py:function:: undistort_raw_video(video_path, progress_dict, video_id)
+
+   progress_dict로 진행상황 업데이트
+
+
+.. py:function:: get_raw_videopath_list()
+
+.. py:class:: RawVideoProcessor
+
+   .. py:attribute:: videopath_list
+      :value: []
+
+
+
+   .. py:attribute:: num_workers
+
+
+   .. py:attribute:: progress_dict
 
 
    .. py:attribute:: log
-      :value: []
-
-
-
-   .. py:attribute:: video_path_list
-      :value: []
-
-
-
-   .. py:attribute:: total_frame
-
-
-   .. py:attribute:: process_frame
-      :value: None
-
-
-
-   .. py:attribute:: load_info
-      :value: None
-
-
-
-   .. py:attribute:: process_result
-      :value: None
-
-
-
-   .. py:attribute:: preserve
-      :value: True
-
-
-
-   .. py:attribute:: overwrite
-      :value: True
-
-
-
-   .. py:attribute:: frame_counter
 
 
    .. py:attribute:: pool
+      :value: None
 
 
-   .. py:method:: remove_invalid()
+
+   .. py:attribute:: process_list
+      :value: []
+
 
 
    .. py:method:: async_callback(result)
@@ -70,9 +55,48 @@ Module Contents
    .. py:method:: error_callback(e)
 
 
+   .. py:method:: finished()
+
+
    .. py:method:: process()
 
+      비디오 처리 시작
 
-   .. py:method:: finished()
+
+
+   .. py:method:: get_progress()
+
+      전체 진행상황 조회
+
+
+
+   .. py:method:: get_overall_progress()
+
+      전체 진행률 계산
+
+
+
+   .. py:method:: get_status_summary()
+
+      상태 요약
+
+
+
+   .. py:method:: print_progress()
+
+      진행상황 출력
+
+
+
+   .. py:method:: wait_and_monitor(update_interval=2.0)
+
+      처리 완료까지 대기하면서 진행상황 모니터링
+
+
+
+   .. py:method:: stop()
+
+      처리 중단
+
 
 

@@ -1,6 +1,0 @@
-sdf
-===
-
-.. py:module:: sdf
-
-

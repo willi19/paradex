@@ -1,0 +1,22 @@
+paradex.video.util
+==================
+
+.. py:module:: paradex.video.util
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: change_to_h264(temp_video_path, output_video_path)
+
+.. py:function:: images_to_video(image_files, output_video_path, frame_rate)
+
+   Convert images to a video using OpenCV.
+
+
+.. py:function:: convert_avi_to_mp4(input_path, output_path)
+
+.. py:function:: convert_avi_to_compressed_avi(input_path, output_path)
+

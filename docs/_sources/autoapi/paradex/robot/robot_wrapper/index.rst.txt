@@ -60,7 +60,7 @@ Module Contents
    .. py:method:: get_frame_list()
 
 
-   .. py:method:: compute_forward_kinematics(qpos: numpy.typing.NDArray)
+   .. py:method:: compute_forward_kinematics(qpos: numpy.typing.NDArray, link_list=[])
 
 
    .. py:method:: get_link_pose(link_id: int) -> numpy.typing.NDArray

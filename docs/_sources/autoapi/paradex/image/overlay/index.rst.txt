@@ -1,0 +1,13 @@
+paradex.image.overlay
+=====================
+
+.. py:module:: paradex.image.overlay
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: overlay_mask(image, mask, color, alpha=0.7)
+

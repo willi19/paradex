@@ -1,0 +1,18 @@
+paradex.image.merge
+===================
+
+.. py:module:: paradex.image.merge
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: get_optimal_font_scale(text, target_width, font=cv2.FONT_HERSHEY_SIMPLEX, thickness=2)
+
+   텍스트가 target_width에 맞는 최적의 font scale 찾기
+
+
+.. py:function:: merge_image(image_dict, image_text={}, put_text=True)
+

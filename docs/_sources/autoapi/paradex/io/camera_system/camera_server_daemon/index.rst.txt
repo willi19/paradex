@@ -1,0 +1,79 @@
+paradex.io.camera_system.camera_server_daemon
+=============================================
+
+.. py:module:: paradex.io.camera_system.camera_server_daemon
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: camera_server_daemon
+
+   .. py:attribute:: camera_loader
+
+
+   .. py:attribute:: ping_port
+      :value: 5480
+
+
+
+   .. py:attribute:: monitor_port
+      :value: 5481
+
+
+
+   .. py:attribute:: command_port
+      :value: 5482
+
+
+
+   .. py:attribute:: ctx
+
+
+   .. py:attribute:: current_controller
+      :value: None
+
+
+
+   .. py:attribute:: last_action
+      :value: None
+
+
+
+   .. py:attribute:: last_action_time
+      :value: None
+
+
+
+   .. py:attribute:: last_mode
+      :value: None
+
+
+
+   .. py:attribute:: cameras_running
+      :value: False
+
+
+
+   .. py:attribute:: state
+      :value: 'idle'
+
+
+
+   .. py:method:: reload_cameras()
+
+
+   .. py:method:: pingpong_thread()
+
+
+   .. py:method:: monitor_thread()
+
+
+   .. py:method:: execute_command(cmd)
+
+
+   .. py:method:: command_thread()
+
+

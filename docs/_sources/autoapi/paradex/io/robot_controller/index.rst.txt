@@ -11,11 +11,12 @@ Submodules
    :maxdepth: 1
 
    /autoapi/paradex/io/robot_controller/allegro_controller/index
-   /autoapi/paradex/io/robot_controller/franka_controller/index
+   /autoapi/paradex/io/robot_controller/gui_controller/index
+   /autoapi/paradex/io/robot_controller/gui_controller_simple/index
    /autoapi/paradex/io/robot_controller/inspire_controller/index
-   /autoapi/paradex/io/robot_controller/inspire_controller copy/index
+   /autoapi/paradex/io/robot_controller/inspire_controller_ip/index
+   /autoapi/paradex/io/robot_controller/under_test/index
    /autoapi/paradex/io/robot_controller/xarm_controller/index
-   /autoapi/paradex/io/robot_controller/xarm_controller_tmp/index
 
 
 
@@ -25,5 +26,5 @@ Package Contents
 
 .. py:function:: get_arm(arm_name)
 
-.. py:function:: get_hand(hand_name)
+.. py:function:: get_hand(hand_name, tactile=False, ip=True)
 

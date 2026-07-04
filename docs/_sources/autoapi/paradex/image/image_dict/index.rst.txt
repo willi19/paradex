@@ -1,0 +1,163 @@
+paradex.image.image_dict
+========================
+
+.. py:module:: paradex.image.image_dict
+
+.. autoapi-nested-parse::
+
+   Image collection with batch operations
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ImageDict(images: Dict[str, numpy.ndarray], intrinsic: Optional[Dict[str, Dict]] = None, extrinsic: Optional[Dict[str, numpy.ndarray]] = None, path: Optional[Union[str, pathlib.Path]] = None)
+
+   .. py:attribute:: images
+
+
+   .. py:attribute:: intrinsic
+
+
+   .. py:attribute:: extrinsic
+
+
+   .. py:attribute:: path
+      :value: None
+
+
+
+   .. py:method:: from_path(path: Union[str, pathlib.Path]) -> ImageDict
+      :classmethod:
+
+
+
+   .. py:method:: update(images: Dict[str, numpy.ndarray])
+
+      Update images with another dictionary
+
+
+
+   .. py:method:: update_path(path: Union[str, pathlib.Path], reload_images: bool = True)
+
+      Update path and optionally reload images.
+
+      :param path: New path
+      :param reload_images: If True, reload images from new path
+
+      .. note:: Preserves undistort maps if calibration hasn't changed.
+
+
+
+   .. py:method:: set_camparam(intrinsic: Dict[str, Dict], extrinsic: Dict[str, numpy.ndarray])
+
+      Set camera parameters
+
+
+
+   .. py:property:: serial_list
+
+      List of camera serial numbers
+
+
+   .. py:method:: keys()
+
+
+   .. py:method:: values()
+
+
+   .. py:method:: items()
+
+
+   .. py:method:: load_current_camparam()
+
+
+   .. py:method:: copy() -> ImageDict
+
+      Create a deep copy of ImageDict
+
+
+
+   .. py:method:: save(path=None)
+
+
+   .. py:method:: save_camparam(path=None)
+
+
+   .. py:method:: apply(func: Callable, use_camparam=False, **kwargs) -> Dict
+
+      Apply a single-image function to all images.
+
+      :param func: Function with signature func(img, **kwargs) -> result
+      :param cache_key: Optional key to cache results
+      :param \*\*kwargs: Additional arguments passed to func
+
+      :returns: Dictionary mapping serial numbers to results
+
+      .. rubric:: Example
+
+      >>> from paradex.image.detection import detect_aruco
+      >>> results = img_dict.apply(detect_aruco, dict_type='6X6_1000')
+
+
+
+   .. py:method:: map_images(func: Callable, use_camparam=False, **kwargs) -> ImageDict
+
+
+   .. py:method:: undistort(save_path: Optional[Union[str, pathlib.Path]] = None) -> ImageDict
+
+
+   .. py:method:: triangulate_markers(dict_type: str = '6X6_1000') -> Dict[int, numpy.ndarray]
+
+      Triangulate ArUco markers from multiple views
+
+
+
+   .. py:method:: triangulate_charuco() -> Dict[str, numpy.ndarray]
+
+      Triangulate ChArUco corners from multiple views
+
+
+
+   .. py:method:: traingulate_points(points_2d: numpy.ndarray) -> numpy.ndarray
+
+      Triangulate 3D points from multiple views
+
+      :param points_2d: Dict mapping serial numbers to Nx2 arrays of 2D points
+
+      :returns: Nx3 array of triangulated 3D points
+      :rtype: points_3d
+
+
+
+   .. py:method:: project_pointcloud(points_3d: numpy.ndarray) -> Dict[str, numpy.ndarray]
+
+      Project 3D points onto all camera views
+
+
+
+   .. py:method:: project_mesh(object, color=(0, 255, 0), alpha=0.5)
+
+
+   .. py:method:: merge(image_text: Optional[Dict[str, str]] = {}) -> numpy.ndarray
+
+      Merge all images into a grid layout
+
+
+
+   .. py:method:: draw_keypoint(keypoints: Dict[str, numpy.ndarray], color: tuple = (0, 255, 0), radius: int = 3, thickness: int = -1) -> ImageDict
+
+      Draw keypoints on images
+
+      :param keypoints: Dict mapping serial numbers to Nx2 arrays of keypoints
+      :param color: Color of keypoints
+      :param radius: Radius of keypoint circles
+      :param thickness: Thickness of circle outline (-1 for filled)
+
+      :returns: New ImageDict with keypoints drawn
+
+
+

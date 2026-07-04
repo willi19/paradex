@@ -1,0 +1,229 @@
+paradex.visualization.visualizer.viser
+======================================
+
+.. py:module:: paradex.visualization.visualizer.viser
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ViserViewer(up_direction=np.array([0, 0, 1]), port_number=8080)
+
+   .. py:attribute:: frame_nodes
+      :type:  dict[str, viser.FrameHandle]
+
+
+   .. py:attribute:: up_direction
+
+
+   .. py:attribute:: port_number
+      :value: 8080
+
+
+
+   .. py:attribute:: robot_dict
+
+
+   .. py:attribute:: obj_dict
+
+
+   .. py:attribute:: traj_list
+      :value: []
+
+
+
+   .. py:attribute:: num_frames
+      :value: 0
+
+
+
+   .. py:method:: load_server()
+
+
+   .. py:method:: add_robot(name, urdf_path, pose=None)
+
+
+   .. py:method:: add_trimesh(name, mesh: trimesh.Trimesh, pose=None)
+
+
+   .. py:method:: add_object(name, obj: trimesh.Trimesh, obj_T)
+
+      Add an object mesh to the scene
+
+      :param name: Unique name for the object
+      :param obj: trimesh.Trimesh object
+      :param obj_T: 4x4 transformation matrix for the object pose
+
+
+
+   .. py:method:: add_traj(name, robot_traj: Dict, obj_traj: Dict = {})
+
+
+   .. py:method:: clear_traj()
+
+
+   .. py:method:: add_floor(height=0.0)
+
+
+   .. py:method:: add_grid(size=10.0, cell_size=0.1, height=0.0)
+
+
+   .. py:method:: update_floor()
+
+
+   .. py:method:: update_scene(timestep)
+
+
+   .. py:method:: render_current_frame(timestep)
+
+      Render the current frame to PNG.
+
+
+
+   .. py:method:: render_full_video()
+
+      Render all frames to a video file.
+
+
+
+   .. py:method:: update()
+
+
+   .. py:method:: stop_viewer()
+
+      Stop the underlying viser websocket server. Safe no-op if the
+      server has already been closed or doesn't expose a stop method.
+
+
+
+   .. py:method:: start_viewer(use_thread=False)
+
+
+   .. py:method:: add_player()
+
+
+   .. py:method:: add_frame(name, T, scale=0.1)
+
+
+   .. py:method:: add_lights()
+
+
+   .. py:method:: add_contact_module(robot_name, obj_name)
+
+
+   .. py:method:: add_camera(name, extrinsic, intrinsic, color=(0.0, 1.0, 0.0), size=0.1)
+
+      Add a camera frustum visualization to the scene
+
+      :param name: Unique name for the camera
+      :param extrinsic: 4x4 or 3x4 camera extrinsic matrix (cam_from_world or world_from_cam)
+      :param intrinsic: Camera intrinsic parameters dict with keys 'fx', 'fy', 'cx', 'cy', 'width', 'height'
+                        OR 3x3 intrinsic matrix
+      :param color: RGB tuple (0.0-1.0 float range)
+      :param size: Size of the frustum (depth from camera center)
+
+
+
+   .. py:method:: change_color(name, color, name_list=[])
+
+      Change the color of a robot or object. color is (r, g, b) or (r, g, b, a) in 0.0-1.0 range.
+
+
+
+   .. py:method:: add_sphere(name, position, radius=0.05, color=(1.0, 0.0, 0.0))
+
+
+   .. py:method:: add_arrow(name, start, end, color=(0.0, 1.0, 0.0), shaft_radius=0.01, head_radius=0.02, head_length=0.03, opacity=1.0)
+
+      Add an arrow visualization with head
+
+      :param name: Unique name for the arrow
+      :param start: Starting position [x, y, z]
+      :param end: Ending position [x, y, z]
+      :param color: RGB color (0.0-1.0 float range)
+      :param shaft_radius: Radius of arrow shaft
+      :param head_radius: Radius of arrow head cone
+      :param head_length: Length of arrow head cone
+      :param opacity: Opacity value (0.0-1.0)
+
+
+
+   .. py:method:: capture_scene_png(out_path, height=720, width=720)
+
+
+   .. py:method:: add_camera_path_gui()
+
+      Add interpolated camera path video recording GUI (uses capture settings from Capture folder).
+
+
+
+   .. py:method:: add_view_save_gui()
+
+
+.. py:class:: ViserRobotModule(target, urdf_path, scale: float = 1.0, root_node_name: str = '/', load_meshes=True, load_collision_meshes=False)
+
+   .. py:method:: change_color(name_list, color: Tuple[float, float, float]) -> None
+
+      Change the color of the visualized URDF. color is (r, g, b) or (r, g, b, a) in 0.0-1.0 range.
+
+
+
+   .. py:property:: show_visual
+      :type: bool
+
+
+      Returns whether the visual meshes are currently visible.
+
+
+   .. py:property:: show_collision
+      :type: bool
+
+
+      Returns whether the collision meshes are currently visible.
+
+
+   .. py:property:: urdf
+      :type: paradex.visualization.robot.RobotModule
+
+
+      Get the underlying URDF object.
+
+
+   .. py:method:: remove() -> None
+
+      Remove URDF from scene.
+
+
+
+   .. py:method:: update_cfg(configuration: numpy.ndarray) -> None
+
+      Update the joint angles of the visualized URDF.
+
+
+
+   .. py:method:: get_link_vertices(link_name: str = None) -> Dict[str, numpy.ndarray]
+
+      Get vertices of link meshes in world coordinates
+
+      :param link_name: Specific link name to get vertices from. If None, returns all links.
+
+      :returns: Dictionary mapping link names to their vertices (N, 3) in world coordinates
+
+
+
+   .. py:method:: set_visibility(visible: bool) -> None
+
+      Set visibility of all meshes.
+
+
+
+   .. py:method:: get_all_vertices() -> numpy.ndarray
+
+      Get all vertices from all links concatenated together
+
+      :returns: (N, 3) array of all vertices in world coordinates
+
+
+

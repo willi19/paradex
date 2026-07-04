@@ -1,11 +1,11 @@
 <!doctype html>
 <html class="no-js" lang="en" data-content_root="../../../../">
-  <head><meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../../../genindex.html"><link rel="search" title="Search" href="../../../../search.html"><link rel="next" title="paradex.utils.keyboard_listener" href="../keyboard_listener/index.html"><link rel="prev" title="paradex.utils.env" href="../env/index.html">
+<link rel="index" title="Index" href="../../../../genindex.html" /><link rel="search" title="Search" href="../../../../search.html" /><link rel="next" title="paradex.utils.keyboard_listener" href="../keyboard_listener/index.html" /><link rel="prev" title="paradex.utils" href="../index.html" />
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.09.25 -->
+    <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>paradex.utils.file_io - paradex 0.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=55bf9381" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=580074bf" />
@@ -18,8 +18,8 @@
 
 <style>
   body {
-    --color-code-background: #f2f2f2;
-  --color-code-foreground: #1e1e1e;
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
   
   }
   @media not print {
@@ -146,10 +146,14 @@
   </symbol>
 </svg>
 
-<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
-<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
-<label class="overlay sidebar-overlay" for="__navigation"></label>
-<label class="overlay toc-overlay" for="__toc"></label>
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
 
 <a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
 
@@ -159,7 +163,8 @@
   <header class="mobile-header">
     <div class="header-left">
       <label class="nav-overlay-icon" for="__navigation">
-        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
       </label>
     </div>
     <div class="header-center">
@@ -167,7 +172,8 @@
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
-        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
           <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
           <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
           <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
@@ -175,7 +181,8 @@
         </button>
       </div>
       <label class="toc-overlay-icon toc-header-icon" for="__toc">
-        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
     </div>
   </header>
@@ -183,6 +190,7 @@
     <div class="sidebar-container">
       
       <div class="sidebar-sticky"><a class="sidebar-brand" href="../../../../index.html">
+  
   
   <span class="sidebar-brand-text">paradex 0.0.0 documentation</span>
   
@@ -192,78 +200,61 @@
   <input type="hidden" name="area" value="default">
 </form>
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
-  <p class="caption" role="heading"><span class="caption-text">I/O Module</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../../io/robot_controller.html">Robot Controllers</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../io/camera.html">Camera System</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../io/teleop.html">Teleoperation</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Computer Vision</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../../vision/image.html">Image Processing</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../vision/geometry.html">Geometry</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../vision/colmap.html">COLMAP</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Robot</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../../robot/robot_wrapper.html">Robot Wrapper</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../robot/curobo.html">CuRobo Integration</a></li>
-</ul>
-<p class="caption" role="heading"><span class="caption-text">Visualization</span></p>
+  <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul class="current">
-<li class="toctree-l1"><a class="reference internal" href="../../../../visualization/viewer.html">Viewers</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../visualization/renderer.html">Renderer</a></li>
-<li class="toctree-l1 current has-children"><a class="reference internal" href="../../../index.html">API Reference</a><input aria-label="Toggle navigation of API Reference" checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../../../io/index.html">io</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../sdf/index.html">sdf</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../sam/index.html">sam</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../math/index.html">math</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../util/index.html">util</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../grid/index.html">grid</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../hand/index.html">hand</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../body/index.html">body</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../scene/index.html">scene</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../merge/index.html">merge</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../aruco/index.html">aruco</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../shape/index.html">shape</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../robot/index.html">robot</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../viser/index.html">viser</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../rot6d/index.html">rot6d</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../lookup/index.html">lookup</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../camera/index.html">camera</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../pyspin/index.html">pyspin</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../metric/index.html">metric</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../client/index.html">client</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../viewer/index.html">viewer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../open3d/index.html">open3d</a></li>
-<li class="toctree-l2 current has-children"><a class="reference internal" href="../../index.html">paradex</a><input aria-label="Toggle navigation of paradex" checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../colmap/index.html">paradex.colmap</a><input aria-label="Toggle navigation of paradex.colmap" class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l4"><a class="reference internal" href="../../colmap/colmap/index.html">paradex.colmap.colmap</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../colmap/database/index.html">paradex.colmap.database</a></li>
+<li class="toctree-l1 current has-children"><a class="reference internal" href="../../../index.html">API Reference</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l2 current has-children"><a class="reference internal" href="../../index.html">paradex</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of paradex</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../calibration/index.html">paradex.calibration</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of paradex.calibration</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../calibration/Tsai_Lenz/index.html">paradex.calibration.Tsai_Lenz</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../calibration/colmap/index.html">paradex.calibration.colmap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../calibration/utils/index.html">paradex.calibration.utils</a></li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../io/index.html">paradex.io</a><input aria-label="Toggle navigation of paradex.io" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l4 has-children"><a class="reference internal" href="../../io/contact/index.html">paradex.io.contact</a><input aria-label="Toggle navigation of paradex.io.contact" class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l5"><a class="reference internal" href="../../io/contact/index/index.html">paradex.io.contact.index</a></li>
-<li class="toctree-l5"><a class="reference internal" href="../../io/contact/process/index.html">paradex.io.contact.process</a></li>
-<li class="toctree-l5"><a class="reference internal" href="../../io/contact/receiver/index.html">paradex.io.contact.receiver</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../dataset_acqusition/index.html">paradex.dataset_acqusition</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of paradex.dataset_acqusition</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../dataset_acqusition/capture/index.html">paradex.dataset_acqusition.capture</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../dataset_acqusition/match_sync/index.html">paradex.dataset_acqusition.match_sync</a></li>
 </ul>
 </li>
-<li class="toctree-l4 has-children"><a class="reference internal" href="../../io/robot_controller/index.html">paradex.io.robot_controller</a><input aria-label="Toggle navigation of paradex.io.robot_controller" class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../image/index.html">paradex.image</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of paradex.image</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../image/aruco/index.html">paradex.image.aruco</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../image/grid/index.html">paradex.image.grid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../image/image_dict/index.html">paradex.image.image_dict</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../image/merge/index.html">paradex.image.merge</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../image/overlay/index.html">paradex.image.overlay</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../image/projection/index.html">paradex.image.projection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../image/undistort/index.html">paradex.image.undistort</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../io/index.html">paradex.io</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of paradex.io</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../io/capture_pc/index.html">paradex.io.capture_pc</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../io/capture_pc/command_sender/index.html">paradex.io.capture_pc.command_sender</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../io/capture_pc/data_sender/index.html">paradex.io.capture_pc.data_sender</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../io/capture_pc/processor/index.html">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../io/capture_pc/ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+</ul>
+</li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../io/robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l5"><a class="reference internal" href="../../io/robot_controller/allegro_controller/index.html">paradex.io.robot_controller.allegro_controller</a></li>
-<li class="toctree-l5"><a class="reference internal" href="../../io/robot_controller/franka_controller/index.html">paradex.io.robot_controller.franka_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../io/robot_controller/gui_controller/index.html">paradex.io.robot_controller.gui_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../io/robot_controller/gui_controller_simple/index.html">paradex.io.robot_controller.gui_controller_simple</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../../io/robot_controller/inspire_controller/index.html">paradex.io.robot_controller.inspire_controller</a></li>
-<li class="toctree-l5"><a class="reference internal" href="../../io/robot_controller/inspire_controller%20copy/index.html">paradex.io.robot_controller.inspire_controller copy</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../io/robot_controller/inspire_controller_ip/index.html">paradex.io.robot_controller.inspire_controller_ip</a></li>
+<li class="toctree-l5 has-children"><a class="reference internal" href="../../io/robot_controller/under_test/index.html">paradex.io.robot_controller.under_test</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller.under_test</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l6"><a class="reference internal" href="../../io/robot_controller/under_test/cli/index.html">paradex.io.robot_controller.under_test.cli</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../io/robot_controller/under_test/exceptions/index.html">paradex.io.robot_controller.under_test.exceptions</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../io/robot_controller/under_test/hand_demo/index.html">paradex.io.robot_controller.under_test.hand_demo</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../io/robot_controller/under_test/hand_rh56dftp/index.html">paradex.io.robot_controller.under_test.hand_rh56dftp</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../io/robot_controller/under_test/inspire_hand_ip_demo/index.html">paradex.io.robot_controller.under_test.inspire_hand_ip_demo</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../io/robot_controller/under_test/modbus/index.html">paradex.io.robot_controller.under_test.modbus</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../io/robot_controller/under_test/verify_tactile/index.html">paradex.io.robot_controller.under_test.verify_tactile</a></li>
+<li class="toctree-l6"><a class="reference internal" href="../../io/robot_controller/under_test/visualize_contact/index.html">paradex.io.robot_controller.under_test.visualize_contact</a></li>
+</ul>
+</li>
 <li class="toctree-l5"><a class="reference internal" href="../../io/robot_controller/xarm_controller/index.html">paradex.io.robot_controller.xarm_controller</a></li>
-<li class="toctree-l5"><a class="reference internal" href="../../io/robot_controller/xarm_controller_tmp/index.html">paradex.io.robot_controller.xarm_controller_tmp</a></li>
 </ul>
 </li>
-<li class="toctree-l4 has-children"><a class="reference internal" href="../../io/signal_generator/index.html">paradex.io.signal_generator</a><input aria-label="Toggle navigation of paradex.io.signal_generator" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l5"><a class="reference internal" href="../../io/signal_generator/UTGE900/index.html">paradex.io.signal_generator.UTGE900</a></li>
-</ul>
-</li>
-<li class="toctree-l4 has-children"><a class="reference internal" href="../../io/teleop/index.html">paradex.io.teleop</a><input aria-label="Toggle navigation of paradex.io.teleop" class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l5 has-children"><a class="reference internal" href="../../io/teleop/xsens/index.html">paradex.io.teleop.xsens</a><input aria-label="Toggle navigation of paradex.io.teleop.xsens" class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../io/teleop/index.html">paradex.io.teleop</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of paradex.io.teleop</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5 has-children"><a class="reference internal" href="../../io/teleop/xsens/index.html">paradex.io.teleop.xsens</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of paradex.io.teleop.xsens</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l6"><a class="reference internal" href="../../io/teleop/xsens/receiver/index.html">paradex.io.teleop.xsens.receiver</a></li>
 </ul>
 </li>
@@ -271,125 +262,58 @@
 </li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../pose_utils/index.html">paradex.pose_utils</a><input aria-label="Toggle navigation of paradex.pose_utils" class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/geometry/index.html">paradex.pose_utils.geometry</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/io/index.html">paradex.pose_utils.io</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/object_optim_config/index.html">paradex.pose_utils.object_optim_config</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/optimize_initial_frame/index.html">paradex.pose_utils.optimize_initial_frame</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/optimize_module/index.html">paradex.pose_utils.optimize_module</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/pre_render_obj/index.html">paradex.pose_utils.pre_render_obj</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/renderer_utils/index.html">paradex.pose_utils.renderer_utils</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/retarget/index.html">paradex.pose_utils.retarget</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/retarget_utils/index.html">paradex.pose_utils.retarget_utils</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/scene/index.html">paradex.pose_utils.scene</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/vis_utils/index.html">paradex.pose_utils.vis_utils</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/vis_utils_nvdiff/index.html">paradex.pose_utils.vis_utils_nvdiff</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../pose_utils/viser_visualizer/index.html">paradex.pose_utils.viser_visualizer</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../process/index.html">paradex.process</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of paradex.process</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../process/distributed/index.html">paradex.process.distributed</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../process/processor/index.html">paradex.process.processor</a></li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../retargetor/index.html">paradex.retargetor</a><input aria-label="Toggle navigation of paradex.retargetor" class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../retargetor/index.html">paradex.retargetor</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of paradex.retargetor</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../retargetor/hand_regargetor/index.html">paradex.retargetor.hand_regargetor</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../retargetor/state/index.html">paradex.retargetor.state</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../retargetor/unimanual/index.html">paradex.retargetor.unimanual</a></li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../robot/index.html">paradex.robot</a><input aria-label="Toggle navigation of paradex.robot" class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../robot/index.html">paradex.robot</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of paradex.robot</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../robot/curobo/index.html">paradex.robot.curobo</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../robot/inspire/index.html">paradex.robot.inspire</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../robot/mimic_joint/index.html">paradex.robot.mimic_joint</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../robot/robot_wrapper/index.html">paradex.robot.robot_wrapper</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../robot/robot_wrapper_updating/index.html">paradex.robot.robot_wrapper_updating</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../robot/urdf/index.html">paradex.robot.urdf</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../robot/utils/index.html">paradex.robot.utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../robot/xarm_kinematic_calib/index.html">paradex.robot.xarm_kinematic_calib</a></li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../simulator/index.html">paradex.simulator</a><input aria-label="Toggle navigation of paradex.simulator" class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../simulator/index.html">paradex.simulator</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of paradex.simulator</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../simulator/isaac/index.html">paradex.simulator.isaac</a></li>
 </ul>
 </li>
-<li class="toctree-l3 current has-children"><a class="reference internal" href="../index.html">paradex.utils</a><input aria-label="Toggle navigation of paradex.utils" checked="" class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul class="current">
-<li class="toctree-l4"><a class="reference internal" href="../env/index.html">paradex.utils.env</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../transforms/index.html">paradex.transforms</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><div class="visually-hidden">Toggle navigation of paradex.transforms</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../transforms/conversion/index.html">paradex.transforms.conversion</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../transforms/coordinate/index.html">paradex.transforms.coordinate</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../transforms/triangulate/index.html">paradex.transforms.triangulate</a></li>
+</ul>
+</li>
+<li class="toctree-l3 current has-children"><a class="reference internal" href="../index.html">paradex.utils</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l4 current current-page"><a class="current reference internal" href="#">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../path/index.html">paradex.utils.path</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../upload_file/index.html">paradex.utils.upload_file</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../upload_file%20copy/index.html">paradex.utils.upload_file copy</a></li>
 </ul>
 </li>
-<li class="toctree-l3 has-children"><a class="reference internal" href="../../video/index.html">paradex.video</a><input aria-label="Toggle navigation of paradex.video" class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><span class="icon"><svg><use href="#svg-arrow-right"></use></svg></span></label><ul>
-<li class="toctree-l4"><a class="reference internal" href="../../video/convert_codec/index.html">paradex.video.convert_codec</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../video/image2video/index.html">paradex.video.image2video</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../video/process_video/index.html">paradex.video.process_video</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../video/raw_video/index.html">paradex.video.raw_video</a></li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../video/index.html">paradex.video</a><input class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><div class="visually-hidden">Toggle navigation of paradex.video</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../video/raw_video_processor/index.html">paradex.video.raw_video_processor</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../video/video/index.html">paradex.video.video</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../video/video_processor/index.html">paradex.video.video_processor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../video/util/index.html">paradex.video.util</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="../../visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="../../visualization/robot/index.html">paradex.visualization.robot</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
 </ul>
 </li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="../../../polygon/index.html">polygon</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../connect/index.html">connect</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../capture/index.html">capture</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../matcher/index.html">matcher</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../overlay/index.html">overlay</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../receiver/index.html">receiver</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../simulate/index.html">simulate</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../template/index.html">template</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../geometry/index.html">geometry</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../object6D/index.html">object6D</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../renderer/index.html">renderer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../set_seed/index.html">set_seed</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../CMapAdam/index.html">CMapAdam</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../Tsai_Lenz/index.html">Tsai_Lenz</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../processor/index.html">processor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../pickplace/index.html">pickplace</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../object_6d/index.html">object_6d</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../optimizer/index.html">optimizer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../vis_utils/index.html">vis_utils</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../undistort/index.html">undistort</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../HandModel/index.html">HandModel</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../AdamGrasp/index.html">AdamGrasp</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../conversion/index.html">conversion</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../coordinate/index.html">coordinate</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../cnos_utils/index.html">cnos_utils</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../image_dict/index.html">image_dict</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../projection/index.html">projection</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../get_models/index.html">get_models</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../utils_math/index.html">utils_math</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../triangulate/index.html">triangulate</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../visual_hull/index.html">visual_hull</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../camera_main/index.html">camera_main</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../brute_force/index.html">brute_force</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../matchingset/index.html">matchingset</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../camera_local/index.html">camera_local</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../lookup_table/index.html">lookup_table</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../viser_viewer/index.html">viser_viewer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../PointNetCVAE/index.html">PointNetCVAE</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../camera_loader/index.html">camera_loader</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../camera_reader/index.html">camera_reader</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../dinov2_module/index.html">dinov2_module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../vis_utils_o3d/index.html">vis_utils_o3d</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../contact_graph/index.html">contact_graph</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../open3d_viewer/index.html">open3d_viewer</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../monitor_daemon/index.html">monitor_daemon</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../default_config/index.html">default_config</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../client_trigger/index.html">client_trigger</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../pre_render_obj/index.html">pre_render_obj</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../process_module/index.html">process_module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../img_processing/index.html">img_processing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../renderer_utils/index.html">renderer_utils</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../video_processor/index.html">video_processor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../optimize_module/index.html">optimize_module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../tracking_wloftr/index.html">tracking_wloftr</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../multicam_system/index.html">multicam_system</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../vis_utils_nvdiff/index.html">vis_utils_nvdiff</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../visualize_plotly/index.html">visualize_plotly</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../multiview_parsing/index.html">multiview_parsing</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../yolo_world_module/index.html">yolo_world_module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../raw_video_processor/index.html">raw_video_processor</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../object_optim_config/index.html">object_optim_config</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../camera_server_daemon/index.html">camera_server_daemon</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../efficient_sam_module/index.html">efficient_sam_module</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../viser_viewer_collision/index.html">viser_viewer_collision</a></li>
-<li class="toctree-l2"><a class="reference internal" href="../../../remote_camera_controller/index.html">remote_camera_controller</a></li>
 </ul>
 </li>
 </ul>
@@ -418,7 +342,8 @@
   </a>
 </div>
 <div class="theme-toggle-container theme-toggle-content">
-            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
               <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
               <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
               <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
@@ -426,7 +351,8 @@
             </button>
           </div>
           <label class="toc-overlay-icon toc-content-icon" for="__toc">
-            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main" id="furo-main-content">
@@ -434,89 +360,9 @@
 <span id="paradex-utils-file-io"></span><h1>paradex.utils.file_io<a class="headerlink" href="#module-paradex.utils.file_io" title="Link to this heading">¶</a></h1>
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.rsc_path">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">rsc_path</span></span><a class="headerlink" href="#paradex.utils.file_io.rsc_path" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.home_path">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">home_path</span></span><a class="headerlink" href="#paradex.utils.file_io.home_path" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.shared_dir">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">shared_dir</span></span><a class="headerlink" href="#paradex.utils.file_io.shared_dir" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.calib_path_list">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">calib_path_list</span></span><a class="headerlink" href="#paradex.utils.file_io.calib_path_list" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.capture_path_list">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">capture_path_list</span></span><a class="headerlink" href="#paradex.utils.file_io.capture_path_list" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.download_dir">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">download_dir</span></span><a class="headerlink" href="#paradex.utils.file_io.download_dir" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.cam_param_dir">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">cam_param_dir</span></span><a class="headerlink" href="#paradex.utils.file_io.cam_param_dir" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.cam_param_dir_fix">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">cam_param_dir_fix</span></span><a class="headerlink" href="#paradex.utils.file_io.cam_param_dir_fix" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.handeye_calib_path">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">handeye_calib_path</span></span><a class="headerlink" href="#paradex.utils.file_io.handeye_calib_path" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.config_dir">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">config_dir</span></span><a class="headerlink" href="#paradex.utils.file_io.config_dir" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.model_dir">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">model_dir</span></span><a class="headerlink" href="#paradex.utils.file_io.model_dir" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.eef_calib_path">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">eef_calib_path</span></span><a class="headerlink" href="#paradex.utils.file_io.eef_calib_path" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.pc_name">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">pc_name</span></span><a class="headerlink" href="#paradex.utils.file_io.pc_name" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py data">
-<dt class="sig sig-object py" id="paradex.utils.file_io.log_path">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">log_path</span></span><a class="headerlink" href="#paradex.utils.file_io.log_path" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.get_video_list">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">get_video_list</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">video_dir</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.get_video_list" title="Link to this definition">¶</a></dt>
-<dd><p>Get a list of video files in the specified directory.</p>
-<p>Parameters:
-- video_dir: Directory containing video files.</p>
-<p>Returns:
-- video_list: List of video files in the directory.</p>
-</dd></dl>
-
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.find_latest_directory">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">find_latest_directory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.find_latest_directory" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">find_latest_directory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#find_latest_directory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.find_latest_directory" title="Link to this definition">¶</a></dt>
 <dd><p>Get the latest directory in the specified directory.</p>
 <p>Parameters:
 - directory: Directory containing timestamped directories.</p>
@@ -526,7 +372,7 @@
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.find_latest_index">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">find_latest_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.find_latest_index" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">find_latest_index</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">directory</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#find_latest_index"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.find_latest_index" title="Link to this definition">¶</a></dt>
 <dd><p>Get the latest directory in the specified directory.</p>
 <p>Parameters:
 - directory: Directory containing timestamped directories.</p>
@@ -535,103 +381,48 @@
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.load_current_camparam">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_current_camparam</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_current_camparam" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.load_current_camparam_fixed">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_current_camparam_fixed</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_current_camparam_fixed" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.is_image_file">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">is_image_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.is_image_file" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">is_image_file</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#is_image_file"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.is_image_file" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.load_images">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dir</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_images" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_images</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dir</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#load_images"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.load_images" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.load_obj_traj">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_obj_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_obj_traj" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_obj_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#load_obj_traj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.load_obj_traj" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.load_robot_traj">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_robot_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_robot_traj" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_robot_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#load_robot_traj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.load_robot_traj" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.load_robot_traj_prev">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_robot_traj_prev</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_robot_traj_prev" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_robot_traj_prev</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#load_robot_traj_prev"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.load_robot_traj_prev" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.load_robot_target_traj">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_robot_target_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_robot_target_traj" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_robot_target_traj</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#load_robot_target_traj"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.load_robot_target_traj" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.load_contact_value">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_contact_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_contact_value" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_contact_value</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#load_contact_value"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.load_contact_value" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.load_mesh">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj_name</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_mesh" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.load_camparam">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_camparam</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_camparam" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.load_intrinsic">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_intrinsic</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_intrinsic" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.load_c2r">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_c2r</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_c2r" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.load_eef">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_eef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_eef" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="id0">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_eef</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">demo_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#id0" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.get_robot_urdf_path">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">get_robot_urdf_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">arm_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hand_name</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.get_robot_urdf_path" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.copy_calib_files">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">copy_calib_files</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_path</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.copy_calib_files" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.load_latest_C2R">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_latest_C2R</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_latest_C2R" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="paradex.utils.file_io.load_latest_eef">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_latest_eef</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.utils.file_io.load_latest_eef" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_mesh</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">obj_name</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#load_mesh"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.load_mesh" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.utils.file_io.load_yaml">
-<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_yaml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="headerlink" href="#paradex.utils.file_io.load_yaml" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">load_yaml</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">file_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#load_yaml"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.load_yaml" title="Link to this definition">¶</a></dt>
 <dd><p>Load yaml file and return as dictionary. If file_path is a dictionary, return as is.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -645,6 +436,11 @@
 </dd>
 </dl>
 </dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="paradex.utils.file_io.remove_home">
+<span class="sig-prename descclassname"><span class="pre">paradex.utils.file_io.</span></span><span class="sig-name descname"><span class="pre">remove_home</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/utils/file_io.html#remove_home"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.utils.file_io.remove_home" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
 
 </section>
 </section>
@@ -663,14 +459,14 @@
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="../env/index.html">
+          <a class="prev-page" href="../index.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">paradex.utils.env</div>
+                <div class="title">paradex.utils</div>
                 
               </div>
             </a>
@@ -706,25 +502,8 @@
             <ul>
 <li><a class="reference internal" href="#">paradex.utils.file_io</a><ul>
 <li><a class="reference internal" href="#module-contents">Module Contents</a><ul>
-<li><a class="reference internal" href="#paradex.utils.file_io.rsc_path"><code class="docutils literal notranslate"><span class="pre">rsc_path</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.home_path"><code class="docutils literal notranslate"><span class="pre">home_path</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.shared_dir"><code class="docutils literal notranslate"><span class="pre">shared_dir</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.calib_path_list"><code class="docutils literal notranslate"><span class="pre">calib_path_list</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.capture_path_list"><code class="docutils literal notranslate"><span class="pre">capture_path_list</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.download_dir"><code class="docutils literal notranslate"><span class="pre">download_dir</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.cam_param_dir"><code class="docutils literal notranslate"><span class="pre">cam_param_dir</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.cam_param_dir_fix"><code class="docutils literal notranslate"><span class="pre">cam_param_dir_fix</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.handeye_calib_path"><code class="docutils literal notranslate"><span class="pre">handeye_calib_path</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.config_dir"><code class="docutils literal notranslate"><span class="pre">config_dir</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.model_dir"><code class="docutils literal notranslate"><span class="pre">model_dir</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.eef_calib_path"><code class="docutils literal notranslate"><span class="pre">eef_calib_path</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.pc_name"><code class="docutils literal notranslate"><span class="pre">pc_name</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.log_path"><code class="docutils literal notranslate"><span class="pre">log_path</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.get_video_list"><code class="docutils literal notranslate"><span class="pre">get_video_list()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.utils.file_io.find_latest_directory"><code class="docutils literal notranslate"><span class="pre">find_latest_directory()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.utils.file_io.find_latest_index"><code class="docutils literal notranslate"><span class="pre">find_latest_index()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.load_current_camparam"><code class="docutils literal notranslate"><span class="pre">load_current_camparam()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.load_current_camparam_fixed"><code class="docutils literal notranslate"><span class="pre">load_current_camparam_fixed()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.utils.file_io.is_image_file"><code class="docutils literal notranslate"><span class="pre">is_image_file()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.utils.file_io.load_images"><code class="docutils literal notranslate"><span class="pre">load_images()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.utils.file_io.load_obj_traj"><code class="docutils literal notranslate"><span class="pre">load_obj_traj()</span></code></a></li>
@@ -733,16 +512,8 @@
 <li><a class="reference internal" href="#paradex.utils.file_io.load_robot_target_traj"><code class="docutils literal notranslate"><span class="pre">load_robot_target_traj()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.utils.file_io.load_contact_value"><code class="docutils literal notranslate"><span class="pre">load_contact_value()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.utils.file_io.load_mesh"><code class="docutils literal notranslate"><span class="pre">load_mesh()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.load_camparam"><code class="docutils literal notranslate"><span class="pre">load_camparam()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.load_intrinsic"><code class="docutils literal notranslate"><span class="pre">load_intrinsic()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.load_c2r"><code class="docutils literal notranslate"><span class="pre">load_c2r()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.load_eef"><code class="docutils literal notranslate"><span class="pre">load_eef()</span></code></a></li>
-<li><a class="reference internal" href="#id0"><code class="docutils literal notranslate"><span class="pre">load_eef()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.get_robot_urdf_path"><code class="docutils literal notranslate"><span class="pre">get_robot_urdf_path()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.copy_calib_files"><code class="docutils literal notranslate"><span class="pre">copy_calib_files()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.load_latest_C2R"><code class="docutils literal notranslate"><span class="pre">load_latest_C2R()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.utils.file_io.load_latest_eef"><code class="docutils literal notranslate"><span class="pre">load_latest_eef()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.utils.file_io.load_yaml"><code class="docutils literal notranslate"><span class="pre">load_yaml()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.utils.file_io.remove_home"><code class="docutils literal notranslate"><span class="pre">remove_home()</span></code></a></li>
 </ul>
 </li>
 </ul>

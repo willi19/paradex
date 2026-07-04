@@ -1,0 +1,25 @@
+paradex.utils.path
+==================
+
+.. py:module:: paradex.utils.path
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: home_path
+
+.. py:data:: pc_name
+
+.. py:data:: shared_dir
+
+.. py:data:: capture_path_list
+
+.. py:data:: download_dir
+
+.. py:data:: model_dir
+
+.. py:data:: rsc_path
+

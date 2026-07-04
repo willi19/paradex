@@ -1,0 +1,141 @@
+paradex.io.robot_controller.inspire_controller_ip
+=================================================
+
+.. py:module:: paradex.io.robot_controller.inspire_controller_ip
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: action_dof
+   :value: 6
+
+
+.. py:data:: regdict
+
+.. py:data:: tactile
+
+.. py:data:: TACTILE_LAYOUT
+
+.. py:class:: InspireControllerIP(ip, port, tactile=False)
+
+   .. py:attribute:: save_event
+
+
+   .. py:attribute:: exit_event
+
+
+   .. py:attribute:: connection_event
+
+
+   .. py:attribute:: ip
+
+
+   .. py:attribute:: port
+
+
+   .. py:attribute:: capture_path
+      :value: None
+
+
+
+   .. py:attribute:: tactile
+      :value: False
+
+
+
+   .. py:attribute:: latest_tactile
+      :value: None
+
+
+
+   .. py:attribute:: latest_tactile_time
+      :value: None
+
+
+
+   .. py:attribute:: home_pose
+
+
+   .. py:attribute:: lock
+
+
+   .. py:attribute:: target_action
+
+
+   .. py:attribute:: thread
+
+
+   .. py:method:: build_tactile_index()
+
+
+   .. py:method:: start(save_path=None)
+
+
+   .. py:method:: set_homepose(home_pose)
+
+
+   .. py:method:: home_robot(home_pose=None)
+
+
+   .. py:method:: open_modbus()
+
+
+   .. py:method:: write_register(address, values)
+
+
+   .. py:method:: read_register(address, count)
+
+
+   .. py:method:: read_tactile(name: str)
+
+      name: 'index_tip', 'palm', ...
+
+
+
+   .. py:method:: read_all_tactile()
+
+
+   .. py:method:: read_all_tactile_raw()
+
+
+   .. py:method:: write6(reg_name, val)
+
+
+   .. py:method:: read6(reg_name)
+
+
+   .. py:method:: get_qpos()
+
+
+   .. py:method:: get_data()
+
+
+   .. py:method:: get_force()
+
+
+   .. py:method:: get_tactile()
+
+
+   .. py:method:: move_hand()
+
+
+   .. py:method:: move(action)
+
+
+   .. py:method:: calibrate_force(timeout=10.0, poll_interval=0.2)
+
+
+   .. py:method:: save()
+
+
+   .. py:method:: end()
+
+
+   .. py:method:: stop()
+
+

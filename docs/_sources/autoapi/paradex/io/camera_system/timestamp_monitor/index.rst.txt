@@ -1,0 +1,71 @@
+paradex.io.camera_system.timestamp_monitor
+==========================================
+
+.. py:module:: paradex.io.camera_system.timestamp_monitor
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: TimestampMonitor(cam_type, name)
+
+   .. py:attribute:: event
+
+
+   .. py:attribute:: type
+
+
+   .. py:attribute:: name
+
+
+   .. py:attribute:: last_error
+      :value: None
+
+
+
+   .. py:attribute:: last_traceback
+      :value: None
+
+
+
+   .. py:attribute:: capture_thread
+
+
+   .. py:method:: start(save_path=None)
+
+
+   .. py:method:: error_reset()
+
+
+   .. py:method:: is_error()
+
+
+   .. py:method:: stop()
+
+
+   .. py:method:: end()
+
+
+   .. py:method:: continuous_acquire()
+
+
+   .. py:method:: connect_camera()
+
+
+   .. py:method:: release()
+
+
+   .. py:method:: get_data()
+
+
+   .. py:method:: is_signal_active(fps)
+
+
+   .. py:method:: wait_signal_inactive(fps)
+
+
+   .. py:method:: run()
+
+

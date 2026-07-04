@@ -1,0 +1,13 @@
+paradex.visualization.visual_hull
+=================================
+
+.. py:module:: paradex.visualization.visual_hull
+
+
+
+
+Module Contents
+---------------
+
+.. py:function:: get_visual_hull(mask_dict, proj_mtx, voxel, thres)
+

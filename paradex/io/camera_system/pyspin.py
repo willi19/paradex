@@ -252,11 +252,28 @@ class PyspinCamera():
         frame_data : dict or None
             ``{"pc_time": float, "frameID": int}`` metadata for the frame, or
             ``None`` on grab timeout.
+
+        Raises
+        ------
+        PySpin.SpinnakerException
+            On any non-timeout grab error (e.g. the camera disconnected). It is
+            re-raised so :meth:`Camera.continuous_acquire` records it in the
+            camera's error state and the remote controller can see it via the
+            heartbeat / ``get_status()``.
         """
         try:
             pImageRaw = self.cam.GetNextImage(GRAB_TIMEOUT_MS)
-        except ps.SpinnakerException:
-            return None, None
+        except ps.SpinnakerException as e:
+            # A grab timeout just means no frame arrived (dead trigger / LAN drop):
+            # return None so the loop retries. Any OTHER Spinnaker error is real —
+            # re-raise so continuous_acquire records it and the remote can see it.
+            # Detect timeout by error code (fallback: message) to avoid turning a
+            # dead trigger into a spurious error.
+            is_timeout = (getattr(e, 'errorcode', None) == getattr(ps, 'SPINNAKER_ERR_TIMEOUT', -1011)
+                          or 'timeout' in str(e).lower() or 'timed out' in str(e).lower())
+            if is_timeout:
+                return None, None
+            raise
 
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
         

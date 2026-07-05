@@ -1,15 +1,15 @@
 # Camera System
 
-Engineering reference for Paradex's camera subsystem: architecture, components,
-state flow, configuration, and error handling. Read this before the code to get the
-overall structure.
+Overview of Paradex's camera subsystem — the architecture and how the pieces fit.
+Read this to build the mental model; for method signatures, parameters, and return
+values see the {doc}`API reference <camera_system_api>`.
 
 - Redesign proposal: [design/camera-recording-redesign.md](https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md)
-- Per-symbol API: {doc}`API Reference <autoapi/index>`
+- Generated per-symbol API: {doc}`API Reference <autoapi/index>`
 
 ---
 
-## 1. Overview
+## 1. Architecture
 
 Cameras are spread across **6 capture PCs** (one GigE camera nearly saturates a NIC,
 so they can't all hang off one host). The **main PC** never touches a camera
@@ -39,6 +39,8 @@ flowchart TB
 | Device | `Camera` | Capture PC | Capture-thread state machine, sink routing |
 | Driver | `PyspinCamera` | Capture PC | PySpin SDK calls |
 
+Method-level details for each component are in the {doc}`API reference <camera_system_api>`.
+
 ---
 
 ## 2. Core Concepts
@@ -53,180 +55,11 @@ flowchart TB
 
 ---
 
-## 3. Components
+## 3. Command Flow
 
-### 3.1 `remote_camera_controller` (main PC)
-
-- **Responsibility**: fan commands out to the capture PCs in parallel and keep the connection alive with heartbeats.
-- **Key methods**: `initialize()` (ping check, sockets, lock), `start(mode, sync, ...)`, `stop()`, `end()`, `run()` (background loop).
-- **Interface**: ZMQ REQ → each daemon's `command_port (5482)`; liveness via `ping_port (5480)`.
-- **Note**: `start()`/`stop()` only **set events** — the actual command send happens in the `run()` loop.
-
-```python
-def run(self):
-    self.initialize()
-    while not self.exit_event.is_set():
-        cmd = {'action': 'heartbeat'}
-        if self.start_event.is_set(): cmd = {'action': 'start', 'mode': ..., ...}
-        if self.stop_event.is_set():  cmd = {'action': 'stop'}
-        response = self.send_command(cmd)     # one thread per PC, sent concurrently
-        time.sleep(0.1)
-```
-
-**Public API**
-
-| Method | Description |
-|--------|-------------|
-| `remote_camera_controller(name, pc_list=None)` | Construct; starts the background `run()` thread. `pc_list` defaults to all capture PCs. |
-| `.start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)` | Begin capture on all PCs (returns once the command is sent). |
-| `.stop()` | Stop capture on all PCs. |
-| `.end()` | Release the lock and join the loop thread. |
-| `.reload_cameras()` | Ask every daemon to re-init its cameras. |
-| `.force_takeover()` | Grab the lock even if another controller holds it. |
-| `.is_error()` | `True` if any camera reported an error. |
-
-### 3.2 `camera_server_daemon` (capture PC)
-
-- **Responsibility**: receive commands → dispatch via `execute_command` → call `CameraLoader`. Manage the single-controller lock.
-- **Ports**: `ping 5480` (REP), `monitor 5481` (PUB status), `command 5482` (REP).
-- **Commands**: `register` / `start` / `stop` / `heartbeat` / `reload` / `end`.
-- **Lock + timeout**: the command socket uses `RCVTIMEO 15s`. After 15 s with no command it releases the lock and stops the cameras (in case the controller died).
-
-```python
-self.command_socket.setsockopt(zmq.RCVTIMEO, 15000)   # 15 s
-while True:
-    try:
-        cmd = self.command_socket.recv_json()
-        resp = self.execute_command(cmd)              # register/start/stop/heartbeat/...
-        self.command_socket.send_json(resp)
-    except zmq.Again:                                 # 15 s idle → release lock + stop cameras
-        ...
-```
-
-### 3.3 `CameraLoader` (capture PC)
-
-- **Responsibility**: start/stop N cameras concurrently (via threads). Resolve gain/exposure **per camera**.
-- **Resolution rule**: `explicit arg > camera.json[serial] > default`. `None` means "use camera.json", not "keep whatever was last set" (§7).
-
-```python
-for camera, path in zip(self.cameralist, save_paths):
-    cfg = self.cam_config.get(camera.name, {})
-    e = exposure_time if exposure_time is not None else cfg.get("exposure", DEFAULT_EXPOSURE)
-    g = gain          if gain          is not None else cfg.get("gain", DEFAULT_GAIN)
-    Thread(target=camera.start, args=(mode, syncMode, path, fps, e, g)).start()
-```
-
-`stop`/`end` reuse the same fan-out helper (`_broadcast`).
-
-**Public API**
-
-| Method / attr | Description |
-|---------------|-------------|
-| `CameraLoader(types=["pyspin"])` | Construct; detects and opens every local camera. |
-| `.start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)` | Start all cameras concurrently (blocks until all started). |
-| `.stop()` / `.end()` | Stop / release (DeInit + free SHM) all cameras. |
-| `.get_status_list()` | List of per-camera status dicts. |
-| `.get_all_errors()` | `{serial: (msg, traceback)}` for cameras currently in error. |
-| `.camera_names` / `.cameralist` | Serial-number list / the `Camera` objects. |
-
-### 3.4 `Camera` (capture PC) — state machine
-
-- **Threading model**: on construction it spawns one capture thread (`run`). That thread and the outside caller synchronize through a **set of Events** (a handshake, not just flags).
-- **States** (from `get_state()`):
-
-```{mermaid}
-stateDiagram-v2
-    [*] --> CONNECTING
-    CONNECTING --> READY: connect_camera()
-    READY --> STARTING: start()
-    STARTING --> CAPTURING: acquisition set
-    CAPTURING --> READY: stop()
-    CAPTURING --> ERROR: exception
-    ERROR --> READY: error_reset()
-    READY --> STOPPED: end()
-    STOPPED --> [*]
-```
-
-- **Core loops**: `continuous_acquire` (stream/video/full), `single_acquire` (image).
-
-```python
-# run(): capture while 'start' is set, exit when 'exit' is set
-while not self.event["exit"].is_set():
-    if self.event["start"].is_set():
-        self.continuous_acquire() if self.mode in ["full","video","stream"] else self.single_acquire()
-    time.sleep(0.001)
-
-# start(): set the event, then wait until the thread actually begins (handshake)
-self.event["start"].set()
-self.event["acquisition"].wait()
-
-# continuous_acquire(): the body
-self.camera.start("continuous", self.syncMode, self.fps, ...)   # BeginAcquisition
-self.event["acquisition"].set()
-while self.event["start"].is_set() and not self.event["exit"].is_set():
-    frame, frame_data = self.camera.get_image()
-    if frame is None: continue          # timeout → re-check the while condition
-    if save_video: video_writer.write(frame)
-    if stream:     ...                  # SHM double-buffer (write_flag toggles)
-self.camera.stop(); self.event["stop"].set()
-```
-
-**Public API**
-
-| Method | Description |
-|--------|-------------|
-| `Camera(cam_type, name, frame_shape=(1536,2048,3))` | Construct; opens the camera and spawns the capture thread. |
-| `.start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)` | Begin capture in `mode`; blocks until acquiring. |
-| `.stop(timeout=5.0)` | Stop capture (finite wait). |
-| `.end(timeout=5.0)` | Stop + release: DeInit + free SHM (finite wait). |
-| `.get_status()` | Dict: `state, frame_id, name, mode, fps, syncMode, save_path, time`. |
-| `.get_state()` | `CONNECTING / READY / STARTING / CAPTURING / ERROR / STOPPED`. |
-| `.get_frame_id()` / `.get_error()` | Last frame id / `(has_error, (msg, traceback))`. |
-
-The `start(...)` signature is shared by `Camera`, `CameraLoader`, and
-`remote_camera_controller`:
-
-| Param | Type | Meaning |
-|-------|------|---------|
-| `mode` | str | `image` / `video` / `stream` / `full` |
-| `syncMode` | bool | use the hardware trigger |
-| `save_path` | str | relative output dir (video/image) |
-| `fps` | int | frame rate |
-| `exposure_time` | float \| None | microseconds; `None` → camera.json |
-| `gain` | float \| None | dB; `None` → camera.json |
-
-### 3.5 `PyspinCamera` (capture PC) — driver
-
-- **Responsibility**: direct PySpin SDK calls. `get_image()` (grab), `start()` (configure + `BeginAcquisition`), `_configure*` (gain/exposure/trigger/framerate).
-
-```python
-def get_image(self):
-    try:
-        pImageRaw = self.cam.GetNextImage(GRAB_TIMEOUT_MS)   # finite timeout (§8)
-    except ps.SpinnakerException:
-        return None, None                                    # no frame
-    ...
-    return frame, frame_data
-
-def start(self, mode, syncMode, frame_rate=None, gain=None, exposure_time=None):
-    if syncMode:                       self._configureTrigger()   # only re-apply what changed
-    if gain     != self.gain:          self._configureGain()
-    if exposure != self.exposure_time: self._configureExposure()
-    self.cam.BeginAcquisition()
-```
-
-**Public API**
-
-| Method | Description |
-|--------|-------------|
-| `.get_image()` | Grab one frame → `(frame, frame_data)`, or `(None, None)` on timeout. |
-| `.start(mode, syncMode, frame_rate=None, gain=None, exposure_time=None)` | Configure + `BeginAcquisition`. `mode` = `single` / `continuous`. |
-| `.stop()` | `EndAcquisition` (camera stays connected). |
-| `.release()` | `DeInit` (disconnect the camera). |
-
----
-
-## 4. Command Flow
+The controller holds a single-controller lock on each daemon, starts a mode, then
+keeps sending heartbeats. If it goes silent for 15 s the daemon releases the lock and
+stops the cameras.
 
 ```{mermaid}
 sequenceDiagram
@@ -245,11 +78,12 @@ sequenceDiagram
 
 ---
 
-## 5. Data Path: Acquisition → Sinks
+## 4. Data Path: Acquisition → Sinks
 
 One capture thread per camera grabs frames and routes them to sinks by mode.
 "Producing a frame" and "where it goes" are separate axes, but today `mode` couples
-them (the redesign target).
+them (the [redesign](https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md)
+splits them so recording can toggle without restarting acquisition).
 
 ```{mermaid}
 flowchart TD
@@ -258,6 +92,26 @@ flowchart TD
     G -->|frame| VID["VideoWriter .avi<br/>video / full"]
     G -.->|"no frame"| T
     SHM --> R["MultiCameraReader<br/>consumers"]
+```
+
+---
+
+## 5. Camera State Machine
+
+A `Camera` runs one capture thread and coordinates with the caller through Events.
+`get_state()` reports where it is:
+
+```{mermaid}
+stateDiagram-v2
+    [*] --> CONNECTING
+    CONNECTING --> READY: connect_camera()
+    READY --> STARTING: start()
+    STARTING --> CAPTURING: acquisition set
+    CAPTURING --> READY: stop()
+    CAPTURING --> ERROR: exception
+    ERROR --> READY: error_reset()
+    READY --> STOPPED: end()
+    STOPPED --> [*]
 ```
 
 ---
@@ -281,7 +135,10 @@ flowchart LR
 
 ## 7. Configuration — Gain / Exposure
 
-Per-camera baselines live in `system/current/camera.json`. Resolution is always:
+Per-camera baselines live in `system/current/camera.json`. Resolution is always
+`explicit arg > camera.json[serial] > default`, so a one-off override (e.g. an
+exposure sweep) never leaks into the next capture. Tune live with
+`src/util/camera_tuning/live_tuner.py`.
 
 ```{mermaid}
 flowchart LR
@@ -291,18 +148,15 @@ flowchart LR
     C -->|missing| D["default 2500us / 3dB"]
 ```
 
-`None` means "use the camera.json value", so a one-off override (e.g. an exposure
-sweep) never leaks into the next capture. Tune live with
-`src/util/camera_tuning/live_tuner.py`.
-
 ---
 
 ## 8. Error Handling & Recovery
 
 **Frame-loss hang (P4).** On a LAN drop / stopped trigger, the old `get_image()`
-blocked forever. The capture thread stalled in the §3.4 loop, never re-checked the
-`while` condition, so `event["stop"]` was never set and `stop()` never returned —
-wedging the whole daemon (cameras couldn't restart even after `pkill`).
+blocked forever; the capture thread stalled and never re-checked its stop condition,
+so `stop()` never returned and the whole daemon wedged (cameras couldn't restart even
+after `pkill`). The fix gives `get_image()` a finite timeout so the loop stays
+responsive.
 
 ```{mermaid}
 flowchart TB
@@ -340,3 +194,5 @@ from the main PC (`pkill -9` + relaunch the daemons). **Validation**: §9.
 | PySpin driver | `paradex/io/camera_system/pyspin.py` |
 | Live tuner | `src/util/camera_tuning/live_tuner.py` |
 | Recover wedged cameras | `src/camera/reset_cameras.py` |
+
+Method-by-method API (parameters / returns): {doc}`Camera System — API <camera_system_api>`.

@@ -3,10 +3,10 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Camera System — API" href="camera_system_api.html" /><link rel="prev" title="Paradex Documentation" href="index.html" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="API Reference" href="autoapi/index.html" /><link rel="prev" title="Camera System" href="camera_system.html" />
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
-        <title>Camera System - paradex 0.0.0 documentation</title>
+        <title>Camera System — API - paradex 0.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=580074bf" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
@@ -202,8 +202,8 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul class="current">
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Camera System</a></li>
-<li class="toctree-l1"><a class="reference internal" href="camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="camera_system.html">Camera System</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Camera System — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -341,7 +341,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="_sources/camera_system.md.txt" title="View this page">
+  <a class="muted-link" href="_sources/camera_system_api.md.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -361,267 +361,292 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="camera-system">
-<h1>Camera System<a class="headerlink" href="#camera-system" title="Link to this heading">¶</a></h1>
-<p>Overview of Paradex’s camera subsystem — the architecture and how the pieces fit.
-Read this to build the mental model; for method signatures, parameters, and return
-values see the <a class="reference internal" href="camera_system_api.html"><span class="doc">API reference</span></a>.</p>
-<ul class="simple">
-<li><p>Redesign proposal: <a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md">design/camera-recording-redesign.md</a></p></li>
-<li><p>Generated per-symbol API: <a class="reference internal" href="autoapi/index.html"><span class="doc">API Reference</span></a></p></li>
-</ul>
+          <section id="camera-system-api">
+<h1>Camera System — API<a class="headerlink" href="#camera-system-api" title="Link to this heading">¶</a></h1>
+<p>Method reference for the camera stack: parameters (input) and return values (output)
+per class. For the architecture and how these fit together, see the
+<a class="reference internal" href="camera_system.html"><span class="doc">overview</span></a>.</p>
+<p>Signatures are verified against the code; internal/private methods are omitted.</p>
 <hr class="docutils" />
-<section id="architecture">
-<h2>1. Architecture<a class="headerlink" href="#architecture" title="Link to this heading">¶</a></h2>
-<p>Cameras are spread across <strong>6 capture PCs</strong> (one GigE camera nearly saturates a NIC,
-so they can’t all hang off one host). The <strong>main PC</strong> never touches a camera
-directly — it sends commands to a daemon on each capture PC. Every camera fires on
-one shared <strong>hardware trigger (UTGE900)</strong> for synchronized capture.</p>
-<p>The stack has five layers; commands flow top to bottom.</p>
-<pre  class="mermaid">
-        flowchart TB
-    subgraph Main[&quot;Main PC&quot;]
-      ORCH[&quot;capture / inference&quot;] --&gt; RCC[&quot;remote_camera_controller&quot;]
-    end
-    subgraph Cap[&quot;Capture PC (×6)&quot;]
-      D[&quot;server_daemon&quot;] --&gt; CL[&quot;CameraLoader&quot;] --&gt; CAM[&quot;Camera × k&lt;br/&gt;→ PyspinCamera&quot;]
-    end
-    GEN[&quot;UTGE900&lt;br/&gt;trigger&quot;]
-    RCC -- &quot;ZMQ&lt;br/&gt;register / start /&lt;br/&gt;stop / heartbeat&quot; --&gt; D
-    GEN -. &quot;hardware&lt;br/&gt;trigger&quot; .-&gt; CAM
-    </pre><div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Layer</p></th>
-<th class="head"><p>Component</p></th>
-<th class="head"><p>Location</p></th>
-<th class="head"><p>Responsibility</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>Control</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code></p></td>
-<td><p>Main PC</p></td>
-<td><p>Fan out commands, keep heartbeat</p></td>
-</tr>
-<tr class="row-odd"><td><p>Service</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">camera_server_daemon</span></code></p></td>
-<td><p>Capture PC</p></td>
-<td><p>Receive/dispatch commands, controller lock</p></td>
-</tr>
-<tr class="row-even"><td><p>Group</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code></p></td>
-<td><p>Capture PC</p></td>
-<td><p>Drive N cameras together, resolve parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p>Device</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Camera</span></code></p></td>
-<td><p>Capture PC</p></td>
-<td><p>Capture-thread state machine, sink routing</p></td>
-</tr>
-<tr class="row-even"><td><p>Driver</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code></p></td>
-<td><p>Capture PC</p></td>
-<td><p>PySpin SDK calls</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<p>Method-level details for each component are in the <a class="reference internal" href="camera_system_api.html"><span class="doc">API reference</span></a>.</p>
-</section>
-<hr class="docutils" />
-<section id="core-concepts">
-<h2>2. Core Concepts<a class="headerlink" href="#core-concepts" title="Link to this heading">¶</a></h2>
+<section id="common-start-parameters">
+<h2>Common: <code class="docutils literal notranslate"><span class="pre">start()</span></code> parameters<a class="headerlink" href="#common-start-parameters" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">start(...)</span></code> has the same signature on <code class="docutils literal notranslate"><span class="pre">Camera</span></code>, <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code>, and
+<code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Term</p></th>
-<th class="head"><p>Meaning</p></th>
+<tr class="row-odd"><th class="head"><p>Parameter</p></th>
+<th class="head"><p>Type</p></th>
+<th class="head"><p>Default</p></th>
+<th class="head"><p>Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><strong>Mode</strong></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>. Selects the capture method <em>and</em> where frames go.</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">mode</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Sink</strong></p></td>
-<td><p>A frame’s destination. <code class="docutils literal notranslate"><span class="pre">stream</span></code>→SHM, <code class="docutils literal notranslate"><span class="pre">video</span></code>→<code class="docutils literal notranslate"><span class="pre">.avi</span></code>, <code class="docutils literal notranslate"><span class="pre">image</span></code>→one still, <code class="docutils literal notranslate"><span class="pre">full</span></code>→SHM+<code class="docutils literal notranslate"><span class="pre">.avi</span></code>.</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">syncMode</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p>—</p></td>
+<td><p>use the hardware trigger (wait for pulses)</p></td>
 </tr>
-<tr class="row-even"><td><p><strong>Acquisition</strong></p></td>
-<td><p>One capture thread per camera grabbing frames continuously. A separate axis from the sink.</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">save_path</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>relative output dir (video/image); <code class="docutils literal notranslate"><span class="pre">None</span></code> for stream</p></td>
 </tr>
-<tr class="row-odd"><td><p><strong>Hardware sync</strong></p></td>
-<td><p>Each trigger pulse increments every camera’s <code class="docutils literal notranslate"><span class="pre">frame_id</span></code> at once. Same instant = same id.</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">fps</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">30</span></code></p></td>
+<td><p>frame rate</p></td>
 </tr>
-<tr class="row-even"><td><p><strong>Controller lock</strong></p></td>
-<td><p>One controller per daemon. Acquired via <code class="docutils literal notranslate"><span class="pre">register</span></code>; auto-released after 15 s without a heartbeat.</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">exposure_time</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>microseconds; <code class="docutils literal notranslate"><span class="pre">None</span></code> → camera.json value</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">gain</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>dB; <code class="docutils literal notranslate"><span class="pre">None</span></code> → camera.json value</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 </section>
 <hr class="docutils" />
-<section id="command-flow">
-<h2>3. Command Flow<a class="headerlink" href="#command-flow" title="Link to this heading">¶</a></h2>
-<p>The controller holds a single-controller lock on each daemon, starts a mode, then
-keeps sending heartbeats. If it goes silent for 15 s the daemon releases the lock and
-stops the cameras.</p>
-<pre  class="mermaid">
-        sequenceDiagram
-    participant M as Main PC (controller)
-    participant D as Capture PC (daemon)
-    M-&gt;&gt;D: register (acquire lock)
-    M-&gt;&gt;D: start(mode, sync, save_path, fps, exposure, gain)
-    D-&gt;&gt;D: CameraLoader.start → per-camera acquisition
-    loop every ~0.1 s
-      M-&gt;&gt;D: heartbeat
-      D--&gt;&gt;M: ok / camera errors
-    end
-    M-&gt;&gt;D: stop
-    M-&gt;&gt;D: end (release lock)
-    </pre></section>
-<hr class="docutils" />
-<section id="data-path-acquisition-sinks">
-<h2>4. Data Path: Acquisition → Sinks<a class="headerlink" href="#data-path-acquisition-sinks" title="Link to this heading">¶</a></h2>
-<p>One capture thread per camera grabs frames and routes them to sinks by mode.
-“Producing a frame” and “where it goes” are separate axes, but today <code class="docutils literal notranslate"><span class="pre">mode</span></code> couples
-them (the <a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md">redesign</a>
-splits them so recording can toggle without restarting acquisition).</p>
-<pre  class="mermaid">
-        flowchart TD
-    T[&quot;continuous_acquire()&quot;] --&gt; G[&quot;get_image()&quot;]
-    G --&gt;|frame| SHM[&quot;SHM double-buffer&lt;br/&gt;stream / full&quot;]
-    G --&gt;|frame| VID[&quot;VideoWriter .avi&lt;br/&gt;video / full&quot;]
-    G -.-&gt;|&quot;no frame&quot;| T
-    SHM --&gt; R[&quot;MultiCameraReader&lt;br/&gt;consumers&quot;]
-    </pre></section>
-<hr class="docutils" />
-<section id="camera-state-machine">
-<h2>5. Camera State Machine<a class="headerlink" href="#camera-state-machine" title="Link to this heading">¶</a></h2>
-<p>A <code class="docutils literal notranslate"><span class="pre">Camera</span></code> runs one capture thread and coordinates with the caller through Events.
-<code class="docutils literal notranslate"><span class="pre">get_state()</span></code> reports where it is:</p>
-<pre  class="mermaid">
-        stateDiagram-v2
-    [*] --&gt; CONNECTING
-    CONNECTING --&gt; READY: connect_camera()
-    READY --&gt; STARTING: start()
-    STARTING --&gt; CAPTURING: acquisition set
-    CAPTURING --&gt; READY: stop()
-    CAPTURING --&gt; ERROR: exception
-    ERROR --&gt; READY: error_reset()
-    READY --&gt; STOPPED: end()
-    STOPPED --&gt; [*]
-    </pre></section>
-<hr class="docutils" />
-<section id="hardware-sync">
-<h2>6. Hardware Sync<a class="headerlink" href="#hardware-sync" title="Link to this heading">¶</a></h2>
-<p>Each trigger pulse increments every camera’s <code class="docutils literal notranslate"><span class="pre">frame_id</span></code> at once, so at any instant
-the cameras should hold the same id. <code class="docutils literal notranslate"><span class="pre">sync_check.py</span></code> verifies this via the
-<code class="docutils literal notranslate"><span class="pre">frame_id</span></code> spread (max−min) across cameras: 0–1 is in sync; a persistent/growing
-spread means frame drops or a camera not receiving the trigger.</p>
-<pre  class="mermaid">
-        flowchart LR
-    GEN[&quot;trigger #N&quot;] --&gt; C1[&quot;cam A #N&quot;]
-    GEN --&gt; C2[&quot;cam B #N&quot;]
-    GEN --&gt; C3[&quot;cam C #N&quot;]
-    C1 &amp; C2 &amp; C3 --&gt; CHK[&quot;spread = max-min&lt;br/&gt;0-1 = OK&quot;]
-    </pre></section>
-<hr class="docutils" />
-<section id="configuration-gain-exposure">
-<h2>7. Configuration — Gain / Exposure<a class="headerlink" href="#configuration-gain-exposure" title="Link to this heading">¶</a></h2>
-<p>Per-camera baselines live in <code class="docutils literal notranslate"><span class="pre">system/current/camera.json</span></code>. Resolution is always
-<code class="docutils literal notranslate"><span class="pre">explicit</span> <span class="pre">arg</span> <span class="pre">&gt;</span> <span class="pre">camera.json[serial]</span> <span class="pre">&gt;</span> <span class="pre">default</span></code>, so a one-off override (e.g. an
-exposure sweep) never leaks into the next capture. Tune live with
-<code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code>.</p>
-<pre  class="mermaid">
-        flowchart LR
-    A[&quot;start(exposure=None, gain=None)&quot;] --&gt; B{&quot;explicit arg?&quot;}
-    B --&gt;|yes| U[&quot;use it&quot;]
-    B --&gt;|no| C[&quot;camera.json[serial]&quot;]
-    C --&gt;|missing| D[&quot;default 2500us / 3dB&quot;]
-    </pre></section>
-<hr class="docutils" />
-<section id="error-handling-recovery">
-<h2>8. Error Handling &amp; Recovery<a class="headerlink" href="#error-handling-recovery" title="Link to this heading">¶</a></h2>
-<p><strong>Frame-loss hang (P4).</strong> On a LAN drop / stopped trigger, the old <code class="docutils literal notranslate"><span class="pre">get_image()</span></code>
-blocked forever; the capture thread stalled and never re-checked its stop condition,
-so <code class="docutils literal notranslate"><span class="pre">stop()</span></code> never returned and the whole daemon wedged (cameras couldn’t restart even
-after <code class="docutils literal notranslate"><span class="pre">pkill</span></code>). The fix gives <code class="docutils literal notranslate"><span class="pre">get_image()</span></code> a finite timeout so the loop stays
-responsive.</p>
-<pre  class="mermaid">
-        flowchart TB
-    subgraph Before[&quot;Before&quot;]
-      B1[&quot;GetNextImage()&lt;br/&gt;blocks forever&quot;] --&gt; B2[&quot;stop() never returns&lt;br/&gt;→ daemon wedged&quot;]
-    end
-    subgraph After[&quot;After (P4)&quot;]
-      A1[&quot;GetNextImage(1000ms)&lt;br/&gt;→ (None,None)&quot;] --&gt; A2[&quot;loop re-checks&lt;br/&gt;→ stop()/end() return&quot;]
-    end
-    </pre><p><strong>Recovery</strong>: if wedged at the hardware level, run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">src/camera/reset_cameras.py</span></code>
-from the main PC (<code class="docutils literal notranslate"><span class="pre">pkill</span> <span class="pre">-9</span></code> + relaunch the daemons). <strong>Validation</strong>: §9.</p>
-</section>
-<hr class="docutils" />
-<section id="validation">
-<h2>9. Validation<a class="headerlink" href="#validation" title="Link to this heading">¶</a></h2>
+<section id="remote-camera-controller-main-pc">
+<h2><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> (main PC)<a class="headerlink" href="#remote-camera-controller-main-pc" title="Link to this heading">¶</a></h2>
+<p>Drives every capture PC over ZMQ. <code class="docutils literal notranslate"><span class="pre">start()</span></code>/<code class="docutils literal notranslate"><span class="pre">stop()</span></code> set events; the background
+<code class="docutils literal notranslate"><span class="pre">run()</span></code> loop does the actual send.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Script</p></th>
-<th class="head"><p>Verifies</p></th>
-<th class="head"><p>Hardware</p></th>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Input</p></th>
+<th class="head"><p>Output</p></th>
+<th class="head"><p>Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/hang_recovery.py</span></code></p></td>
-<td><p>stop/end don’t hang on frame loss (watchdog flags a hang as FAIL)</p></td>
-<td><p>required</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller(name,</span> <span class="pre">pc_list=None)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">pc_list:</span> <span class="pre">list[str]=None</span></code></p></td>
+<td><p>instance</p></td>
+<td><p>Construct; spawns the <code class="docutils literal notranslate"><span class="pre">run()</span></code> thread. <code class="docutils literal notranslate"><span class="pre">pc_list=None</span></code> → all capture PCs.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/hang_recovery_mock.py</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">get_image</span></code> uses a finite timeout and returns <code class="docutils literal notranslate"><span class="pre">(None,None)</span></code></p></td>
-<td><p>not required</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(...)</span></code></p></td>
+<td><p>see <a class="reference internal" href="#common-start-parameters"><span class="xref myst">start() params</span></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Begin capture on all PCs (returns once sent).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/sync_check.py</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">frame_id</span></code> alignment across cameras</p></td>
-<td><p>required</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Stop capture on all PCs.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Release the lock, join the loop thread.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.reload_cameras()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Ask every daemon to re-init its cameras.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.force_takeover()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code> per PC</p></td>
+<td><p>Grab the lock even if another controller holds it.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.is_error()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if any camera reported an error.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
 </section>
 <hr class="docutils" />
-<section id="file-reference">
-<h2>10. File Reference<a class="headerlink" href="#file-reference" title="Link to this heading">¶</a></h2>
+<section id="cameraloader-capture-pc">
+<h2><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> (capture PC)<a class="headerlink" href="#cameraloader-capture-pc" title="Link to this heading">¶</a></h2>
+<p>Owns the local cameras and drives them together.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Target</p></th>
-<th class="head"><p>File</p></th>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Input</p></th>
+<th class="head"><p>Output</p></th>
+<th class="head"><p>Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>Main-PC control</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/remote_camera_controller.py</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CameraLoader(types=[&quot;pyspin&quot;])</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">types:</span> <span class="pre">list[str]</span></code></p></td>
+<td><p>instance</p></td>
+<td><p>Detect and open every local camera.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Capture-PC daemon</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera_server_daemon.py</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(...)</span></code></p></td>
+<td><p>see <a class="reference internal" href="#common-start-parameters"><span class="xref myst">start() params</span></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Start all cameras concurrently (blocks until all started).</p></td>
 </tr>
-<tr class="row-even"><td><p>Group control / parameter resolution</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera_loader.py</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Stop all cameras.</p></td>
 </tr>
-<tr class="row-odd"><td><p>Capture thread / sinks</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera.py</span></code> (<code class="docutils literal notranslate"><span class="pre">continuous_acquire</span></code>)</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Stop + release all cameras (DeInit + free SHM).</p></td>
 </tr>
-<tr class="row-even"><td><p>PySpin driver</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/pyspin.py</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_status_list()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">list[dict]</span></code></p></td>
+<td><p>Per-camera status dict (see <code class="docutils literal notranslate"><span class="pre">Camera.get_status</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p>Live tuner</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p>Recover wedged cameras</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">src/camera/reset_cameras.py</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_all_errors()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">tuple]</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">(msg,</span> <span class="pre">traceback)}</span></code> for cameras in error.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>Method-by-method API (parameters / returns): <a class="reference internal" href="camera_system_api.html"><span class="doc">Camera System — API</span></a>.</p>
+<p><strong>Attributes</strong>: <code class="docutils literal notranslate"><span class="pre">.camera_names</span></code> (<code class="docutils literal notranslate"><span class="pre">list[str]</span></code> serials), <code class="docutils literal notranslate"><span class="pre">.cameralist</span></code> (<code class="docutils literal notranslate"><span class="pre">list[Camera]</span></code>).</p>
+</section>
+<hr class="docutils" />
+<section id="camera-capture-pc">
+<h2><code class="docutils literal notranslate"><span class="pre">Camera</span></code> (capture PC)<a class="headerlink" href="#camera-capture-pc" title="Link to this heading">¶</a></h2>
+<p>One camera + its capture thread. See the <a class="reference internal" href="camera_system.html"><span class="doc">state machine</span></a> (§5).</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Input</p></th>
+<th class="head"><p>Output</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Camera(cam_type,</span> <span class="pre">name,</span> <span class="pre">frame_shape=(1536,2048,3))</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cam_type:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code> (serial), <code class="docutils literal notranslate"><span class="pre">frame_shape:</span> <span class="pre">tuple</span></code></p></td>
+<td><p>instance</p></td>
+<td><p>Open the camera, allocate SHM, spawn the capture thread.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(...)</span></code></p></td>
+<td><p>see <a class="reference internal" href="#common-start-parameters"><span class="xref myst">start() params</span></a></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Begin capture in <code class="docutils literal notranslate"><span class="pre">mode</span></code>; blocks until acquiring.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.stop(timeout=5.0)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timeout:</span> <span class="pre">float</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Stop capture; finite wait (warns and returns on timeout).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.end(timeout=5.0)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">timeout:</span> <span class="pre">float</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Stop + release (DeInit + free SHM); finite wait.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_status()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">{state,</span> <span class="pre">frame_id,</span> <span class="pre">name,</span> <span class="pre">mode,</span> <span class="pre">fps,</span> <span class="pre">syncMode,</span> <span class="pre">save_path,</span> <span class="pre">time}</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_state()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CONNECTING</span></code>/<code class="docutils literal notranslate"><span class="pre">READY</span></code>/<code class="docutils literal notranslate"><span class="pre">STARTING</span></code>/<code class="docutils literal notranslate"><span class="pre">CAPTURING</span></code>/<code class="docutils literal notranslate"><span class="pre">ERROR</span></code>/<code class="docutils literal notranslate"><span class="pre">STOPPED</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_frame_id()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p>Last processed frame id.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_error()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(bool,</span> <span class="pre">(str,</span> <span class="pre">str))</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(has_error,</span> <span class="pre">(message,</span> <span class="pre">traceback))</span></code>.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<hr class="docutils" />
+<section id="pyspincamera-driver">
+<h2><code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> (driver)<a class="headerlink" href="#pyspincamera-driver" title="Link to this heading">¶</a></h2>
+<p>Thin wrapper over the PySpin SDK. <code class="docutils literal notranslate"><span class="pre">Camera</span></code> holds one as <code class="docutils literal notranslate"><span class="pre">self.camera</span></code>.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Method</p></th>
+<th class="head"><p>Input</p></th>
+<th class="head"><p>Output</p></th>
+<th class="head"><p>Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_image()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(ndarray,</span> <span class="pre">dict)</span></code> or <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code></p></td>
+<td><p>Grab one frame. <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code> on a grab timeout (<code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span></code>) or incomplete frame. <code class="docutils literal notranslate"><span class="pre">dict</span> <span class="pre">=</span> <span class="pre">{pc_time,</span> <span class="pre">frameID}</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">frame_rate=None,</span> <span class="pre">gain=None,</span> <span class="pre">exposure_time=None)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">mode:</span> <span class="pre">&quot;single&quot;|&quot;continuous&quot;</span></code>, …</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p>Re-apply changed config + <code class="docutils literal notranslate"><span class="pre">BeginAcquisition</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">EndAcquisition</span></code> (camera stays connected).</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.release()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">DeInit</span></code> (disconnect).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Module-level: <code class="docutils literal notranslate"><span class="pre">get_serial_list()</span></code> → <code class="docutils literal notranslate"><span class="pre">list[str]</span></code>, <code class="docutils literal notranslate"><span class="pre">autoforce_ip()</span></code>,
+<code class="docutils literal notranslate"><span class="pre">load_camera(serial)</span></code> → <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code>, constant <code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span> <span class="pre">=</span> <span class="pre">1000</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="implementation-notes">
+<h2>Implementation notes<a class="headerlink" href="#implementation-notes" title="Link to this heading">¶</a></h2>
+<p>For readers going into <code class="docutils literal notranslate"><span class="pre">camera.py</span></code>: the capture thread and the caller synchronize
+through an <strong>Event handshake</strong>, not plain flags.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># run(): the capture thread</span>
+<span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;exit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">continuous_acquire</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;full&quot;</span><span class="p">,</span><span class="s2">&quot;video&quot;</span><span class="p">,</span><span class="s2">&quot;stream&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">single_acquire</span><span class="p">()</span>
+    <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.001</span><span class="p">)</span>
+
+<span class="c1"># start(): set the event, then wait until the thread actually begins</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;acquisition&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+
+<span class="c1"># continuous_acquire(): the body — grab, route to sinks, exit on stop</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s2">&quot;continuous&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syncMode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>   <span class="c1"># BeginAcquisition</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;acquisition&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+<span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;exit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
+    <span class="n">frame</span><span class="p">,</span> <span class="n">frame_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">get_image</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="k">continue</span>          <span class="c1"># timeout → re-check the while condition</span>
+    <span class="k">if</span> <span class="n">save_video</span><span class="p">:</span> <span class="n">video_writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>     <span class="o">...</span>                  <span class="c1"># SHM double-buffer (write_flag toggles)</span>
+<span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">stop</span><span class="p">();</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;stop&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">stop()</span></code> clears <code class="docutils literal notranslate"><span class="pre">event[&quot;start&quot;]</span></code> and waits on <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code>; the loop above exits
+on its next iteration and sets <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code>. The P4 hang lived exactly here — a
+blocking <code class="docutils literal notranslate"><span class="pre">get_image()</span></code> meant the loop never iterated, so <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code> was never
+set and <code class="docutils literal notranslate"><span class="pre">stop()</span></code> never returned.</p>
 </section>
 </section>
 
@@ -630,23 +655,23 @@ from the main PC (<code class="docutils literal notranslate"><span class="pre">p
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="camera_system_api.html">
+          <a class="next-page" href="autoapi/index.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Camera System — API</div>
+                <div class="title">API Reference</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="index.html">
+          <a class="prev-page" href="camera_system.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Home</div>
+                <div class="title">Camera System</div>
                 
               </div>
             </a>
@@ -680,17 +705,13 @@ from the main PC (<code class="docutils literal notranslate"><span class="pre">p
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Camera System</a><ul>
-<li><a class="reference internal" href="#architecture">1. Architecture</a></li>
-<li><a class="reference internal" href="#core-concepts">2. Core Concepts</a></li>
-<li><a class="reference internal" href="#command-flow">3. Command Flow</a></li>
-<li><a class="reference internal" href="#data-path-acquisition-sinks">4. Data Path: Acquisition → Sinks</a></li>
-<li><a class="reference internal" href="#camera-state-machine">5. Camera State Machine</a></li>
-<li><a class="reference internal" href="#hardware-sync">6. Hardware Sync</a></li>
-<li><a class="reference internal" href="#configuration-gain-exposure">7. Configuration — Gain / Exposure</a></li>
-<li><a class="reference internal" href="#error-handling-recovery">8. Error Handling &amp; Recovery</a></li>
-<li><a class="reference internal" href="#validation">9. Validation</a></li>
-<li><a class="reference internal" href="#file-reference">10. File Reference</a></li>
+<li><a class="reference internal" href="#">Camera System — API</a><ul>
+<li><a class="reference internal" href="#common-start-parameters">Common: <code class="docutils literal notranslate"><span class="pre">start()</span></code> parameters</a></li>
+<li><a class="reference internal" href="#remote-camera-controller-main-pc"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> (main PC)</a></li>
+<li><a class="reference internal" href="#cameraloader-capture-pc"><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> (capture PC)</a></li>
+<li><a class="reference internal" href="#camera-capture-pc"><code class="docutils literal notranslate"><span class="pre">Camera</span></code> (capture PC)</a></li>
+<li><a class="reference internal" href="#pyspincamera-driver"><code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> (driver)</a></li>
+<li><a class="reference internal" href="#implementation-notes">Implementation notes</a></li>
 </ul>
 </li>
 </ul>
@@ -706,441 +727,5 @@ from the main PC (<code class="docutils literal notranslate"><span class="pre">p
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=46bd48cc"></script>
-    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
-    <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
-
-
-
-
-
-const initStyles = () => {
-    const defaultStyle = document.createElement('style');
-    defaultStyle.textContent = `pre.mermaid {
-    /* Same as .mermaid-container > pre */
-    display: block;
-    width: 100%;
-}
-
-pre.mermaid > svg {
-    /* Same as .mermaid-container > pre > svg */
-    height: 500px;
-    width: 100%;
-    max-width: 100% !important;
-}`;
-    document.head.appendChild(defaultStyle);
-
-    const fullscreenStyle = document.createElement('style');
-    fullscreenStyle.textContent = `.mermaid-container {
-    display: flex;
-    flex-direction: row;
-    width: 100%;
-}
-
-.mermaid-container > pre {
-    display: block;
-    width: 100%;
-}
-
-.mermaid-container > pre > svg {
-    height: 500px;
-    width: 100%;
-    max-width: 100% !important;
-}
-
-.mermaid-fullscreen-btn {
-    width: 28px;
-    height: 28px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(0, 0, 0, 0.3);
-    border-radius: 4px;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: all 0.2s;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
-    font-size: 14px;
-    line-height: 1;
-    padding: 0;
-    color: #333;
-}
-
-.mermaid-fullscreen-btn:hover {
-    opacity: 100% !important;
-    background: rgba(255, 255, 255, 1);
-    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
-    transform: scale(1.1);
-}
-
-.mermaid-fullscreen-btn.dark-theme {
-    background: rgba(50, 50, 50, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.3);
-    color: #e0e0e0;
-}
-
-.mermaid-fullscreen-btn.dark-theme:hover {
-    background: rgba(60, 60, 60, 1);
-    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
-}
-
-.mermaid-fullscreen-modal {
-    display: none;
-    position: fixed !important;
-    top: 0 !important;
-    left: 0 !important;
-    width: 95vw;
-    height: 100vh;
-    background: rgba(255, 255, 255, 0.98);
-    z-index: 9999;
-    padding: 20px;
-    overflow: auto;
-}
-
-.mermaid-fullscreen-modal.dark-theme {
-    background: rgba(0, 0, 0, 0.98);
-}
-
-.mermaid-fullscreen-modal.active {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.mermaid-container-fullscreen {
-    position: relative;
-    width: 95vw;
-    height: 90vh;
-    max-width: 95vw;
-    max-height: 90vh;
-    background: white;
-    border-radius: 8px;
-    padding: 20px;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-    overflow: auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.mermaid-container-fullscreen.dark-theme {
-    background: #1a1a1a;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
-}
-
-.mermaid-container-fullscreen pre.mermaid {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.mermaid-container-fullscreen .mermaid svg {
-    height: 100% !important;
-    width: 100% !important;
-    cursor: grab;
-}
-
-.mermaid-fullscreen-close {
-    position: fixed !important;
-    top: 20px !important;
-    right: 20px !important;
-    width: 40px;
-    height: 40px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(0, 0, 0, 0.2);
-    border-radius: 50%;
-    cursor: pointer;
-    z-index: 10000;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    transition: all 0.2s;
-    font-size: 24px;
-    line-height: 1;
-    color: #333;
-}
-
-.mermaid-fullscreen-close:hover {
-    background: white;
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
-    transform: scale(1.1);
-}
-
-.mermaid-fullscreen-close.dark-theme {
-    background: rgba(50, 50, 50, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    color: #e0e0e0;
-}
-
-.mermaid-fullscreen-close.dark-theme:hover {
-    background: rgba(60, 60, 60, 1);
-    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
-}
-
-.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
-    display: none !important;
-}`;
-    document.head.appendChild(fullscreenStyle);
-}
-
-// Detect if page has dark background
-const isDarkTheme = () => {
-    // We use a set of heuristics:
-    // 1. Check for common dark mode classes or attributes
-    // 2. Check computed background color brightness
-    if (document.documentElement.classList.contains('dark') ||
-        document.documentElement.getAttribute('data-theme') === 'dark' ||
-        document.body.classList.contains('dark') ||
-        document.body.getAttribute('data-theme') === 'dark') {
-        // console.log("Dark theme detected via class/attribute");
-        return true;
-    }
-    if (document.documentElement.classList.contains('light') ||
-        document.documentElement.getAttribute('data-theme') === 'light' ||
-        document.body.classList.contains('light') ||
-        document.body.getAttribute('data-theme') === 'light') {
-        // console.log("Light theme detected via class/attribute");
-        return false;
-    }
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        // console.log("Dark theme detected via prefers-color-scheme");
-        return true;
-    }
-    const bgColor = window.getComputedStyle(document.body).backgroundColor;
-    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
-    if (match) {
-        const r = parseInt(match[1]);
-        const g = parseInt(match[2]);
-        const b = parseInt(match[3]);
-        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-        // console.log("Background color brightness:", brightness);
-        return brightness < 128;
-    }
-    // console.log("No dark or light theme detected, defaulting to light theme");
-    return false;
-};
-
-let darkTheme = isDarkTheme();
-let modal = null;
-let modalContent = null;
-let previousScrollOffset = [window.scrollX, window.scrollY];
-
-const runMermaid = async (rerun) => {
-    console.log("Running mermaid diagrams, rerun =", rerun);
-    // clear all existing mermaid charts
-    let all_mermaids = document.querySelectorAll(".mermaid");
-
-    if (rerun) {
-        all_mermaids.forEach((el) => {
-            if(!el.hasAttribute("data-original-code")) {
-                // store original code
-                // console.log(`Storing original code for first run: `, el.innerHTML);
-                el.setAttribute('data-original-code', el.innerHTML);
-            }
-            if(el.getAttribute("data-processed") === "true") {
-                // remove and restore original
-                el.removeAttribute("data-processed");
-                // console.log(`Restoring original code for re-run: `, el.getAttribute('data-original-code'));
-                el.innerHTML = el.getAttribute('data-original-code');
-            } else {
-                // store original code
-                // console.log(`Storing original code for re-run: `, el.innerHTML);
-                el.setAttribute('data-original-code', el.innerHTML);
-            }
-        });
-        await mermaid.run();
-    }
-
-    all_mermaids = document.querySelectorAll(".mermaid");
-    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
-
-    if ("False" === "True") {
-        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
-        if(mermaids_to_add_zoom > 0) {
-            var svgs = d3.selectAll("");
-            if(all_mermaids.length !== mermaids_processed.length) {
-                setTimeout(() => runMermaid(false), 200);
-                return;
-            } else if(svgs.size() !== mermaids_to_add_zoom) {
-                setTimeout(() => runMermaid(false), 200);
-                return;
-            } else {
-                svgs.each(function() {
-                    var svg = d3.select(this);
-                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
-                    var inner = svg.select("g");
-                    var zoom = d3.zoom().on("zoom", function(event) {
-                        inner.attr("transform", event.transform);
-                    });
-                    svg.call(zoom);
-                });
-            }
-        }
-    } else if(all_mermaids.length !== mermaids_processed.length) {
-        // Wait for mermaid to process all diagrams
-        setTimeout(() => runMermaid(false), 200);
-        return;
-    }
-
-    // Stop here if not adding fullscreen capability
-    if ("True" !== "True") return;
-
-    if (modal !== null ) {
-        // Destroy existing modal
-        modal.remove();
-        modal = null;
-        modalContent = null;
-    }
-
-    modal = document.createElement('div');
-    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
-    modal.setAttribute('role', 'dialog');
-    modal.setAttribute('aria-modal', 'true');
-    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
-    modal.innerHTML = `
-        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
-        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
-    `;
-    document.body.appendChild(modal);
-
-    modalContent = modal.querySelector('.mermaid-container-fullscreen');
-    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
-
-    const closeModal = () => {
-        modal.classList.remove('active');
-        modalContent.innerHTML = '';
-        document.body.style.overflow = ''
-        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
-    };
-
-    closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-            closeModal();
-        }
-    });
-
-    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
-        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
-            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
-            // Already processed, adjust button class if needed
-            const existingBtn = mermaidDiv.parentNode.querySelector('.mermaid-fullscreen-btn');
-            if (existingBtn) {
-                existingBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
-            }
-            return;
-        }
-
-        const container = document.createElement('div');
-        container.className = 'mermaid-container';
-        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
-        container.appendChild(mermaidDiv);
-
-        const fullscreenBtn = document.createElement('button');
-        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
-        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
-        fullscreenBtn.textContent = '⛶';
-        fullscreenBtn.style.opacity = '50%';
-
-        // Calculate dynamic position based on diagram's margin and padding
-        const diagramStyle = window.getComputedStyle(mermaidDiv);
-        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
-        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
-        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
-        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
-        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
-        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
-
-        fullscreenBtn.addEventListener('click', () => {
-            previousScrollOffset = [window.scroll, window.scrollY];
-            const clone = mermaidDiv.cloneNode(true);
-            modalContent.innerHTML = '';
-            modalContent.appendChild(clone);
-
-            const svg = clone.querySelector('svg');
-            if (svg) {
-                svg.removeAttribute('width');
-                svg.removeAttribute('height');
-                svg.style.width = '100%';
-                svg.style.height = 'auto';
-                svg.style.maxWidth = '100%';
-                svg.style.sdisplay = 'block';
-
-                if ("False" === "True") {
-                    setTimeout(() => {
-                        const g = svg.querySelector('g');
-                        if (g) {
-                            var svgD3 = d3.select(svg);
-                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
-                            var inner = svgD3.select("g");
-                            var zoom = d3.zoom().on("zoom", function(event) {
-                                inner.attr("transform", event.transform);
-                            });
-                            svgD3.call(zoom);
-                        }
-                    }, 100);
-                }
-            }
-
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        });
-        container.appendChild(fullscreenBtn);
-    });
-};
-
-const load = async () => {
-    initStyles();
-
-    await runMermaid(true);
-
-    const reRunIfThemeChanges = async () => {
-        const newDarkTheme = isDarkTheme();
-        if (newDarkTheme !== darkTheme) {
-            darkTheme = newDarkTheme;
-            console.log("Theme change detected, re-running mermaid with", darkTheme ? "dark" : "default", "theme");
-            await mermaid.initialize(
-                {...JSON.parse(
-                    `{"startOnLoad": false}`
-                ),
-                ...{ darkMode: darkTheme, theme: darkTheme ? 'dark' : 'default' },
-                }
-            );
-            await runMermaid(true);
-        }
-    };
-
-    // Update theme classes when theme changes
-    const themeObserver = new MutationObserver(reRunIfThemeChanges);
-    themeObserver.observe(document.documentElement, {
-        attributes: true,
-        attributeFilter: ['class', 'style', 'data-theme']
-    });
-    themeObserver.observe(document.body, {
-        attributes: true,
-        attributeFilter: ['class', 'style', 'data-theme']
-    });
-};
-
-
-
-
-
-console.log("Initializing mermaid with", darkTheme ? "dark" : "default", "theme");
-mermaid.initialize(
-    {...JSON.parse(
-        `{"startOnLoad": false}`
-    ),
-    ...{ darkMode: darkTheme, theme: darkTheme ? 'dark' : 'default' },
-    }
-);
-
-window.addEventListener("load", load);
-window.runMermaid = runMermaid;</script>
     </body>
 </html>

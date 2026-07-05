@@ -13,6 +13,7 @@ the ``paradex`` package source, so it always matches the code.
    :caption: Guide
 
    camera_system
+   camera_system_api
 
 .. toctree::
    :maxdepth: 2

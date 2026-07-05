@@ -19,6 +19,14 @@ system = ps.System.GetInstance()
 GRAB_TIMEOUT_MS = 1000
 
 def get_serial_list():
+    """Enumerate the serial numbers of all cameras visible to the system.
+
+    Returns
+    -------
+    list of str
+        Serial number of every camera currently detected by the Spinnaker
+        system instance.
+    """
     cam_list = system.GetCameras()
     serial_list = []
 
@@ -35,6 +43,27 @@ def get_serial_list():
     return serial_list 
 
 def load_camera(serialnum):
+    """Open a camera by serial number and wrap it in a :class:`PyspinCamera`.
+
+    Gain and exposure are taken from the camera config (``cam_info``) when the
+    serial is present there, otherwise fixed defaults (gain 3.0, exposure
+    2500.0) are used.
+
+    Parameters
+    ----------
+    serialnum : str
+        Serial number of the camera to open.
+
+    Returns
+    -------
+    PyspinCamera
+        Initialized and configured camera wrapper.
+
+    Raises
+    ------
+    ValueError
+        If no camera with the given serial number is found.
+    """
     cam_list = system.GetCameras()
 
     try:
@@ -57,6 +86,28 @@ def load_camera(serialnum):
     return cam
 
 def load_timestamp_monitor(serialnum):
+    """Open a camera by serial number as a :class:`PyspinTimestampMonitor`.
+
+    Like :func:`load_camera` but returns a lightweight monitor that only reads
+    frame timestamps/IDs (used for sync diagnostics). Gain and exposure come
+    from the camera config when available, otherwise defaults (gain 3.0,
+    exposure 2500.0).
+
+    Parameters
+    ----------
+    serialnum : str
+        Serial number of the camera to open.
+
+    Returns
+    -------
+    PyspinTimestampMonitor
+        Initialized timestamp monitor for the camera.
+
+    Raises
+    ------
+    ValueError
+        If no camera with the given serial number is found.
+    """
     cam_list = system.GetCameras()
 
     try:
@@ -100,6 +151,25 @@ class PyspinCameraConfigurationError(Exception):
     pass
 
 class PyspinCamera():
+    """Thin wrapper around a single FLIR (Spinnaker) camera.
+
+    Owns an initialized PySpin camera pointer and exposes a small, hardware-
+    agnostic API (:meth:`start`, :meth:`get_image`, :meth:`stop`,
+    :meth:`release`) used by the higher-level :class:`~paradex.io.camera_system.camera.Camera`
+    capture thread. Construction initializes the camera and applies the baseline
+    configuration (gain, exposure, packet size, chunk data, buffers, pixel
+    format) via :meth:`_init_configure`.
+
+    Parameters
+    ----------
+    camPtr : PySpin.CameraPtr
+        Pointer to the Spinnaker camera to wrap (not yet ``Init``-ed).
+    gain : float
+        Camera gain in dB.
+    exposure_time : float
+        Exposure time in microseconds.
+    """
+
     def __init__(
         self,
         camPtr,
@@ -107,7 +177,7 @@ class PyspinCamera():
         exposure_time
     ):
         """Initialize and configure a FLIR camera.
-        
+
         :param camPtr: PySpin camera pointer
         :param gain: Camera gain (dB)
         :param exposure_time: Exposure time (microseconds)
@@ -165,14 +235,23 @@ class PyspinCamera():
         return serialnum
         
     def get_image(self):
-        """Get next image from camera.
+        """Grab the next frame from the camera.
 
-        Waits up to GRAB_TIMEOUT_MS for a frame. On timeout (no frame arrived —
-        LAN drop, trigger stopped, etc.) GetNextImage raises a SpinnakerException;
-        we catch it and return (None, None) so the acquisition loop can re-check
-        its start/exit events instead of hanging forever.
+        Waits up to ``GRAB_TIMEOUT_MS`` for a frame. On timeout (no frame
+        arrived — LAN drop, trigger stopped, etc.) ``GetNextImage`` raises a
+        ``SpinnakerException`` which is caught and reported as ``(None, None)``
+        so the acquisition loop can re-check its start/exit events instead of
+        hanging forever. An incomplete or zero-size frame yields
+        ``(None, frame_data)``.
 
-        :return: (frame ndarray or None, frame_data dict or None)
+        Returns
+        -------
+        frame : numpy.ndarray or None
+            Debayered BGR image of shape ``(H, W, 3)``, or ``None`` on grab
+            timeout or an incomplete/zero-size frame.
+        frame_data : dict or None
+            ``{"pc_time": float, "frameID": int}`` metadata for the frame, or
+            ``None`` on grab timeout.
         """
         try:
             pImageRaw = self.cam.GetNextImage(GRAB_TIMEOUT_MS)
@@ -200,8 +279,31 @@ class PyspinCamera():
         return frame, frame_data
     
     def start(self, mode, syncMode, frame_rate=None, gain=None, exposure_time=None):
-        """
-        Start image acquisition.
+        """Configure the camera for the requested mode and begin acquisition.
+
+        Reads the current camera state, applies only the settings that changed
+        (throughput, trigger vs. free-run frame rate, gain, exposure,
+        acquisition mode), then calls ``BeginAcquisition``.
+
+        Parameters
+        ----------
+        mode : {'single', 'continuous'}
+            ``'single'`` for one-shot image capture, ``'continuous'`` for
+            video/stream capture.
+        syncMode : bool
+            Use the hardware trigger if ``True``; free-run otherwise.
+        frame_rate : float, optional
+            Free-run frame rate in Hz; only applied when ``syncMode`` is
+            ``False``.
+        gain : float, optional
+            Gain override in dB; ``None`` keeps the current value.
+        exposure_time : float, optional
+            Exposure override in microseconds; ``None`` keeps the current value.
+
+        Raises
+        ------
+        AssertionError
+            If ``mode`` is not ``'single'`` or ``'continuous'``.
         """
         assert mode in ["single", "continuous"]
         
@@ -234,10 +336,11 @@ class PyspinCamera():
         return
     
     def stop(self):
-        """
-        Stop image acquisition. Camera connection remains active.
+        """Stop acquisition and drain the buffer; keep the connection open.
 
-        Note: Only stops acquiring images. Use release() to disconnect camera.
+        Aborts streaming (to avoid ``EndAcquisition`` hanging on a lost
+        trigger), ends acquisition, then flushes any images left in the buffer.
+        Only stops acquiring — use :meth:`release` to disconnect the camera.
         """
         self._abort_streaming()
         self.cam.EndAcquisition()
@@ -263,11 +366,16 @@ class PyspinCamera():
             pass
     
     def release(self):
-        """Release camera resources. Call stop() first. Cannot reuse after."""
+        """Deinitialize the camera and drop the pointer.
+
+        Disconnects the hardware camera (``DeInit``) and deletes the internal
+        reference. Call :meth:`stop` first; the wrapper cannot be reused
+        afterward.
+        """
         self.cam.DeInit()
         del self.cam
         return
-    
+
     @staticmethod
     def _spin2cv(pImg, h, w):
         """
@@ -904,8 +1012,14 @@ class PyspinTimestampMonitor():
 
 
 def autoforce_ip():
-    """
-    
+    """Force GigE cameras onto the rig subnet if their IP is off it.
+
+    Iterates over every Spinnaker interface that has exactly one camera
+    attached, reads the camera's current ``GevDeviceIPAddress``, and if the
+    dotted-quad does not start with ``"11"`` (the rig subnet), executes
+    ``GevDeviceAutoForceIP`` to reassign the camera a valid address on that
+    subnet. Interfaces with zero or multiple cameras are skipped. Releases the
+    Spinnaker system instance before returning.
     """
     system = ps.System.GetInstance()
     interfaceList = system.GetInterfaces() # virtual port included

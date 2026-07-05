@@ -14,6 +14,22 @@ DEFAULT_GAIN = 3.0
 DEFAULT_EXPOSURE = 2500.0
 
 class CameraLoader:
+    """Owns every :class:`Camera` on this PC and drives them as one group.
+
+    A ``CameraLoader`` enumerates the local cameras, builds one :class:`Camera`
+    per detected serial, and fans lifecycle calls (``start`` / ``stop`` / ``end``)
+    out across all of them in parallel threads. It also holds the per-serial
+    gain/exposure baseline read from ``system/current/camera.json``, used to
+    resolve capture parameters when the caller does not pass explicit overrides.
+
+    Parameters
+    ----------
+    types : list of str, optional
+        Camera backends to load, by default ``["pyspin"]``. Only ``"pyspin"``
+        is currently supported; each listed backend triggers its loader
+        (``"pyspin"`` calls :meth:`load_pyspin_camera`).
+    """
+
     def __init__(self, types=["pyspin"]):
         self.cameralist = []
         self.camera_names = []
@@ -25,6 +41,23 @@ class CameraLoader:
                 self.load_pyspin_camera()
     
     def load_pyspin_camera(self, serial_list=None):
+        """Enumerate PySpin (GigE) cameras and build a :class:`Camera` for each.
+
+        Forces every detected camera onto its expected IP (``autoforce_ip``),
+        then compares the detected serial count against the configured count
+        (:func:`get_camera_list`). On a mismatch it retries up to ``RETRY_COUNT``
+        times — re-running ``autoforce_ip`` each time, since after a power cycle
+        GigE cameras boot slowly and may not be enumerated on the first pass —
+        before proceeding with whatever cameras are present. The resulting
+        :class:`Camera` objects and their serials are appended to
+        ``self.cameralist`` / ``self.camera_names``.
+
+        Parameters
+        ----------
+        serial_list : list of str, optional
+            Explicit serials to load. When ``None`` (default) the serials are
+            discovered via ``get_serial_list()``.
+        """
         from paradex.io.camera_system.pyspin import get_serial_list, autoforce_ip
         
         expected = len(get_camera_list())
@@ -55,6 +88,36 @@ class CameraLoader:
         self.camera_names = self.camera_names + serial_list
     
     def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None):
+        """Start capture on every camera in parallel and block until all started.
+
+        Resolves per-camera output directories from ``save_path`` (under
+        ``home_path`` for ``image``, spread across ``capture_path_list`` for
+        ``video`` / ``full``; ``None`` for ``stream``), creating them as needed.
+        For each camera the gain and exposure are resolved deterministically as
+        **explicit arg > camera.json baseline > module default**: an explicit
+        ``exposure_time`` / ``gain`` wins, otherwise the per-serial value from
+        ``camera.json`` is used, otherwise ``DEFAULT_EXPOSURE`` /
+        ``DEFAULT_GAIN``. Each camera's :meth:`Camera.start` runs on its own
+        thread; the method joins all of them before returning.
+
+        Parameters
+        ----------
+        mode : str
+            Capture mode: ``image`` / ``video`` / ``stream`` / ``full``.
+        syncMode : bool
+            Whether cameras wait on the hardware trigger.
+        save_path : str, optional
+            Session-relative output path for ``image`` / ``video`` / ``full``;
+            ignored for ``stream``.
+        fps : int, optional
+            Frame rate for free-run capture, by default 30.
+        exposure_time : float, optional
+            Exposure override applied to all cameras; ``None`` (default) falls
+            back to the camera.json baseline then ``DEFAULT_EXPOSURE``.
+        gain : float, optional
+            Gain override applied to all cameras; ``None`` (default) falls back
+            to the camera.json baseline then ``DEFAULT_GAIN``.
+        """
         if mode == "image":
             save_paths = [os.path.join(home_path, save_path, "images") for _ in self.cameralist]
             print("image save paths:", save_paths)
@@ -90,7 +153,16 @@ class CameraLoader:
         print("all cameras started.")
     
     def _broadcast(self, method_name):
-        """Call `method_name` on every camera in parallel and wait for all to finish."""
+        """Call ``method_name`` on every camera in parallel and wait for all.
+
+        Spawns one thread per camera, each invoking the named zero-argument
+        :class:`Camera` method, then joins every thread before returning.
+
+        Parameters
+        ----------
+        method_name : str
+            Name of the :class:`Camera` method to invoke on each camera.
+        """
         threads = [Thread(target=getattr(camera, method_name)) for camera in self.cameralist]
         for t in threads:
             t.start()
@@ -98,19 +170,37 @@ class CameraLoader:
             t.join()
 
     def stop(self):
+        """Stop capture on all cameras in parallel (broadcasts :meth:`Camera.stop`)."""
         self._broadcast("stop")
 
     def end(self):
+        """Stop and release all cameras in parallel (broadcasts :meth:`Camera.end`)."""
         self._broadcast("end")
 
     def get_status_list(self):
+        """Return a status snapshot for every camera.
+
+        Returns
+        -------
+        list of dict
+            One :meth:`Camera.get_status` dict per camera, in ``cameralist``
+            order.
+        """
         status_list = []
         for camera in self.cameralist:
             status_list.append(camera.get_status())
         return status_list
     
     def get_all_errors(self):
-        """모든 카메라의 에러 정보 반환"""
+        """Return error information for every camera currently in an error state.
+
+        Returns
+        -------
+        dict
+            Maps camera serial (``str``) to an ``(error_msg, traceback_msg)``
+            tuple, including only cameras whose :meth:`Camera.get_error` reports
+            an active error. Empty when no camera is in error.
+        """
         errors = {}
         for camera in self.cameralist:
             has_error, (error_msg, traceback_msg) = camera.get_error()

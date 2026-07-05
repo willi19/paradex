@@ -6,6 +6,31 @@ from threading import Thread, Event, Lock
 from paradex.utils.system import get_pc_list, get_pc_ip
 
 class remote_camera_controller:
+    """Main-PC driver for a cluster of capture-PC camera daemons.
+
+    Orchestrates the per-PC ``server_daemon`` processes over ZMQ REQ/REP:
+    a background thread (:meth:`run`) opens a command socket per PC, then
+    ticks a heartbeat loop that pushes ``start`` / ``stop`` / ``reload`` /
+    ``end`` commands and folds each daemon's reply into a live health view
+    (per-PC status plus per-camera frame-id stall detection). Public
+    ``start`` / ``stop`` methods only flip :class:`threading.Event` objects
+    that the loop consumes, so the caller never touches the sockets directly.
+
+    Parameters
+    ----------
+    name : str
+        Controller label; a ``_YYYYmmdd_HHMMSS`` timestamp is appended to make
+        the unique ``controller_name`` sent with every command.
+    pc_list : list of str, optional
+        Capture PCs to drive. Defaults to ``get_pc_list()`` when ``None``.
+    auto_reload : bool, optional
+        If ``True``, reload the cameras automatically (throttled) whenever a
+        persistent error or stall is detected, by default ``False``.
+    stall_timeout : float, optional
+        Seconds without a new frame id before a camera is flagged as stalled,
+        by default 3.0.
+    """
+
     def __init__(self, name, pc_list=None, auto_reload=False, stall_timeout=3.0):
         self.name = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
@@ -37,6 +62,19 @@ class remote_camera_controller:
 
         
     def initialize(self):
+        """Connect a command socket to every reachable capture PC and register.
+
+        Pings each PC in ``pc_list``, opens a non-blocking ZMQ ``REQ`` command
+        socket to the ones that answer, seeds the per-PC error/status tables,
+        then calls :meth:`register` to claim the daemons. Runs once from
+        :meth:`run` at thread start.
+
+        Raises
+        ------
+        ConnectionError
+            If any PC fails to respond to the ping (its ``server_daemon`` is
+            not running).
+        """
         self.ctx = zmq.Context()
         self.command_sockets = {}
         failed_pcs = []
@@ -68,7 +106,22 @@ class remote_camera_controller:
         self.register()
     
     def check_server_alive(self, pc):
-        """ping port로 서버 확인"""
+        """Ping a capture PC's daemon and report whether it is up.
+
+        ping port로 서버 확인. Sends ``"ping"`` on the ping port and expects
+        ``"pong"`` back within the socket timeout.
+
+        Parameters
+        ----------
+        pc : str
+            Capture-PC name to probe.
+
+        Returns
+        -------
+        bool
+            ``True`` if the daemon replied ``"pong"``, ``False`` on any ZMQ
+            error or mismatched reply.
+        """
         socket = self.ctx.socket(zmq.REQ)
         socket.setsockopt(zmq.LINGER, 0)
         socket.setsockopt(zmq.RCVTIMEO, 5000)
@@ -85,7 +138,25 @@ class remote_camera_controller:
             socket.close()
     
     def send_command(self, cmd):
-        """명령 전송 및 응답 수신 (PC 병렬 처리)"""
+        """Broadcast a command to every PC in parallel and collect replies.
+
+        명령 전송 및 응답 수신 (PC 병렬 처리). Stamps ``cmd`` with this
+        controller's name, then fans the request out over all command sockets
+        on one thread each, joining before returning. ``start`` / ``stop``
+        actions get a longer receive timeout than other actions. Socket-level
+        failures are turned into an ``error`` status entry rather than raised.
+
+        Parameters
+        ----------
+        cmd : dict
+            Command payload with at least an ``action`` key; sent as JSON.
+
+        Returns
+        -------
+        dict
+            Maps each PC name to its JSON reply (or a synthesized
+            ``{'status': 'error', ...}`` dict on timeout/ZMQ error).
+        """
         cmd['controller_name'] = self.name
         response = {}
         response_lock = Lock()
@@ -117,10 +188,30 @@ class remote_camera_controller:
         return response
             
     def register(self):
+        """Claim the daemons for this controller by sending a ``register`` command."""
         cmd = {'action': 'register'}
         self.send_command(cmd)
         
     def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None):
+        """Begin a capture across all PCs; blocks until the command is sent.
+
+        Stores the capture parameters, then signals :meth:`run` via
+        ``start_event`` and waits on ``sending_event`` for the loop to actually
+        dispatch the ``start`` command to the daemons (the handshake).
+
+        Parameters
+        ----------
+        mode : str
+            ``image`` / ``video`` / ``stream`` / ``full``.
+        syncMode : bool
+            Use the hardware trigger if ``True``.
+        save_path : str, optional
+            Output dir/file for ``video`` / ``image`` modes.
+        fps : int, optional
+            Frame rate for free-run capture, by default 30.
+        exposure_time, gain : float, optional
+            Per-capture overrides; ``None`` keeps each camera's baseline.
+        """
         self.mode = mode
         self.syncMode = syncMode
         self.save_path = save_path
@@ -134,15 +225,30 @@ class remote_camera_controller:
         self.sending_event.wait()
 
     def stop(self):
+        """Stop the current capture; blocks until the stop command is sent.
+
+        Signals :meth:`run` via ``stop_event`` and waits on ``sending_event``
+        for the loop to dispatch the ``stop`` command to every daemon.
+        """
         self.sending_event.clear()
         self.stop_event.set()
         self.sending_event.wait()
 
     def end(self):
-        self.exit_event.set()        
+        """Shut down the controller and join the background thread.
+
+        Sets ``exit_event`` so :meth:`run` breaks its loop (sending a final
+        ``end`` command and closing the sockets/context), then joins the thread.
+        """
+        self.exit_event.set()
         self.run_thread.join()
         
     def reload_cameras(self):
+        """Ask every daemon to reload its cameras; flag errors.
+
+        Sends a ``reload`` command to all PCs and sets ``error_event`` for any
+        PC whose reply reports an error.
+        """
         cmd = {'action': 'reload'}
         response = self.send_command(cmd)
         

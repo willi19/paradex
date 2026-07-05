@@ -362,27 +362,29 @@
         <article role="main" id="furo-main-content">
           <section id="camera-system">
 <h1>Camera System<a class="headerlink" href="#camera-system" title="Link to this heading">¶</a></h1>
-<p>Paradex 카메라 서브시스템 개발 문서. 분산 멀티카메라 캡처의 구조, 컴포넌트, 상태 흐름, 설정,
-에러 처리를 다룬다. 코드를 읽기 전에 이 문서로 전체 구조를 잡을 것.</p>
+<p>Engineering reference for Paradex’s camera subsystem: architecture, components,
+state flow, configuration, and error handling. Read this before the code to get the
+overall structure.</p>
 <ul class="simple">
-<li><p>재설계 제안: <a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md">design/camera-recording-redesign.md</a></p></li>
-<li><p>심볼 단위 API: <a class="reference internal" href="autoapi/index.html"><span class="doc">API Reference</span></a></p></li>
+<li><p>Redesign proposal: <a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md">design/camera-recording-redesign.md</a></p></li>
+<li><p>Per-symbol API: <a class="reference internal" href="autoapi/index.html"><span class="doc">API Reference</span></a></p></li>
 </ul>
 <hr class="docutils" />
 <section id="overview">
 <h2>1. Overview<a class="headerlink" href="#overview" title="Link to this heading">¶</a></h2>
-<p>카메라 수십 대가 <strong>캡처 PC 6대</strong>에 분산되어 있고(카메라 1대가 기가비트 랜을 거의 다 쓰므로),
-<strong>메인 PC</strong>는 카메라를 직접 만지지 않고 각 캡처 PC의 데몬에 명령을 보내 제어한다. 모든 카메라는
-하나의 <strong>하드웨어 트리거(UTGE900)</strong> 에 물려 동기 촬영된다.</p>
-<p>스택은 5개 층으로 구성된다. 명령은 위에서 아래로 흐른다.</p>
+<p>Cameras are spread across <strong>6 capture PCs</strong> (one GigE camera nearly saturates a NIC,
+so they can’t all hang off one host). The <strong>main PC</strong> never touches a camera
+directly — it sends commands to a daemon on each capture PC. Every camera fires on
+one shared <strong>hardware trigger (UTGE900)</strong> for synchronized capture.</p>
+<p>The stack has five layers; commands flow top to bottom.</p>
 <pre  class="mermaid">
         flowchart LR
-    subgraph Main[&quot;메인 PC&quot;]
+    subgraph Main[&quot;Main PC&quot;]
       ORCH[&quot;capture / inference&quot;]
       RCC[&quot;remote_camera_controller&quot;]
       ORCH --&gt; RCC
     end
-    subgraph Cap[&quot;캡처 PC (×6)&quot;]
+    subgraph Cap[&quot;Capture PC (×6)&quot;]
       D[&quot;server_daemon&quot;]
       CL[&quot;CameraLoader&quot;]
       CAM[&quot;Camera × k → PyspinCamera&quot;]
@@ -390,41 +392,41 @@
     end
     GEN[&quot;UTGE900&quot;]
     RCC -- &quot;ZMQ: register/start/stop/heartbeat&quot; --&gt; D
-    GEN -. &quot;하드웨어 트리거&quot; .-&gt; CAM
+    GEN -. &quot;hardware trigger&quot; .-&gt; CAM
     </pre><div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>층</p></th>
-<th class="head"><p>컴포넌트</p></th>
-<th class="head"><p>위치</p></th>
-<th class="head"><p>책임</p></th>
+<tr class="row-odd"><th class="head"><p>Layer</p></th>
+<th class="head"><p>Component</p></th>
+<th class="head"><p>Location</p></th>
+<th class="head"><p>Responsibility</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p>Control</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code></p></td>
-<td><p>메인 PC</p></td>
-<td><p>명령 병렬 전송, heartbeat</p></td>
+<td><p>Main PC</p></td>
+<td><p>Fan out commands, keep heartbeat</p></td>
 </tr>
 <tr class="row-odd"><td><p>Service</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">camera_server_daemon</span></code></p></td>
-<td><p>캡처 PC</p></td>
-<td><p>명령 수신·분기, 컨트롤러 락</p></td>
+<td><p>Capture PC</p></td>
+<td><p>Receive/dispatch commands, controller lock</p></td>
 </tr>
 <tr class="row-even"><td><p>Group</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code></p></td>
-<td><p>캡처 PC</p></td>
-<td><p>카메라 N대 묶음 제어, 파라미터 해석</p></td>
+<td><p>Capture PC</p></td>
+<td><p>Drive N cameras together, resolve parameters</p></td>
 </tr>
 <tr class="row-odd"><td><p>Device</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">Camera</span></code></p></td>
-<td><p>캡처 PC</p></td>
-<td><p>캡처 스레드 상태머신, sink 분배</p></td>
+<td><p>Capture PC</p></td>
+<td><p>Capture-thread state machine, sink routing</p></td>
 </tr>
 <tr class="row-even"><td><p>Driver</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code></p></td>
-<td><p>캡처 PC</p></td>
-<td><p>PySpin SDK 호출</p></td>
+<td><p>Capture PC</p></td>
+<td><p>PySpin SDK calls</p></td>
 </tr>
 </tbody>
 </table>
@@ -436,25 +438,25 @@
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>용어</p></th>
-<th class="head"><p>의미</p></th>
+<tr class="row-odd"><th class="head"><p>Term</p></th>
+<th class="head"><p>Meaning</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><strong>Mode</strong></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>. 캡처 방식과 저장 위치를 함께 지정.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>. Selects the capture method <em>and</em> where frames go.</p></td>
 </tr>
 <tr class="row-odd"><td><p><strong>Sink</strong></p></td>
-<td><p>프레임의 목적지. <code class="docutils literal notranslate"><span class="pre">stream</span></code>→SHM, <code class="docutils literal notranslate"><span class="pre">video</span></code>→<code class="docutils literal notranslate"><span class="pre">.avi</span></code>, <code class="docutils literal notranslate"><span class="pre">image</span></code>→파일 1장, <code class="docutils literal notranslate"><span class="pre">full</span></code>→SHM+<code class="docutils literal notranslate"><span class="pre">.avi</span></code>.</p></td>
+<td><p>A frame’s destination. <code class="docutils literal notranslate"><span class="pre">stream</span></code>→SHM, <code class="docutils literal notranslate"><span class="pre">video</span></code>→<code class="docutils literal notranslate"><span class="pre">.avi</span></code>, <code class="docutils literal notranslate"><span class="pre">image</span></code>→one still, <code class="docutils literal notranslate"><span class="pre">full</span></code>→SHM+<code class="docutils literal notranslate"><span class="pre">.avi</span></code>.</p></td>
 </tr>
 <tr class="row-even"><td><p><strong>Acquisition</strong></p></td>
-<td><p>카메라당 캡처 스레드가 프레임을 연속으로 잡는 것. sink와는 별개의 축.</p></td>
+<td><p>One capture thread per camera grabbing frames continuously. A separate axis from the sink.</p></td>
 </tr>
 <tr class="row-odd"><td><p><strong>Hardware sync</strong></p></td>
-<td><p>트리거 펄스마다 전 카메라의 <code class="docutils literal notranslate"><span class="pre">frame_id</span></code>가 동시에 1 증가. 같은 순간 = 같은 id.</p></td>
+<td><p>Each trigger pulse increments every camera’s <code class="docutils literal notranslate"><span class="pre">frame_id</span></code> at once. Same instant = same id.</p></td>
 </tr>
 <tr class="row-even"><td><p><strong>Controller lock</strong></p></td>
-<td><p>데몬당 컨트롤러 1개만 허용. <code class="docutils literal notranslate"><span class="pre">register</span></code>로 획득, 15초 무-heartbeat 시 자동 해제.</p></td>
+<td><p>One controller per daemon. Acquired via <code class="docutils literal notranslate"><span class="pre">register</span></code>; auto-released after 15 s without a heartbeat.</p></td>
 </tr>
 </tbody>
 </table>
@@ -463,13 +465,13 @@
 <hr class="docutils" />
 <section id="components">
 <h2>3. Components<a class="headerlink" href="#components" title="Link to this heading">¶</a></h2>
-<section id="remote-camera-controller-pc">
-<h3>3.1 <code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> (메인 PC)<a class="headerlink" href="#remote-camera-controller-pc" title="Link to this heading">¶</a></h3>
+<section id="remote-camera-controller-main-pc">
+<h3>3.1 <code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> (main PC)<a class="headerlink" href="#remote-camera-controller-main-pc" title="Link to this heading">¶</a></h3>
 <ul class="simple">
-<li><p><strong>책임</strong>: 캡처 PC들에 명령을 병렬 전송하고 heartbeat로 연결을 유지.</p></li>
-<li><p><strong>주요 메서드</strong>: <code class="docutils literal notranslate"><span class="pre">initialize()</span></code>(핑 확인·소켓·락), <code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">sync,</span> <span class="pre">...)</span></code>, <code class="docutils literal notranslate"><span class="pre">stop()</span></code>, <code class="docutils literal notranslate"><span class="pre">end()</span></code>, <code class="docutils literal notranslate"><span class="pre">run()</span></code>(백그라운드 루프).</p></li>
-<li><p><strong>인터페이스</strong>: ZMQ REQ → 각 데몬의 <code class="docutils literal notranslate"><span class="pre">command_port(5482)</span></code>, 상태 확인은 <code class="docutils literal notranslate"><span class="pre">ping_port(5480)</span></code>.</p></li>
-<li><p><strong>주의</strong>: <code class="docutils literal notranslate"><span class="pre">start()</span></code>/<code class="docutils literal notranslate"><span class="pre">stop()</span></code>은 <strong>이벤트만 세우고</strong>, 실제 명령 전송은 <code class="docutils literal notranslate"><span class="pre">run()</span></code> 루프가 수행한다.</p></li>
+<li><p><strong>Responsibility</strong>: fan commands out to the capture PCs in parallel and keep the connection alive with heartbeats.</p></li>
+<li><p><strong>Key methods</strong>: <code class="docutils literal notranslate"><span class="pre">initialize()</span></code> (ping check, sockets, lock), <code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">sync,</span> <span class="pre">...)</span></code>, <code class="docutils literal notranslate"><span class="pre">stop()</span></code>, <code class="docutils literal notranslate"><span class="pre">end()</span></code>, <code class="docutils literal notranslate"><span class="pre">run()</span></code> (background loop).</p></li>
+<li><p><strong>Interface</strong>: ZMQ REQ → each daemon’s <code class="docutils literal notranslate"><span class="pre">command_port</span> <span class="pre">(5482)</span></code>; liveness via <code class="docutils literal notranslate"><span class="pre">ping_port</span> <span class="pre">(5480)</span></code>.</p></li>
+<li><p><strong>Note</strong>: <code class="docutils literal notranslate"><span class="pre">start()</span></code>/<code class="docutils literal notranslate"><span class="pre">stop()</span></code> only <strong>set events</strong> — the actual command send happens in the <code class="docutils literal notranslate"><span class="pre">run()</span></code> loop.</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
@@ -477,35 +479,35 @@
         <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;heartbeat&#39;</span><span class="p">}</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span> <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;mode&#39;</span><span class="p">:</span> <span class="o">...</span><span class="p">,</span> <span class="o">...</span><span class="p">}</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>  <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;stop&#39;</span><span class="p">}</span>
-        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>     <span class="c1"># PC마다 스레드 1개로 동시 전송</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>     <span class="c1"># one thread per PC, sent concurrently</span>
         <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
 </pre></div>
 </div>
 </section>
-<section id="camera-server-daemon-pc">
-<h3>3.2 <code class="docutils literal notranslate"><span class="pre">camera_server_daemon</span></code> (캡처 PC)<a class="headerlink" href="#camera-server-daemon-pc" title="Link to this heading">¶</a></h3>
+<section id="camera-server-daemon-capture-pc">
+<h3>3.2 <code class="docutils literal notranslate"><span class="pre">camera_server_daemon</span></code> (capture PC)<a class="headerlink" href="#camera-server-daemon-capture-pc" title="Link to this heading">¶</a></h3>
 <ul class="simple">
-<li><p><strong>책임</strong>: 명령 수신 → <code class="docutils literal notranslate"><span class="pre">execute_command</span></code>로 분기 → <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> 호출. 단일 컨트롤러 락 관리.</p></li>
-<li><p><strong>포트</strong>: <code class="docutils literal notranslate"><span class="pre">ping</span> <span class="pre">5480</span></code>(REP), <code class="docutils literal notranslate"><span class="pre">monitor</span> <span class="pre">5481</span></code>(PUB 상태 방송), <code class="docutils literal notranslate"><span class="pre">command</span> <span class="pre">5482</span></code>(REP).</p></li>
-<li><p><strong>명령</strong>: <code class="docutils literal notranslate"><span class="pre">register</span></code> / <code class="docutils literal notranslate"><span class="pre">start</span></code> / <code class="docutils literal notranslate"><span class="pre">stop</span></code> / <code class="docutils literal notranslate"><span class="pre">heartbeat</span></code> / <code class="docutils literal notranslate"><span class="pre">reload</span></code> / <code class="docutils literal notranslate"><span class="pre">end</span></code>.</p></li>
-<li><p><strong>락 + 타임아웃</strong>: command 소켓에 <code class="docutils literal notranslate"><span class="pre">RCVTIMEO</span> <span class="pre">15s</span></code>. 15초간 무-명령이면 락을 풀고 카메라를 멈춘다(컨트롤러 사망 대비).</p></li>
+<li><p><strong>Responsibility</strong>: receive commands → dispatch via <code class="docutils literal notranslate"><span class="pre">execute_command</span></code> → call <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code>. Manage the single-controller lock.</p></li>
+<li><p><strong>Ports</strong>: <code class="docutils literal notranslate"><span class="pre">ping</span> <span class="pre">5480</span></code> (REP), <code class="docutils literal notranslate"><span class="pre">monitor</span> <span class="pre">5481</span></code> (PUB status), <code class="docutils literal notranslate"><span class="pre">command</span> <span class="pre">5482</span></code> (REP).</p></li>
+<li><p><strong>Commands</strong>: <code class="docutils literal notranslate"><span class="pre">register</span></code> / <code class="docutils literal notranslate"><span class="pre">start</span></code> / <code class="docutils literal notranslate"><span class="pre">stop</span></code> / <code class="docutils literal notranslate"><span class="pre">heartbeat</span></code> / <code class="docutils literal notranslate"><span class="pre">reload</span></code> / <code class="docutils literal notranslate"><span class="pre">end</span></code>.</p></li>
+<li><p><strong>Lock + timeout</strong>: the command socket uses <code class="docutils literal notranslate"><span class="pre">RCVTIMEO</span> <span class="pre">15s</span></code>. After 15 s with no command it releases the lock and stops the cameras (in case the controller died).</p></li>
 </ul>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">command_socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="mi">15000</span><span class="p">)</span>   <span class="c1"># 15초</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="bp">self</span><span class="o">.</span><span class="n">command_socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="mi">15000</span><span class="p">)</span>   <span class="c1"># 15 s</span>
 <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
     <span class="k">try</span><span class="p">:</span>
         <span class="n">cmd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">command_socket</span><span class="o">.</span><span class="n">recv_json</span><span class="p">()</span>
         <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">execute_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>              <span class="c1"># register/start/stop/heartbeat/...</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">command_socket</span><span class="o">.</span><span class="n">send_json</span><span class="p">(</span><span class="n">resp</span><span class="p">)</span>
-    <span class="k">except</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Again</span><span class="p">:</span>                                 <span class="c1"># 15초 무-명령 → 락 해제 + 카메라 정지</span>
+    <span class="k">except</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Again</span><span class="p">:</span>                                 <span class="c1"># 15 s idle → release lock + stop cameras</span>
         <span class="o">...</span>
 </pre></div>
 </div>
 </section>
-<section id="cameraloader-pc">
-<h3>3.3 <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> (캡처 PC)<a class="headerlink" href="#cameraloader-pc" title="Link to this heading">¶</a></h3>
+<section id="cameraloader-capture-pc">
+<h3>3.3 <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> (capture PC)<a class="headerlink" href="#cameraloader-capture-pc" title="Link to this heading">¶</a></h3>
 <ul class="simple">
-<li><p><strong>책임</strong>: 카메라 N대를 스레드로 동시에 start/stop. 게인/노출을 <strong>카메라별로</strong> 해석.</p></li>
-<li><p><strong>해석 규칙</strong>: <code class="docutils literal notranslate"><span class="pre">명시</span> <span class="pre">인자</span> <span class="pre">&gt;</span> <span class="pre">camera.json[serial]</span> <span class="pre">&gt;</span> <span class="pre">기본값</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code>은 “camera.json 사용”이지 “직전 값 유지”가 아니다(§7).</p></li>
+<li><p><strong>Responsibility</strong>: start/stop N cameras concurrently (via threads). Resolve gain/exposure <strong>per camera</strong>.</p></li>
+<li><p><strong>Resolution rule</strong>: <code class="docutils literal notranslate"><span class="pre">explicit</span> <span class="pre">arg</span> <span class="pre">&gt;</span> <span class="pre">camera.json[serial]</span> <span class="pre">&gt;</span> <span class="pre">default</span></code>. <code class="docutils literal notranslate"><span class="pre">None</span></code> means “use camera.json”, not “keep whatever was last set” (§7).</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">for</span> <span class="n">camera</span><span class="p">,</span> <span class="n">path</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cameralist</span><span class="p">,</span> <span class="n">save_paths</span><span class="p">):</span>
     <span class="n">cfg</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cam_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">camera</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="p">{})</span>
@@ -514,13 +516,13 @@
     <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">camera</span><span class="o">.</span><span class="n">start</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">mode</span><span class="p">,</span> <span class="n">syncMode</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">fps</span><span class="p">,</span> <span class="n">e</span><span class="p">,</span> <span class="n">g</span><span class="p">))</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
 </pre></div>
 </div>
-<p><code class="docutils literal notranslate"><span class="pre">stop</span></code>/<code class="docutils literal notranslate"><span class="pre">end</span></code>는 동일한 팬아웃 헬퍼(<code class="docutils literal notranslate"><span class="pre">_broadcast</span></code>)를 재사용한다.</p>
+<p><code class="docutils literal notranslate"><span class="pre">stop</span></code>/<code class="docutils literal notranslate"><span class="pre">end</span></code> reuse the same fan-out helper (<code class="docutils literal notranslate"><span class="pre">_broadcast</span></code>).</p>
 </section>
-<section id="camera-pc">
-<h3>3.4 <code class="docutils literal notranslate"><span class="pre">Camera</span></code> (캡처 PC) — 상태 머신<a class="headerlink" href="#camera-pc" title="Link to this heading">¶</a></h3>
+<section id="camera-capture-pc-state-machine">
+<h3>3.4 <code class="docutils literal notranslate"><span class="pre">Camera</span></code> (capture PC) — state machine<a class="headerlink" href="#camera-capture-pc-state-machine" title="Link to this heading">¶</a></h3>
 <ul class="simple">
-<li><p><strong>스레딩 모델</strong>: 생성 시 캡처 스레드(<code class="docutils literal notranslate"><span class="pre">run</span></code>) 1개를 띄운다. 바깥 호출자와 캡처 스레드는 <strong>Event 집합</strong>으로 동기화한다(플래그가 아니라 악수).</p></li>
-<li><p><strong>상태</strong> (<code class="docutils literal notranslate"><span class="pre">get_state()</span></code> 기준):</p></li>
+<li><p><strong>Threading model</strong>: on construction it spawns one capture thread (<code class="docutils literal notranslate"><span class="pre">run</span></code>). That thread and the outside caller synchronize through a <strong>set of Events</strong> (a handshake, not just flags).</p></li>
+<li><p><strong>States</strong> (from <code class="docutils literal notranslate"><span class="pre">get_state()</span></code>):</p></li>
 </ul>
 <pre  class="mermaid">
         stateDiagram-v2
@@ -534,45 +536,45 @@
     READY --&gt; STOPPED: end()
     STOPPED --&gt; [*]
     </pre><ul class="simple">
-<li><p><strong>핵심 루프</strong>: <code class="docutils literal notranslate"><span class="pre">continuous_acquire</span></code>(stream/video/full), <code class="docutils literal notranslate"><span class="pre">single_acquire</span></code>(image).</p></li>
+<li><p><strong>Core loops</strong>: <code class="docutils literal notranslate"><span class="pre">continuous_acquire</span></code> (stream/video/full), <code class="docutils literal notranslate"><span class="pre">single_acquire</span></code> (image).</p></li>
 </ul>
-<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># run(): start가 켜지면 캡처, exit면 종료</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># run(): capture while &#39;start&#39; is set, exit when &#39;exit&#39; is set</span>
 <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;exit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">continuous_acquire</span><span class="p">()</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;full&quot;</span><span class="p">,</span><span class="s2">&quot;video&quot;</span><span class="p">,</span><span class="s2">&quot;stream&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="bp">self</span><span class="o">.</span><span class="n">single_acquire</span><span class="p">()</span>
     <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.001</span><span class="p">)</span>
 
-<span class="c1"># start(): 이벤트를 세우고 캡처 스레드가 실제 시작할 때까지 대기(악수)</span>
+<span class="c1"># start(): set the event, then wait until the thread actually begins (handshake)</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;acquisition&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
 
-<span class="c1"># continuous_acquire(): 몸통</span>
+<span class="c1"># continuous_acquire(): the body</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s2">&quot;continuous&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syncMode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span> <span class="o">...</span><span class="p">)</span>   <span class="c1"># BeginAcquisition</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;acquisition&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;exit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
     <span class="n">frame</span><span class="p">,</span> <span class="n">frame_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">get_image</span><span class="p">()</span>
-    <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="k">continue</span>          <span class="c1"># timeout → while 조건 재확인</span>
+    <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span> <span class="k">continue</span>          <span class="c1"># timeout → re-check the while condition</span>
     <span class="k">if</span> <span class="n">save_video</span><span class="p">:</span> <span class="n">video_writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>     <span class="o">...</span>                  <span class="c1"># SHM 더블버퍼(write_flag 토글)</span>
+    <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>     <span class="o">...</span>                  <span class="c1"># SHM double-buffer (write_flag toggles)</span>
 <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">stop</span><span class="p">();</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;stop&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 </pre></div>
 </div>
 </section>
-<section id="pyspincamera-pc">
-<h3>3.5 <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> (캡처 PC) — 드라이버<a class="headerlink" href="#pyspincamera-pc" title="Link to this heading">¶</a></h3>
+<section id="pyspincamera-capture-pc-driver">
+<h3>3.5 <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> (capture PC) — driver<a class="headerlink" href="#pyspincamera-capture-pc-driver" title="Link to this heading">¶</a></h3>
 <ul class="simple">
-<li><p><strong>책임</strong>: PySpin SDK 직접 호출. <code class="docutils literal notranslate"><span class="pre">get_image()</span></code>(grab), <code class="docutils literal notranslate"><span class="pre">start()</span></code>(설정+<code class="docutils literal notranslate"><span class="pre">BeginAcquisition</span></code>), <code class="docutils literal notranslate"><span class="pre">_configure*</span></code>(gain/exposure/trigger/framerate).</p></li>
+<li><p><strong>Responsibility</strong>: direct PySpin SDK calls. <code class="docutils literal notranslate"><span class="pre">get_image()</span></code> (grab), <code class="docutils literal notranslate"><span class="pre">start()</span></code> (configure + <code class="docutils literal notranslate"><span class="pre">BeginAcquisition</span></code>), <code class="docutils literal notranslate"><span class="pre">_configure*</span></code> (gain/exposure/trigger/framerate).</p></li>
 </ul>
 <div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">get_image</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
     <span class="k">try</span><span class="p">:</span>
-        <span class="n">pImageRaw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">GetNextImage</span><span class="p">(</span><span class="n">GRAB_TIMEOUT_MS</span><span class="p">)</span>   <span class="c1"># 유한 timeout (§8)</span>
+        <span class="n">pImageRaw</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">GetNextImage</span><span class="p">(</span><span class="n">GRAB_TIMEOUT_MS</span><span class="p">)</span>   <span class="c1"># finite timeout (§8)</span>
     <span class="k">except</span> <span class="n">ps</span><span class="o">.</span><span class="n">SpinnakerException</span><span class="p">:</span>
-        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>                                    <span class="c1"># 프레임 없음</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>                                    <span class="c1"># no frame</span>
     <span class="o">...</span>
     <span class="k">return</span> <span class="n">frame</span><span class="p">,</span> <span class="n">frame_data</span>
 
 <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">syncMode</span><span class="p">,</span> <span class="n">frame_rate</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exposure_time</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">syncMode</span><span class="p">:</span>                       <span class="bp">self</span><span class="o">.</span><span class="n">_configureTrigger</span><span class="p">()</span>   <span class="c1"># 바뀐 것만 재적용</span>
+    <span class="k">if</span> <span class="n">syncMode</span><span class="p">:</span>                       <span class="bp">self</span><span class="o">.</span><span class="n">_configureTrigger</span><span class="p">()</span>   <span class="c1"># only re-apply what changed</span>
     <span class="k">if</span> <span class="n">gain</span>     <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="p">:</span>          <span class="bp">self</span><span class="o">.</span><span class="n">_configureGain</span><span class="p">()</span>
     <span class="k">if</span> <span class="n">exposure</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">exposure_time</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_configureExposure</span><span class="p">()</span>
     <span class="bp">self</span><span class="o">.</span><span class="n">cam</span><span class="o">.</span><span class="n">BeginAcquisition</span><span class="p">()</span>
@@ -585,73 +587,77 @@
 <h2>4. Command Flow<a class="headerlink" href="#command-flow" title="Link to this heading">¶</a></h2>
 <pre  class="mermaid">
         sequenceDiagram
-    participant M as 메인 PC (controller)
-    participant D as 캡처 PC (daemon)
-    M-&gt;&gt;D: register (락 획득)
+    participant M as Main PC (controller)
+    participant D as Capture PC (daemon)
+    M-&gt;&gt;D: register (acquire lock)
     M-&gt;&gt;D: start(mode, sync, save_path, fps, exposure, gain)
-    D-&gt;&gt;D: CameraLoader.start → 카메라별 acquisition
-    loop 약 0.1s 마다
+    D-&gt;&gt;D: CameraLoader.start → per-camera acquisition
+    loop every ~0.1 s
       M-&gt;&gt;D: heartbeat
-      D--&gt;&gt;M: ok / 카메라 에러
+      D--&gt;&gt;M: ok / camera errors
     end
     M-&gt;&gt;D: stop
-    M-&gt;&gt;D: end (락 반환)
+    M-&gt;&gt;D: end (release lock)
     </pre></section>
 <hr class="docutils" />
 <section id="data-path-acquisition-sinks">
 <h2>5. Data Path: Acquisition → Sinks<a class="headerlink" href="#data-path-acquisition-sinks" title="Link to this heading">¶</a></h2>
-<p>카메라당 캡처 스레드 1개가 프레임을 잡아, mode에 따라 sink로 분배한다. “프레임을 만든다”와
-“어디로 보낸다”는 별개 축인데, 현재는 mode 하나가 둘을 묶고 있다(재설계 대상).</p>
+<p>One capture thread per camera grabs frames and routes them to sinks by mode.
+“Producing a frame” and “where it goes” are separate axes, but today <code class="docutils literal notranslate"><span class="pre">mode</span></code> couples
+them (the redesign target).</p>
 <pre  class="mermaid">
         flowchart TD
     T[&quot;continuous_acquire()&quot;] --&gt; G[&quot;get_image()&quot;]
-    G --&gt;|프레임| SHM[&quot;SHM 더블버퍼 (stream/full)&quot;]
-    G --&gt;|프레임| VID[&quot;VideoWriter .avi (video/full)&quot;]
-    G -.-&gt;|없음 → (None,None)| T
-    SHM --&gt; R[&quot;MultiCameraReader → 소비자&quot;]
+    G --&gt;|frame| SHM[&quot;SHM double-buffer (stream/full)&quot;]
+    G --&gt;|frame| VID[&quot;VideoWriter .avi (video/full)&quot;]
+    G -.-&gt;|none → (None,None)| T
+    SHM --&gt; R[&quot;MultiCameraReader → consumers&quot;]
     </pre></section>
 <hr class="docutils" />
 <section id="hardware-sync">
 <h2>6. Hardware Sync<a class="headerlink" href="#hardware-sync" title="Link to this heading">¶</a></h2>
-<p>트리거 펄스마다 전 카메라의 <code class="docutils literal notranslate"><span class="pre">frame_id</span></code>가 동시에 증가하므로, 어느 순간이든 카메라들은 같은 id를
-가져야 한다. <code class="docutils literal notranslate"><span class="pre">sync_check.py</span></code>가 카메라 간 <code class="docutils literal notranslate"><span class="pre">frame_id</span></code> 스프레드(최대−최소)로 검증한다: 0~1이면 정상,
-지속적으로 벌어지면 프레임 드롭 또는 트리거 미수신.</p>
+<p>Each trigger pulse increments every camera’s <code class="docutils literal notranslate"><span class="pre">frame_id</span></code> at once, so at any instant
+the cameras should hold the same id. <code class="docutils literal notranslate"><span class="pre">sync_check.py</span></code> verifies this via the
+<code class="docutils literal notranslate"><span class="pre">frame_id</span></code> spread (max−min) across cameras: 0–1 is in sync; a persistent/growing
+spread means frame drops or a camera not receiving the trigger.</p>
 <pre  class="mermaid">
         flowchart LR
-    GEN[&quot;트리거 #N&quot;] --&gt; C1[&quot;cam A #N&quot;]
+    GEN[&quot;trigger #N&quot;] --&gt; C1[&quot;cam A #N&quot;]
     GEN --&gt; C2[&quot;cam B #N&quot;]
     GEN --&gt; C3[&quot;cam C #N&quot;]
-    C1 &amp; C2 &amp; C3 --&gt; CHK[&quot;spread = max-min&lt;br/&gt;0~1 = OK&quot;]
+    C1 &amp; C2 &amp; C3 --&gt; CHK[&quot;spread = max-min&lt;br/&gt;0-1 = OK&quot;]
     </pre></section>
 <hr class="docutils" />
 <section id="configuration-gain-exposure">
 <h2>7. Configuration — Gain / Exposure<a class="headerlink" href="#configuration-gain-exposure" title="Link to this heading">¶</a></h2>
-<p>카메라별 기본값은 <code class="docutils literal notranslate"><span class="pre">system/current/camera.json</span></code>에 있다. 값 결정은 항상 다음 순서다.</p>
+<p>Per-camera baselines live in <code class="docutils literal notranslate"><span class="pre">system/current/camera.json</span></code>. Resolution is always:</p>
 <pre  class="mermaid">
         flowchart LR
-    A[&quot;start(exposure=None, gain=None)&quot;] --&gt; B{&quot;명시 인자?&quot;}
-    B --&gt;|예| U[&quot;그 값&quot;]
-    B --&gt;|아니오| C[&quot;camera.json[serial]&quot;]
-    C --&gt;|없음| D[&quot;기본 2500us / 3dB&quot;]
-    </pre><p><code class="docutils literal notranslate"><span class="pre">None</span></code>은 “camera.json 값 사용”이므로, 노출 스윕 같은 일회성 override가 다음 캡처로 새지 않는다.
-화면을 보며 실시간 조정: <code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code>.</p>
+    A[&quot;start(exposure=None, gain=None)&quot;] --&gt; B{&quot;explicit arg?&quot;}
+    B --&gt;|yes| U[&quot;use it&quot;]
+    B --&gt;|no| C[&quot;camera.json[serial]&quot;]
+    C --&gt;|missing| D[&quot;default 2500us / 3dB&quot;]
+    </pre><p><code class="docutils literal notranslate"><span class="pre">None</span></code> means “use the camera.json value”, so a one-off override (e.g. an exposure
+sweep) never leaks into the next capture. Tune live with
+<code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code>.</p>
 </section>
 <hr class="docutils" />
 <section id="error-handling-recovery">
 <h2>8. Error Handling &amp; Recovery<a class="headerlink" href="#error-handling-recovery" title="Link to this heading">¶</a></h2>
-<p><strong>프레임 유실 hang (P4).</strong> 랜 드롭·트리거 정지로 프레임이 끊기면, 예전 <code class="docutils literal notranslate"><span class="pre">get_image()</span></code>는 무한
-대기했다. 캡처 스레드가 §3.4 루프에서 멈춰 <code class="docutils literal notranslate"><span class="pre">while</span></code> 조건을 재확인하지 못하고, <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code>이
-안 켜져 <code class="docutils literal notranslate"><span class="pre">stop()</span></code>이 영영 반환되지 않아 데몬 전체가 굳었다(→ <code class="docutils literal notranslate"><span class="pre">pkill</span></code> 후에도 재시작 불가).</p>
+<p><strong>Frame-loss hang (P4).</strong> On a LAN drop / stopped trigger, the old <code class="docutils literal notranslate"><span class="pre">get_image()</span></code>
+blocked forever. The capture thread stalled in the §3.4 loop, never re-checked the
+<code class="docutils literal notranslate"><span class="pre">while</span></code> condition, so <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code> was never set and <code class="docutils literal notranslate"><span class="pre">stop()</span></code> never returned —
+wedging the whole daemon (cameras couldn’t restart even after <code class="docutils literal notranslate"><span class="pre">pkill</span></code>).</p>
 <pre  class="mermaid">
         flowchart LR
-    subgraph Before[&quot;예전&quot;]
-      B1[&quot;GetNextImage() 무한 대기&quot;] --&gt; B2[&quot;stop() 영영 반환 안 됨 → 데몬 굳음&quot;]
+    subgraph Before[&quot;Before&quot;]
+      B1[&quot;GetNextImage() blocks forever&quot;] --&gt; B2[&quot;stop() never returns → daemon wedged&quot;]
     end
-    subgraph After[&quot;P4 수정&quot;]
-      A1[&quot;GetNextImage(1000ms) → (None,None)&quot;] --&gt; A2[&quot;루프 재확인 → stop()/end() 정상 반환&quot;]
+    subgraph After[&quot;After (P4)&quot;]
+      A1[&quot;GetNextImage(1000ms) → (None,None)&quot;] --&gt; A2[&quot;loop re-checks → stop()/end() return&quot;]
     end
-    </pre><p><strong>복구</strong>: 하드웨어 레벨로 굳었으면 메인 PC에서 <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">src/camera/reset_cameras.py</span></code>(데몬 <code class="docutils literal notranslate"><span class="pre">pkill</span> <span class="pre">-9</span></code>
-후 재기동). <strong>검증</strong>: §9.</p>
+    </pre><p><strong>Recovery</strong>: if wedged at the hardware level, run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">src/camera/reset_cameras.py</span></code>
+from the main PC (<code class="docutils literal notranslate"><span class="pre">pkill</span> <span class="pre">-9</span></code> + relaunch the daemons). <strong>Validation</strong>: §9.</p>
 </section>
 <hr class="docutils" />
 <section id="validation">
@@ -659,23 +665,23 @@
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>스크립트</p></th>
-<th class="head"><p>검증 대상</p></th>
-<th class="head"><p>하드웨어</p></th>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Verifies</p></th>
+<th class="head"><p>Hardware</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/hang_recovery.py</span></code></p></td>
-<td><p>프레임 유실 시 stop/end 무-hang (watchdog로 hang=FAIL)</p></td>
-<td><p>필요</p></td>
+<td><p>stop/end don’t hang on frame loss (watchdog flags a hang as FAIL)</p></td>
+<td><p>required</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/hang_recovery_mock.py</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">get_image</span></code> 유한 timeout + <code class="docutils literal notranslate"><span class="pre">(None,None)</span></code> 계약</p></td>
-<td><p>불필요</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get_image</span></code> uses a finite timeout and returns <code class="docutils literal notranslate"><span class="pre">(None,None)</span></code></p></td>
+<td><p>not required</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/sync_check.py</span></code></p></td>
-<td><p>카메라 간 <code class="docutils literal notranslate"><span class="pre">frame_id</span></code> 정렬</p></td>
-<td><p>필요</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">frame_id</span></code> alignment across cameras</p></td>
+<td><p>required</p></td>
 </tr>
 </tbody>
 </table>
@@ -687,30 +693,30 @@
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>대상</p></th>
-<th class="head"><p>파일</p></th>
+<tr class="row-odd"><th class="head"><p>Target</p></th>
+<th class="head"><p>File</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>메인 PC 제어</p></td>
+<tr class="row-even"><td><p>Main-PC control</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/remote_camera_controller.py</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>캡처 PC 데몬</p></td>
+<tr class="row-odd"><td><p>Capture-PC daemon</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera_server_daemon.py</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>묶음 제어·파라미터 해석</p></td>
+<tr class="row-even"><td><p>Group control / parameter resolution</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera_loader.py</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>캡처 스레드·sink</p></td>
+<tr class="row-odd"><td><p>Capture thread / sinks</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera.py</span></code> (<code class="docutils literal notranslate"><span class="pre">continuous_acquire</span></code>)</p></td>
 </tr>
-<tr class="row-even"><td><p>PySpin 드라이버</p></td>
+<tr class="row-even"><td><p>PySpin driver</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/pyspin.py</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>실시간 튜너</p></td>
+<tr class="row-odd"><td><p>Live tuner</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>굳은 카메라 복구</p></td>
+<tr class="row-even"><td><p>Recover wedged cameras</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">src/camera/reset_cameras.py</span></code></p></td>
 </tr>
 </tbody>
@@ -778,11 +784,11 @@
 <li><a class="reference internal" href="#overview">1. Overview</a></li>
 <li><a class="reference internal" href="#core-concepts">2. Core Concepts</a></li>
 <li><a class="reference internal" href="#components">3. Components</a><ul>
-<li><a class="reference internal" href="#remote-camera-controller-pc">3.1 <code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> (메인 PC)</a></li>
-<li><a class="reference internal" href="#camera-server-daemon-pc">3.2 <code class="docutils literal notranslate"><span class="pre">camera_server_daemon</span></code> (캡처 PC)</a></li>
-<li><a class="reference internal" href="#cameraloader-pc">3.3 <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> (캡처 PC)</a></li>
-<li><a class="reference internal" href="#camera-pc">3.4 <code class="docutils literal notranslate"><span class="pre">Camera</span></code> (캡처 PC) — 상태 머신</a></li>
-<li><a class="reference internal" href="#pyspincamera-pc">3.5 <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> (캡처 PC) — 드라이버</a></li>
+<li><a class="reference internal" href="#remote-camera-controller-main-pc">3.1 <code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> (main PC)</a></li>
+<li><a class="reference internal" href="#camera-server-daemon-capture-pc">3.2 <code class="docutils literal notranslate"><span class="pre">camera_server_daemon</span></code> (capture PC)</a></li>
+<li><a class="reference internal" href="#cameraloader-capture-pc">3.3 <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> (capture PC)</a></li>
+<li><a class="reference internal" href="#camera-capture-pc-state-machine">3.4 <code class="docutils literal notranslate"><span class="pre">Camera</span></code> (capture PC) — state machine</a></li>
+<li><a class="reference internal" href="#pyspincamera-capture-pc-driver">3.5 <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> (capture PC) — driver</a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#command-flow">4. Command Flow</a></li>

@@ -27,19 +27,29 @@ class CameraLoader:
     def load_pyspin_camera(self, serial_list=None):
         from paradex.io.camera_system.pyspin import get_serial_list, autoforce_ip
         
+        expected = len(get_camera_list())
         autoforce_ip()
-        
+
         if serial_list is None:
             serial_list = get_serial_list()
-        
-        if len(serial_list) != len(get_camera_list()):
-            print(f"[Warning] Configured camera count ({len(get_camera_list())}) does not match detected camera count ({len(serial_list)}). Using detected cameras.")
+
+        # After a power cycle GigE cameras boot slowly and come up on the wrong IP.
+        # autoforce_ip() only forces cameras that are already enumerated, so cameras
+        # that were not ready at the first call would never be forced. Re-run
+        # autoforce_ip() on every retry until the expected count appears.
+        if len(serial_list) != expected:
+            print(f"[Warning] Configured camera count ({expected}) does not match "
+                  f"detected camera count ({len(serial_list)}). Retrying (re-forcing IP)...")
             for _ in range(RETRY_COUNT):
                 time.sleep(RETRY_DELAY)
+                autoforce_ip()
                 serial_list = get_serial_list()
-                if len(serial_list) == len(get_camera_list()):
+                if len(serial_list) == expected:
                     print("[Info] Camera count matched after retry.")
                     break
+            else:
+                print(f"[Warning] Still {len(serial_list)}/{expected} cameras after "
+                      f"{RETRY_COUNT} retries; proceeding with detected cameras.")
                 
         self.cameralist = [Camera("pyspin", serial) for serial in serial_list]
         self.camera_names = self.camera_names + serial_list

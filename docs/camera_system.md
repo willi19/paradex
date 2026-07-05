@@ -19,21 +19,16 @@ one shared **hardware trigger (UTGE900)** for synchronized capture.
 The stack has five layers; commands flow top to bottom.
 
 ```{mermaid}
-flowchart LR
+flowchart TB
     subgraph Main["Main PC"]
-      ORCH["capture / inference"]
-      RCC["remote_camera_controller"]
-      ORCH --> RCC
+      ORCH["capture / inference"] --> RCC["remote_camera_controller"]
     end
     subgraph Cap["Capture PC (×6)"]
-      D["server_daemon"]
-      CL["CameraLoader"]
-      CAM["Camera × k → PyspinCamera"]
-      D --> CL --> CAM
+      D["server_daemon"] --> CL["CameraLoader"] --> CAM["Camera × k<br/>→ PyspinCamera"]
     end
-    GEN["UTGE900"]
-    RCC -- "ZMQ: register/start/stop/heartbeat" --> D
-    GEN -. "hardware trigger" .-> CAM
+    GEN["UTGE900<br/>trigger"]
+    RCC -- "ZMQ<br/>register / start /<br/>stop / heartbeat" --> D
+    GEN -. "hardware<br/>trigger" .-> CAM
 ```
 
 | Layer | Component | Location | Responsibility |
@@ -254,12 +249,12 @@ blocked forever. The capture thread stalled in the §3.4 loop, never re-checked 
 wedging the whole daemon (cameras couldn't restart even after `pkill`).
 
 ```{mermaid}
-flowchart LR
+flowchart TB
     subgraph Before["Before"]
-      B1["GetNextImage() blocks forever"] --> B2["stop() never returns → daemon wedged"]
+      B1["GetNextImage()<br/>blocks forever"] --> B2["stop() never returns<br/>→ daemon wedged"]
     end
     subgraph After["After (P4)"]
-      A1["GetNextImage(1000ms) → (None,None)"] --> A2["loop re-checks → stop()/end() return"]
+      A1["GetNextImage(1000ms)<br/>→ (None,None)"] --> A2["loop re-checks<br/>→ stop()/end() return"]
     end
 ```
 

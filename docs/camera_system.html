@@ -378,21 +378,16 @@ directly — it sends commands to a daemon on each capture PC. Every camera fire
 one shared <strong>hardware trigger (UTGE900)</strong> for synchronized capture.</p>
 <p>The stack has five layers; commands flow top to bottom.</p>
 <pre  class="mermaid">
-        flowchart LR
+        flowchart TB
     subgraph Main[&quot;Main PC&quot;]
-      ORCH[&quot;capture / inference&quot;]
-      RCC[&quot;remote_camera_controller&quot;]
-      ORCH --&gt; RCC
+      ORCH[&quot;capture / inference&quot;] --&gt; RCC[&quot;remote_camera_controller&quot;]
     end
     subgraph Cap[&quot;Capture PC (×6)&quot;]
-      D[&quot;server_daemon&quot;]
-      CL[&quot;CameraLoader&quot;]
-      CAM[&quot;Camera × k → PyspinCamera&quot;]
-      D --&gt; CL --&gt; CAM
+      D[&quot;server_daemon&quot;] --&gt; CL[&quot;CameraLoader&quot;] --&gt; CAM[&quot;Camera × k&lt;br/&gt;→ PyspinCamera&quot;]
     end
-    GEN[&quot;UTGE900&quot;]
-    RCC -- &quot;ZMQ: register/start/stop/heartbeat&quot; --&gt; D
-    GEN -. &quot;hardware trigger&quot; .-&gt; CAM
+    GEN[&quot;UTGE900&lt;br/&gt;trigger&quot;]
+    RCC -- &quot;ZMQ&lt;br/&gt;register / start /&lt;br/&gt;stop / heartbeat&quot; --&gt; D
+    GEN -. &quot;hardware&lt;br/&gt;trigger&quot; .-&gt; CAM
     </pre><div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
@@ -649,12 +644,12 @@ blocked forever. The capture thread stalled in the §3.4 loop, never re-checked 
 <code class="docutils literal notranslate"><span class="pre">while</span></code> condition, so <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code> was never set and <code class="docutils literal notranslate"><span class="pre">stop()</span></code> never returned —
 wedging the whole daemon (cameras couldn’t restart even after <code class="docutils literal notranslate"><span class="pre">pkill</span></code>).</p>
 <pre  class="mermaid">
-        flowchart LR
+        flowchart TB
     subgraph Before[&quot;Before&quot;]
-      B1[&quot;GetNextImage() blocks forever&quot;] --&gt; B2[&quot;stop() never returns → daemon wedged&quot;]
+      B1[&quot;GetNextImage()&lt;br/&gt;blocks forever&quot;] --&gt; B2[&quot;stop() never returns&lt;br/&gt;→ daemon wedged&quot;]
     end
     subgraph After[&quot;After (P4)&quot;]
-      A1[&quot;GetNextImage(1000ms) → (None,None)&quot;] --&gt; A2[&quot;loop re-checks → stop()/end() return&quot;]
+      A1[&quot;GetNextImage(1000ms)&lt;br/&gt;→ (None,None)&quot;] --&gt; A2[&quot;loop re-checks&lt;br/&gt;→ stop()/end() return&quot;]
     end
     </pre><p><strong>Recovery</strong>: if wedged at the hardware level, run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">src/camera/reset_cameras.py</span></code>
 from the main PC (<code class="docutils literal notranslate"><span class="pre">pkill</span> <span class="pre">-9</span></code> + relaunch the daemons). <strong>Validation</strong>: §9.</p>

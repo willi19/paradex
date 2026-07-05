@@ -392,17 +392,64 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.get_serial_list">
 <span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">get_serial_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.get_serial_list" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Enumerate the serial numbers of all cameras visible to the system.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Serial number of every camera currently detected by the Spinnaker
+system instance.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list of str</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.load_camera">
 <span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">load_camera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">serialnum</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.load_camera" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Open a camera by serial number and wrap it in a <a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera" title="paradex.io.camera_system.pyspin.PyspinCamera"><code class="xref py py-class docutils literal notranslate"><span class="pre">PyspinCamera</span></code></a>.</p>
+<p>Gain and exposure are taken from the camera config (<code class="docutils literal notranslate"><span class="pre">cam_info</span></code>) when the
+serial is present there, otherwise fixed defaults (gain 3.0, exposure
+2500.0) are used.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>serialnum</strong> (<em>str</em>) – Serial number of the camera to open.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Initialized and configured camera wrapper.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera" title="paradex.io.camera_system.pyspin.PyspinCamera">PyspinCamera</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If no camera with the given serial number is found.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.load_timestamp_monitor">
 <span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">load_timestamp_monitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">serialnum</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.load_timestamp_monitor" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Open a camera by serial number as a <a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor" title="paradex.io.camera_system.pyspin.PyspinTimestampMonitor"><code class="xref py py-class docutils literal notranslate"><span class="pre">PyspinTimestampMonitor</span></code></a>.</p>
+<p>Like <a class="reference internal" href="#paradex.io.camera_system.pyspin.load_camera" title="paradex.io.camera_system.pyspin.load_camera"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_camera()</span></code></a> but returns a lightweight monitor that only reads
+frame timestamps/IDs (used for sync diagnostics). Gain and exposure come
+from the camera config when available, otherwise defaults (gain 3.0,
+exposure 2500.0).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>serialnum</strong> (<em>str</em>) – Serial number of the camera to open.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Initialized timestamp monitor for the camera.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor" title="paradex.io.camera_system.pyspin.PyspinTimestampMonitor">PyspinTimestampMonitor</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If no camera with the given serial number is found.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCameraConfig">
@@ -447,7 +494,23 @@ when configuration of camera parameters fails.</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">PyspinCamera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camPtr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
+<dd><p>Thin wrapper around a single FLIR (Spinnaker) camera.</p>
+<p>Owns an initialized PySpin camera pointer and exposes a small, hardware-
+agnostic API (<a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.start" title="paradex.io.camera_system.pyspin.PyspinCamera.start"><code class="xref py py-meth docutils literal notranslate"><span class="pre">start()</span></code></a>, <a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.get_image" title="paradex.io.camera_system.pyspin.PyspinCamera.get_image"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_image()</span></code></a>, <a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.stop" title="paradex.io.camera_system.pyspin.PyspinCamera.stop"><code class="xref py py-meth docutils literal notranslate"><span class="pre">stop()</span></code></a>,
+<a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.release" title="paradex.io.camera_system.pyspin.PyspinCamera.release"><code class="xref py py-meth docutils literal notranslate"><span class="pre">release()</span></code></a>) used by the higher-level <a class="reference internal" href="../camera/index.html#paradex.io.camera_system.camera.Camera" title="paradex.io.camera_system.camera.Camera"><code class="xref py py-class docutils literal notranslate"><span class="pre">Camera</span></code></a>
+capture thread. Construction initializes the camera and applies the baseline
+configuration (gain, exposure, packet size, chunk data, buffers, pixel
+format) via <code class="xref py py-meth docutils literal notranslate"><span class="pre">_init_configure()</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>camPtr</strong> (<em>PySpin.CameraPtr</em>) – Pointer to the Spinnaker camera to wrap (not yet <code class="docutils literal notranslate"><span class="pre">Init</span></code>-ed).</p></li>
+<li><p><strong>gain</strong> (<em>float</em>) – Camera gain in dB.</p></li>
+<li><p><strong>exposure_time</strong> (<em>float</em>) – Exposure time in microseconds.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera.mode">
 <span class="sig-name descname"><span class="pre">mode</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera.mode" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -500,14 +563,22 @@ when configuration of camera parameters fails.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera.get_image">
 <span class="sig-name descname"><span class="pre">get_image</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera.get_image" title="Link to this definition">¶</a></dt>
-<dd><p>Get next image from camera.</p>
-<p>Waits up to GRAB_TIMEOUT_MS for a frame. On timeout (no frame arrived —
-LAN drop, trigger stopped, etc.) GetNextImage raises a SpinnakerException;
-we catch it and return (None, None) so the acquisition loop can re-check
-its start/exit events instead of hanging forever.</p>
+<dd><p>Grab the next frame from the camera.</p>
+<p>Waits up to <code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span></code> for a frame. On timeout (no frame
+arrived — LAN drop, trigger stopped, etc.) <code class="docutils literal notranslate"><span class="pre">GetNextImage</span></code> raises a
+<code class="docutils literal notranslate"><span class="pre">SpinnakerException</span></code> which is caught and reported as <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code>
+so the acquisition loop can re-check its start/exit events instead of
+hanging forever. An incomplete or zero-size frame yields
+<code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">frame_data)</span></code>.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Returns<span class="colon">:</span></dt>
-<dd class="field-odd"><p>(frame ndarray or None, frame_data dict or None)</p>
+<dd class="field-odd"><p><ul class="simple">
+<li><p><strong>frame</strong> (<em>numpy.ndarray or None</em>) – Debayered BGR image of shape <code class="docutils literal notranslate"><span class="pre">(H,</span> <span class="pre">W,</span> <span class="pre">3)</span></code>, or <code class="docutils literal notranslate"><span class="pre">None</span></code> on grab
+timeout or an incomplete/zero-size frame.</p></li>
+<li><p><strong>frame_data</strong> (<em>dict or None</em>) – <code class="docutils literal notranslate"><span class="pre">{&quot;pc_time&quot;:</span> <span class="pre">float,</span> <span class="pre">&quot;frameID&quot;:</span> <span class="pre">int}</span></code> metadata for the frame, or
+<code class="docutils literal notranslate"><span class="pre">None</span></code> on grab timeout.</p></li>
+</ul>
+</p>
 </dd>
 </dl>
 </dd></dl>
@@ -515,20 +586,44 @@ its start/exit events instead of hanging forever.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera.start">
 <span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncMode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera.start" title="Link to this definition">¶</a></dt>
-<dd><p>Start image acquisition.</p>
+<dd><p>Configure the camera for the requested mode and begin acquisition.</p>
+<p>Reads the current camera state, applies only the settings that changed
+(throughput, trigger vs. free-run frame rate, gain, exposure,
+acquisition mode), then calls <code class="docutils literal notranslate"><span class="pre">BeginAcquisition</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mode</strong> (<em>{'single'</em><em>, </em><em>'continuous'}</em>) – <code class="docutils literal notranslate"><span class="pre">'single'</span></code> for one-shot image capture, <code class="docutils literal notranslate"><span class="pre">'continuous'</span></code> for
+video/stream capture.</p></li>
+<li><p><strong>syncMode</strong> (<em>bool</em>) – Use the hardware trigger if <code class="docutils literal notranslate"><span class="pre">True</span></code>; free-run otherwise.</p></li>
+<li><p><strong>frame_rate</strong> (<em>float</em><em>, </em><em>optional</em>) – Free-run frame rate in Hz; only applied when <code class="docutils literal notranslate"><span class="pre">syncMode</span></code> is
+<code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></li>
+<li><p><strong>gain</strong> (<em>float</em><em>, </em><em>optional</em>) – Gain override in dB; <code class="docutils literal notranslate"><span class="pre">None</span></code> keeps the current value.</p></li>
+<li><p><strong>exposure_time</strong> (<em>float</em><em>, </em><em>optional</em>) – Exposure override in microseconds; <code class="docutils literal notranslate"><span class="pre">None</span></code> keeps the current value.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>AssertionError</strong> – If <code class="docutils literal notranslate"><span class="pre">mode</span></code> is not <code class="docutils literal notranslate"><span class="pre">'single'</span></code> or <code class="docutils literal notranslate"><span class="pre">'continuous'</span></code>.</p>
+</dd>
+</dl>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera.stop">
 <span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera.stop" title="Link to this definition">¶</a></dt>
-<dd><p>Stop image acquisition. Camera connection remains active.</p>
-<p>Note: Only stops acquiring images. Use release() to disconnect camera.</p>
+<dd><p>Stop acquisition and drain the buffer; keep the connection open.</p>
+<p>Aborts streaming (to avoid <code class="docutils literal notranslate"><span class="pre">EndAcquisition</span></code> hanging on a lost
+trigger), ends acquisition, then flushes any images left in the buffer.
+Only stops acquiring — use <a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.release" title="paradex.io.camera_system.pyspin.PyspinCamera.release"><code class="xref py py-meth docutils literal notranslate"><span class="pre">release()</span></code></a> to disconnect the camera.</p>
 </dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera.release">
 <span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera.release" title="Link to this definition">¶</a></dt>
-<dd><p>Release camera resources. Call stop() first. Cannot reuse after.</p>
+<dd><p>Deinitialize the camera and drop the pointer.</p>
+<p>Disconnects the hardware camera (<code class="docutils literal notranslate"><span class="pre">DeInit</span></code>) and deletes the internal
+reference. Call <a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.stop" title="paradex.io.camera_system.pyspin.PyspinCamera.stop"><code class="xref py py-meth docutils literal notranslate"><span class="pre">stop()</span></code></a> first; the wrapper cannot be reused
+afterward.</p>
 </dd></dl>
 
 </dd></dl>
@@ -616,7 +711,14 @@ its start/exit events instead of hanging forever.</p>
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.autoforce_ip">
 <span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">autoforce_ip</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.autoforce_ip" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Force GigE cameras onto the rig subnet if their IP is off it.</p>
+<p>Iterates over every Spinnaker interface that has exactly one camera
+attached, reads the camera’s current <code class="docutils literal notranslate"><span class="pre">GevDeviceIPAddress</span></code>, and if the
+dotted-quad does not start with <code class="docutils literal notranslate"><span class="pre">&quot;11&quot;</span></code> (the rig subnet), executes
+<code class="docutils literal notranslate"><span class="pre">GevDeviceAutoForceIP</span></code> to reassign the camera a valid address on that
+subnet. Interfaces with zero or multiple cameras are skipped. Releases the
+Spinnaker system instance before returning.</p>
+</dd></dl>
 
 </section>
 </section>

@@ -372,42 +372,73 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
 <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
 
+
 <div class="viewcode-block" id="Camera">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">Camera</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;One FLIR camera plus its dedicated capture thread.</span>
+
+<span class="sd">    A ``Camera`` owns a single hardware camera (via :class:`PyspinCamera`) and a</span>
+<span class="sd">    background **capture thread** (:meth:`run`). The thread and the calling thread</span>
+<span class="sd">    coordinate through a set of :class:`threading.Event` objects (``start``,</span>
+<span class="sd">    ``stop``, ``exit``, ``acquisition`` ...) — a handshake, not plain flags.</span>
+
+<span class="sd">    Frames are routed to *sinks* depending on ``mode``:</span>
+
+<span class="sd">    - ``stream`` / ``full`` → a double-buffered shared-memory block read by</span>
+<span class="sd">      :class:`MultiCameraReader`.</span>
+<span class="sd">    - ``video`` / ``full`` → an ``.avi`` file on disk.</span>
+<span class="sd">    - ``image`` → a single still.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    cam_type : str</span>
+<span class="sd">        Backend, currently only ``&quot;pyspin&quot;``.</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Camera serial number (used as the SHM key and file stem).</span>
+<span class="sd">    frame_shape : tuple of int, optional</span>
+<span class="sd">        ``(height, width, channels)`` of a frame, by default ``(1536, 2048, 3)``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cam_type</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">frame_shape</span><span class="o">=</span><span class="p">(</span><span class="mi">1536</span><span class="p">,</span> <span class="mi">2048</span><span class="p">,</span> <span class="mi">3</span><span class="p">)):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span> <span class="o">=</span> <span class="p">{</span>
             <span class="s2">&quot;start&quot;</span><span class="p">:</span> <span class="n">Event</span><span class="p">(),</span>
             <span class="s2">&quot;exit&quot;</span><span class="p">:</span> <span class="n">Event</span><span class="p">(),</span>
             <span class="s2">&quot;error&quot;</span><span class="p">:</span> <span class="n">Event</span><span class="p">(),</span>
             <span class="s2">&quot;error_reset&quot;</span><span class="p">:</span> <span class="n">Event</span><span class="p">(),</span>
-            
+
             <span class="s2">&quot;connection&quot;</span><span class="p">:</span> <span class="n">Event</span><span class="p">(),</span>
             <span class="s2">&quot;acquisition&quot;</span><span class="p">:</span> <span class="n">Event</span><span class="p">(),</span>
             <span class="s2">&quot;release&quot;</span><span class="p">:</span> <span class="n">Event</span><span class="p">(),</span>
             <span class="s2">&quot;stop&quot;</span><span class="p">:</span> <span class="n">Event</span><span class="p">()</span>
         <span class="p">}</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">=</span> <span class="n">cam_type</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">frame_shape</span> <span class="o">=</span> <span class="n">frame_shape</span>  
-        
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">frame_shape</span> <span class="o">=</span> <span class="n">frame_shape</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">last_frame_id</span> <span class="o">=</span> <span class="mi">0</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">last_error</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span> <span class="o">=</span> <span class="kc">None</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">load_shared_memory</span><span class="p">()</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> shared memory loaded.&quot;</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">capture_thread</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">)</span> 
-        <span class="bp">self</span><span class="o">.</span><span class="n">capture_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>  
-        
+        <span class="bp">self</span><span class="o">.</span><span class="n">capture_thread</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">capture_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;connection&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
-    
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_cleanup_existing_shm</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Unlink any leftover shared-memory blocks for this serial.</span>
+
+<span class="sd">        A process that was ``SIGKILL``-ed cannot free its SHM, so the segments</span>
+<span class="sd">        leak. This is called before allocating fresh ones so a restart cleans up</span>
+<span class="sd">        after a previous crash.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">shm_names</span> <span class="o">=</span> <span class="p">[</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_image_a&quot;</span><span class="p">,</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_image_b&quot;</span><span class="p">,</span>
@@ -423,44 +454,50 @@
                 <span class="n">shm</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
             <span class="k">except</span> <span class="ne">FileNotFoundError</span><span class="p">:</span>
                 <span class="k">pass</span>  <span class="c1"># 없으면 패스</span>
-    
+
 <div class="viewcode-block" id="Camera.load_shared_memory">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.load_shared_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">load_shared_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Allocate the double-buffered shared memory for streaming.</span>
+
+<span class="sd">        Creates two image buffers (``_image_a`` / ``_image_b``), a frame-id per</span>
+<span class="sd">        buffer, and a ``_flag`` selecting the buffer being written. Readers use</span>
+<span class="sd">        the flag to pick the stable buffer. Called once from ``__init__``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">frame_size</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame_shape</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_cleanup_existing_shm</span><span class="p">()</span>
         <span class="c1"># Buffer 2개</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image_shm_a</span> <span class="o">=</span> <span class="n">shared_memory</span><span class="o">.</span><span class="n">SharedMemory</span><span class="p">(</span>
-            <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
-            <span class="n">size</span><span class="o">=</span><span class="n">frame_size</span><span class="p">,</span> 
+            <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="n">frame_size</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_image_a&quot;</span>
         <span class="p">)</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">image_shm_b</span> <span class="o">=</span> <span class="n">shared_memory</span><span class="o">.</span><span class="n">SharedMemory</span><span class="p">(</span>
-            <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
-            <span class="n">size</span><span class="o">=</span><span class="n">frame_size</span><span class="p">,</span> 
+            <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="n">frame_size</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_image_b&quot;</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># Frame ID 2개</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fid_shm_a</span> <span class="o">=</span> <span class="n">shared_memory</span><span class="o">.</span><span class="n">SharedMemory</span><span class="p">(</span>
-            <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
-            <span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> 
+            <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_fid_a&quot;</span>
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fid_shm_b</span> <span class="o">=</span> <span class="n">shared_memory</span><span class="o">.</span><span class="n">SharedMemory</span><span class="p">(</span>
-            <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
-            <span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> 
+            <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_fid_b&quot;</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># Write buffer flag (0 or 1)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">write_flag_shm</span> <span class="o">=</span> <span class="n">shared_memory</span><span class="o">.</span><span class="n">SharedMemory</span><span class="p">(</span>
-            <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> 
-            <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> 
+            <span class="n">create</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="n">size</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
             <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">+</span> <span class="s2">&quot;_flag&quot;</span>
         <span class="p">)</span>
-        
+
         <span class="c1"># Arrays</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image_array_a</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">(</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">frame_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">,</span> <span class="n">buffer</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">image_shm_a</span><span class="o">.</span><span class="n">buf</span>
@@ -479,10 +516,11 @@
         <span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">write_flag</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span></div>
 
-    
+
 <div class="viewcode-block" id="Camera.release_shared_memory">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.release_shared_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">release_shared_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Close and unlink every shared-memory block (frees the OS segments).&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image_array_a</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image_array_b</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fid_array_a</span> <span class="o">=</span> <span class="kc">None</span>
@@ -491,101 +529,131 @@
 
         <span class="bp">self</span><span class="o">.</span><span class="n">image_shm_a</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image_shm_a</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">image_shm_b</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image_shm_b</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">fid_shm_a</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fid_shm_a</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">fid_shm_b</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fid_shm_b</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">write_flag_shm</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">write_flag_shm</span><span class="o">.</span><span class="n">unlink</span><span class="p">()</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> shared memory released.&quot;</span><span class="p">)</span></div>
 
-        
+
 <div class="viewcode-block" id="Camera.clear_shared_memory">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.clear_shared_memory">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">clear_shared_memory</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Zero the frame ids, write flag, and both image buffers.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fid_array_a</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fid_array_b</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">write_flag</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">image_array_a</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">image_array_b</span><span class="o">.</span><span class="n">fill</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span></div>
 
-        
+
 <div class="viewcode-block" id="Camera.start">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.start">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">syncMode</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">exposure_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Begin capture; blocks until the camera is actually acquiring.</span>
+
+<span class="sd">        Validates the arguments (sets the error state on a bad combination),</span>
+<span class="sd">        stores the parameters, resolves ``save_path`` to a per-camera file, then</span>
+<span class="sd">        signals the capture thread via ``event[&quot;start&quot;]`` and waits on</span>
+<span class="sd">        ``event[&quot;acquisition&quot;]`` (the handshake).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        mode : str</span>
+<span class="sd">            ``image`` / ``video`` / ``stream`` / ``full``.</span>
+<span class="sd">        syncMode : bool</span>
+<span class="sd">            Wait on the hardware trigger if ``True``.</span>
+<span class="sd">        save_path : str, optional</span>
+<span class="sd">            Output dir/file for ``video``/``image`` (required for those modes).</span>
+<span class="sd">        fps : int, optional</span>
+<span class="sd">            Frame rate for free-run, by default 30.</span>
+<span class="sd">        exposure_time, gain : float, optional</span>
+<span class="sd">            Overrides; ``None`` keeps the camera.json baseline.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="n">fps</span> <span class="o">&lt;</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;video&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">syncMode</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            
+
             <span class="bp">self</span><span class="o">.</span><span class="n">last_error</span> <span class="o">=</span> <span class="s2">&quot;FPS must be non-negative for video or full mode when syncMode is False.&quot;</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-        
+
         <span class="k">if</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;video&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="s2">&quot;image&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">save_path</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            
+
             <span class="bp">self</span><span class="o">.</span><span class="n">last_error</span> <span class="o">=</span> <span class="s2">&quot;Save path must be specified for video or image saving.&quot;</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
-            
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            
+
             <span class="bp">self</span><span class="o">.</span><span class="n">last_error</span> <span class="o">=</span> <span class="s2">&quot;Acquisition is already running.&quot;</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[WARNING] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> acquisition is already running.&quot;</span><span class="p">)</span>
-            
+
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[WARNING] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> is in ERROR state. Resetting error state.&quot;</span><span class="p">)</span>
             <span class="k">return</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">syncMode</span> <span class="o">=</span> <span class="n">syncMode</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">fps</span> <span class="o">=</span> <span class="n">fps</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">exposure_time</span> <span class="o">=</span> <span class="n">exposure_time</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">gain</span> <span class="o">=</span> <span class="n">gain</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_frame_id</span> <span class="o">=</span> <span class="mi">0</span>
-        
+
         <span class="k">if</span> <span class="n">save_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
             <span class="n">_</span><span class="p">,</span> <span class="n">ext</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">splitext</span><span class="p">(</span><span class="n">save_path</span><span class="p">)</span>
-            <span class="k">if</span> <span class="ow">not</span> <span class="n">ext</span><span class="p">:</span> 
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">ext</span><span class="p">:</span>
                 <span class="n">default_ext</span> <span class="o">=</span> <span class="s2">&quot;.avi&quot;</span> <span class="k">if</span> <span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;video&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">]</span> <span class="k">else</span> <span class="s2">&quot;.png&quot;</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">save_path</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">save_path</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}{</span><span class="n">default_ext</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            <span class="k">else</span><span class="p">:</span>  
+            <span class="k">else</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">save_path</span> <span class="o">=</span> <span class="n">save_path</span>
-            
+
             <span class="n">save_dir</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_path</span><span class="p">)</span>
             <span class="k">if</span> <span class="n">save_dir</span><span class="p">:</span>
                 <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span><span class="n">save_dir</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
-                
+
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;stop&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>  
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> will start.&quot;</span><span class="p">)</span>  
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;acquisition&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>   
+        <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> will start.&quot;</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;acquisition&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> acquisition started.&quot;</span><span class="p">)</span></div>
 
-    
+
 <div class="viewcode-block" id="Camera.error_reset">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.error_reset">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">error_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clear the error state and release anyone waiting on ``error_reset``.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_error</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span> <span class="o">=</span> <span class="kc">None</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span></div>
 
-        
+
 <div class="viewcode-block" id="Camera.get_error">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.get_error">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the current error state.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tuple</span>
+<span class="sd">            ``(has_error, (message, traceback))``; ``(False, (None, None))`` when</span>
+<span class="sd">            there is no error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
             <span class="k">return</span> <span class="kc">True</span><span class="p">,</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_error</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">False</span><span class="p">,</span> <span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div>
@@ -594,6 +662,18 @@
 <div class="viewcode-block" id="Camera.stop">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.stop">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop the current capture.</span>
+
+<span class="sd">        Clears ``event[&quot;start&quot;]`` (so the acquire loop exits on its next</span>
+<span class="sd">        iteration) and waits up to ``timeout`` for ``event[&quot;stop&quot;]``. If the wait</span>
+<span class="sd">        times out (a wedged acquire thread) it logs and returns instead of</span>
+<span class="sd">        blocking forever.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        timeout : float, optional</span>
+<span class="sd">            Max seconds to wait for the thread to acknowledge, by default 5.0.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
@@ -609,6 +689,15 @@
 <div class="viewcode-block" id="Camera.end">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.end">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">end</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">timeout</span><span class="o">=</span><span class="mf">5.0</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop, then release the camera (DeInit + free SHM) and join the thread.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        timeout : float, optional</span>
+<span class="sd">            Per-step wait bound (stop + thread join), by default 5.0. If the</span>
+<span class="sd">            thread is still alive after the join it logs and returns rather than</span>
+<span class="sd">            blocking the daemon.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="n">timeout</span><span class="p">)</span>
 
@@ -620,30 +709,38 @@
             <span class="k">return</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> has been successfully ended.&quot;</span><span class="p">)</span></div>
 
-    
+
 <div class="viewcode-block" id="Camera.continuous_acquire">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.continuous_acquire">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">continuous_acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Capture loop for ``video`` / ``stream`` / ``full`` modes.</span>
+
+<span class="sd">        Arms the PySpin camera (``BeginAcquisition``), signals ``acquisition``,</span>
+<span class="sd">        then loops grabbing frames until ``start`` clears or ``exit`` sets. Each</span>
+<span class="sd">        frame is written to the video sink (with blank frames inserted for drops)</span>
+<span class="sd">        and/or the SHM double buffer. On any exception it records the error and</span>
+<span class="sd">        waits for ``error_reset``. Runs on the capture thread only.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">save_video</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;video&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">]</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">save_path</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">)</span>
         <span class="n">stream</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;stream&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">])</span>
         <span class="n">blank_frame</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame_shape</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">)</span>
         <span class="n">blank_frame</span><span class="p">[::</span><span class="mi">2</span><span class="p">,</span> <span class="p">::</span><span class="mi">2</span><span class="p">]</span> <span class="o">=</span> <span class="mi">255</span>  <span class="c1"># checkerboard pattern for dropped frames</span>
-        
+
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> starting continuous acquisition.&quot;</span><span class="p">)</span>
         <span class="k">if</span> <span class="n">save_video</span><span class="p">:</span>
             <span class="n">fourcc</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoWriter_fourcc</span><span class="p">(</span><span class="o">*</span><span class="s1">&#39;MJPG&#39;</span><span class="p">)</span>
-            <span class="n">video_writer</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoWriter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_path</span><span class="p">,</span> <span class="n">fourcc</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span> <span class="n">frameSize</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>        
-        
+            <span class="n">video_writer</span> <span class="o">=</span> <span class="n">cv2</span><span class="o">.</span><span class="n">VideoWriter</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">save_path</span><span class="p">,</span> <span class="n">fourcc</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span> <span class="n">frameSize</span><span class="o">=</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">frame_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">frame_shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]))</span>
+
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s2">&quot;continuous&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syncMode</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">fps</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="p">,</span> <span class="n">exposure_time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">exposure_time</span><span class="p">)</span>
-        
+
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span> 
-               
+            <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
             <span class="bp">self</span><span class="o">.</span><span class="n">last_error</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span>
-            
+
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[ERROR] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> exception occurred:&quot;</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Exception Type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Exception Message: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
@@ -652,36 +749,36 @@
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;acquisition&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>  <span class="c1"># To avoid deadlock</span>
 
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
-            
+
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;acquisition&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;stop&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
-            
+
             <span class="k">if</span> <span class="n">save_video</span><span class="p">:</span>
                 <span class="n">video_writer</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">clear_shared_memory</span><span class="p">()</span>
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> acquisition aborted due to error during start.&quot;</span><span class="p">)</span>
-            <span class="k">return</span> 
-            
-                
+            <span class="k">return</span>
+
+
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;acquisition&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
-                
+
         <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;exit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">frame</span><span class="p">,</span> <span class="n">frame_data</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">get_image</span><span class="p">()</span>
                 <span class="k">if</span> <span class="n">frame</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
                     <span class="k">continue</span>
-                
+
                 <span class="n">current_frame_id</span> <span class="o">=</span> <span class="n">frame_data</span><span class="p">[</span><span class="s2">&quot;frameID&quot;</span><span class="p">]</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_frame_id</span> <span class="o">&gt;</span> <span class="n">current_frame_id</span><span class="p">:</span>
                     <span class="k">continue</span>  <span class="c1"># Skip out-of-order frames</span>
-                
+
                 <span class="k">if</span> <span class="n">save_video</span><span class="p">:</span>
                     <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">current_frame_id</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_frame_id</span><span class="o">-</span><span class="mi">1</span><span class="p">):</span>
                         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;frame drop </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">: missing frame id&quot;</span><span class="p">,</span> <span class="n">current_frame_id</span><span class="o">-</span><span class="bp">self</span><span class="o">.</span><span class="n">last_frame_id</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span>
                         <span class="n">video_writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">blank_frame</span><span class="p">)</span>
                     <span class="n">video_writer</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">frame</span><span class="p">)</span>
-                
+
                 <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>
                     <span class="c1"># Write to shared memory</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">write_flag</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
@@ -694,20 +791,20 @@
                         <span class="bp">self</span><span class="o">.</span><span class="n">write_flag</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="mi">0</span>
 
                 <span class="bp">self</span><span class="o">.</span><span class="n">last_frame_id</span> <span class="o">=</span> <span class="n">current_frame_id</span>
-                
+
             <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span> 
-                   
+                <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
                 <span class="bp">self</span><span class="o">.</span><span class="n">last_error</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span> <span class="o">=</span> <span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span>
-                
+
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[ERROR] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> exception occurred during acquisition:&quot;</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Exception Type: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Exception Message: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="nb">print</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span><span class="p">)</span>
 
-                <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>             
+                <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error_reset&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
                 <span class="k">break</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
@@ -715,16 +812,27 @@
 
         <span class="k">if</span> <span class="n">stream</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">clear_shared_memory</span><span class="p">()</span>
-        
+
         <span class="k">if</span> <span class="n">save_video</span><span class="p">:</span>
             <span class="n">video_writer</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;stop&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="Camera.single_acquire">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.single_acquire">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">single_acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">max_attempts</span><span class="o">=</span><span class="mi">5</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Capture one frame for ``image`` mode and write it to disk.</span>
+
+<span class="sd">        Because ``get_image()`` now times out instead of blocking, this retries a</span>
+<span class="sd">        few times so a transient miss still yields a frame without hanging on a</span>
+<span class="sd">        dead link.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        max_attempts : int, optional</span>
+<span class="sd">            Grab attempts before giving up (and skipping the write), by default 5.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">start</span><span class="p">(</span><span class="s2">&quot;single&quot;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">syncMode</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">gain</span><span class="p">,</span> <span class="n">exposure_time</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">exposure_time</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;acquisition&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 
@@ -749,32 +857,48 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;stop&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="Camera.connect_camera">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.connect_camera">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">connect_camera</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Open the underlying hardware camera and signal ``connection``.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        NotImplementedError</span>
+<span class="sd">            If ``cam_type`` is not ``&quot;pyspin&quot;``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="c1"># Establish connection</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">type</span> <span class="o">==</span> <span class="s2">&quot;pyspin&quot;</span><span class="p">:</span>
             <span class="kn">from</span><span class="w"> </span><span class="nn">paradex.io.camera_system.pyspin</span><span class="w"> </span><span class="kn">import</span> <span class="n">load_camera</span>
         <span class="k">else</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Camera type </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">type</span><span class="si">}</span><span class="s2"> is not implemented.&quot;</span><span class="p">)</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">camera</span> <span class="o">=</span> <span class="n">load_camera</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;connection&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="Camera.release">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.release">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">release</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Disconnect the camera (``DeInit``) and free its shared memory.&quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">release</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">release_shared_memory</span><span class="p">()</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[INFO] Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> shared memory released.&quot;</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;release&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span></div>
 
-    
+
 <div class="viewcode-block" id="Camera.get_state">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.get_state">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_state</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the lifecycle state as a string.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        str</span>
+<span class="sd">            One of ``CONNECTING``, ``READY``, ``STARTING``, ``CAPTURING``,</span>
+<span class="sd">            ``STOPPED``, or ``ERROR: &lt;message&gt;``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;error&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
             <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;ERROR: </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">last_error</span><span class="si">}</span><span class="s2"> </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span><span class="si">}</span><span class="s2">&quot;</span>
         <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;exit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
@@ -793,12 +917,21 @@
 <div class="viewcode-block" id="Camera.get_frame_id">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.get_frame_id">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_frame_id</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return the id of the last frame processed by the capture loop.&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_frame_id</span></div>
 
 
 <div class="viewcode-block" id="Camera.get_status">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.get_status">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">get_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a status snapshot dict.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict</span>
+<span class="sd">            Keys: ``state``, ``frame_id``, ``name``, ``mode``, ``fps``,</span>
+<span class="sd">            ``syncMode``, ``save_path``, ``time``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="p">{</span>
             <span class="s1">&#39;state&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_state</span><span class="p">(),</span>
             <span class="s1">&#39;frame_id&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_frame_id</span><span class="p">(),</span>
@@ -808,14 +941,20 @@
             <span class="s1">&#39;syncMode&#39;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;syncMode&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
             <span class="s1">&#39;save_path&#39;</span><span class="p">:</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;save_path&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span>
             <span class="s1">&#39;time&#39;</span><span class="p">:</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-        <span class="p">}</span>  </div>
+        <span class="p">}</span></div>
 
 
 <div class="viewcode-block" id="Camera.run">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.run">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Capture-thread main loop.</span>
+
+<span class="sd">        Connects the camera, then until ``exit`` is set: when ``start`` is set,</span>
+<span class="sd">        dispatches to :meth:`continuous_acquire` (video/stream/full) or</span>
+<span class="sd">        :meth:`single_acquire` (image). Releases the camera on exit.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">connect_camera</span><span class="p">()</span>
-        
+
         <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;exit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span> <span class="c1"># we should maintain the connection until exit</span>
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span> <span class="c1"># Start data acquisition</span>
                 <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="ow">in</span> <span class="p">[</span><span class="s2">&quot;full&quot;</span><span class="p">,</span> <span class="s2">&quot;video&quot;</span><span class="p">,</span> <span class="s2">&quot;stream&quot;</span><span class="p">]:</span>
@@ -823,13 +962,12 @@
                     <span class="bp">self</span><span class="o">.</span><span class="n">continuous_acquire</span><span class="p">()</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">single_acquire</span><span class="p">()</span>
-            
+
             <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.001</span><span class="p">)</span>
-                    
+
         <span class="bp">self</span><span class="o">.</span><span class="n">release</span><span class="p">()</span></div>
 </div>
 
-        
 </pre></div>
         </article>
       </div>

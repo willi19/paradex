@@ -374,19 +374,56 @@
 <div class="viewcode-block" id="remote_camera_controller">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">remote_camera_controller</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">pc_list</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Main-PC driver for a cluster of capture-PC camera daemons.</span>
+
+<span class="sd">    Orchestrates the per-PC ``server_daemon`` processes over ZMQ REQ/REP:</span>
+<span class="sd">    a background thread (:meth:`run`) opens a command socket per PC, then</span>
+<span class="sd">    ticks a heartbeat loop that pushes ``start`` / ``stop`` / ``reload`` /</span>
+<span class="sd">    ``end`` commands and folds each daemon&#39;s reply into a live health view</span>
+<span class="sd">    (per-PC status plus per-camera frame-id stall detection). Public</span>
+<span class="sd">    ``start`` / ``stop`` methods only flip :class:`threading.Event` objects</span>
+<span class="sd">    that the loop consumes, so the caller never touches the sockets directly.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    name : str</span>
+<span class="sd">        Controller label; a ``_YYYYmmdd_HHMMSS`` timestamp is appended to make</span>
+<span class="sd">        the unique ``controller_name`` sent with every command.</span>
+<span class="sd">    pc_list : list of str, optional</span>
+<span class="sd">        Capture PCs to drive. Defaults to ``get_pc_list()`` when ``None``.</span>
+<span class="sd">    auto_reload : bool, optional</span>
+<span class="sd">        If ``True``, reload the cameras automatically (throttled) whenever a</span>
+<span class="sd">        persistent error or stall is detected, by default ``False``.</span>
+<span class="sd">    stall_timeout : float, optional</span>
+<span class="sd">        Seconds without a new frame id before a camera is flagged as stalled,</span>
+<span class="sd">        by default 3.0.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">,</span> <span class="n">pc_list</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">auto_reload</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">stall_timeout</span><span class="o">=</span><span class="mf">3.0</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">name</span><span class="si">}</span><span class="s2">_</span><span class="si">{</span><span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%m</span><span class="si">%d</span><span class="s1">_%H%M%S&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">pc_list</span> <span class="o">=</span> <span class="n">get_pc_list</span><span class="p">()</span> <span class="k">if</span> <span class="n">pc_list</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">pc_list</span>
-        
+
         <span class="bp">self</span><span class="o">.</span><span class="n">ping_port</span> <span class="o">=</span> <span class="mi">5480</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">command_port</span> <span class="o">=</span> <span class="mi">5482</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">exit_event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">start_event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stop_event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>   
+        <span class="bp">self</span><span class="o">.</span><span class="n">stop_event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">error_event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>
+
+        <span class="c1"># ── health tracking ──────────────────────────────────────────────</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">auto_reload</span> <span class="o">=</span> <span class="n">auto_reload</span>          <span class="c1"># auto-reload cameras on stall/error</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stall_timeout</span> <span class="o">=</span> <span class="n">stall_timeout</span>      <span class="c1"># s without a new frame → &quot;stalled&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">capturing</span> <span class="o">=</span> <span class="kc">False</span>                  <span class="c1"># in a continuous (video/stream/full) capture</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">continuous</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cam_progress</span> <span class="o">=</span> <span class="p">{}</span>                  <span class="c1"># cam -&gt; (last_frame_id, last_change_time)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">stalled</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>                    <span class="c1"># cameras whose frame_id stopped advancing</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_status</span> <span class="o">=</span> <span class="p">{}</span>                     <span class="c1"># pc -&gt; {&#39;status&#39;, &#39;msg&#39;} (last heartbeat)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">status_lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_stalled_print</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_last_reload_ts</span> <span class="o">=</span> <span class="mf">0.0</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">run_thread</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">run</span><span class="p">,</span> <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">run_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
@@ -395,6 +432,19 @@
 <div class="viewcode-block" id="remote_camera_controller.initialize">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.initialize">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">initialize</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Connect a command socket to every reachable capture PC and register.</span>
+
+<span class="sd">        Pings each PC in ``pc_list``, opens a non-blocking ZMQ ``REQ`` command</span>
+<span class="sd">        socket to the ones that answer, seeds the per-PC error/status tables,</span>
+<span class="sd">        then calls :meth:`register` to claim the daemons. Runs once from</span>
+<span class="sd">        :meth:`run` at thread start.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ConnectionError</span>
+<span class="sd">            If any PC fails to respond to the ping (its ``server_daemon`` is</span>
+<span class="sd">            not running).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">command_sockets</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">failed_pcs</span> <span class="o">=</span> <span class="p">[]</span>
@@ -415,6 +465,7 @@
             <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">pc</span><span class="si">}</span><span class="s2">: Command socket connected&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">last_err</span> <span class="o">=</span> <span class="p">{</span><span class="n">pc</span><span class="p">:</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">pc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_list</span><span class="p">}</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">pc_status</span> <span class="o">=</span> <span class="p">{</span><span class="n">pc</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">,</span> <span class="s1">&#39;msg&#39;</span><span class="p">:</span> <span class="kc">None</span><span class="p">}</span> <span class="k">for</span> <span class="n">pc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_list</span><span class="p">}</span>
 
         <span class="k">if</span> <span class="n">failed_pcs</span><span class="p">:</span>
             <span class="k">raise</span> <span class="ne">ConnectionError</span><span class="p">(</span>
@@ -428,7 +479,22 @@
 <div class="viewcode-block" id="remote_camera_controller.check_server_alive">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.check_server_alive">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">check_server_alive</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;ping port로 서버 확인&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Ping a capture PC&#39;s daemon and report whether it is up.</span>
+
+<span class="sd">        ping port로 서버 확인. Sends ``&quot;ping&quot;`` on the ping port and expects</span>
+<span class="sd">        ``&quot;pong&quot;`` back within the socket timeout.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        pc : str</span>
+<span class="sd">            Capture-PC name to probe.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        bool</span>
+<span class="sd">            ``True`` if the daemon replied ``&quot;pong&quot;``, ``False`` on any ZMQ</span>
+<span class="sd">            error or mismatched reply.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">REQ</span><span class="p">)</span>
         <span class="n">socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">LINGER</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
         <span class="n">socket</span><span class="o">.</span><span class="n">setsockopt</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">RCVTIMEO</span><span class="p">,</span> <span class="mi">5000</span><span class="p">)</span>
@@ -448,7 +514,25 @@
 <div class="viewcode-block" id="remote_camera_controller.send_command">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.send_command">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">send_command</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">cmd</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;명령 전송 및 응답 수신 (PC 병렬 처리)&quot;&quot;&quot;</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Broadcast a command to every PC in parallel and collect replies.</span>
+
+<span class="sd">        명령 전송 및 응답 수신 (PC 병렬 처리). Stamps ``cmd`` with this</span>
+<span class="sd">        controller&#39;s name, then fans the request out over all command sockets</span>
+<span class="sd">        on one thread each, joining before returning. ``start`` / ``stop``</span>
+<span class="sd">        actions get a longer receive timeout than other actions. Socket-level</span>
+<span class="sd">        failures are turned into an ``error`` status entry rather than raised.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        cmd : dict</span>
+<span class="sd">            Command payload with at least an ``action`` key; sent as JSON.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict</span>
+<span class="sd">            Maps each PC name to its JSON reply (or a synthesized</span>
+<span class="sd">            ``{&#39;status&#39;: &#39;error&#39;, ...}`` dict on timeout/ZMQ error).</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;controller_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span>
         <span class="n">response</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">response_lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
@@ -483,6 +567,7 @@
 <div class="viewcode-block" id="remote_camera_controller.register">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.register">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">register</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Claim the daemons for this controller by sending a ``register`` command.&quot;&quot;&quot;</span>
         <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;register&#39;</span><span class="p">}</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span></div>
 
@@ -490,6 +575,25 @@
 <div class="viewcode-block" id="remote_camera_controller.start">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.start">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">mode</span><span class="p">,</span> <span class="n">syncMode</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">fps</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">exposure_time</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Begin a capture across all PCs; blocks until the command is sent.</span>
+
+<span class="sd">        Stores the capture parameters, then signals :meth:`run` via</span>
+<span class="sd">        ``start_event`` and waits on ``sending_event`` for the loop to actually</span>
+<span class="sd">        dispatch the ``start`` command to the daemons (the handshake).</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        mode : str</span>
+<span class="sd">            ``image`` / ``video`` / ``stream`` / ``full``.</span>
+<span class="sd">        syncMode : bool</span>
+<span class="sd">            Use the hardware trigger if ``True``.</span>
+<span class="sd">        save_path : str, optional</span>
+<span class="sd">            Output dir/file for ``video`` / ``image`` modes.</span>
+<span class="sd">        fps : int, optional</span>
+<span class="sd">            Frame rate for free-run capture, by default 30.</span>
+<span class="sd">        exposure_time, gain : float, optional</span>
+<span class="sd">            Per-capture overrides; ``None`` keeps each camera&#39;s baseline.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="n">mode</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">syncMode</span> <span class="o">=</span> <span class="n">syncMode</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">save_path</span> <span class="o">=</span> <span class="n">save_path</span>
@@ -506,6 +610,11 @@
 <div class="viewcode-block" id="remote_camera_controller.stop">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.stop">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop the current capture; blocks until the stop command is sent.</span>
+
+<span class="sd">        Signals :meth:`run` via ``stop_event`` and waits on ``sending_event``</span>
+<span class="sd">        for the loop to dispatch the ``stop`` command to every daemon.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stop_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span></div>
@@ -514,13 +623,23 @@
 <div class="viewcode-block" id="remote_camera_controller.end">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.end">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">end</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">exit_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>        
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Shut down the controller and join the background thread.</span>
+
+<span class="sd">        Sets ``exit_event`` so :meth:`run` breaks its loop (sending a final</span>
+<span class="sd">        ``end`` command and closing the sockets/context), then joins the thread.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">exit_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">run_thread</span><span class="o">.</span><span class="n">join</span><span class="p">()</span></div>
 
         
 <div class="viewcode-block" id="remote_camera_controller.reload_cameras">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.reload_cameras">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">reload_cameras</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Ask every daemon to reload its cameras; flag errors.</span>
+
+<span class="sd">        Sends a ``reload`` command to all PCs and sets ``error_event`` for any</span>
+<span class="sd">        PC whose reply reports an error.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;reload&#39;</span><span class="p">}</span>
         <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
         
@@ -542,10 +661,10 @@
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.run">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
-        
+
         <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">exit_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
             <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;heartbeat&#39;</span><span class="p">}</span>
-            
+
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">start_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
                 <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span>
                     <span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;start&#39;</span><span class="p">,</span>
@@ -557,40 +676,113 @@
                     <span class="s1">&#39;gain&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">gain</span>
                 <span class="p">}</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">start_event</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-                
+
             <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">stop_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
                 <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;stop&#39;</span><span class="p">}</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">stop_event</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
-            
+
             <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
-            <span class="k">if</span> <span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">]:</span>
+
+            <span class="c1"># Track whether we should be seeing a continuous frame stream.</span>
+            <span class="k">if</span> <span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;start&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">continuous</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;video&#39;</span><span class="p">,</span> <span class="s1">&#39;stream&#39;</span><span class="p">,</span> <span class="s1">&#39;full&#39;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">capturing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">continuous</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cam_progress</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">elif</span> <span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">capturing</span> <span class="o">=</span> <span class="kc">False</span>
+
+            <span class="k">if</span> <span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_health</span><span class="p">(</span><span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">],</span> <span class="n">response</span><span class="p">)</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">({</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;end&#39;</span><span class="p">})</span>
+        <span class="k">for</span> <span class="n">socket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">command_sockets</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
+            <span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="o">.</span><span class="n">term</span><span class="p">()</span></div>
+
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">_update_health</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">action</span><span class="p">,</span> <span class="n">response</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update live per-PC status, detect frame stalls, and set/clear error_event.</span>
+
+<span class="sd">        Runs every loop tick from run(). error_event reflects the CURRENT state</span>
+<span class="sd">        (not sticky). Frame stalls are detected from the per-camera frame_ids the</span>
+<span class="sd">        daemon returns in heartbeat responses.&quot;&quot;&quot;</span>
+        <span class="n">now</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">any_bad</span> <span class="o">=</span> <span class="kc">False</span>
+        <span class="n">stalled</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_lock</span><span class="p">:</span>
             <span class="k">for</span> <span class="n">pc</span><span class="p">,</span> <span class="n">resp</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="k">if</span> <span class="n">resp</span><span class="p">[</span><span class="s1">&#39;status&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;error&#39;</span><span class="p">:</span>
-                    <span class="bp">self</span><span class="o">.</span><span class="n">error_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
-                    <span class="n">msg</span> <span class="o">=</span> <span class="n">resp</span><span class="p">[</span><span class="s1">&#39;msg&#39;</span><span class="p">]</span>
-                    <span class="n">prev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_err</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span>
-                    <span class="k">if</span> <span class="n">prev</span> <span class="o">!=</span> <span class="n">msg</span><span class="p">:</span>
-                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">pc</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pc_status</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">),</span> <span class="s1">&#39;msg&#39;</span><span class="p">:</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;msg&#39;</span><span class="p">)}</span>
+
+                <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;error&#39;</span><span class="p">:</span>
+                    <span class="n">any_bad</span> <span class="o">=</span> <span class="kc">True</span>
+                    <span class="n">msg</span> <span class="o">=</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;msg&#39;</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_err</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span> <span class="o">!=</span> <span class="n">msg</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">pc</span><span class="si">}</span><span class="s2">] </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2"> failed: </span><span class="si">{</span><span class="n">msg</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">last_err</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span> <span class="o">=</span> <span class="n">msg</span>
                 <span class="k">else</span><span class="p">:</span>
                     <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_err</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pc</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
                         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="n">pc</span><span class="si">}</span><span class="s2">] recovered after </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">last_err</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                         <span class="bp">self</span><span class="o">.</span><span class="n">last_err</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
 
-            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
-            
-        <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">({</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;end&#39;</span><span class="p">})</span>
-        <span class="k">for</span> <span class="n">socket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">command_sockets</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-            <span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="o">.</span><span class="n">term</span><span class="p">()</span></div>
+                <span class="c1"># Stall detection: only while a continuous capture should be flowing.</span>
+                <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">capturing</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">continuous</span><span class="p">:</span>
+                    <span class="k">for</span> <span class="n">cam</span><span class="p">,</span> <span class="n">fid</span> <span class="ow">in</span> <span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;frame_ids&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{})</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                        <span class="n">last</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cam_progress</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">cam</span><span class="p">)</span>
+                        <span class="k">if</span> <span class="n">last</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">fid</span> <span class="o">!=</span> <span class="n">last</span><span class="p">[</span><span class="mi">0</span><span class="p">]:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">cam_progress</span><span class="p">[</span><span class="n">cam</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">fid</span><span class="p">,</span> <span class="n">now</span><span class="p">)</span>
+                        <span class="k">elif</span> <span class="n">now</span> <span class="o">-</span> <span class="n">last</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">&gt;</span> <span class="bp">self</span><span class="o">.</span><span class="n">stall_timeout</span><span class="p">:</span>
+                            <span class="n">stalled</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">cam</span><span class="p">)</span>
 
-    
+            <span class="bp">self</span><span class="o">.</span><span class="n">stalled</span> <span class="o">=</span> <span class="n">stalled</span>
+
+        <span class="k">if</span> <span class="n">stalled</span><span class="p">:</span>
+            <span class="n">any_bad</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="k">if</span> <span class="n">stalled</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_stalled_print</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[stall] no new frames from: </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">stalled</span><span class="p">)</span><span class="si">}</span><span class="s2"> (&gt; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">stall_timeout</span><span class="si">}</span><span class="s2">s)&quot;</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_last_stalled_print</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">stalled</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_stalled_print</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+
+        <span class="c1"># Live error flag (reflects the current tick, not a past blip).</span>
+        <span class="k">if</span> <span class="n">any_bad</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">error_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">error_event</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
+
+        <span class="c1"># Optional self-heal: reload cameras on a persistent problem (throttled).</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">auto_reload</span> <span class="ow">and</span> <span class="n">any_bad</span> <span class="ow">and</span> <span class="p">(</span><span class="n">now</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">_last_reload_ts</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mf">10.0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_last_reload_ts</span> <span class="o">=</span> <span class="n">now</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[auto_reload] problem detected → reloading cameras&quot;</span><span class="p">)</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">({</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;reload&#39;</span><span class="p">})</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cam_progress</span> <span class="o">=</span> <span class="p">{}</span>
+
 <div class="viewcode-block" id="remote_camera_controller.is_error">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.is_error">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">is_error</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;True if any PC is currently erroring or any camera is stalled (live).&quot;&quot;&quot;</span>
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="remote_camera_controller.get_status">
+<a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.get_status">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_status</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Live health snapshot for the caller to react to.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict</span>
+<span class="sd">            ``{&#39;error&#39;: bool, &#39;stalled&#39;: [cam, ...], &#39;pc&#39;: {pc: {&#39;status&#39;, &#39;msg&#39;}}}``</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_lock</span><span class="p">:</span>
+            <span class="k">return</span> <span class="p">{</span>
+                <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">(),</span>
+                <span class="s1">&#39;stalled&#39;</span><span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stalled</span><span class="p">),</span>
+                <span class="s1">&#39;pc&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">pc</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">pc</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_status</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
+            <span class="p">}</span></div>
 </div>
 
 </pre></div>

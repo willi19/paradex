@@ -11,6 +11,28 @@ Module Contents
 
 .. py:class:: Camera(cam_type, name, frame_shape=(1536, 2048, 3))
 
+   One FLIR camera plus its dedicated capture thread.
+
+   A ``Camera`` owns a single hardware camera (via :class:`PyspinCamera`) and a
+   background **capture thread** (:meth:`run`). The thread and the calling thread
+   coordinate through a set of :class:`threading.Event` objects (``start``,
+   ``stop``, ``exit``, ``acquisition`` ...) — a handshake, not plain flags.
+
+   Frames are routed to *sinks* depending on ``mode``:
+
+   - ``stream`` / ``full`` → a double-buffered shared-memory block read by
+     :class:`MultiCameraReader`.
+   - ``video`` / ``full`` → an ``.avi`` file on disk.
+   - ``image`` → a single still.
+
+   :param cam_type: Backend, currently only ``"pyspin"``.
+   :type cam_type: str
+   :param name: Camera serial number (used as the SHM key and file stem).
+   :type name: str
+   :param frame_shape: ``(height, width, channels)`` of a frame, by default ``(1536, 2048, 3)``.
+   :type frame_shape: tuple of int, optional
+
+
    .. py:attribute:: event
 
 
@@ -45,49 +67,163 @@ Module Contents
 
    .. py:method:: load_shared_memory()
 
+      Allocate the double-buffered shared memory for streaming.
+
+      Creates two image buffers (``_image_a`` / ``_image_b``), a frame-id per
+      buffer, and a ``_flag`` selecting the buffer being written. Readers use
+      the flag to pick the stable buffer. Called once from ``__init__``.
+
+
 
    .. py:method:: release_shared_memory()
+
+      Close and unlink every shared-memory block (frees the OS segments).
+
 
 
    .. py:method:: clear_shared_memory()
 
+      Zero the frame ids, write flag, and both image buffers.
+
+
 
    .. py:method:: start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+
+      Begin capture; blocks until the camera is actually acquiring.
+
+      Validates the arguments (sets the error state on a bad combination),
+      stores the parameters, resolves ``save_path`` to a per-camera file, then
+      signals the capture thread via ``event["start"]`` and waits on
+      ``event["acquisition"]`` (the handshake).
+
+      :param mode: ``image`` / ``video`` / ``stream`` / ``full``.
+      :type mode: str
+      :param syncMode: Wait on the hardware trigger if ``True``.
+      :type syncMode: bool
+      :param save_path: Output dir/file for ``video``/``image`` (required for those modes).
+      :type save_path: str, optional
+      :param fps: Frame rate for free-run, by default 30.
+      :type fps: int, optional
+      :param exposure_time: Overrides; ``None`` keeps the camera.json baseline.
+      :type exposure_time: float, optional
+      :param gain: Overrides; ``None`` keeps the camera.json baseline.
+      :type gain: float, optional
+
 
 
    .. py:method:: error_reset()
 
+      Clear the error state and release anyone waiting on ``error_reset``.
+
+
 
    .. py:method:: get_error()
+
+      Return the current error state.
+
+      :returns: ``(has_error, (message, traceback))``; ``(False, (None, None))`` when
+                there is no error.
+      :rtype: tuple
+
 
 
    .. py:method:: stop(timeout=5.0)
 
+      Stop the current capture.
+
+      Clears ``event["start"]`` (so the acquire loop exits on its next
+      iteration) and waits up to ``timeout`` for ``event["stop"]``. If the wait
+      times out (a wedged acquire thread) it logs and returns instead of
+      blocking forever.
+
+      :param timeout: Max seconds to wait for the thread to acknowledge, by default 5.0.
+      :type timeout: float, optional
+
+
 
    .. py:method:: end(timeout=5.0)
+
+      Stop, then release the camera (DeInit + free SHM) and join the thread.
+
+      :param timeout: Per-step wait bound (stop + thread join), by default 5.0. If the
+                      thread is still alive after the join it logs and returns rather than
+                      blocking the daemon.
+      :type timeout: float, optional
+
 
 
    .. py:method:: continuous_acquire()
 
+      Capture loop for ``video`` / ``stream`` / ``full`` modes.
+
+      Arms the PySpin camera (``BeginAcquisition``), signals ``acquisition``,
+      then loops grabbing frames until ``start`` clears or ``exit`` sets. Each
+      frame is written to the video sink (with blank frames inserted for drops)
+      and/or the SHM double buffer. On any exception it records the error and
+      waits for ``error_reset``. Runs on the capture thread only.
+
+
 
    .. py:method:: single_acquire(max_attempts=5)
+
+      Capture one frame for ``image`` mode and write it to disk.
+
+      Because ``get_image()`` now times out instead of blocking, this retries a
+      few times so a transient miss still yields a frame without hanging on a
+      dead link.
+
+      :param max_attempts: Grab attempts before giving up (and skipping the write), by default 5.
+      :type max_attempts: int, optional
+
 
 
    .. py:method:: connect_camera()
 
+      Open the underlying hardware camera and signal ``connection``.
+
+      :raises NotImplementedError: If ``cam_type`` is not ``"pyspin"``.
+
+
 
    .. py:method:: release()
+
+      Disconnect the camera (``DeInit``) and free its shared memory.
+
 
 
    .. py:method:: get_state()
 
+      Return the lifecycle state as a string.
+
+      :returns: One of ``CONNECTING``, ``READY``, ``STARTING``, ``CAPTURING``,
+                ``STOPPED``, or ``ERROR: <message>``.
+      :rtype: str
+
+
 
    .. py:method:: get_frame_id()
+
+      Return the id of the last frame processed by the capture loop.
+
 
 
    .. py:method:: get_status()
 
+      Return a status snapshot dict.
+
+      :returns: Keys: ``state``, ``frame_id``, ``name``, ``mode``, ``fps``,
+                ``syncMode``, ``save_path``, ``time``.
+      :rtype: dict
+
+
 
    .. py:method:: run()
+
+      Capture-thread main loop.
+
+      Connects the camera, then until ``exit`` is set: when ``start`` is set,
+      dispatches to :meth:`continuous_acquire` (video/stream/full) or
+      :meth:`single_acquire` (image). Releases the camera on exit.
+
 
 

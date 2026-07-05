@@ -29,6 +29,20 @@ Module Contents
 
 .. py:class:: CameraLoader(types=['pyspin'])
 
+   Owns every :class:`Camera` on this PC and drives them as one group.
+
+   A ``CameraLoader`` enumerates the local cameras, builds one :class:`Camera`
+   per detected serial, and fans lifecycle calls (``start`` / ``stop`` / ``end``)
+   out across all of them in parallel threads. It also holds the per-serial
+   gain/exposure baseline read from ``system/current/camera.json``, used to
+   resolve capture parameters when the caller does not pass explicit overrides.
+
+   :param types: Camera backends to load, by default ``["pyspin"]``. Only ``"pyspin"``
+                 is currently supported; each listed backend triggers its loader
+                 (``"pyspin"`` calls :meth:`load_pyspin_camera`).
+   :type types: list of str, optional
+
+
    .. py:attribute:: cameralist
       :value: []
 
@@ -44,22 +58,85 @@ Module Contents
 
    .. py:method:: load_pyspin_camera(serial_list=None)
 
+      Enumerate PySpin (GigE) cameras and build a :class:`Camera` for each.
+
+      Forces every detected camera onto its expected IP (``autoforce_ip``),
+      then compares the detected serial count against the configured count
+      (:func:`get_camera_list`). On a mismatch it retries up to ``RETRY_COUNT``
+      times — re-running ``autoforce_ip`` each time, since after a power cycle
+      GigE cameras boot slowly and may not be enumerated on the first pass —
+      before proceeding with whatever cameras are present. The resulting
+      :class:`Camera` objects and their serials are appended to
+      ``self.cameralist`` / ``self.camera_names``.
+
+      :param serial_list: Explicit serials to load. When ``None`` (default) the serials are
+                          discovered via ``get_serial_list()``.
+      :type serial_list: list of str, optional
+
+
 
    .. py:method:: start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+
+      Start capture on every camera in parallel and block until all started.
+
+      Resolves per-camera output directories from ``save_path`` (under
+      ``home_path`` for ``image``, spread across ``capture_path_list`` for
+      ``video`` / ``full``; ``None`` for ``stream``), creating them as needed.
+      For each camera the gain and exposure are resolved deterministically as
+      **explicit arg > camera.json baseline > module default**: an explicit
+      ``exposure_time`` / ``gain`` wins, otherwise the per-serial value from
+      ``camera.json`` is used, otherwise ``DEFAULT_EXPOSURE`` /
+      ``DEFAULT_GAIN``. Each camera's :meth:`Camera.start` runs on its own
+      thread; the method joins all of them before returning.
+
+      :param mode: Capture mode: ``image`` / ``video`` / ``stream`` / ``full``.
+      :type mode: str
+      :param syncMode: Whether cameras wait on the hardware trigger.
+      :type syncMode: bool
+      :param save_path: Session-relative output path for ``image`` / ``video`` / ``full``;
+                        ignored for ``stream``.
+      :type save_path: str, optional
+      :param fps: Frame rate for free-run capture, by default 30.
+      :type fps: int, optional
+      :param exposure_time: Exposure override applied to all cameras; ``None`` (default) falls
+                            back to the camera.json baseline then ``DEFAULT_EXPOSURE``.
+      :type exposure_time: float, optional
+      :param gain: Gain override applied to all cameras; ``None`` (default) falls back
+                   to the camera.json baseline then ``DEFAULT_GAIN``.
+      :type gain: float, optional
+
 
 
    .. py:method:: stop()
 
+      Stop capture on all cameras in parallel (broadcasts :meth:`Camera.stop`).
+
+
 
    .. py:method:: end()
+
+      Stop and release all cameras in parallel (broadcasts :meth:`Camera.end`).
+
 
 
    .. py:method:: get_status_list()
 
+      Return a status snapshot for every camera.
+
+      :returns: One :meth:`Camera.get_status` dict per camera, in ``cameralist``
+                order.
+      :rtype: list of dict
+
+
 
    .. py:method:: get_all_errors()
 
-      모든 카메라의 에러 정보 반환
+      Return error information for every camera currently in an error state.
+
+      :returns: Maps camera serial (``str``) to an ``(error_msg, traceback_msg)``
+                tuple, including only cameras whose :meth:`Camera.get_error` reports
+                an active error. Empty when no camera is in error.
+      :rtype: dict
 
 
 

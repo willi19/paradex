@@ -397,7 +397,20 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.camera_loader.</span></span><span class="sig-name descname"><span class="pre">CameraLoader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['pyspin']</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
+<dd><p>Owns every <code class="xref py py-class docutils literal notranslate"><span class="pre">Camera</span></code> on this PC and drives them as one group.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> enumerates the local cameras, builds one <code class="xref py py-class docutils literal notranslate"><span class="pre">Camera</span></code>
+per detected serial, and fans lifecycle calls (<code class="docutils literal notranslate"><span class="pre">start</span></code> / <code class="docutils literal notranslate"><span class="pre">stop</span></code> / <code class="docutils literal notranslate"><span class="pre">end</span></code>)
+out across all of them in parallel threads. It also holds the per-serial
+gain/exposure baseline read from <code class="docutils literal notranslate"><span class="pre">system/current/camera.json</span></code>, used to
+resolve capture parameters when the caller does not pass explicit overrides.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>types</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em>) – Camera backends to load, by default <code class="docutils literal notranslate"><span class="pre">[&quot;pyspin&quot;]</span></code>. Only <code class="docutils literal notranslate"><span class="pre">&quot;pyspin&quot;</span></code>
+is currently supported; each listed backend triggers its loader
+(<code class="docutils literal notranslate"><span class="pre">&quot;pyspin&quot;</span></code> calls <a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.load_pyspin_camera" title="paradex.io.camera_system.camera_loader.CameraLoader.load_pyspin_camera"><code class="xref py py-meth docutils literal notranslate"><span class="pre">load_pyspin_camera()</span></code></a>).</p>
+</dd>
+</dl>
+<dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.cameralist">
 <span class="sig-name descname"><span class="pre">cameralist</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.cameralist" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -415,32 +428,94 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.load_pyspin_camera">
 <span class="sig-name descname"><span class="pre">load_pyspin_camera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">serial_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader.load_pyspin_camera"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.load_pyspin_camera" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Enumerate PySpin (GigE) cameras and build a <code class="xref py py-class docutils literal notranslate"><span class="pre">Camera</span></code> for each.</p>
+<p>Forces every detected camera onto its expected IP (<code class="docutils literal notranslate"><span class="pre">autoforce_ip</span></code>),
+then compares the detected serial count against the configured count
+(<code class="xref py py-func docutils literal notranslate"><span class="pre">get_camera_list()</span></code>). On a mismatch it retries up to <code class="docutils literal notranslate"><span class="pre">RETRY_COUNT</span></code>
+times — re-running <code class="docutils literal notranslate"><span class="pre">autoforce_ip</span></code> each time, since after a power cycle
+GigE cameras boot slowly and may not be enumerated on the first pass —
+before proceeding with whatever cameras are present. The resulting
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Camera</span></code> objects and their serials are appended to
+<code class="docutils literal notranslate"><span class="pre">self.cameralist</span></code> / <code class="docutils literal notranslate"><span class="pre">self.camera_names</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>serial_list</strong> (<em>list</em><em> of </em><em>str</em><em>, </em><em>optional</em>) – Explicit serials to load. When <code class="docutils literal notranslate"><span class="pre">None</span></code> (default) the serials are
+discovered via <code class="docutils literal notranslate"><span class="pre">get_serial_list()</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.start">
 <span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncMode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader.start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.start" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Start capture on every camera in parallel and block until all started.</p>
+<p>Resolves per-camera output directories from <code class="docutils literal notranslate"><span class="pre">save_path</span></code> (under
+<code class="docutils literal notranslate"><span class="pre">home_path</span></code> for <code class="docutils literal notranslate"><span class="pre">image</span></code>, spread across <code class="docutils literal notranslate"><span class="pre">capture_path_list</span></code> for
+<code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>; <code class="docutils literal notranslate"><span class="pre">None</span></code> for <code class="docutils literal notranslate"><span class="pre">stream</span></code>), creating them as needed.
+For each camera the gain and exposure are resolved deterministically as
+<strong>explicit arg &gt; camera.json baseline &gt; module default</strong>: an explicit
+<code class="docutils literal notranslate"><span class="pre">exposure_time</span></code> / <code class="docutils literal notranslate"><span class="pre">gain</span></code> wins, otherwise the per-serial value from
+<code class="docutils literal notranslate"><span class="pre">camera.json</span></code> is used, otherwise <code class="docutils literal notranslate"><span class="pre">DEFAULT_EXPOSURE</span></code> /
+<code class="docutils literal notranslate"><span class="pre">DEFAULT_GAIN</span></code>. Each camera’s <code class="xref py py-meth docutils literal notranslate"><span class="pre">Camera.start()</span></code> runs on its own
+thread; the method joins all of them before returning.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mode</strong> (<em>str</em>) – Capture mode: <code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>.</p></li>
+<li><p><strong>syncMode</strong> (<em>bool</em>) – Whether cameras wait on the hardware trigger.</p></li>
+<li><p><strong>save_path</strong> (<em>str</em><em>, </em><em>optional</em>) – Session-relative output path for <code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>;
+ignored for <code class="docutils literal notranslate"><span class="pre">stream</span></code>.</p></li>
+<li><p><strong>fps</strong> (<em>int</em><em>, </em><em>optional</em>) – Frame rate for free-run capture, by default 30.</p></li>
+<li><p><strong>exposure_time</strong> (<em>float</em><em>, </em><em>optional</em>) – Exposure override applied to all cameras; <code class="docutils literal notranslate"><span class="pre">None</span></code> (default) falls
+back to the camera.json baseline then <code class="docutils literal notranslate"><span class="pre">DEFAULT_EXPOSURE</span></code>.</p></li>
+<li><p><strong>gain</strong> (<em>float</em><em>, </em><em>optional</em>) – Gain override applied to all cameras; <code class="docutils literal notranslate"><span class="pre">None</span></code> (default) falls back
+to the camera.json baseline then <code class="docutils literal notranslate"><span class="pre">DEFAULT_GAIN</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.stop">
 <span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader.stop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.stop" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Stop capture on all cameras in parallel (broadcasts <code class="xref py py-meth docutils literal notranslate"><span class="pre">Camera.stop()</span></code>).</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.end">
 <span class="sig-name descname"><span class="pre">end</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader.end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.end" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Stop and release all cameras in parallel (broadcasts <code class="xref py py-meth docutils literal notranslate"><span class="pre">Camera.end()</span></code>).</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.get_status_list">
 <span class="sig-name descname"><span class="pre">get_status_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader.get_status_list"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.get_status_list" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return a status snapshot for every camera.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>One <code class="xref py py-meth docutils literal notranslate"><span class="pre">Camera.get_status()</span></code> dict per camera, in <code class="docutils literal notranslate"><span class="pre">cameralist</span></code>
+order.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>list of dict</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.get_all_errors">
 <span class="sig-name descname"><span class="pre">get_all_errors</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader.get_all_errors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.get_all_errors" title="Link to this definition">¶</a></dt>
-<dd><p>모든 카메라의 에러 정보 반환</p>
+<dd><p>Return error information for every camera currently in an error state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Maps camera serial (<code class="docutils literal notranslate"><span class="pre">str</span></code>) to an <code class="docutils literal notranslate"><span class="pre">(error_msg,</span> <span class="pre">traceback_msg)</span></code>
+tuple, including only cameras whose <code class="xref py py-meth docutils literal notranslate"><span class="pre">Camera.get_error()</span></code> reports
+an active error. Empty when no camera is in error.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
 </dd></dl>
 
 </dd></dl>

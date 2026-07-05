@@ -377,7 +377,28 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.camera.</span></span><span class="sig-name descname"><span class="pre">Camera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cam_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1536,</span> <span class="pre">2048,</span> <span class="pre">3)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
+<dd><p>One FLIR camera plus its dedicated capture thread.</p>
+<p>A <code class="docutils literal notranslate"><span class="pre">Camera</span></code> owns a single hardware camera (via <code class="xref py py-class docutils literal notranslate"><span class="pre">PyspinCamera</span></code>) and a
+background <strong>capture thread</strong> (<a class="reference internal" href="#paradex.io.camera_system.camera.Camera.run" title="paradex.io.camera_system.camera.Camera.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">run()</span></code></a>). The thread and the calling thread
+coordinate through a set of <code class="xref py py-class docutils literal notranslate"><span class="pre">threading.Event</span></code> objects (<code class="docutils literal notranslate"><span class="pre">start</span></code>,
+<code class="docutils literal notranslate"><span class="pre">stop</span></code>, <code class="docutils literal notranslate"><span class="pre">exit</span></code>, <code class="docutils literal notranslate"><span class="pre">acquisition</span></code> …) — a handshake, not plain flags.</p>
+<p>Frames are routed to <em>sinks</em> depending on <code class="docutils literal notranslate"><span class="pre">mode</span></code>:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code> → a double-buffered shared-memory block read by
+<code class="xref py py-class docutils literal notranslate"><span class="pre">MultiCameraReader</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code> → an <code class="docutils literal notranslate"><span class="pre">.avi</span></code> file on disk.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">image</span></code> → a single still.</p></li>
+</ul>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>cam_type</strong> (<em>str</em>) – Backend, currently only <code class="docutils literal notranslate"><span class="pre">&quot;pyspin&quot;</span></code>.</p></li>
+<li><p><strong>name</strong> (<em>str</em>) – Camera serial number (used as the SHM key and file stem).</p></li>
+<li><p><strong>frame_shape</strong> (<em>tuple</em><em> of </em><em>int</em><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">(height,</span> <span class="pre">width,</span> <span class="pre">channels)</span></code> of a frame, by default <code class="docutils literal notranslate"><span class="pre">(1536,</span> <span class="pre">2048,</span> <span class="pre">3)</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.event">
 <span class="sig-name descname"><span class="pre">event</span></span><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.event" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -420,82 +441,181 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.load_shared_memory">
 <span class="sig-name descname"><span class="pre">load_shared_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.load_shared_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.load_shared_memory" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Allocate the double-buffered shared memory for streaming.</p>
+<p>Creates two image buffers (<code class="docutils literal notranslate"><span class="pre">_image_a</span></code> / <code class="docutils literal notranslate"><span class="pre">_image_b</span></code>), a frame-id per
+buffer, and a <code class="docutils literal notranslate"><span class="pre">_flag</span></code> selecting the buffer being written. Readers use
+the flag to pick the stable buffer. Called once from <code class="docutils literal notranslate"><span class="pre">__init__</span></code>.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.release_shared_memory">
 <span class="sig-name descname"><span class="pre">release_shared_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.release_shared_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.release_shared_memory" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Close and unlink every shared-memory block (frees the OS segments).</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.clear_shared_memory">
 <span class="sig-name descname"><span class="pre">clear_shared_memory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.clear_shared_memory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.clear_shared_memory" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Zero the frame ids, write flag, and both image buffers.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.start">
 <span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncMode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.start" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Begin capture; blocks until the camera is actually acquiring.</p>
+<p>Validates the arguments (sets the error state on a bad combination),
+stores the parameters, resolves <code class="docutils literal notranslate"><span class="pre">save_path</span></code> to a per-camera file, then
+signals the capture thread via <code class="docutils literal notranslate"><span class="pre">event[&quot;start&quot;]</span></code> and waits on
+<code class="docutils literal notranslate"><span class="pre">event[&quot;acquisition&quot;]</span></code> (the handshake).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mode</strong> (<em>str</em>) – <code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>.</p></li>
+<li><p><strong>syncMode</strong> (<em>bool</em>) – Wait on the hardware trigger if <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+<li><p><strong>save_path</strong> (<em>str</em><em>, </em><em>optional</em>) – Output dir/file for <code class="docutils literal notranslate"><span class="pre">video</span></code>/<code class="docutils literal notranslate"><span class="pre">image</span></code> (required for those modes).</p></li>
+<li><p><strong>fps</strong> (<em>int</em><em>, </em><em>optional</em>) – Frame rate for free-run, by default 30.</p></li>
+<li><p><strong>exposure_time</strong> (<em>float</em><em>, </em><em>optional</em>) – Overrides; <code class="docutils literal notranslate"><span class="pre">None</span></code> keeps the camera.json baseline.</p></li>
+<li><p><strong>gain</strong> (<em>float</em><em>, </em><em>optional</em>) – Overrides; <code class="docutils literal notranslate"><span class="pre">None</span></code> keeps the camera.json baseline.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.error_reset">
 <span class="sig-name descname"><span class="pre">error_reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.error_reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.error_reset" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Clear the error state and release anyone waiting on <code class="docutils literal notranslate"><span class="pre">error_reset</span></code>.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.get_error">
 <span class="sig-name descname"><span class="pre">get_error</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.get_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.get_error" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return the current error state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">(has_error,</span> <span class="pre">(message,</span> <span class="pre">traceback))</span></code>; <code class="docutils literal notranslate"><span class="pre">(False,</span> <span class="pre">(None,</span> <span class="pre">None))</span></code> when
+there is no error.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.stop">
 <span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.stop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.stop" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Stop the current capture.</p>
+<p>Clears <code class="docutils literal notranslate"><span class="pre">event[&quot;start&quot;]</span></code> (so the acquire loop exits on its next
+iteration) and waits up to <code class="docutils literal notranslate"><span class="pre">timeout</span></code> for <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code>. If the wait
+times out (a wedged acquire thread) it logs and returns instead of
+blocking forever.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>timeout</strong> (<em>float</em><em>, </em><em>optional</em>) – Max seconds to wait for the thread to acknowledge, by default 5.0.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.end">
 <span class="sig-name descname"><span class="pre">end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.end" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Stop, then release the camera (DeInit + free SHM) and join the thread.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>timeout</strong> (<em>float</em><em>, </em><em>optional</em>) – Per-step wait bound (stop + thread join), by default 5.0. If the
+thread is still alive after the join it logs and returns rather than
+blocking the daemon.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.continuous_acquire">
 <span class="sig-name descname"><span class="pre">continuous_acquire</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.continuous_acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.continuous_acquire" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Capture loop for <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code> modes.</p>
+<p>Arms the PySpin camera (<code class="docutils literal notranslate"><span class="pre">BeginAcquisition</span></code>), signals <code class="docutils literal notranslate"><span class="pre">acquisition</span></code>,
+then loops grabbing frames until <code class="docutils literal notranslate"><span class="pre">start</span></code> clears or <code class="docutils literal notranslate"><span class="pre">exit</span></code> sets. Each
+frame is written to the video sink (with blank frames inserted for drops)
+and/or the SHM double buffer. On any exception it records the error and
+waits for <code class="docutils literal notranslate"><span class="pre">error_reset</span></code>. Runs on the capture thread only.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.single_acquire">
 <span class="sig-name descname"><span class="pre">single_acquire</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">max_attempts</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.single_acquire"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.single_acquire" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Capture one frame for <code class="docutils literal notranslate"><span class="pre">image</span></code> mode and write it to disk.</p>
+<p>Because <code class="docutils literal notranslate"><span class="pre">get_image()</span></code> now times out instead of blocking, this retries a
+few times so a transient miss still yields a frame without hanging on a
+dead link.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>max_attempts</strong> (<em>int</em><em>, </em><em>optional</em>) – Grab attempts before giving up (and skipping the write), by default 5.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.connect_camera">
 <span class="sig-name descname"><span class="pre">connect_camera</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.connect_camera"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.connect_camera" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Open the underlying hardware camera and signal <code class="docutils literal notranslate"><span class="pre">connection</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If <code class="docutils literal notranslate"><span class="pre">cam_type</span></code> is not <code class="docutils literal notranslate"><span class="pre">&quot;pyspin&quot;</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.release">
 <span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.release"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.release" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Disconnect the camera (<code class="docutils literal notranslate"><span class="pre">DeInit</span></code>) and free its shared memory.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.get_state">
 <span class="sig-name descname"><span class="pre">get_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.get_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.get_state" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return the lifecycle state as a string.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>One of <code class="docutils literal notranslate"><span class="pre">CONNECTING</span></code>, <code class="docutils literal notranslate"><span class="pre">READY</span></code>, <code class="docutils literal notranslate"><span class="pre">STARTING</span></code>, <code class="docutils literal notranslate"><span class="pre">CAPTURING</span></code>,
+<code class="docutils literal notranslate"><span class="pre">STOPPED</span></code>, or <code class="docutils literal notranslate"><span class="pre">ERROR:</span> <span class="pre">&lt;message&gt;</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.get_frame_id">
 <span class="sig-name descname"><span class="pre">get_frame_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.get_frame_id"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.get_frame_id" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return the id of the last frame processed by the capture loop.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.get_status">
 <span class="sig-name descname"><span class="pre">get_status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.get_status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.get_status" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return a status snapshot dict.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Keys: <code class="docutils literal notranslate"><span class="pre">state</span></code>, <code class="docutils literal notranslate"><span class="pre">frame_id</span></code>, <code class="docutils literal notranslate"><span class="pre">name</span></code>, <code class="docutils literal notranslate"><span class="pre">mode</span></code>, <code class="docutils literal notranslate"><span class="pre">fps</span></code>,
+<code class="docutils literal notranslate"><span class="pre">syncMode</span></code>, <code class="docutils literal notranslate"><span class="pre">save_path</span></code>, <code class="docutils literal notranslate"><span class="pre">time</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.run" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Capture-thread main loop.</p>
+<p>Connects the camera, then until <code class="docutils literal notranslate"><span class="pre">exit</span></code> is set: when <code class="docutils literal notranslate"><span class="pre">start</span></code> is set,
+dispatches to <a class="reference internal" href="#paradex.io.camera_system.camera.Camera.continuous_acquire" title="paradex.io.camera_system.camera.Camera.continuous_acquire"><code class="xref py py-meth docutils literal notranslate"><span class="pre">continuous_acquire()</span></code></a> (video/stream/full) or
+<a class="reference internal" href="#paradex.io.camera_system.camera.Camera.single_acquire" title="paradex.io.camera_system.camera.Camera.single_acquire"><code class="xref py py-meth docutils literal notranslate"><span class="pre">single_acquire()</span></code></a> (image). Releases the camera on exit.</p>
+</dd></dl>
 
 </dd></dl>
 

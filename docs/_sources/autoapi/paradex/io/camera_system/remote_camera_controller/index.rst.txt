@@ -9,7 +9,30 @@ paradex.io.camera_system.remote_camera_controller
 Module Contents
 ---------------
 
-.. py:class:: remote_camera_controller(name, pc_list=None)
+.. py:class:: remote_camera_controller(name, pc_list=None, auto_reload=False, stall_timeout=3.0)
+
+   Main-PC driver for a cluster of capture-PC camera daemons.
+
+   Orchestrates the per-PC ``server_daemon`` processes over ZMQ REQ/REP:
+   a background thread (:meth:`run`) opens a command socket per PC, then
+   ticks a heartbeat loop that pushes ``start`` / ``stop`` / ``reload`` /
+   ``end`` commands and folds each daemon's reply into a live health view
+   (per-PC status plus per-camera frame-id stall detection). Public
+   ``start`` / ``stop`` methods only flip :class:`threading.Event` objects
+   that the loop consumes, so the caller never touches the sockets directly.
+
+   :param name: Controller label; a ``_YYYYmmdd_HHMMSS`` timestamp is appended to make
+                the unique ``controller_name`` sent with every command.
+   :type name: str
+   :param pc_list: Capture PCs to drive. Defaults to ``get_pc_list()`` when ``None``.
+   :type pc_list: list of str, optional
+   :param auto_reload: If ``True``, reload the cameras automatically (throttled) whenever a
+                       persistent error or stall is detected, by default ``False``.
+   :type auto_reload: bool, optional
+   :param stall_timeout: Seconds without a new frame id before a camera is flagged as stalled,
+                         by default 3.0.
+   :type stall_timeout: float, optional
+
 
    .. py:attribute:: name
 
@@ -42,37 +65,144 @@ Module Contents
    .. py:attribute:: error_event
 
 
+   .. py:attribute:: auto_reload
+      :value: False
+
+
+
+   .. py:attribute:: stall_timeout
+      :value: 3.0
+
+
+
+   .. py:attribute:: capturing
+      :value: False
+
+
+
+   .. py:attribute:: continuous
+      :value: False
+
+
+
+   .. py:attribute:: cam_progress
+
+
+   .. py:attribute:: stalled
+
+
+   .. py:attribute:: pc_status
+
+
+   .. py:attribute:: status_lock
+
+
    .. py:attribute:: run_thread
 
 
    .. py:method:: initialize()
 
+      Connect a command socket to every reachable capture PC and register.
+
+      Pings each PC in ``pc_list``, opens a non-blocking ZMQ ``REQ`` command
+      socket to the ones that answer, seeds the per-PC error/status tables,
+      then calls :meth:`register` to claim the daemons. Runs once from
+      :meth:`run` at thread start.
+
+      :raises ConnectionError: If any PC fails to respond to the ping (its ``server_daemon`` is
+          not running).
+
+
 
    .. py:method:: check_server_alive(pc)
 
-      ping port로 서버 확인
+      Ping a capture PC's daemon and report whether it is up.
+
+      ping port로 서버 확인. Sends ``"ping"`` on the ping port and expects
+      ``"pong"`` back within the socket timeout.
+
+      :param pc: Capture-PC name to probe.
+      :type pc: str
+
+      :returns: ``True`` if the daemon replied ``"pong"``, ``False`` on any ZMQ
+                error or mismatched reply.
+      :rtype: bool
 
 
 
    .. py:method:: send_command(cmd)
 
-      명령 전송 및 응답 수신 (PC 병렬 처리)
+      Broadcast a command to every PC in parallel and collect replies.
+
+      명령 전송 및 응답 수신 (PC 병렬 처리). Stamps ``cmd`` with this
+      controller's name, then fans the request out over all command sockets
+      on one thread each, joining before returning. ``start`` / ``stop``
+      actions get a longer receive timeout than other actions. Socket-level
+      failures are turned into an ``error`` status entry rather than raised.
+
+      :param cmd: Command payload with at least an ``action`` key; sent as JSON.
+      :type cmd: dict
+
+      :returns: Maps each PC name to its JSON reply (or a synthesized
+                ``{'status': 'error', ...}`` dict on timeout/ZMQ error).
+      :rtype: dict
 
 
 
    .. py:method:: register()
 
+      Claim the daemons for this controller by sending a ``register`` command.
+
+
 
    .. py:method:: start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+
+      Begin a capture across all PCs; blocks until the command is sent.
+
+      Stores the capture parameters, then signals :meth:`run` via
+      ``start_event`` and waits on ``sending_event`` for the loop to actually
+      dispatch the ``start`` command to the daemons (the handshake).
+
+      :param mode: ``image`` / ``video`` / ``stream`` / ``full``.
+      :type mode: str
+      :param syncMode: Use the hardware trigger if ``True``.
+      :type syncMode: bool
+      :param save_path: Output dir/file for ``video`` / ``image`` modes.
+      :type save_path: str, optional
+      :param fps: Frame rate for free-run capture, by default 30.
+      :type fps: int, optional
+      :param exposure_time: Per-capture overrides; ``None`` keeps each camera's baseline.
+      :type exposure_time: float, optional
+      :param gain: Per-capture overrides; ``None`` keeps each camera's baseline.
+      :type gain: float, optional
+
 
 
    .. py:method:: stop()
 
+      Stop the current capture; blocks until the stop command is sent.
+
+      Signals :meth:`run` via ``stop_event`` and waits on ``sending_event``
+      for the loop to dispatch the ``stop`` command to every daemon.
+
+
 
    .. py:method:: end()
 
+      Shut down the controller and join the background thread.
+
+      Sets ``exit_event`` so :meth:`run` breaks its loop (sending a final
+      ``end`` command and closing the sockets/context), then joins the thread.
+
+
 
    .. py:method:: reload_cameras()
+
+      Ask every daemon to reload its cameras; flag errors.
+
+      Sends a ``reload`` command to all PCs and sets ``error_event`` for any
+      PC whose reply reports an error.
+
 
 
    .. py:method:: force_takeover()
@@ -85,5 +215,17 @@ Module Contents
 
 
    .. py:method:: is_error()
+
+      True if any PC is currently erroring or any camera is stalled (live).
+
+
+
+   .. py:method:: get_status()
+
+      Live health snapshot for the caller to react to.
+
+      :returns: ``{'error': bool, 'stalled': [cam, ...], 'pc': {pc: {'status', 'msg'}}}``
+      :rtype: dict
+
 
 

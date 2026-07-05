@@ -3,7 +3,7 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="카메라 시스템" href="camera_system.html" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Camera System" href="camera_system.html" />
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>paradex 0.0.0 documentation</title>
@@ -202,7 +202,7 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="camera_system.html">카메라 시스템</a></li>
+<li class="toctree-l1"><a class="reference internal" href="camera_system.html">Camera System</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -370,20 +370,17 @@ the <code class="docutils literal notranslate"><span class="pre">paradex</span><
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="camera_system.html">카메라 시스템</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#id2">왜 이렇게 나눠져 있나</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#pc-pc">메인 PC가 캡처 PC와 대화하는 법</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#id3">카메라 한 대 안에서 벌어지는 일 (가장 중요)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#id4">“싱크가 맞는다”는 게 무슨 뜻</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#id5">카메라가 멈췄던 이유, 그리고 고친 것</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#id6">게인·노출은 어디서 오나</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#id7">코드로 들어가기: 층위</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#camera"><code class="docutils literal notranslate"><span class="pre">Camera</span></code> — 이벤트로 스레드를 조종한다</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#pyspincamera"><code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> — 실제 하드웨어</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#cameraloader"><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> — 여러 대를 동시에</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#camera-server-daemon"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon</span></code> — 명령 루프 + 락</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#remote-camera-controller-pc"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> — 메인 PC 쪽 루프</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#id8">어디를 보면 되나</a></li>
+<li class="toctree-l1"><a class="reference internal" href="camera_system.html">Camera System</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#overview">1. Overview</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#core-concepts">2. Core Concepts</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#components">3. Components</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#command-flow">4. Command Flow</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#data-path-acquisition-sinks">5. Data Path: Acquisition → Sinks</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#hardware-sync">6. Hardware Sync</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#configuration-gain-exposure">7. Configuration — Gain / Exposure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#error-handling-recovery">8. Error Handling &amp; Recovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#validation">9. Validation</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#file-reference">10. File Reference</a></li>
 </ul>
 </li>
 </ul>
@@ -417,7 +414,7 @@ the <code class="docutils literal notranslate"><span class="pre">paradex</span><
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">카메라 시스템</div>
+                <div class="title">Camera System</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>

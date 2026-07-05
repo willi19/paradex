@@ -65,6 +65,15 @@ Module Contents
    .. py:method:: reload_cameras()
 
 
+   .. py:method:: shutdown()
+
+      Release every camera (DeInit + free SHM) on a clean exit.
+
+      Call from a SIGTERM/SIGINT handler so a normal kill releases the hardware;
+      SIGKILL (-9) cannot be caught (next daemon start cleans up leaked SHM).
+
+
+
    .. py:method:: pingpong_thread()
 
 

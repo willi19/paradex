@@ -1,0 +1,1342 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Capture Session" href="capture.html" /><link rel="prev" title="Camera System" href="camera_system.html" />
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
+        <title>Robot Control - paradex 0.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">paradex 0.0.0 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  
+  <span class="sidebar-brand-text">paradex 0.0.0 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="camera_system.html">Camera System</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Robot Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="process.html">Video Processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robot_api.html">Robot Control — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="process_api.html">Video Processing — API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="autoapi/index.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="autoapi/paradex/index.html">paradex</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of paradex</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/calibration/index.html">paradex.calibration</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of paradex.calibration</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/calibration/Tsai_Lenz/index.html">paradex.calibration.Tsai_Lenz</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/calibration/colmap/index.html">paradex.calibration.colmap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/calibration/utils/index.html">paradex.calibration.utils</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/dataset_acqusition/index.html">paradex.dataset_acqusition</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of paradex.dataset_acqusition</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/dataset_acqusition/capture/index.html">paradex.dataset_acqusition.capture</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/dataset_acqusition/match_sync/index.html">paradex.dataset_acqusition.match_sync</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/image/index.html">paradex.image</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of paradex.image</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/aruco/index.html">paradex.image.aruco</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/grid/index.html">paradex.image.grid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/image_dict/index.html">paradex.image.image_dict</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/merge/index.html">paradex.image.merge</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/overlay/index.html">paradex.image.overlay</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/projection/index.html">paradex.image.projection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/undistort/index.html">paradex.image.undistort</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/io/index.html">paradex.io</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of paradex.io</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/io/capture_pc/index.html">paradex.io.capture_pc</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/command_sender/index.html">paradex.io.capture_pc.command_sender</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/data_sender/index.html">paradex.io.capture_pc.data_sender</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/processor/index.html">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+</ul>
+</li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/io/robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/allegro_controller/index.html">paradex.io.robot_controller.allegro_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/gui_controller/index.html">paradex.io.robot_controller.gui_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/gui_controller_simple/index.html">paradex.io.robot_controller.gui_controller_simple</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/inspire_controller/index.html">paradex.io.robot_controller.inspire_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html">paradex.io.robot_controller.inspire_controller_ip</a></li>
+<li class="toctree-l5 has-children"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/index.html">paradex.io.robot_controller.under_test</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller.under_test</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/cli/index.html">paradex.io.robot_controller.under_test.cli</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/exceptions/index.html">paradex.io.robot_controller.under_test.exceptions</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/hand_demo/index.html">paradex.io.robot_controller.under_test.hand_demo</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html">paradex.io.robot_controller.under_test.hand_rh56dftp</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/inspire_hand_ip_demo/index.html">paradex.io.robot_controller.under_test.inspire_hand_ip_demo</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/modbus/index.html">paradex.io.robot_controller.under_test.modbus</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/verify_tactile/index.html">paradex.io.robot_controller.under_test.verify_tactile</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/visualize_contact/index.html">paradex.io.robot_controller.under_test.visualize_contact</a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/xarm_controller/index.html">paradex.io.robot_controller.xarm_controller</a></li>
+</ul>
+</li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/io/teleop/index.html">paradex.io.teleop</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of paradex.io.teleop</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5 has-children"><a class="reference internal" href="autoapi/paradex/io/teleop/xsens/index.html">paradex.io.teleop.xsens</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of paradex.io.teleop.xsens</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/teleop/xsens/receiver/index.html">paradex.io.teleop.xsens.receiver</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/process/index.html">paradex.process</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of paradex.process</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/process/distributed/index.html">paradex.process.distributed</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/process/processor/index.html">paradex.process.processor</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/retargetor/index.html">paradex.retargetor</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of paradex.retargetor</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/retargetor/hand_regargetor/index.html">paradex.retargetor.hand_regargetor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/retargetor/state/index.html">paradex.retargetor.state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/retargetor/unimanual/index.html">paradex.retargetor.unimanual</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/robot/index.html">paradex.robot</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of paradex.robot</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/curobo/index.html">paradex.robot.curobo</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/inspire/index.html">paradex.robot.inspire</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/mimic_joint/index.html">paradex.robot.mimic_joint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/robot_wrapper/index.html">paradex.robot.robot_wrapper</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/robot_wrapper_updating/index.html">paradex.robot.robot_wrapper_updating</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/urdf/index.html">paradex.robot.urdf</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/utils/index.html">paradex.robot.utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/xarm_kinematic_calib/index.html">paradex.robot.xarm_kinematic_calib</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/simulator/index.html">paradex.simulator</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of paradex.simulator</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/simulator/isaac/index.html">paradex.simulator.isaac</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/transforms/index.html">paradex.transforms</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><div class="visually-hidden">Toggle navigation of paradex.transforms</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/transforms/conversion/index.html">paradex.transforms.conversion</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/transforms/coordinate/index.html">paradex.transforms.coordinate</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/transforms/triangulate/index.html">paradex.transforms.triangulate</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/file_io/index.html">paradex.utils.file_io</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/path/index.html">paradex.utils.path</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/system/index.html">paradex.utils.system</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/upload_file/index.html">paradex.utils.upload_file</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/video/index.html">paradex.video</a><input class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><div class="visually-hidden">Toggle navigation of paradex.video</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/video/raw_video_processor/index.html">paradex.video.raw_video_processor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/video/util/index.html">paradex.video.util</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/visualization/robot/index.html">paradex.visualization.robot</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="_sources/robot.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="robot-control">
+<h1>Robot Control<a class="headerlink" href="#robot-control" title="Link to this heading">¶</a></h1>
+<p>Overview of Paradex’s robot subsystem — the arms, the hands, and the kinematics
+layer that ties them to the vision rig. Read this to build the mental model; for
+method signatures, parameters, and return values see the
+<a class="reference internal" href="robot_api.html"><span class="doc">API reference</span></a>.</p>
+<ul class="simple">
+<li><p>Generated per-symbol API: <a class="reference internal" href="autoapi/index.html"><span class="doc">API Reference</span></a></p></li>
+<li><p>Sibling subsystem: <a class="reference internal" href="camera_system.html"><span class="doc">Camera System</span></a></p></li>
+</ul>
+<hr class="docutils" />
+<section id="architecture">
+<h2>1. Architecture<a class="headerlink" href="#architecture" title="Link to this heading">¶</a></h2>
+<p>Robot control splits into two independent halves that meet only through the URDF
+kinematic model:</p>
+<ul class="simple">
+<li><p><strong>Hardware controllers</strong> (<code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/</span></code>) — one background
+thread per device streaming commands to real hardware over its native
+transport (XArm SDK, ROS2, Modbus, serial).</p></li>
+<li><p><strong>Kinematics</strong> (<code class="docutils literal notranslate"><span class="pre">paradex/robot/</span></code>) — pure computation on a URDF: forward
+kinematics, inverse kinematics, and GPU motion planning. No hardware I/O.</p></li>
+</ul>
+<p>Every device is reached through the <code class="docutils literal notranslate"><span class="pre">get_arm</span></code> / <code class="docutils literal notranslate"><span class="pre">get_hand</span></code> factory, so callers
+never import a concrete controller class. Each controller owns its own control
+loop thread and exposes the same lifecycle verbs — <code class="docutils literal notranslate"><span class="pre">move</span></code> / <code class="docutils literal notranslate"><span class="pre">start</span></code> / <code class="docutils literal notranslate"><span class="pre">stop</span></code> /
+<code class="docutils literal notranslate"><span class="pre">end</span></code> — regardless of the transport underneath.</p>
+<pre  class="mermaid">
+        flowchart TB
+    subgraph Factory[&quot;paradex.io.robot_controller&quot;]
+      GA[&quot;get_arm(name)&quot;]
+      GH[&quot;get_hand(name, ip, tactile)&quot;]
+    end
+    subgraph Ctrl[&quot;Hardware controllers (1 thread each)&quot;]
+      XA[&quot;XArmController&lt;br/&gt;XArm SDK / TCP&quot;]
+      AL[&quot;AllegroController&lt;br/&gt;ROS2 rclpy Node&quot;]
+      IP[&quot;InspireControllerIP&lt;br/&gt;Modbus TCP&quot;]
+      IU[&quot;InspireController&lt;br/&gt;USB serial&quot;]
+    end
+    subgraph Kin[&quot;paradex.robot (no hardware I/O)&quot;]
+      RW[&quot;RobotWrapper&lt;br/&gt;Pinocchio FK / IK&quot;]
+      CU[&quot;CuroboPlanner&lt;br/&gt;GPU motion planning&quot;]
+      UR[&quot;urdf / utils&lt;br/&gt;URDF build + paths&quot;]
+    end
+    GA --&gt; XA
+    GH --&gt; AL
+    GH --&gt; IP
+    GH --&gt; IU
+    XA -. &quot;shares URDF model&quot; .-&gt; RW
+    RW --&gt; CU
+    UR --&gt; RW
+    </pre><p>Method-level details for each component are in the <a class="reference internal" href="robot_api.html"><span class="doc">API reference</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="core-concepts">
+<h2>2. Core Concepts<a class="headerlink" href="#core-concepts" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Term</p></th>
+<th class="head"><p>Meaning</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><strong>Arm</strong></p></td>
+<td><p>6-DoF manipulator. <strong>XArm</strong> (UFactory SDK over TCP) is live; <strong>Franka</strong> is stubbed in the factory.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Hand</strong></p></td>
+<td><p>Multi-finger end-effector. <strong>Allegro</strong> (16 DoF, ROS2) or <strong>Inspire</strong> (6 DoF, Modbus TCP or USB).</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>Controller</strong></p></td>
+<td><p>A class wrapping one device: a background loop thread + thread-safe <code class="docutils literal notranslate"><span class="pre">move</span></code>/<code class="docutils literal notranslate"><span class="pre">get_data</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Action</strong></p></td>
+<td><p>The command written to a device. Arm: <code class="docutils literal notranslate"><span class="pre">(6,)</span></code> joint radians <em>or</em> <code class="docutils literal notranslate"><span class="pre">(4,4)</span></code> homogeneous pose. Allegro: <code class="docutils literal notranslate"><span class="pre">(16,)</span></code> radians. Inspire: <code class="docutils literal notranslate"><span class="pre">(6,)</span></code> motor units 0–1000.</p></td>
+</tr>
+<tr class="row-even"><td><p><strong><code class="docutils literal notranslate"><span class="pre">qpos</span></code></strong></p></td>
+<td><p>Measured joint state read back from the device (units match that device’s action).</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Servo vs. position</strong></p></td>
+<td><p>XArm streaming servo (<code class="docutils literal notranslate"><span class="pre">is_servo=True</span></code>, non-blocking) vs. one-shot position move (<code class="docutils literal notranslate"><span class="pre">is_servo=False</span></code>, blocks until reached).</p></td>
+</tr>
+<tr class="row-even"><td><p><strong>RobotWrapper</strong></p></td>
+<td><p>Pinocchio model built from a URDF — the FK/IK backend, decoupled from hardware.</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>CuroboPlanner</strong></p></td>
+<td><p>CuRobo GPU planner: collision-aware trajectories to a pose goal-set or joint target.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<hr class="docutils" />
+<section id="controller-lifecycle">
+<h2>3. Controller Lifecycle<a class="headerlink" href="#controller-lifecycle" title="Link to this heading">¶</a></h2>
+<p>Every controller follows the same shape: construction connects to the device and
+spawns a ~100 Hz loop that continuously writes the latest <code class="docutils literal notranslate"><span class="pre">action</span></code> to hardware.
+<code class="docutils literal notranslate"><span class="pre">move()</span></code> only updates that shared target (cheap, thread-safe); the loop does the
+talking. <code class="docutils literal notranslate"><span class="pre">start()</span></code> / <code class="docutils literal notranslate"><span class="pre">stop()</span></code> bracket an episode of logging; <code class="docutils literal notranslate"><span class="pre">end()</span></code> tears down.</p>
+<pre  class="mermaid">
+        sequenceDiagram
+    participant C as Caller
+    participant L as Controller loop (~100 Hz)
+    participant HW as Device
+    C-&gt;&gt;L: get_arm / get_hand (connect + spawn loop)
+    L-&gt;&gt;HW: continuous write(latest action)
+    C-&gt;&gt;L: move(action)
+    Note over L: swap shared target under lock
+    C-&gt;&gt;L: start(save_path)
+    loop every tick while recording
+      L-&gt;&gt;HW: write action
+      HW--&gt;&gt;L: read state → append to log
+    end
+    C-&gt;&gt;L: stop()
+    Note over L: flush log to *.npy
+    C-&gt;&gt;L: end()
+    Note over L: join thread, disconnect
+    </pre><p>The loop reads the target under a <code class="docutils literal notranslate"><span class="pre">Lock</span></code> each tick, so <code class="docutils literal notranslate"><span class="pre">move()</span></code> from the caller
+thread and the loop’s writes never race. When <code class="docutils literal notranslate"><span class="pre">start()</span></code> has armed the save event,
+every tick also reads back device state and appends it to per-key buffers that
+<code class="docutils literal notranslate"><span class="pre">stop()</span></code> dumps as <code class="docutils literal notranslate"><span class="pre">time.npy</span></code>, <code class="docutils literal notranslate"><span class="pre">position.npy</span></code>, <code class="docutils literal notranslate"><span class="pre">action.npy</span></code>, etc.</p>
+</section>
+<hr class="docutils" />
+<section id="arms-xarm">
+<h2>4. Arms — XArm<a class="headerlink" href="#arms-xarm" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">XArmController</span></code> wraps the UFactory <code class="docutils literal notranslate"><span class="pre">XArmAPI</span></code>. Its loop runs at 100 Hz and has two
+modes selected per-<code class="docutils literal notranslate"><span class="pre">move</span></code>:</p>
+<ul class="simple">
+<li><p><strong>Servo</strong> (<code class="docutils literal notranslate"><span class="pre">is_servo=True</span></code>): streams <code class="docutils literal notranslate"><span class="pre">set_servo_angle_j</span></code> (joint action) or
+<code class="docutils literal notranslate"><span class="pre">set_servo_cartesian_aa</span></code> (pose action) — non-blocking, for smooth trajectories.</p></li>
+<li><p><strong>Position</strong> (<code class="docutils literal notranslate"><span class="pre">is_servo=False</span></code>): switches to position mode, issues one blocking
+<code class="docutils literal notranslate"><span class="pre">set_servo_angle</span></code> / <code class="docutils literal notranslate"><span class="pre">set_position</span></code>, waits for arrival, then returns to servo
+mode. <code class="docutils literal notranslate"><span class="pre">move()</span></code> blocks on <code class="docutils literal notranslate"><span class="pre">position_control_event</span></code> until this completes.</p></li>
+</ul>
+<p>An action is a <code class="docutils literal notranslate"><span class="pre">(6,)</span></code> joint vector (radians, clipped to ±2π) <strong>or</strong> a <code class="docutils literal notranslate"><span class="pre">(4,4)</span></code>
+homogeneous pose; the loop dispatches on the array shape. <code class="docutils literal notranslate"><span class="pre">get_data()</span></code> returns
+both representations: measured <code class="docutils literal notranslate"><span class="pre">qpos</span></code> and the current end-effector pose.</p>
+<pre  class="mermaid">
+        flowchart TB
+    M[&quot;move(action, is_servo, speed)&quot;] --&gt; S{&quot;action.shape&quot;}
+    S --&gt;|&quot;(6,)&quot;| J[&quot;joint target&lt;br/&gt;clip ±2π&quot;]
+    S --&gt;|&quot;(4,4)&quot;| P[&quot;pose target&lt;br/&gt;homo → aa / cart&quot;]
+    J --&gt; D{&quot;is_servo?&quot;}
+    P --&gt; D
+    D --&gt;|&quot;True&quot;| SV[&quot;servo stream&lt;br/&gt;(non-blocking)&quot;]
+    D --&gt;|&quot;False&quot;| PC[&quot;position move&lt;br/&gt;wait arrival&quot;]
+    </pre><p>Error state is surfaced via <code class="docutils literal notranslate"><span class="pre">is_error()</span></code> (set when the arm reports err/warn);
+<code class="docutils literal notranslate"><span class="pre">clear_error()</span></code> clears and re-enables servo mode without a reconnect.</p>
+</section>
+<hr class="docutils" />
+<section id="hands-allegro-ros2-and-inspire-modbus">
+<h2>5. Hands — Allegro (ROS2) and Inspire (Modbus)<a class="headerlink" href="#hands-allegro-ros2-and-inspire-modbus" title="Link to this heading">¶</a></h2>
+<p>The two hand families share the controller contract but differ entirely in
+transport:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p></p></th>
+<th class="head"><p>Allegro</p></th>
+<th class="head"><p>Inspire (IP)</p></th>
+<th class="head"><p>Inspire (USB)</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Class</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">AllegroController</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">InspireControllerIP</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">InspireController</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>DoF (action)</p></td>
+<td><p>16</p></td>
+<td><p>6</p></td>
+<td><p>6</p></td>
+</tr>
+<tr class="row-even"><td><p>Transport</p></td>
+<td><p>ROS2 topics (<code class="docutils literal notranslate"><span class="pre">rclpy</span></code>)</p></td>
+<td><p>Modbus TCP (<code class="docutils literal notranslate"><span class="pre">pymodbus</span></code>)</p></td>
+<td><p>serial (<code class="docutils literal notranslate"><span class="pre">pyserial</span></code>)</p></td>
+</tr>
+<tr class="row-odd"><td><p>Command</p></td>
+<td><p>publish <code class="docutils literal notranslate"><span class="pre">Float64MultiArray</span></code> on <code class="docutils literal notranslate"><span class="pre">/allegro_hand_position_controller/commands</span></code></p></td>
+<td><p>write <code class="docutils literal notranslate"><span class="pre">angleSet</span></code> registers</p></td>
+<td><p>write <code class="docutils literal notranslate"><span class="pre">setangle</span></code> frames</p></td>
+</tr>
+<tr class="row-even"><td><p>State</p></td>
+<td><p>subscribe <code class="docutils literal notranslate"><span class="pre">/joint_states</span></code></p></td>
+<td><p>read <code class="docutils literal notranslate"><span class="pre">angleAct</span></code> registers</p></td>
+<td><p>read <code class="docutils literal notranslate"><span class="pre">getactangle</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Units</p></td>
+<td><p>radians (clipped to <code class="docutils literal notranslate"><span class="pre">MAX_ANGLE=2.1</span></code>)</p></td>
+<td><p>0–1000 (0 = closed, 1000 = open)</p></td>
+<td><p>0–1000</p></td>
+</tr>
+<tr class="row-even"><td><p>Tactile / force</p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get_force</span></code>, <code class="docutils literal notranslate"><span class="pre">get_tactile</span></code> (17-pad layout)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get_force</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">AllegroController</span></code> <strong>is</strong> an <code class="docutils literal notranslate"><span class="pre">rclpy.node.Node</span></code>: a spin thread services ROS
+callbacks while a separate control thread republishes the target at 100 Hz. It
+blocks at startup until the first <code class="docutils literal notranslate"><span class="pre">/joint_states</span></code> message arrives, then mirrors
+that pose as the initial action. Note <code class="docutils literal notranslate"><span class="pre">get_data()</span></code> reorders the raw joint vector
+through <code class="docutils literal notranslate"><span class="pre">JS_TO_CMD</span></code> so <code class="docutils literal notranslate"><span class="pre">qpos</span></code> matches command order.</p>
+<p><code class="docutils literal notranslate"><span class="pre">InspireControllerIP</span></code> opens a Modbus TCP client, pre-sets speed/force/angle
+registers, and runs a <code class="docutils literal notranslate"><span class="pre">move_hand</span></code> loop that writes <code class="docutils literal notranslate"><span class="pre">angleSet</span></code> and reads back
+<code class="docutils literal notranslate"><span class="pre">angleAct</span></code> + <code class="docutils literal notranslate"><span class="pre">forceAct</span></code> (+ optional tactile grid when <code class="docutils literal notranslate"><span class="pre">tactile=True</span></code>). Extra
+Inspire-only helpers: <code class="docutils literal notranslate"><span class="pre">home_robot</span></code>, <code class="docutils literal notranslate"><span class="pre">set_homepose</span></code>, and <code class="docutils literal notranslate"><span class="pre">calibrate_force</span></code>
+(writes the force-calibration register and polls until the firmware clears it).</p>
+<pre  class="mermaid">
+        flowchart TB
+    subgraph A[&quot;AllegroController (ROS2)&quot;]
+      AC[&quot;control loop 100 Hz&quot;] --&gt;|&quot;publish cmd&quot;| RT[&quot;/allegro_hand_position_controller/commands&quot;]
+      JS[&quot;/joint_states&quot;] --&gt;|&quot;subscribe&quot;| AC
+    end
+    subgraph I[&quot;InspireControllerIP (Modbus TCP)&quot;]
+      IC[&quot;move_hand loop 100 Hz&quot;] --&gt;|&quot;write angleSet&quot;| MB[&quot;Modbus registers&quot;]
+      MB --&gt;|&quot;read angleAct / forceAct&quot;| IC
+    end
+    </pre></section>
+<hr class="docutils" />
+<section id="kinematics-robotwrapper-pinocchio">
+<h2>6. Kinematics — RobotWrapper (Pinocchio)<a class="headerlink" href="#kinematics-robotwrapper-pinocchio" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">RobotWrapper</span></code> builds a Pinocchio model straight from a URDF and exposes FK, IK,
+Jacobians, and model introspection (joint/link names, DoF, joint limits). It is
+hardware-agnostic — the same class serves the arm, a hand, or a merged arm+hand
+URDF (<code class="docutils literal notranslate"><span class="pre">get_robot_urdf_path</span></code> resolves the path).</p>
+<ul class="simple">
+<li><p><strong>Forward kinematics</strong>: <code class="docutils literal notranslate"><span class="pre">compute_forward_kinematics(qpos,</span> <span class="pre">link_list)</span></code> returns a
+<code class="docutils literal notranslate"><span class="pre">{link_name:</span> <span class="pre">4x4</span> <span class="pre">homogeneous}</span></code> dict for the requested links.</p></li>
+<li><p><strong>Inverse kinematics</strong>: <code class="docutils literal notranslate"><span class="pre">solve_ik(target_pose,</span> <span class="pre">end_effector_name,</span> <span class="pre">...)</span></code> is a
+damped-least-squares Gauss–Newton loop with random restarts (<code class="docutils literal notranslate"><span class="pre">try_num</span></code>), each
+step clipped to joint limits; returns <code class="docutils literal notranslate"><span class="pre">(qpos,</span> <span class="pre">success)</span></code>.</p></li>
+</ul>
+<pre  class="mermaid">
+        flowchart TB
+    U[&quot;URDF path&quot;] --&gt; RW[&quot;RobotWrapper(urdf_path)&quot;]
+    Q[&quot;qpos&quot;] --&gt; FK[&quot;compute_forward_kinematics&lt;br/&gt;(qpos, link_list)&quot;]
+    RW --&gt; FK
+    FK --&gt; POSE[&quot;{link: 4x4 pose}&quot;]
+    T[&quot;target 4x4 pose&quot;] --&gt; IK[&quot;solve_ik&lt;br/&gt;(target, eef_name)&quot;]
+    RW --&gt; IK
+    IK --&gt; RES[&quot;(qpos, success)&quot;]
+    </pre><p>Typical grasp pipeline usage (from <code class="docutils literal notranslate"><span class="pre">src/inference/</span></code>): <code class="docutils literal notranslate"><span class="pre">solve_ik(wrist_6d,</span> <span class="pre">&quot;palm_link&quot;)</span></code> for the wrist, then <code class="docutils literal notranslate"><span class="pre">compute_forward_kinematics(q,</span> <span class="pre">[&quot;link6&quot;])</span></code> to
+read the resulting arm flange pose.</p>
+</section>
+<hr class="docutils" />
+<section id="motion-planning-curobo">
+<h2>7. Motion Planning — CuRobo<a class="headerlink" href="#motion-planning-curobo" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">CuroboPlanner</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/robot/curobo.py</span></code>) wraps CuRobo’s <code class="docutils literal notranslate"><span class="pre">MotionGen</span></code> +
+<code class="docutils literal notranslate"><span class="pre">IKSolver</span></code> for collision-aware, GPU-accelerated planning against a world of
+cuboids and object meshes. It is a heavyweight object: construction loads the
+robot config, builds the world, and <strong>warms up</strong> the planner (compiles CUDA
+graphs), so build it once and reuse it.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Entry point</p></th>
+<th class="head"><p>Goal</p></th>
+<th class="head"><p>Returns</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">plan_goalset(init_state,</span> <span class="pre">goal_pose)</span></code></p></td>
+<td><p>reach any of N candidate poses</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(goalset_index,</span> <span class="pre">trajectory)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">plan_to_joint_target(init_state,</span> <span class="pre">goal_joint_state)</span></code></p></td>
+<td><p>reach a joint configuration</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(success,</span> <span class="pre">trajectory)</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">plan_full_step(...)</span></code></p></td>
+<td><p>batch-plan over many grasp candidates, pick best per place</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(success,</span> <span class="pre">tensor_ids)</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">update_world(obj_dict)</span></code></p></td>
+<td><p>refresh collision meshes between plans</p></td>
+<td><p>—</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<pre  class="mermaid">
+        flowchart TB
+    W[&quot;obstacle_dict + obj_dict&lt;br/&gt;(cuboids + meshes)&quot;] --&gt; P[&quot;CuroboPlanner(...)&quot;]
+    RC[&quot;robot_cfg + tensor_args&quot;] --&gt; P
+    P --&gt; WU[&quot;MotionGen.warmup&lt;br/&gt;(compile CUDA graphs)&quot;]
+    G[&quot;goal pose(s) / joint target&quot;] --&gt; PL[&quot;plan_goalset /&lt;br/&gt;plan_to_joint_target&quot;]
+    WU --&gt; PL
+    PL --&gt; TR[&quot;interpolated joint trajectory&quot;]
+    </pre><p>Pose goals are converted from <code class="docutils literal notranslate"><span class="pre">(4,4)</span></code> matrices to CuRobo <code class="docutils literal notranslate"><span class="pre">Pose</span></code> (position +
+<strong>wxyz</strong> quaternion — note the <code class="docutils literal notranslate"><span class="pre">xyzw</span> <span class="pre">→</span> <span class="pre">wxyz</span></code> reorder, matching the repo-wide
+viser convention).</p>
+</section>
+<hr class="docutils" />
+<section id="combining-arm-hand">
+<h2>8. Combining Arm + Hand<a class="headerlink" href="#combining-arm-hand" title="Link to this heading">¶</a></h2>
+<p>A full manipulator URDF is assembled offline from separate arm and hand URDFs.
+<code class="docutils literal notranslate"><span class="pre">merge_urdf.py</span></code> loads each into a <code class="docutils literal notranslate"><span class="pre">RobotWrapper</span></code>, computes the fixed
+arm→wrist transform from <code class="docutils literal notranslate"><span class="pre">DEVICE2WRIST</span></code>, and calls <code class="docutils literal notranslate"><span class="pre">generate_urdf</span></code> (a <code class="docutils literal notranslate"><span class="pre">xacro</span></code>
+subprocess) to emit <code class="docutils literal notranslate"><span class="pre">rsc/robot/&lt;arm&gt;_&lt;hand&gt;.urdf</span></code>. That merged URDF is what
+<code class="docutils literal notranslate"><span class="pre">RobotWrapper</span></code>, <code class="docutils literal notranslate"><span class="pre">CuroboPlanner</span></code>, and the visualizers consume.</p>
+<pre  class="mermaid">
+        flowchart LR
+    AU[&quot;arm.urdf&quot;] --&gt; MG[&quot;merge_urdf&lt;br/&gt;DEVICE2WRIST offset&quot;]
+    HU[&quot;hand.urdf&quot;] --&gt; MG
+    XA[&quot;robot_combined.urdf.xacro&quot;] --&gt; MG
+    MG --&gt; OUT[&quot;rsc/robot/&amp;lt;arm&amp;gt;_&amp;lt;hand&amp;gt;.urdf&quot;]
+    </pre></section>
+<hr class="docutils" />
+<section id="component-reference">
+<h2>9. Component Reference<a class="headerlink" href="#component-reference" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Layer</p></th>
+<th class="head"><p>Component</p></th>
+<th class="head"><p>File</p></th>
+<th class="head"><p>Responsibility</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Factory</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get_arm</span></code> / <code class="docutils literal notranslate"><span class="pre">get_hand</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/__init__.py</span></code></p></td>
+<td><p>Resolve name → controller via <code class="docutils literal notranslate"><span class="pre">network_info</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Arm</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">XArmController</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/xarm_controller.py</span></code></p></td>
+<td><p>100 Hz servo/position loop, logging</p></td>
+</tr>
+<tr class="row-even"><td><p>Hand</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">AllegroController</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/allegro_controller.py</span></code></p></td>
+<td><p>ROS2 node, 16-DoF publish/subscribe</p></td>
+</tr>
+<tr class="row-odd"><td><p>Hand</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">InspireControllerIP</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/inspire_controller_ip.py</span></code></p></td>
+<td><p>Modbus TCP, 6-DoF + force + tactile</p></td>
+</tr>
+<tr class="row-even"><td><p>Hand</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">InspireController</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/inspire_controller.py</span></code></p></td>
+<td><p>USB serial, 6-DoF + force</p></td>
+</tr>
+<tr class="row-odd"><td><p>Kinematics</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">RobotWrapper</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/robot/robot_wrapper.py</span></code></p></td>
+<td><p>Pinocchio FK / IK / Jacobian</p></td>
+</tr>
+<tr class="row-even"><td><p>Planning</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CuroboPlanner</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/robot/curobo.py</span></code></p></td>
+<td><p>CuRobo GPU motion planning</p></td>
+</tr>
+<tr class="row-odd"><td><p>URDF</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">generate_urdf</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/robot/urdf.py</span></code></p></td>
+<td><p>xacro → URDF</p></td>
+</tr>
+<tr class="row-even"><td><p>URDF</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get_robot_urdf_path</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/robot/utils.py</span></code></p></td>
+<td><p>Resolve arm/hand URDF paths</p></td>
+</tr>
+<tr class="row-odd"><td><p>Retarget</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">parse_inspire</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/robot/mimic_joint.py</span></code>, <code class="docutils literal notranslate"><span class="pre">inspire.py</span></code></p></td>
+<td><p>Motor units → URDF joint radians (mimic joints)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<hr class="docutils" />
+<section id="validation-usage">
+<h2>10. Validation &amp; Usage<a class="headerlink" href="#validation-usage" title="Link to this heading">¶</a></h2>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Script</p></th>
+<th class="head"><p>Exercises</p></th>
+<th class="head"><p>Hardware</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/robot/xarm_base_wiggle.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get_arm(&quot;xarm&quot;)</span></code>, servo <code class="docutils literal notranslate"><span class="pre">move</span></code>, home on exit</p></td>
+<td><p>XArm</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/robot/allegro.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get_hand(&quot;allegro&quot;)</span></code>, per-joint sweep via <code class="docutils literal notranslate"><span class="pre">move</span></code></p></td>
+<td><p>Allegro</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/robot/inspire_left.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">InspireControllerIP</span></code>, pose list + sinusoid, <code class="docutils literal notranslate"><span class="pre">get_qpos</span></code></p></td>
+<td><p>Inspire (TCP)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/robot/inspire_left_gui.py</span></code></p></td>
+<td><p>force + tactile + <code class="docutils literal notranslate"><span class="pre">calibrate_force</span></code> GUI</p></td>
+<td><p>Inspire (TCP)</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/robot/inspire.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">InspireController</span></code> USB, tactile heatmap</p></td>
+<td><p>Inspire (USB)</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">src/capture/robot/teleop_real.py</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CaptureSession</span></code> teleop recording (arm+hand)</p></td>
+<td><p>full rig</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/util/robot/merge_urdf.py</span></code></p></td>
+<td><p>build combined arm+hand URDF</p></td>
+<td><p>none</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">src/util/robot/replay.py</span></code></p></td>
+<td><p>live <code class="docutils literal notranslate"><span class="pre">get_data()[&quot;qpos&quot;]</span></code> → Viser</p></td>
+<td><p>XArm</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Method-by-method API (parameters / returns): <a class="reference internal" href="robot_api.html"><span class="doc">Robot Control — API</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="notes-gotchas">
+<h2>11. Notes &amp; Gotchas<a class="headerlink" href="#notes-gotchas" title="Link to this heading">¶</a></h2>
+<ul class="simple">
+<li><p><strong>Factory coupling to <code class="docutils literal notranslate"><span class="pre">network_info</span></code>.</strong> <code class="docutils literal notranslate"><span class="pre">get_arm</span></code>/<code class="docutils literal notranslate"><span class="pre">get_hand</span></code> spread connection
+params straight from <code class="docutils literal notranslate"><span class="pre">system/current/network.json</span></code>; a missing key raises at
+construction. <code class="docutils literal notranslate"><span class="pre">get_hand(&quot;inspire&quot;,</span> <span class="pre">ip=True)</span></code> uses <code class="docutils literal notranslate"><span class="pre">network_info[&quot;inspire&quot;]</span></code>
+(<code class="docutils literal notranslate"><span class="pre">ip</span></code>+<code class="docutils literal notranslate"><span class="pre">port</span></code>); <code class="docutils literal notranslate"><span class="pre">ip=False</span></code> uses <code class="docutils literal notranslate"><span class="pre">network_info[&quot;inspire_usb&quot;][&quot;param&quot;]</span></code>.</p></li>
+<li><p><strong>Franka is stubbed.</strong> The <code class="docutils literal notranslate"><span class="pre">franka</span></code> branch in <code class="docutils literal notranslate"><span class="pre">get_arm</span></code> is commented out — only
+<code class="docutils literal notranslate"><span class="pre">xarm</span></code> currently returns a controller.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">action</span></code> units differ per device.</strong> Arm radians / pose vs. Allegro radians vs.
+Inspire 0–1000 motor units. <code class="docutils literal notranslate"><span class="pre">parse_inspire</span></code> converts motor units to URDF joint
+radians (and fills mimic joints) when driving a <code class="docutils literal notranslate"><span class="pre">RobotWrapper</span></code> from hardware
+logs.</p></li>
+<li><p><strong>CuroboPlanner has latent gaps.</strong> <code class="docutils literal notranslate"><span class="pre">plan_full_step</span></code> references <code class="docutils literal notranslate"><span class="pre">self.rough_steps</span></code>
+and <code class="docutils literal notranslate"><span class="pre">self.tensor_args</span></code>, neither set in <code class="docutils literal notranslate"><span class="pre">__init__</span></code> — that path is incomplete;
+<code class="docutils literal notranslate"><span class="pre">plan_goalset</span></code> / <code class="docutils literal notranslate"><span class="pre">plan_to_joint_target</span></code> are the supported entry points.</p></li>
+<li><p><strong><code class="docutils literal notranslate"><span class="pre">start()</span></code> before <code class="docutils literal notranslate"><span class="pre">stop()</span></code>.</strong> Logging buffers only fill between <code class="docutils literal notranslate"><span class="pre">start(save_path)</span></code>
+and <code class="docutils literal notranslate"><span class="pre">stop()</span></code>; <code class="docutils literal notranslate"><span class="pre">end()</span></code> calls <code class="docutils literal notranslate"><span class="pre">stop()</span></code> for you if a session is still open.</p></li>
+</ul>
+</section>
+</section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="capture.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Capture Session</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="camera_system.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Camera System</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, Mingi Choi
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer">
+      
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Robot Control</a><ul>
+<li><a class="reference internal" href="#architecture">1. Architecture</a></li>
+<li><a class="reference internal" href="#core-concepts">2. Core Concepts</a></li>
+<li><a class="reference internal" href="#controller-lifecycle">3. Controller Lifecycle</a></li>
+<li><a class="reference internal" href="#arms-xarm">4. Arms — XArm</a></li>
+<li><a class="reference internal" href="#hands-allegro-ros2-and-inspire-modbus">5. Hands — Allegro (ROS2) and Inspire (Modbus)</a></li>
+<li><a class="reference internal" href="#kinematics-robotwrapper-pinocchio">6. Kinematics — RobotWrapper (Pinocchio)</a></li>
+<li><a class="reference internal" href="#motion-planning-curobo">7. Motion Planning — CuRobo</a></li>
+<li><a class="reference internal" href="#combining-arm-hand">8. Combining Arm + Hand</a></li>
+<li><a class="reference internal" href="#component-reference">9. Component Reference</a></li>
+<li><a class="reference internal" href="#validation-usage">10. Validation &amp; Usage</a></li>
+<li><a class="reference internal" href="#notes-gotchas">11. Notes &amp; Gotchas</a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=7026087e"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
+    <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
+
+
+
+
+
+const initStyles = () => {
+    const defaultStyle = document.createElement('style');
+    defaultStyle.textContent = `pre.mermaid {
+    /* Same as .mermaid-container > pre */
+    display: block;
+    width: 100%;
+}
+
+pre.mermaid > svg {
+    /* Same as .mermaid-container > pre > svg */
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}`;
+    document.head.appendChild(defaultStyle);
+
+    const fullscreenStyle = document.createElement('style');
+    fullscreenStyle.textContent = `.mermaid-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+}
+
+.mermaid-container > pre {
+    display: block;
+    width: 100%;
+}
+
+.mermaid-container > pre > svg {
+    height: 500px;
+    width: 100%;
+    max-width: 100% !important;
+}
+
+.mermaid-fullscreen-btn {
+    width: 28px;
+    height: 28px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.3);
+    border-radius: 4px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    font-size: 14px;
+    line-height: 1;
+    padding: 0;
+    color: #333;
+}
+
+.mermaid-fullscreen-btn:hover {
+    opacity: 100% !important;
+    background: rgba(255, 255, 255, 1);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.3);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-btn.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-btn.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 3px 10px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal {
+    display: none;
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 95vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.98);
+    z-index: 9999;
+    padding: 20px;
+    overflow: auto;
+}
+
+.mermaid-fullscreen-modal.dark-theme {
+    background: rgba(0, 0, 0, 0.98);
+}
+
+.mermaid-fullscreen-modal.active {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen {
+    position: relative;
+    width: 95vw;
+    height: 90vh;
+    max-width: 95vw;
+    max-height: 90vh;
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    overflow: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen.dark-theme {
+    background: #1a1a1a;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+}
+
+.mermaid-container-fullscreen pre.mermaid {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mermaid-container-fullscreen .mermaid svg {
+    height: 100% !important;
+    width: 100% !important;
+    cursor: grab;
+}
+
+.mermaid-fullscreen-close {
+    position: fixed !important;
+    top: 20px !important;
+    right: 20px !important;
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    border-radius: 50%;
+    cursor: pointer;
+    z-index: 10000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transition: all 0.2s;
+    font-size: 24px;
+    line-height: 1;
+    color: #333;
+}
+
+.mermaid-fullscreen-close:hover {
+    background: white;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+    transform: scale(1.1);
+}
+
+.mermaid-fullscreen-close.dark-theme {
+    background: rgba(50, 50, 50, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #e0e0e0;
+}
+
+.mermaid-fullscreen-close.dark-theme:hover {
+    background: rgba(60, 60, 60, 1);
+    box-shadow: 0 6px 16px rgba(255, 255, 255, 0.2);
+}
+
+.mermaid-fullscreen-modal .mermaid-fullscreen-btn {
+    display: none !important;
+}`;
+    document.head.appendChild(fullscreenStyle);
+}
+
+// Detect if page has dark background
+const isDarkTheme = () => {
+    // We use a set of heuristics:
+    // 1. Check for common dark mode classes or attributes
+    // 2. Check computed background color brightness
+    if (document.documentElement.classList.contains('dark') ||
+        document.documentElement.getAttribute('data-theme') === 'dark' ||
+        document.body.classList.contains('dark') ||
+        document.body.getAttribute('data-theme') === 'dark') {
+        // console.log("Dark theme detected via class/attribute");
+        return true;
+    }
+    if (document.documentElement.classList.contains('light') ||
+        document.documentElement.getAttribute('data-theme') === 'light' ||
+        document.body.classList.contains('light') ||
+        document.body.getAttribute('data-theme') === 'light') {
+        // console.log("Light theme detected via class/attribute");
+        return false;
+    }
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        // console.log("Dark theme detected via prefers-color-scheme");
+        return true;
+    }
+    const bgColor = window.getComputedStyle(document.body).backgroundColor;
+    const match = bgColor.match(/rgb\((\d+),\s*(\d+),\s*(\d+)/);
+    if (match) {
+        const r = parseInt(match[1]);
+        const g = parseInt(match[2]);
+        const b = parseInt(match[3]);
+        const brightness = (r * 299 + g * 587 + b * 114) / 1000;
+        // console.log("Background color brightness:", brightness);
+        return brightness < 128;
+    }
+    // console.log("No dark or light theme detected, defaulting to light theme");
+    return false;
+};
+
+let darkTheme = isDarkTheme();
+let modal = null;
+let modalContent = null;
+let previousScrollOffset = [window.scrollX, window.scrollY];
+
+const runMermaid = async (rerun) => {
+    console.log("Running mermaid diagrams, rerun =", rerun);
+    // clear all existing mermaid charts
+    let all_mermaids = document.querySelectorAll(".mermaid");
+
+    if (rerun) {
+        all_mermaids.forEach((el) => {
+            if(!el.hasAttribute("data-original-code")) {
+                // store original code
+                // console.log(`Storing original code for first run: `, el.innerHTML);
+                el.setAttribute('data-original-code', el.innerHTML);
+            }
+            if(el.getAttribute("data-processed") === "true") {
+                // remove and restore original
+                el.removeAttribute("data-processed");
+                // console.log(`Restoring original code for re-run: `, el.getAttribute('data-original-code'));
+                el.innerHTML = el.getAttribute('data-original-code');
+            } else {
+                // store original code
+                // console.log(`Storing original code for re-run: `, el.innerHTML);
+                el.setAttribute('data-original-code', el.innerHTML);
+            }
+        });
+        await mermaid.run();
+    }
+
+    all_mermaids = document.querySelectorAll(".mermaid");
+    const mermaids_processed = document.querySelectorAll(".mermaid[data-processed='true']");
+
+    if ("False" === "True") {
+        const mermaids_to_add_zoom = -1 === -1 ? all_mermaids.length : -1;
+        if(mermaids_to_add_zoom > 0) {
+            var svgs = d3.selectAll("");
+            if(all_mermaids.length !== mermaids_processed.length) {
+                setTimeout(() => runMermaid(false), 200);
+                return;
+            } else if(svgs.size() !== mermaids_to_add_zoom) {
+                setTimeout(() => runMermaid(false), 200);
+                return;
+            } else {
+                svgs.each(function() {
+                    var svg = d3.select(this);
+                    svg.html("<g class='wrapper'>" + svg.html() + "</g>");
+                    var inner = svg.select("g");
+                    var zoom = d3.zoom().on("zoom", function(event) {
+                        inner.attr("transform", event.transform);
+                    });
+                    svg.call(zoom);
+                });
+            }
+        }
+    } else if(all_mermaids.length !== mermaids_processed.length) {
+        // Wait for mermaid to process all diagrams
+        setTimeout(() => runMermaid(false), 200);
+        return;
+    }
+
+    // Stop here if not adding fullscreen capability
+    if ("True" !== "True") return;
+
+    if (modal !== null ) {
+        // Destroy existing modal
+        modal.remove();
+        modal = null;
+        modalContent = null;
+    }
+
+    modal = document.createElement('div');
+    modal.className = 'mermaid-fullscreen-modal' + (darkTheme ? ' dark-theme' : '');
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', 'Fullscreen diagram viewer');
+    modal.innerHTML = `
+        <button class="mermaid-fullscreen-close${darkTheme ? ' dark-theme' : ''}" aria-label="Close fullscreen">✕</button>
+        <div class="mermaid-container-fullscreen${darkTheme ? ' dark-theme' : ''}"></div>
+    `;
+    document.body.appendChild(modal);
+
+    modalContent = modal.querySelector('.mermaid-container-fullscreen');
+    const closeBtn = modal.querySelector('.mermaid-fullscreen-close');
+
+    const closeModal = () => {
+        modal.classList.remove('active');
+        modalContent.innerHTML = '';
+        document.body.style.overflow = ''
+        window.scrollTo({left: previousScrollOffset[0], top: previousScrollOffset[1], behavior: 'instant'});
+    };
+
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) closeModal();
+    });
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+            closeModal();
+        }
+    });
+
+    document.querySelectorAll('.mermaid').forEach((mermaidDiv) => {
+        if (mermaidDiv.parentNode.classList.contains('mermaid-container') ||
+            mermaidDiv.closest('.mermaid-fullscreen-modal')) {
+            // Already processed, adjust button class if needed
+            const existingBtn = mermaidDiv.parentNode.querySelector('.mermaid-fullscreen-btn');
+            if (existingBtn) {
+                existingBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+            }
+            return;
+        }
+
+        const container = document.createElement('div');
+        container.className = 'mermaid-container';
+        mermaidDiv.parentNode.insertBefore(container, mermaidDiv);
+        container.appendChild(mermaidDiv);
+
+        const fullscreenBtn = document.createElement('button');
+        fullscreenBtn.className = 'mermaid-fullscreen-btn' + (darkTheme ? ' dark-theme' : '');
+        fullscreenBtn.setAttribute('aria-label', 'View diagram in fullscreen');
+        fullscreenBtn.textContent = '⛶';
+        fullscreenBtn.style.opacity = '50%';
+
+        // Calculate dynamic position based on diagram's margin and padding
+        const diagramStyle = window.getComputedStyle(mermaidDiv);
+        const marginTop = parseFloat(diagramStyle.marginTop) || 0;
+        const marginRight = parseFloat(diagramStyle.marginRight) || 0;
+        const paddingTop = parseFloat(diagramStyle.paddingTop) || 0;
+        const paddingRight = parseFloat(diagramStyle.paddingRight) || 0;
+        fullscreenBtn.style.top = `${marginTop + paddingTop + 4}px`;
+        fullscreenBtn.style.right = `${marginRight + paddingRight + 4}px`;
+
+        fullscreenBtn.addEventListener('click', () => {
+            previousScrollOffset = [window.scroll, window.scrollY];
+            const clone = mermaidDiv.cloneNode(true);
+            modalContent.innerHTML = '';
+            modalContent.appendChild(clone);
+
+            const svg = clone.querySelector('svg');
+            if (svg) {
+                svg.removeAttribute('width');
+                svg.removeAttribute('height');
+                svg.style.width = '100%';
+                svg.style.height = 'auto';
+                svg.style.maxWidth = '100%';
+                svg.style.sdisplay = 'block';
+
+                if ("False" === "True") {
+                    setTimeout(() => {
+                        const g = svg.querySelector('g');
+                        if (g) {
+                            var svgD3 = d3.select(svg);
+                            svgD3.html("<g class='wrapper'>" + svgD3.html() + "</g>");
+                            var inner = svgD3.select("g");
+                            var zoom = d3.zoom().on("zoom", function(event) {
+                                inner.attr("transform", event.transform);
+                            });
+                            svgD3.call(zoom);
+                        }
+                    }, 100);
+                }
+            }
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
+        container.appendChild(fullscreenBtn);
+    });
+};
+
+const load = async () => {
+    initStyles();
+
+    await runMermaid(true);
+
+    const reRunIfThemeChanges = async () => {
+        const newDarkTheme = isDarkTheme();
+        if (newDarkTheme !== darkTheme) {
+            darkTheme = newDarkTheme;
+            console.log("Theme change detected, re-running mermaid with", darkTheme ? "dark" : "default", "theme");
+            await mermaid.initialize(
+                {...JSON.parse(
+                    `{"startOnLoad": false}`
+                ),
+                ...{ darkMode: darkTheme, theme: darkTheme ? 'dark' : 'default' },
+                }
+            );
+            await runMermaid(true);
+        }
+    };
+
+    // Update theme classes when theme changes
+    const themeObserver = new MutationObserver(reRunIfThemeChanges);
+    themeObserver.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+    themeObserver.observe(document.body, {
+        attributes: true,
+        attributeFilter: ['class', 'style', 'data-theme']
+    });
+};
+
+
+
+
+
+console.log("Initializing mermaid with", darkTheme ? "dark" : "default", "theme");
+mermaid.initialize(
+    {...JSON.parse(
+        `{"startOnLoad": false}`
+    ),
+    ...{ darkMode: darkTheme, theme: darkTheme ? 'dark' : 'default' },
+    }
+);
+
+window.addEventListener("load", load);
+window.runMermaid = runMermaid;</script>
+    </body>
+</html>

@@ -148,6 +148,28 @@ flowchart LR
     C -->|missing| D["default 2500us / 3dB"]
 ```
 
+**How config reaches the hardware.** Two channels. The per-camera baseline is read
+**locally on each capture PC** from `camera.json` (never sent over the network); the
+runtime parameters travel from the main PC as a **JSON command over ZMQ**, and the
+capture-PC `CameraLoader` resolves the two together before applying them to the PySpin
+nodes. Only `gain`/`exposure` live in `camera.json`; packet size, buffer count, trigger
+mode, and pixel format are fixed in `PyspinCameraConfig`.
+
+```{mermaid}
+flowchart TB
+    subgraph MainPC["Main PC"]
+      ST["start(mode, sync, fps,<br/>exposure, gain)"]
+    end
+    subgraph CapPC["Capture PC"]
+      CJ["camera.json<br/>gain / exposure baseline"]
+      CLR["CameraLoader.start<br/>resolve per camera"]
+      PS["PyspinCamera<br/>_configureGain / _configureExposure"]
+    end
+    ST -- "ZMQ JSON command" --> CLR
+    CJ -. "baseline when arg is None" .-> CLR
+    CLR --> PS
+```
+
 ---
 
 ## 8. Error Handling & Recovery
@@ -167,6 +189,11 @@ flowchart TB
       A1["GetNextImage(1000ms)<br/>→ (None,None)"] --> A2["loop re-checks<br/>→ stop()/end() return"]
     end
 ```
+
+**Clean shutdown.** On a normal kill (`SIGTERM`) or `Ctrl-C` (`SIGINT`), the daemon
+releases every camera (`DeInit` + free SHM) via a signal handler, so the hardware
+comes back clean. `SIGKILL` (`-9`) can't be caught — the next daemon start clears any
+leaked SHM.
 
 **Recovery**: if wedged at the hardware level, run `python src/camera/reset_cameras.py`
 from the main PC (`pkill -9` + relaunch the daemons). **Validation**: §9.

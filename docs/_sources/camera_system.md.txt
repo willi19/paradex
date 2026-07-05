@@ -73,6 +73,18 @@ def run(self):
         time.sleep(0.1)
 ```
 
+**Public API**
+
+| Method | Description |
+|--------|-------------|
+| `remote_camera_controller(name, pc_list=None)` | Construct; starts the background `run()` thread. `pc_list` defaults to all capture PCs. |
+| `.start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)` | Begin capture on all PCs (returns once the command is sent). |
+| `.stop()` | Stop capture on all PCs. |
+| `.end()` | Release the lock and join the loop thread. |
+| `.reload_cameras()` | Ask every daemon to re-init its cameras. |
+| `.force_takeover()` | Grab the lock even if another controller holds it. |
+| `.is_error()` | `True` if any camera reported an error. |
+
 ### 3.2 `camera_server_daemon` (capture PC)
 
 - **Responsibility**: receive commands → dispatch via `execute_command` → call `CameraLoader`. Manage the single-controller lock.
@@ -105,6 +117,17 @@ for camera, path in zip(self.cameralist, save_paths):
 ```
 
 `stop`/`end` reuse the same fan-out helper (`_broadcast`).
+
+**Public API**
+
+| Method / attr | Description |
+|---------------|-------------|
+| `CameraLoader(types=["pyspin"])` | Construct; detects and opens every local camera. |
+| `.start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)` | Start all cameras concurrently (blocks until all started). |
+| `.stop()` / `.end()` | Stop / release (DeInit + free SHM) all cameras. |
+| `.get_status_list()` | List of per-camera status dicts. |
+| `.get_all_errors()` | `{serial: (msg, traceback)}` for cameras currently in error. |
+| `.camera_names` / `.cameralist` | Serial-number list / the `Camera` objects. |
 
 ### 3.4 `Camera` (capture PC) — state machine
 
@@ -148,6 +171,30 @@ while self.event["start"].is_set() and not self.event["exit"].is_set():
 self.camera.stop(); self.event["stop"].set()
 ```
 
+**Public API**
+
+| Method | Description |
+|--------|-------------|
+| `Camera(cam_type, name, frame_shape=(1536,2048,3))` | Construct; opens the camera and spawns the capture thread. |
+| `.start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)` | Begin capture in `mode`; blocks until acquiring. |
+| `.stop(timeout=5.0)` | Stop capture (finite wait). |
+| `.end(timeout=5.0)` | Stop + release: DeInit + free SHM (finite wait). |
+| `.get_status()` | Dict: `state, frame_id, name, mode, fps, syncMode, save_path, time`. |
+| `.get_state()` | `CONNECTING / READY / STARTING / CAPTURING / ERROR / STOPPED`. |
+| `.get_frame_id()` / `.get_error()` | Last frame id / `(has_error, (msg, traceback))`. |
+
+The `start(...)` signature is shared by `Camera`, `CameraLoader`, and
+`remote_camera_controller`:
+
+| Param | Type | Meaning |
+|-------|------|---------|
+| `mode` | str | `image` / `video` / `stream` / `full` |
+| `syncMode` | bool | use the hardware trigger |
+| `save_path` | str | relative output dir (video/image) |
+| `fps` | int | frame rate |
+| `exposure_time` | float \| None | microseconds; `None` → camera.json |
+| `gain` | float \| None | dB; `None` → camera.json |
+
 ### 3.5 `PyspinCamera` (capture PC) — driver
 
 - **Responsibility**: direct PySpin SDK calls. `get_image()` (grab), `start()` (configure + `BeginAcquisition`), `_configure*` (gain/exposure/trigger/framerate).
@@ -167,6 +214,15 @@ def start(self, mode, syncMode, frame_rate=None, gain=None, exposure_time=None):
     if exposure != self.exposure_time: self._configureExposure()
     self.cam.BeginAcquisition()
 ```
+
+**Public API**
+
+| Method | Description |
+|--------|-------------|
+| `.get_image()` | Grab one frame → `(frame, frame_data)`, or `(None, None)` on timeout. |
+| `.start(mode, syncMode, frame_rate=None, gain=None, exposure_time=None)` | Configure + `BeginAcquisition`. `mode` = `single` / `continuous`. |
+| `.stop()` | `EndAcquisition` (camera stays connected). |
+| `.release()` | `DeInit` (disconnect the camera). |
 
 ---
 
@@ -198,10 +254,10 @@ them (the redesign target).
 ```{mermaid}
 flowchart TD
     T["continuous_acquire()"] --> G["get_image()"]
-    G -->|frame| SHM["SHM double-buffer (stream/full)"]
-    G -->|frame| VID["VideoWriter .avi (video/full)"]
-    G -.->|none → (None,None)| T
-    SHM --> R["MultiCameraReader → consumers"]
+    G -->|frame| SHM["SHM double-buffer<br/>stream / full"]
+    G -->|frame| VID["VideoWriter .avi<br/>video / full"]
+    G -.->|"no frame"| T
+    SHM --> R["MultiCameraReader<br/>consumers"]
 ```
 
 ---

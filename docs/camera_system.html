@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="API Reference" href="autoapi/index.html" /><link rel="prev" title="Paradex Documentation" href="index.html" />
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
-        <title>Camera System - paradex 0.0.0 documentation</title>
+        <title>카메라 시스템 - paradex 0.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=580074bf" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
@@ -202,7 +202,7 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul class="current">
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Camera System</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">카메라 시스템</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
 <ul>
@@ -360,159 +360,176 @@
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="camera-system">
-<h1>Camera System<a class="headerlink" href="#camera-system" title="Link to this heading">¶</a></h1>
-<p>A visual tour of how Paradex’s <strong>camera subsystem</strong> is implemented — read this
-<strong>before</strong> diving into the code so the files make sense. (Camera is just one
-subsystem of the wider rig; robot / capture / pipeline guides can sit alongside
-this one under “Guide”.) For the full redesign proposal see
-<a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md"><code class="docutils literal notranslate"><span class="pre">design/camera-recording-redesign.md</span></code></a>;
-for the per-symbol API see the <a class="reference internal" href="autoapi/index.html"><span class="doc">API Reference</span></a>.</p>
-<section id="big-picture-a-distributed-rig">
-<h2>Big picture — a distributed rig<a class="headerlink" href="#big-picture-a-distributed-rig" title="Link to this heading">¶</a></h2>
-<p>Cameras are spread across ~6 <strong>capture PCs</strong> (bandwidth: one GigE camera nearly
-fills a NIC). The <strong>main PC</strong> never touches a camera directly — it sends commands to
-a daemon on each capture PC. All cameras fire on one shared <strong>hardware trigger</strong> so
-frames are synchronized regardless of which PC they hang off.</p>
+          <section id="id1">
+<h1>카메라 시스템<a class="headerlink" href="#id1" title="Link to this heading">¶</a></h1>
+<p>Paradex <strong>카메라 서브시스템</strong>이 실제로 어떻게 돌아가는지 그림과 함께 훑는 문서입니다.
+코드를 열기 전에 이걸 먼저 읽으면 각 파일이 왜 그렇게 생겼는지 감이 잡힙니다. 카메라는
+전체 리그의 한 부분일 뿐이고, robot·capture·pipeline 가이드도 앞으로 “Guide” 아래 나란히
+들어올 수 있습니다.</p>
+<ul class="simple">
+<li><p>자세한 재설계 제안: <a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md">design/camera-recording-redesign.md</a></p></li>
+<li><p>함수·클래스 단위 레퍼런스: <a class="reference internal" href="autoapi/index.html"><span class="doc">API Reference</span></a></p></li>
+</ul>
+<section id="id2">
+<h2>왜 이렇게 나눠져 있나<a class="headerlink" href="#id2" title="Link to this heading">¶</a></h2>
+<p>카메라 한 대가 기가비트 랜을 거의 다 먹습니다. 그래서 수십 대를 한 컴퓨터에 붙일 수 없어,
+<strong>캡처 PC 6대</strong>에 나눠 답니다. 대신 <strong>메인 PC</strong>는 카메라를 직접 만지지 않습니다 — 각 캡처
+PC에서 도는 데몬에게 “찍어라 / 멈춰라” 명령만 보냅니다.</p>
+<p>여러 대에 나눠 달면 자연히 이런 걱정이 생기죠. <em>“그럼 카메라마다 셔터가 제각각 열리는 거
+아냐?”</em> 그래서 모든 카메라를 <strong>하나의 하드웨어 트리거(UTGE900)</strong> 에 물립니다. 트리거 펄스가
+전기신호로 모든 카메라에 동시에 도달하니, 어느 PC에 붙어 있든 정확히 같은 순간에 찍힙니다.</p>
 <pre  class="mermaid">
         flowchart LR
-    subgraph Main[&quot;Main PC&quot;]
-      ORCH[&quot;capture / inference&lt;br/&gt;scripts&quot;]
+    subgraph Main[&quot;메인 PC&quot;]
+      ORCH[&quot;capture / inference&lt;br/&gt;스크립트&quot;]
       RCC[&quot;remote_camera_controller&quot;]
       ORCH --&gt; RCC
     end
-    subgraph Cap[&quot;Capture PC (×6)&quot;]
+    subgraph Cap[&quot;캡처 PC (×6)&quot;]
       D[&quot;server_daemon&quot;]
       CL[&quot;CameraLoader&quot;]
       CAM[&quot;Camera × k (PySpin)&quot;]
       D --&gt; CL --&gt; CAM
     end
-    GEN[&quot;UTGE900&lt;br/&gt;signal generator&quot;]
+    GEN[&quot;UTGE900&lt;br/&gt;신호 발생기&quot;]
     RCC -- &quot;ZMQ: register / start / stop / heartbeat&quot; --&gt; D
-    GEN -. &quot;hardware trigger (electrical)&quot; .-&gt; CAM
+    GEN -. &quot;하드웨어 트리거 (전기신호)&quot; .-&gt; CAM
     </pre></section>
-<section id="talking-to-a-capture-pc">
-<h2>Talking to a capture PC<a class="headerlink" href="#talking-to-a-capture-pc" title="Link to this heading">¶</a></h2>
-<p>The controller holds a <strong>single-controller lock</strong> on each daemon. It starts a mode,
-then sends heartbeats; if it goes silent for 15 s the daemon auto-releases and stops
-the cameras (a safety net — but see the hang section below).</p>
+<section id="pc-pc">
+<h2>메인 PC가 캡처 PC와 대화하는 법<a class="headerlink" href="#pc-pc" title="Link to this heading">¶</a></h2>
+<p>메인 PC 쪽 <code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code>는 각 데몬에 붙어 <strong>컨트롤러 락</strong>을 하나 잡습니다. 두
+사람이 동시에 같은 카메라를 건드리지 못하게 하려는 겁니다. 락을 잡으면 모드를 시작시키고,
+그 뒤로는 0.1초마다 <strong>heartbeat</strong>를 보내 “나 아직 살아있다”를 알립니다.</p>
+<p>만약 15초 동안 heartbeat가 끊기면 데몬은 스스로 락을 풀고 카메라를 멈춥니다 — 컨트롤러가
+죽었을 때 카메라가 계속 돌아가는 걸 막는 안전장치입니다. (다만 이 타임아웃이 뒤에 나오는
+hang 문제와 얽히니, 그건 아래에서 다시 봅니다.)</p>
 <pre  class="mermaid">
         sequenceDiagram
-    participant M as Main PC (controller)
-    participant D as Capture PC (daemon)
-    M-&gt;&gt;D: register (take lock)
+    participant M as 메인 PC (컨트롤러)
+    participant D as 캡처 PC (데몬)
+    M-&gt;&gt;D: register (락 잡기)
     M-&gt;&gt;D: start(mode, sync, save_path, fps, exposure, gain)
-    D-&gt;&gt;D: CameraLoader.start → per-camera acquisition
-    loop every ~0.1 s
+    D-&gt;&gt;D: CameraLoader.start → 카메라별 acquisition 시작
+    loop 약 0.1초마다
       M-&gt;&gt;D: heartbeat
-      D--&gt;&gt;M: ok  /  camera errors
+      D--&gt;&gt;M: ok / 카메라 에러
     end
     M-&gt;&gt;D: stop
-    M-&gt;&gt;D: end (release lock)
+    M-&gt;&gt;D: end (락 반환)
     </pre></section>
-<section id="inside-one-camera-acquisition-vs-sinks">
-<h2>Inside one camera: acquisition vs. sinks<a class="headerlink" href="#inside-one-camera-acquisition-vs-sinks" title="Link to this heading">¶</a></h2>
-<p>This is the key mental model. Each camera runs <strong>one capture thread</strong> that grabs
-frames in a loop; where those frames go (the <em>sinks</em>) depends on the mode:</p>
+<section id="id3">
+<h2>카메라 한 대 안에서 벌어지는 일 (가장 중요)<a class="headerlink" href="#id3" title="Link to this heading">¶</a></h2>
+<p>여기가 핵심 멘탈 모델입니다. 카메라마다 <strong>캡처 스레드가 하나</strong> 돌면서 프레임을 쉬지 않고
+잡아옵니다. 잡은 프레임을 <em>어디로 보내느냐</em> 는 mode가 정하는데, 이 “보내는 곳”을 sink라고
+부릅니다.</p>
 <ul class="simple">
-<li><p><strong>stream</strong> → a double-buffered <strong>shared-memory</strong> block that live consumers read
-(e.g. 6D-pose init) via <code class="docutils literal notranslate"><span class="pre">MultiCameraReader</span></code>.</p></li>
-<li><p><strong>video</strong> / <strong>full</strong> → an <code class="docutils literal notranslate"><span class="pre">.avi</span></code> on disk (<code class="docutils literal notranslate"><span class="pre">full</span></code> = video <strong>and</strong> SHM at once).</p></li>
-<li><p><strong>image</strong> → one still frame.</p></li>
+<li><p><strong>stream</strong> — 공유 메모리(SHM)에 얹습니다. 실시간으로 프레임이 필요한 소비자(예: 6D 포즈
+초기화)가 <code class="docutils literal notranslate"><span class="pre">MultiCameraReader</span></code>로 바로 읽어갑니다.</p></li>
+<li><p><strong>video</strong> / <strong>full</strong> — 디스크에 <code class="docutils literal notranslate"><span class="pre">.avi</span></code>로 녹화합니다 (<code class="docutils literal notranslate"><span class="pre">full</span></code>은 녹화 + SHM을 동시에).</p></li>
+<li><p><strong>image</strong> — 한 장만 저장합니다.</p></li>
 </ul>
+<p>즉 “카메라가 프레임을 만든다”와 “그 프레임을 어디에 쓴다”는 원래 별개의 축인데, 지금은
+mode 하나가 이 둘을 같이 묶고 있습니다. 이 점을 기억해 두세요.</p>
 <pre  class="mermaid">
         flowchart TD
-    T[&quot;capture thread&lt;br/&gt;continuous_acquire()&quot;] --&gt; G[&quot;get_image()&lt;br/&gt;GetNextImage(GRAB_TIMEOUT_MS)&quot;]
-    G --&gt;|frame| SHM[&quot;SHM double-buffer&lt;br/&gt;(stream / full)&quot;]
-    G --&gt;|frame| VID[&quot;cv2.VideoWriter .avi&lt;br/&gt;(video / full)&quot;]
-    G -.-&gt;|no frame → (None, None)| T
-    SHM --&gt; R[&quot;MultiCameraReader → consumers&quot;]
-    VID --&gt; DISK[&quot;capture disk&quot;]
+    T[&quot;캡처 스레드&lt;br/&gt;continuous_acquire()&quot;] --&gt; G[&quot;get_image()&lt;br/&gt;GetNextImage(GRAB_TIMEOUT_MS)&quot;]
+    G --&gt;|프레임| SHM[&quot;SHM 더블버퍼&lt;br/&gt;(stream / full)&quot;]
+    G --&gt;|프레임| VID[&quot;cv2.VideoWriter .avi&lt;br/&gt;(video / full)&quot;]
+    G -.-&gt;|프레임 없음 → (None, None)| T
+    SHM --&gt; R[&quot;MultiCameraReader → 소비자&quot;]
+    VID --&gt; DISK[&quot;캡처 디스크&quot;]
     </pre><blockquote>
-<div><p>The <code class="docutils literal notranslate"><span class="pre">mode</span></code> argument couples <em>what the camera does</em> with <em>where frames go</em>. The
-<a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md">redesign</a>
-proposes splitting these so recording can toggle without restarting acquisition.</p>
+<div><p>그래서 stream을 켜둔 채 녹화를 시작하려면, 지금 구조에선 acquisition을 통째로 멈췄다
+다시 켜야 합니다. <a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md">재설계</a>는
+이 둘을 떼어내서, 녹화를 껐다 켜는 걸 재시작 없이 하자고 제안합니다.</p>
 </div></blockquote>
 </section>
-<section id="hardware-sync-matching-frame-ids">
-<h2>Hardware sync = matching frame ids<a class="headerlink" href="#hardware-sync-matching-frame-ids" title="Link to this heading">¶</a></h2>
-<p>Every trigger pulse increments the frame id on <strong>all</strong> cameras at once, so at any
-instant they should report the same id. <code class="docutils literal notranslate"><span class="pre">sync_check.py</span></code> verifies this by measuring
-the spread of frame ids across cameras — a persistent spread means a camera is
-dropping or isn’t triggered.</p>
+<section id="id4">
+<h2>“싱크가 맞는다”는 게 무슨 뜻<a class="headerlink" href="#id4" title="Link to this heading">¶</a></h2>
+<p>트리거 펄스가 한 번 칠 때마다 <strong>모든 카메라의 frame_id가 동시에 1씩 올라갑니다.</strong> 그래서
+어느 순간을 집어봐도 카메라들이 같은 번호를 들고 있어야 정상입니다.</p>
+<p><code class="docutils literal notranslate"><span class="pre">sync_check.py</span></code>는 이걸 카메라들 frame_id의 최대–최소 차이(spread)로 확인합니다. 차이가 계속
+0~1이면 잘 맞는 것이고, 한 카메라만 자꾸 뒤처져 차이가 벌어지면 그 카메라가 프레임을
+흘리거나 트리거를 못 받고 있다는 신호입니다.</p>
 <pre  class="mermaid">
         flowchart LR
-    GEN[&quot;trigger pulse #N&quot;] --&gt; C1[&quot;cam A → frame #N&quot;]
-    GEN --&gt; C2[&quot;cam B → frame #N&quot;]
-    GEN --&gt; C3[&quot;cam C → frame #N&quot;]
-    C1 &amp; C2 &amp; C3 --&gt; CHK[&quot;spread = max-min id&lt;br/&gt;0-1 = in sync&quot;]
+    GEN[&quot;트리거 펄스 #N&quot;] --&gt; C1[&quot;카메라 A → 프레임 #N&quot;]
+    GEN --&gt; C2[&quot;카메라 B → 프레임 #N&quot;]
+    GEN --&gt; C3[&quot;카메라 C → 프레임 #N&quot;]
+    C1 &amp; C2 &amp; C3 --&gt; CHK[&quot;spread = 최대-최소 id&lt;br/&gt;0~1 이면 싱크 정상&quot;]
     </pre></section>
-<section id="why-cameras-used-to-hang-and-the-fix">
-<h2>Why cameras used to hang (and the fix)<a class="headerlink" href="#why-cameras-used-to-hang-and-the-fix" title="Link to this heading">¶</a></h2>
-<p>When frames stopped arriving (LAN drop, trigger off) the old <code class="docutils literal notranslate"><span class="pre">get_image()</span></code> blocked
-<strong>forever</strong>, so the whole daemon wedged and the next run couldn’t start cameras —
-even after <code class="docutils literal notranslate"><span class="pre">pkill</span></code>.</p>
+<section id="id5">
+<h2>카메라가 멈췄던 이유, 그리고 고친 것<a class="headerlink" href="#id5" title="Link to this heading">¶</a></h2>
+<p>최근에 잡은 실제 버그입니다. 랜선이 빠지거나 트리거가 멈춰서 <strong>프레임이 안 들어오면</strong>, 예전
+<code class="docutils literal notranslate"><span class="pre">get_image()</span></code>는 프레임을 <strong>무한정 기다렸습니다.</strong> 캡처 스레드가 거기서 멈춰버리니 stop 신호를
+확인하지 못하고, 그 결과 <code class="docutils literal notranslate"><span class="pre">Camera.stop()</span></code>도 영원히 대기하면서 <strong>데몬 전체가 굳어버립니다.</strong> 이
+상태가 되면 <code class="docutils literal notranslate"><span class="pre">pkill</span></code>로 메인 스크립트를 죽여도, 캡처 PC의 데몬은 굳은 채 살아있어서 다음
+실행이 카메라를 못 켰습니다.</p>
+<p>고친 방법은 단순합니다. <code class="docutils literal notranslate"><span class="pre">get_image()</span></code>가 무한 대기 대신 <strong>1초 timeout</strong>을 걸고, 그 안에
+프레임이 안 오면 <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code>을 돌려줍니다. 그러면 루프가 다시 stop/exit 신호를 확인할 수
+있어, 프레임이 끊겨도 stop이 정상적으로 반환됩니다.</p>
 <pre  class="mermaid">
         flowchart TD
-    subgraph Before[&quot;Before (the bug)&quot;]
-      A[&quot;LAN drop / trigger off&quot;] --&gt; B[&quot;GetNextImage() blocks forever&quot;]
-      B --&gt; C[&quot;loop never re-checks stop&quot;]
-      C --&gt; E[&quot;Camera.stop() waits forever → daemon hangs&quot;]
+    subgraph Before[&quot;예전 (버그)&quot;]
+      A[&quot;랜선 빠짐 / 트리거 꺼짐&quot;] --&gt; B[&quot;GetNextImage() 무한 대기&quot;]
+      B --&gt; C[&quot;루프가 stop을 다시 못 봄&quot;]
+      C --&gt; E[&quot;Camera.stop() 영원히 대기 → 데몬 굳음&quot;]
     end
-    subgraph After[&quot;After (P4 fix)&quot;]
-      A2[&quot;LAN drop / trigger off&quot;] --&gt; B2[&quot;GetNextImage(1000ms) → (None, None)&quot;]
-      B2 --&gt; C2[&quot;loop re-checks start/exit&quot;]
-      C2 --&gt; E2[&quot;stop()/end() return (finite waits)&quot;]
+    subgraph After[&quot;지금 (P4 수정)&quot;]
+      A2[&quot;랜선 빠짐 / 트리거 꺼짐&quot;] --&gt; B2[&quot;GetNextImage(1000ms) → (None, None)&quot;]
+      B2 --&gt; C2[&quot;루프가 start/exit 재확인&quot;]
+      C2 --&gt; E2[&quot;stop()/end() 정상 반환 (유한 대기)&quot;]
     end
-    </pre><p>Recovery if a camera is still wedged at the hardware level: run
-<code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">src/camera/reset_cameras.py</span></code> from the main PC (force-kills + relaunches the
-daemons). Validate the fix with <code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/hang_recovery.py</span></code>.</p>
+    </pre><p>혹시 카메라가 하드웨어 레벨에서 굳어버렸다면, 메인 PC에서 <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">src/camera/reset_cameras.py</span></code>로
+데몬을 강제 종료한 뒤 재기동하면 됩니다. 이 수정이 실제로 먹히는지는
+<code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/hang_recovery.py</span></code>로 검증합니다.</p>
 </section>
-<section id="where-gain-exposure-come-from">
-<h2>Where gain / exposure come from<a class="headerlink" href="#where-gain-exposure-come-from" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">system/current/camera.json</span></code> holds a per-camera baseline. Resolution is
-deterministic — an explicit argument wins, otherwise the camera.json value, so a
-one-off override (e.g. an exposure sweep) can’t leak into the next capture. Tune it
-live with <code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code>.</p>
+<section id="id6">
+<h2>게인·노출은 어디서 오나<a class="headerlink" href="#id6" title="Link to this heading">¶</a></h2>
+<p>카메라별 기본값은 <code class="docutils literal notranslate"><span class="pre">system/current/camera.json</span></code>에 들어 있습니다. 실제로 어떤 값을 쓸지는
+<strong>명시적으로 넘긴 값 &gt; camera.json의 카메라별 값 &gt; 기본값</strong> 순서로, 항상 이 순서대로
+결정됩니다. 그래서 노출 스윕처럼 한 번 값을 바꿔 써도, 그 값이 다음 캡처로 슬그머니 새어
+들어가지 않습니다. 화면을 보면서 실시간으로 맞추려면 <code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code>를
+쓰세요.</p>
 <pre  class="mermaid">
         flowchart LR
-    A[&quot;start(exposure=None, gain=None)&quot;] --&gt; B{&quot;explicit arg?&quot;}
-    B --&gt;|yes| U[&quot;use arg&quot;]
-    B --&gt;|no| C[&quot;camera.json[serial]&quot;]
-    C --&gt;|missing| D[&quot;default 2500us / 3dB&quot;]
+    A[&quot;start(exposure=None, gain=None)&quot;] --&gt; B{&quot;명시 인자 있음?&quot;}
+    B --&gt;|예| U[&quot;그 값 사용&quot;]
+    B --&gt;|아니오| C[&quot;camera.json[serial]&quot;]
+    C --&gt;|없음| D[&quot;기본값 2500us / 3dB&quot;]
     </pre></section>
-<section id="where-to-look">
-<h2>Where to look<a class="headerlink" href="#where-to-look" title="Link to this heading">¶</a></h2>
+<section id="id7">
+<h2>어디를 보면 되나<a class="headerlink" href="#id7" title="Link to this heading">¶</a></h2>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>I want to…</p></th>
-<th class="head"><p>File</p></th>
+<tr class="row-odd"><th class="head"><p>이걸 하고 싶으면…</p></th>
+<th class="head"><p>파일</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p>Drive cameras from the main PC</p></td>
+<tr class="row-even"><td><p>메인 PC에서 카메라 제어</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/remote_camera_controller.py</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>Understand the capture-PC daemon</p></td>
+<tr class="row-odd"><td><p>캡처 PC 데몬 이해</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera_server_daemon.py</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>See the acquisition loop &amp; sinks</p></td>
+<tr class="row-even"><td><p>acquisition 루프 &amp; sink</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera.py</span></code> (<code class="docutils literal notranslate"><span class="pre">continuous_acquire</span></code>)</p></td>
 </tr>
-<tr class="row-odd"><td><p>Low-level PySpin (grab, config, trigger)</p></td>
+<tr class="row-odd"><td><p>저수준 PySpin (grab, 설정, 트리거)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/pyspin.py</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>Multi-camera image resolution</p></td>
+<tr class="row-even"><td><p>멀티카메라 값 해석</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera_loader.py</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>Validate the hang fix / sync</p></td>
+<tr class="row-odd"><td><p>hang 수정 / 싱크 검증</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/{hang_recovery,sync_check}.py</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>Tune gain/exposure live</p></td>
+<tr class="row-even"><td><p>게인·노출 실시간 튜닝</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code></p></td>
 </tr>
-<tr class="row-odd"><td><p>Recover hung cameras</p></td>
+<tr class="row-odd"><td><p>굳은 카메라 복구</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">src/camera/reset_cameras.py</span></code></p></td>
 </tr>
 </tbody>
@@ -576,14 +593,14 @@ live with <code class="docutils literal notranslate"><span class="pre">src/util/
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Camera System</a><ul>
-<li><a class="reference internal" href="#big-picture-a-distributed-rig">Big picture — a distributed rig</a></li>
-<li><a class="reference internal" href="#talking-to-a-capture-pc">Talking to a capture PC</a></li>
-<li><a class="reference internal" href="#inside-one-camera-acquisition-vs-sinks">Inside one camera: acquisition vs. sinks</a></li>
-<li><a class="reference internal" href="#hardware-sync-matching-frame-ids">Hardware sync = matching frame ids</a></li>
-<li><a class="reference internal" href="#why-cameras-used-to-hang-and-the-fix">Why cameras used to hang (and the fix)</a></li>
-<li><a class="reference internal" href="#where-gain-exposure-come-from">Where gain / exposure come from</a></li>
-<li><a class="reference internal" href="#where-to-look">Where to look</a></li>
+<li><a class="reference internal" href="#">카메라 시스템</a><ul>
+<li><a class="reference internal" href="#id2">왜 이렇게 나눠져 있나</a></li>
+<li><a class="reference internal" href="#pc-pc">메인 PC가 캡처 PC와 대화하는 법</a></li>
+<li><a class="reference internal" href="#id3">카메라 한 대 안에서 벌어지는 일 (가장 중요)</a></li>
+<li><a class="reference internal" href="#id4">“싱크가 맞는다”는 게 무슨 뜻</a></li>
+<li><a class="reference internal" href="#id5">카메라가 멈췄던 이유, 그리고 고친 것</a></li>
+<li><a class="reference internal" href="#id6">게인·노출은 어디서 오나</a></li>
+<li><a class="reference internal" href="#id7">어디를 보면 되나</a></li>
 </ul>
 </li>
 </ul>

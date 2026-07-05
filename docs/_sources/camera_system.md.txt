@@ -152,6 +152,163 @@ flowchart LR
     C -->|없음| D["기본값 2500us / 3dB"]
 ```
 
+## 코드로 들어가기: 층위
+
+지금까지가 "어떻게 돌아가나"였다면, 여기부터는 **코드가 실제로 어떻게 짜여 있나**입니다.
+명령은 위에서 아래로 흐르고, 각 층이 이런 일을 합니다.
+
+| 층 | 클래스 / 파일 | 하는 일 |
+|---|---|---|
+| 메인 PC | `remote_camera_controller` | 각 캡처 PC에 명령 전송, heartbeat 유지 |
+| 캡처 PC 데몬 | `camera_server_daemon` | 명령 수신 → CameraLoader 호출, 락 관리 |
+| 묶음 | `CameraLoader` | 카메라 N대를 스레드로 동시에 start/stop |
+| 카메라 1대 | `Camera` | 이벤트로 캡처 스레드 조종, sink 분배 |
+| 하드웨어 | `PyspinCamera` | 실제 PySpin 호출 (grab, 트리거, 노출) |
+
+## `Camera` — 이벤트로 스레드를 조종한다
+
+`Camera` 한 개는 생성될 때 **캡처 스레드 하나**(`run`)를 띄우고, 그 스레드와 바깥 호출자는
+**Event 여러 개**로 신호를 주고받습니다. 이게 이 코드에서 제일 안 보이면서 제일 중요한
+부분입니다.
+
+```python
+self.event = {
+    "start": Event(), "stop": Event(), "exit": Event(),
+    "acquisition": Event(), "connection": Event(), "error": Event(), ...
+}
+```
+
+캡처 스레드는 이 루프를 돕니다 — `start`가 켜지면 잡기 시작하고, `exit`가 켜지면 빠져나옵니다:
+
+```python
+def run(self):
+    self.connect_camera()                       # PySpin 카메라 열기
+    while not self.event["exit"].is_set():
+        if self.event["start"].is_set():
+            if self.mode in ["full", "video", "stream"]:
+                self.continuous_acquire()       # 연속 캡처 루프
+            else:
+                self.single_acquire()           # 한 장
+        time.sleep(0.001)
+    self.release()
+```
+
+바깥에서 `start()`를 부르면 단순히 플래그만 세우는 게 아니라, **캡처 스레드가 실제로 시작할
+때까지 기다립니다**(악수):
+
+```python
+def start(self, mode, syncMode, ...):
+    ...
+    self.event["stop"].clear()
+    self.event["start"].set()          # "캡처 스레드야, 시작해"
+    self.event["acquisition"].wait()   # 진짜 시작될 때까지 대기
+```
+
+`continuous_acquire`가 캡처 루프의 몸통입니다. 프레임을 잡아 sink로 나눕니다:
+
+```python
+self.camera.start("continuous", self.syncMode, self.fps, ...)  # BeginAcquisition
+self.event["acquisition"].set()                                # 위 start()의 대기를 풀어줌
+while self.event["start"].is_set() and not self.event["exit"].is_set():
+    frame, frame_data = self.camera.get_image()
+    if frame is None:
+        continue                       # 프레임 없음(timeout) → while 조건 재확인
+    if save_video: video_writer.write(frame)     # video / full sink
+    if stream:     ...                            # SHM 더블버퍼에 씀 (write_flag 토글)
+self.camera.stop()
+self.event["stop"].set()               # 아래 stop()의 대기를 풀어줌
+```
+
+**멈추는 것도 이벤트로 합니다.** `stop()`은 `event["start"]`를 끄고 `event["stop"]`을 기다립니다.
+위 루프의 `while` 조건이 다음 바퀴에서 False가 되어 빠져나오고, 스레드가 `event["stop"]`을
+켜주면 `stop()`이 반환됩니다.
+
+```python
+def stop(self, timeout=5.0):
+    self.event["start"].clear()
+    self.event["stop"].wait(timeout=timeout)   # 유한 대기 (P4)
+```
+
+> 앞의 hang 버그가 정확히 여기였습니다: `get_image()`가 무한 대기하면 루프가 다음 바퀴로 못
+> 가서 `while` 조건을 영영 재확인 못 하고, 그래서 `event["stop"]`도 안 켜져서 `stop()`이 영영
+> 반환 안 됐던 거죠. 그래서 고친 곳도 `get_image()` 한 군데입니다.
+
+## `PyspinCamera` — 실제 하드웨어
+
+`Camera`가 `self.camera`로 들고 있는 게 `PyspinCamera`입니다. 두 메서드가 핵심입니다.
+
+```python
+def get_image(self):
+    try:
+        pImageRaw = self.cam.GetNextImage(GRAB_TIMEOUT_MS)  # 유한 timeout (P4)
+    except ps.SpinnakerException:
+        return None, None                                   # 프레임 없음
+    ...
+    return frame, frame_data
+```
+
+`start`는 **바뀐 설정만** 다시 적용하고 `BeginAcquisition`을 부릅니다 (매번 전부 재설정하면
+느리고 sync가 흔들리니까):
+
+```python
+if syncMode:                       self._configureTrigger()
+if gain     != self.gain:          self._configureGain()
+if exposure != self.exposure_time: self._configureExposure()
+self.cam.BeginAcquisition()
+```
+
+## `CameraLoader` — 여러 대를 동시에
+
+카메라 N대를 **스레드로 동시에** 시작합니다 (순차로 하면 느리니까). 앞서 말한 게인/노출 결정
+로직도 여기 있습니다:
+
+```python
+for camera, path in zip(self.cameralist, save_paths):
+    cfg = self.cam_config.get(camera.name, {})
+    e = exposure_time if exposure_time is not None else cfg.get("exposure", DEFAULT_EXPOSURE)
+    g = gain          if gain          is not None else cfg.get("gain", DEFAULT_GAIN)
+    Thread(target=camera.start, args=(mode, syncMode, path, fps, e, g)).start()
+```
+
+`stop`/`end`도 같은 팬아웃을 재사용합니다 (`_broadcast`).
+
+## `camera_server_daemon` — 명령 루프 + 락
+
+데몬은 ZMQ로 명령을 받아 `execute_command`로 분기합니다. 명령 소켓에 **15초 타임아웃**이
+걸려 있어서, 컨트롤러가 그 안에 아무 명령(heartbeat 포함)도 안 보내면 자동으로 락을 풀고
+카메라를 멈춥니다:
+
+```python
+self.command_socket.setsockopt(zmq.RCVTIMEO, 15000)   # 15초
+while True:
+    try:
+        cmd = self.command_socket.recv_json()
+        resp = self.execute_command(cmd)              # register / start / stop / heartbeat / ...
+        self.command_socket.send_json(resp)
+    except zmq.Again:                                 # 15초 무명령 → 자동 해제
+        ... 컨트롤러 락 반환 + 카메라 정지 ...
+```
+
+`register`가 락을 잡고, 다른 컨트롤러가 이미 잡고 있으면 명령을 거부합니다.
+
+## `remote_camera_controller` — 메인 PC 쪽 루프
+
+메인 PC는 백그라운드 스레드에서 루프를 돌며, 평소엔 heartbeat를 보내고 `start`/`stop`
+이벤트가 서면 그 명령을 **모든 캡처 PC에 병렬로** 보냅니다:
+
+```python
+while not self.exit_event.is_set():
+    cmd = {'action': 'heartbeat'}
+    if self.start_event.is_set(): cmd = {'action': 'start', 'mode': ..., ...}
+    if self.stop_event.is_set():  cmd = {'action': 'stop'}
+    response = self.send_command(cmd)     # PC마다 스레드 하나로 동시 전송
+    time.sleep(0.1)
+```
+
+즉 사용자가 부르는 `rcc.start(...)`는 이벤트만 세우고, 실제 전송은 이 루프가 합니다. — 이래서
+`Camera`(이벤트로 스레드 조종)와 `remote_camera_controller`(이벤트로 루프 조종)가 같은 패턴을
+씁니다.
+
 ## 어디를 보면 되나
 
 | 이걸 하고 싶으면… | 파일 |

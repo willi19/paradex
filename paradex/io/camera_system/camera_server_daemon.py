@@ -30,10 +30,21 @@ class camera_server_daemon:
     def reload_cameras(self):
         self.camera_loader.end()
         time.sleep(1)
-        
+
         self.camera_loader = CameraLoader()
         print("[Info] Camera loader reloaded.")
-        
+
+    def shutdown(self):
+        """Release every camera (DeInit + free SHM) on a clean exit.
+
+        Call from a SIGTERM/SIGINT handler so a normal kill releases the hardware;
+        SIGKILL (-9) cannot be caught (next daemon start cleans up leaked SHM)."""
+        print("[Info] Shutting down: releasing cameras...")
+        try:
+            self.camera_loader.end()
+        except Exception as e:
+            print(f"[Warning] shutdown: camera_loader.end() failed: {e}")
+
     def pingpong_thread(self):
         self.ping_socket = self.ctx.socket(zmq.REP)
         self.ping_socket.setsockopt(zmq.LINGER, 0)

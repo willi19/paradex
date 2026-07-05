@@ -6,19 +6,31 @@ from threading import Thread, Event, Lock
 from paradex.utils.system import get_pc_list, get_pc_ip
 
 class remote_camera_controller:
-    def __init__(self, name, pc_list=None):
+    def __init__(self, name, pc_list=None, auto_reload=False, stall_timeout=3.0):
         self.name = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
 
         self.pc_list = get_pc_list() if pc_list is None else pc_list
-        
+
         self.ping_port = 5480
         self.command_port = 5482
 
         self.exit_event = Event()
         self.start_event = Event()
-        self.stop_event = Event()   
+        self.stop_event = Event()
         self.sending_event = Event()
         self.error_event = Event()
+
+        # ── health tracking ──────────────────────────────────────────────
+        self.auto_reload = auto_reload          # auto-reload cameras on stall/error
+        self.stall_timeout = stall_timeout      # s without a new frame → "stalled"
+        self.capturing = False                  # in a continuous (video/stream/full) capture
+        self.continuous = False
+        self.cam_progress = {}                  # cam -> (last_frame_id, last_change_time)
+        self.stalled = set()                    # cameras whose frame_id stopped advancing
+        self.pc_status = {}                     # pc -> {'status', 'msg'} (last heartbeat)
+        self.status_lock = Lock()
+        self._last_stalled_print = set()
+        self._last_reload_ts = 0.0
 
         self.run_thread = Thread(target=self.run, daemon=True)
         self.run_thread.start()
@@ -45,6 +57,7 @@ class remote_camera_controller:
             print(f"{pc}: Command socket connected")
 
         self.last_err = {pc: None for pc in self.pc_list}
+        self.pc_status = {pc: {'status': None, 'msg': None} for pc in self.pc_list}
 
         if failed_pcs:
             raise ConnectionError(
@@ -145,10 +158,10 @@ class remote_camera_controller:
 
     def run(self):
         self.initialize()
-        
+
         while not self.exit_event.is_set():
             cmd = {'action': 'heartbeat'}
-            
+
             if self.start_event.is_set():
                 cmd = {
                     'action': 'start',
@@ -160,34 +173,104 @@ class remote_camera_controller:
                     'gain': self.gain
                 }
                 self.start_event.clear()
-                
+
             if self.stop_event.is_set():
                 cmd = {'action': 'stop'}
                 self.stop_event.clear()
-            
+
             response = self.send_command(cmd)
-            if cmd['action'] in ['start', 'stop']:
+
+            # Track whether we should be seeing a continuous frame stream.
+            if cmd['action'] == 'start':
+                self.continuous = self.mode in ('video', 'stream', 'full')
+                self.capturing = self.continuous
+                self.cam_progress = {}
+            elif cmd['action'] == 'stop':
+                self.capturing = False
+
+            if cmd['action'] in ('start', 'stop'):
                 self.sending_event.set()
 
+            self._update_health(cmd['action'], response)
+            time.sleep(0.1)
+
+        self.send_command({'action': 'end'})
+        for socket in self.command_sockets.values():
+            socket.close()
+        self.ctx.term()
+
+    def _update_health(self, action, response):
+        """Update live per-PC status, detect frame stalls, and set/clear error_event.
+
+        Runs every loop tick from run(). error_event reflects the CURRENT state
+        (not sticky). Frame stalls are detected from the per-camera frame_ids the
+        daemon returns in heartbeat responses."""
+        now = time.time()
+        any_bad = False
+        stalled = set()
+
+        with self.status_lock:
             for pc, resp in response.items():
-                if resp['status'] == 'error':
-                    self.error_event.set()
-                    msg = resp['msg']
-                    prev = self.last_err.get(pc)
-                    if prev != msg:
-                        print(f"[{pc}] {cmd['action']} failed: {msg}")
+                self.pc_status[pc] = {'status': resp.get('status'), 'msg': resp.get('msg')}
+
+                if resp.get('status') == 'error':
+                    any_bad = True
+                    msg = resp.get('msg')
+                    if self.last_err.get(pc) != msg:
+                        print(f"[{pc}] {action} failed: {msg}")
                         self.last_err[pc] = msg
                 else:
                     if self.last_err.get(pc) is not None:
                         print(f"[{pc}] recovered after {self.last_err[pc]}")
                         self.last_err[pc] = None
 
-            time.sleep(0.1)
-            
-        self.send_command({'action': 'end'})
-        for socket in self.command_sockets.values():
-            socket.close()
-        self.ctx.term()
-    
+                # Stall detection: only while a continuous capture should be flowing.
+                if self.capturing and self.continuous:
+                    for cam, fid in (resp.get('frame_ids') or {}).items():
+                        last = self.cam_progress.get(cam)
+                        if last is None or fid != last[0]:
+                            self.cam_progress[cam] = (fid, now)
+                        elif now - last[1] > self.stall_timeout:
+                            stalled.add(cam)
+
+            self.stalled = stalled
+
+        if stalled:
+            any_bad = True
+            if stalled != self._last_stalled_print:
+                print(f"[stall] no new frames from: {sorted(stalled)} (> {self.stall_timeout}s)")
+                self._last_stalled_print = set(stalled)
+        else:
+            self._last_stalled_print = set()
+
+        # Live error flag (reflects the current tick, not a past blip).
+        if any_bad:
+            self.error_event.set()
+        else:
+            self.error_event.clear()
+
+        # Optional self-heal: reload cameras on a persistent problem (throttled).
+        if self.auto_reload and any_bad and (now - self._last_reload_ts) > 10.0:
+            self._last_reload_ts = now
+            print("[auto_reload] problem detected → reloading cameras")
+            resp = self.send_command({'action': 'reload'})
+            self.cam_progress = {}
+
     def is_error(self):
+        """True if any PC is currently erroring or any camera is stalled (live)."""
         return self.error_event.is_set()
+
+    def get_status(self):
+        """Live health snapshot for the caller to react to.
+
+        Returns
+        -------
+        dict
+            ``{'error': bool, 'stalled': [cam, ...], 'pc': {pc: {'status', 'msg'}}}``
+        """
+        with self.status_lock:
+            return {
+                'error': self.error_event.is_set(),
+                'stalled': sorted(self.stalled),
+                'pc': {pc: dict(s) for pc, s in self.pc_status.items()},
+            }

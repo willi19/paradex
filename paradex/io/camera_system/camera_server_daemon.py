@@ -145,13 +145,20 @@ class camera_server_daemon:
         if action == "heartbeat":
             t0 = time.time()
             errs = self.camera_loader.get_all_errors()
+            # Per-camera frame ids so the controller can detect stalls (frames that
+            # stop arriving without raising an error).
+            status_list = self.camera_loader.get_status_list()
+            frame_ids = {s['name']: s['frame_id'] for s in status_list}
+            states = {s['name']: s['state'] for s in status_list}
             dt = time.time() - t0
             if dt > 0.5:
                 print(f"[Warning] heartbeat get_all_errors took {dt*1000:.0f}ms (>500ms)")
+            resp = {"frame_ids": frame_ids, "states": states}
             if len(errs) == 0:
-                return {"status":"ok", "msg":"heartbeat received"}
+                resp.update({"status": "ok", "msg": "heartbeat received"})
             else:
-                return {"status":"error", "msg":f"camera errors detected: {errs}"}
+                resp.update({"status": "error", "msg": f"camera errors detected: {errs}"})
+            return resp
 
         if action == "reload":
             try:

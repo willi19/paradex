@@ -450,42 +450,48 @@ class remote_camera_controller:
         # Event-driven: the per-PC workers keepalive on their own, so this loop
         # only issues the real commands (start / stop / reload) when asked.
         while not self.exit_event.is_set():
-            if self._reregister_request.is_set():
-                self._reregister_request.clear()
-                self.register()   # re-claim an orphaned/restarted daemon's lock
+            # Guard the whole iteration: an unexpected error here would kill the
+            # command/keepalive orchestration. Log, unblock any waiting caller, go on.
+            try:
+                if self._reregister_request.is_set():
+                    self._reregister_request.clear()
+                    self.register()   # re-claim an orphaned/restarted daemon's lock
 
-            if self._reload_request.is_set():
-                self._reload_request.clear()
-                self.send_command({'action': 'reload'})
+                if self._reload_request.is_set():
+                    self._reload_request.clear()
+                    self.send_command({'action': 'reload'})
 
-            if self.start_event.is_set():
-                self.start_event.clear()
-                response = self.send_command({
-                    'action': 'start',
-                    'mode': self.mode,
-                    'syncMode': self.syncMode,
-                    'save_path': self.save_path,
-                    'fps': self.fps,
-                    'exposure_time': self.exposure_time,
-                    'gain': self.gain,
-                })
-                ok = all(resp.get('status') == 'ok' for resp in response.values())
-                self.continuous = self.mode in ('video', 'stream', 'full', 'acquire')
-                self.capturing = ok and self.continuous
-                with self.status_lock:
-                    self.cam_progress = {}
-                    self.last_response = {pc: dict(r) for pc, r in response.items()}
-                self.sending_event.set()
+                if self.start_event.is_set():
+                    self.start_event.clear()
+                    response = self.send_command({
+                        'action': 'start',
+                        'mode': self.mode,
+                        'syncMode': self.syncMode,
+                        'save_path': self.save_path,
+                        'fps': self.fps,
+                        'exposure_time': self.exposure_time,
+                        'gain': self.gain,
+                    })
+                    ok = all(resp.get('status') == 'ok' for resp in response.values())
+                    self.continuous = self.mode == 'acquire'
+                    self.capturing = ok and self.continuous
+                    with self.status_lock:
+                        self.cam_progress = {}
+                        self.last_response = {pc: dict(r) for pc, r in response.items()}
+                    self.sending_event.set()
 
-            elif self.stop_event.is_set():
-                self.stop_event.clear()
-                response = self.send_command({'action': 'stop'})
-                self.capturing = False
-                with self.status_lock:
-                    self.cam_progress = {}
-                    self.stalled = set()
-                    self.last_response = {pc: dict(r) for pc, r in response.items()}
-                self.sending_event.set()
+                elif self.stop_event.is_set():
+                    self.stop_event.clear()
+                    response = self.send_command({'action': 'stop'})
+                    self.capturing = False
+                    with self.status_lock:
+                        self.cam_progress = {}
+                        self.stalled = set()
+                        self.last_response = {pc: dict(r) for pc, r in response.items()}
+                    self.sending_event.set()
+            except Exception as e:
+                logger.error(f"[rcc] run loop iteration failed (continuing): {e}")
+                self.sending_event.set()   # never leave start()/stop() blocked
 
             time.sleep(0.05)
 
@@ -514,17 +520,22 @@ class remote_camera_controller:
         stops publishing is treated as down.
         """
         while not self.exit_event.is_set():
-            now = time.time()
-            for pc, sock in self.monitor_sockets.items():
-                latest = None
-                while True:                       # drain to the newest message
-                    try:
-                        latest = sock.recv_json(flags=zmq.NOBLOCK)
-                    except (zmq.Again, zmq.ZMQError):
-                        break
-                if latest is not None:
-                    self._ingest_health(pc, latest, now)
-            self._recompute_error(now)
+            # Never let one bad iteration kill the detection thread — that would
+            # blind rcc to daemon health/death. Log and keep going.
+            try:
+                now = time.time()
+                for pc, sock in self.monitor_sockets.items():
+                    latest = None
+                    while True:                   # drain to the newest message
+                        try:
+                            latest = sock.recv_json(flags=zmq.NOBLOCK)
+                        except (zmq.Again, zmq.ZMQError):
+                            break
+                    if latest is not None:
+                        self._ingest_health(pc, latest, now)
+                self._recompute_error(now)
+            except Exception as e:
+                logger.warning(f"[rcc] health loop iteration failed (continuing): {e}")
             time.sleep(0.05)
 
     def _ingest_health(self, pc, msg, now):

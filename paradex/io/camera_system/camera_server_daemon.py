@@ -73,7 +73,10 @@ class camera_server_daemon:
             try:
                 _ = self.ping_socket.recv_string(flags=zmq.NOBLOCK)
                 self.ping_socket.send_string("pong")
-            except zmq.ZMQError:
+            except zmq.Again:
+                time.sleep(0.1)          # no ping waiting — normal
+            except Exception as e:
+                logger.warning(f"pingpong_thread error (continuing): {e}")
                 time.sleep(0.1)
 
     def monitor_thread(self):
@@ -94,15 +97,21 @@ class camera_server_daemon:
         monitor_socket.bind(f"tcp://*:{self.monitor_port}")
 
         while True:
-            status = {
-                # dashboard-facing (unchanged keys, kept for back-compat)
-                'cameras': self.camera_loader.get_status_list(),
-                'controller': self.current_controller if self.current_controller else 'None',
-                # controller-facing health telemetry
-                'running': self.cameras_running,
-                'summary': self.camera_loader.get_summary(),
-            }
-            monitor_socket.send_json(status)
+            # Keep publishing even if a snapshot build hiccups — if this thread
+            # died, the controller would (correctly but misleadingly) read the whole
+            # daemon as "down" from the PUB silence.
+            try:
+                status = {
+                    # dashboard-facing (unchanged keys, kept for back-compat)
+                    'cameras': self.camera_loader.get_status_list(),
+                    'controller': self.current_controller if self.current_controller else 'None',
+                    # controller-facing health telemetry
+                    'running': self.cameras_running,
+                    'summary': self.camera_loader.get_summary(),
+                }
+                monitor_socket.send_json(status)
+            except Exception as e:
+                logger.warning(f"monitor_thread iteration failed (continuing): {e}")
             time.sleep(0.1)
 
     def execute_command(self, cmd):

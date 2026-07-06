@@ -181,9 +181,9 @@ class camera_server_daemon:
                     logger.warning(f"start: {len(errs)} camera(s) failed to arm: {detail}")
                     payload.update({"status": "error", "msg": f"start: camera errors: {detail}"})
                     return payload
-                # "acquire" = armed continuously with no fixed sink (sinks toggled
-                # later via the 'sink' command); it is a running capture too.
-                self.cameras_running = cmd.get('mode') in ("video", "stream", "full", "acquire")
+                # "acquire" = armed continuously (sinks toggled via the 'sink'
+                # command); a running capture. "image" is a one-shot, not running.
+                self.cameras_running = cmd.get('mode') == "acquire"
                 payload["running"] = self.cameras_running
                 logger.info(f"start completed in {dt:.2f}s mode={cmd.get('mode')} sync={cmd.get('syncMode')} fps={cmd.get('fps',30)} exposure_time={cmd.get('exposure_time')} gain={cmd.get('gain')}")
                 payload.update({"status":"ok", "msg":"started"})

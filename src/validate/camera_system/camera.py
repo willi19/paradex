@@ -12,7 +12,8 @@ for serial_num in serial_list:
         camera.stop()
         print(f"Image capture {i} complete.")
 
-        camera.start("full", False, f"test_{i}.avi",fps=30)
+        camera.start("acquire", False, fps=30)
+        camera.set_sink(video=True, stream=True, save_path=f"test_{i}.avi")
         time.sleep(1)
         camera.stop()
         print(f"Full capture {i} complete.")

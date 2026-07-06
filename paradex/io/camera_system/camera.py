@@ -19,12 +19,17 @@ class Camera():
     coordinate through a set of :class:`threading.Event` objects (``start``,
     ``stop``, ``exit``, ``acquisition`` ...) — a handshake, not plain flags.
 
-    Frames are routed to *sinks* depending on ``mode``:
+    Two acquisition modes: ``image`` (one single-frame still) and ``acquire``
+    (continuous). In ``acquire`` mode frames are routed to whichever *sinks* are
+    enabled — toggled independently at runtime via :meth:`set_sink`:
 
-    - ``stream`` / ``full`` → a double-buffered shared-memory block read by
+    - **stream** sink → a double-buffered shared-memory block read by
       :class:`MultiCameraReader`.
-    - ``video`` / ``full`` → an ``.avi`` file on disk.
-    - ``image`` → a single still.
+    - **video** sink → an ``.avi`` file on disk.
+    - **snapshot** sink → the next N frames written as images.
+
+    (``video`` / ``stream`` / ``full`` are no longer modes — that's just
+    ``acquire`` with the corresponding sink(s) on.)
 
     Parameters
     ----------
@@ -207,11 +212,12 @@ class Camera():
         Parameters
         ----------
         mode : str
-            ``image`` / ``video`` / ``stream`` / ``full``.
+            ``image`` (single-frame still) or ``acquire`` (continuous; enable
+            outputs with :meth:`set_sink`).
         syncMode : bool
             Wait on the hardware trigger if ``True``.
         save_path : str, optional
-            Output dir/file for ``video``/``image`` (required for those modes).
+            Output dir/file for ``image`` (required for ``image`` mode).
         fps : int, optional
             Frame rate for free-run, by default 30.
         exposure_time, gain : float, optional
@@ -220,18 +226,26 @@ class Camera():
             Max seconds to wait for the capture thread to begin acquiring before
             logging a warning and returning, by default 10.0.
         """
-        if fps < 0 and mode in ["video", "full"] and syncMode is False:
+        if mode not in ("image", "acquire"):
             self.event["error"].set()
             self.event["error_reset"].clear()
 
-            self.last_error = "FPS must be non-negative for video or full mode when syncMode is False."
+            self.last_error = (f"invalid mode '{mode}': use 'image' (single frame) or "
+                               f"'acquire' + set_sink()/set_record()/set_stream().")
             self.last_traceback = ""
 
-        if mode in ["video", "full", "image"] and save_path is None:
+        if fps < 0 and mode == "acquire" and syncMode is False:
             self.event["error"].set()
             self.event["error_reset"].clear()
 
-            self.last_error = "Save path must be specified for video or image saving."
+            self.last_error = "FPS must be non-negative for free-run acquisition."
+            self.last_traceback = ""
+
+        if mode == "image" and save_path is None:
+            self.event["error"].set()
+            self.event["error_reset"].clear()
+
+            self.last_error = "Save path must be specified for image capture."
             self.last_traceback = ""
 
         if self.event["start"].is_set():
@@ -254,13 +268,13 @@ class Camera():
         self.gain = gain
         self.last_frame_id = 0
 
-        # Compat: map the fixed mode to the initial runtime sinks. The new API arms
-        # with mode="acquire" (no sink) and toggles later via set_sink(); "image"
-        # keeps the legacy one-shot path (single_acquire), so no sink here.
+        # Modes are only "image" (single-frame one-shot) or "acquire" (continuous).
+        # Acquisition begins with all sinks OFF; enable them at runtime via
+        # set_sink()/set_record()/set_stream(). video/stream/full are gone.
         with self._sink_lock:
-            self._want_video = mode in ("video", "full")
-            self._want_stream = mode in ("stream", "full")
-            self._video_path = save_path if self._want_video else None
+            self._want_video = False
+            self._want_stream = False
+            self._video_path = None
             self._snapshot = None
 
         if save_path is not None:
@@ -695,8 +709,8 @@ class Camera():
         """Capture-thread main loop.
 
         Connects the camera, then until ``exit`` is set: when ``start`` is set,
-        dispatches to :meth:`continuous_acquire` (video/stream/full) or
-        :meth:`single_acquire` (image). Releases the camera on exit.
+        dispatches to :meth:`acquire` (mode ``acquire`` — continuous + runtime
+        sinks) or :meth:`single_acquire` (mode ``image``). Releases on exit.
         """
         self.connect_camera()
 

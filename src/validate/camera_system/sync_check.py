@@ -40,7 +40,8 @@ def main():
     total = 0
     try:
         gen.start(fps=args.fps)
-        cl.start("stream", True, fps=args.fps)      # syncMode=True
+        cl.start("acquire", True, fps=args.fps)     # syncMode=True
+        cl.set_sink(stream=True)
         reader = MultiCameraReader(cl.camera_names)
         time.sleep(1.0)                             # let frames start flowing
 

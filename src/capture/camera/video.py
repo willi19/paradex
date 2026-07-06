@@ -35,7 +35,8 @@ while not exit_event.is_set():
     save_path = f"{args.save_path}/{name}/raw"
 
     os.makedirs(os.path.join(shared_dir, save_path), exist_ok=True)
-    camera.start("video", args.sync_mode, save_path=save_path, fps=args.frame_rate)
+    camera.start("acquire", args.sync_mode, fps=args.frame_rate)
+    camera.set_sink(video=True, save_path=save_path)
     print(f"Capturing video to {save_path}")
     
     while not stop_event.is_set() and not exit_event.is_set():

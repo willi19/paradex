@@ -4,7 +4,8 @@ import time
 camera = CameraLoader()
 
 for i in range(2):
-    camera.start("full", False, "test_camloader",fps=30)
+    camera.start("acquire", False, fps=30)
+    camera.set_sink(video=True, stream=True, save_path="test_camloader")
     start_time = time.time()    
     while True:
         error = camera.get_all_errors()

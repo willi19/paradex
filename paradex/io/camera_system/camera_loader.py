@@ -97,9 +97,9 @@ class CameraLoader:
     def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None):
         """Start capture on every camera in parallel and block until all started.
 
-        Resolves per-camera output directories from ``save_path`` (under
-        ``home_path`` for ``image``, spread across ``capture_path_list`` for
-        ``video`` / ``full``; ``None`` for ``stream``), creating them as needed.
+        Resolves per-camera output for ``image`` mode (under ``home_path``);
+        ``acquire`` mode uses no start-time path (the video sink's path is set
+        later via :meth:`set_sink`). Modes: ``image`` or ``acquire``.
         For each camera the gain and exposure are resolved deterministically as
         **explicit arg > camera.json baseline > module default**: an explicit
         ``exposure_time`` / ``gain`` wins, otherwise the per-serial value from
@@ -110,7 +110,8 @@ class CameraLoader:
         Parameters
         ----------
         mode : str
-            Capture mode: ``image`` / ``video`` / ``stream`` / ``full``.
+            ``image`` (single-frame) or ``acquire`` (continuous; sinks via
+            :meth:`set_sink`).
         syncMode : bool
             Whether cameras wait on the hardware trigger.
         save_path : str, optional
@@ -130,14 +131,9 @@ class CameraLoader:
             logger.info(f"image save paths: {save_paths}")
             for path in save_paths:
                 os.makedirs(path, exist_ok=True)
-
-        elif mode in ["video", "full"]:
-            save_paths = [os.path.join(capture_path_list[ind % len(capture_path_list)], save_path, "videos") for ind, _ in enumerate(self.cameralist)]
-            for path in save_paths:
-                os.makedirs(path, exist_ok=True)
-            logger.info(f"video save paths: {save_paths}")
-            
         else:
+            # "acquire": no sink at start; the video sink's path is resolved later
+            # in set_sink() (spread across capture_path_list), snapshots under home.
             save_paths = [None for _ in self.cameralist]
         logger.info(f"starting cameras... cameras: {self.camera_names}")
         threads = []

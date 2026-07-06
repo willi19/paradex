@@ -79,7 +79,13 @@ class CaptureSession():
             self.state_time = []
 
         if self.camera is not None:
-            self.camera.start(mode, True, os.path.join(save_path, raw_rel), fps=fps, exposure_time=exposure_time, gain=gain)
+            cam_rel = os.path.join(save_path, raw_rel)
+            if mode == "image":
+                self.camera.start("image", True, cam_rel, fps=fps,
+                                  exposure_time=exposure_time, gain=gain)
+            else:  # continuous recording: arm + video sink
+                self.camera.arm(True, fps=fps, exposure_time=exposure_time, gain=gain)
+                self.camera.set_record(cam_rel, on=True)
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.start(os.path.join(shared_dir, save_path, raw_rel, "timestamps"))
             self.sync_generator.start(fps=fps)

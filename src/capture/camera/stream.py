@@ -28,7 +28,8 @@ while not exit_event.is_set():
         time.sleep(0.01)
         continue
 
-    camera.start("stream", args.sync_mode, fps=args.frame_rate)
+    camera.start("acquire", args.sync_mode, fps=args.frame_rate)
+    camera.set_sink(stream=True)
     
     while not stop_event.is_set() and not exit_event.is_set():
         time.sleep(0.02)

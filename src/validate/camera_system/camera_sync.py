@@ -6,7 +6,8 @@ import time
 serial_list = ["22645026"]# get_serial_list()
 for serial_num in serial_list:
     camera = Camera("pyspin", serial_num)
-    camera.start("video", True, f"test.avi",fps=30)
+    camera.start("acquire", True, fps=30)
+    camera.set_sink(video=True, save_path="test.avi")
     time.sleep(5)
     camera.stop()
     camera.end()

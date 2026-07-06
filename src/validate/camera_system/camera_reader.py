@@ -15,7 +15,8 @@ import cv2
 
 cl = CameraLoader()
 
-cl.start("stream", False, fps=10)
+cl.start("acquire", False, fps=10)
+cl.set_sink(stream=True)
 try:
     cr = MultiCameraReader(cl.camera_names)
     
@@ -34,7 +35,8 @@ while time.time() - start_time < 3:
 cr.close()
 cl.stop()
 
-cl.start("stream", False, fps=10)
+cl.start("acquire", False, fps=10)
+cl.set_sink(stream=True)
 cr = MultiCameraReader(cl.camera_names)
 
 while time.time() - start_time < 3:

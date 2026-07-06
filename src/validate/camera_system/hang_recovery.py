@@ -62,7 +62,8 @@ def test_no_trigger(camera):
     This is the core P4 regression check and needs no cable-pulling."""
     print("[Test 1] sync mode, NO trigger running (simulated frame loss)")
     print("  -> make sure the UTGE900 trigger is OFF, so no frames arrive.")
-    camera.start("stream", True)          # syncMode=True, no save
+    camera.start("acquire", True)         # syncMode=True
+    camera.set_sink(stream=True)          # no save
     print("  acquiring 3s (expect ~0 frames)...")
     time.sleep(3.0)
     return run_bounded("stop()", camera.stop)[0]
@@ -71,7 +72,8 @@ def test_no_trigger(camera):
 def test_normal(camera):
     """Baseline: free-run (frames flowing), stop() should be quick. No trigger needed."""
     print("[Test 2] free-run (frames flowing), normal stop")
-    camera.start("stream", False, fps=30)
+    camera.start("acquire", False, fps=30)
+    camera.set_sink(stream=True)
     time.sleep(2.0)
     return run_bounded("stop()", camera.stop)[0]
 
@@ -79,7 +81,8 @@ def test_normal(camera):
 def test_lan_pull(camera):
     """Interactive: pull a camera's LAN cable mid-capture, then stop must not hang."""
     print("[Test 3] interactive LAN-drop")
-    camera.start("stream", False, fps=30)
+    camera.start("acquire", False, fps=30)
+    camera.set_sink(stream=True)
     input("  Frames are streaming. PULL a camera's LAN cable, then press Enter to stop... ")
     return run_bounded("stop()", camera.stop)[0]
 

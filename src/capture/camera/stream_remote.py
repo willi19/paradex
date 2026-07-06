@@ -24,7 +24,8 @@ stop_event = Event()
 
 listen_keyboard({"q":exit_event})
 
-rcc.start("stream", False, fps=10)
+rcc.arm(syncMode=False, fps=10)
+rcc.set_stream(True)
 
 img_dict = {}
 img_text = {}

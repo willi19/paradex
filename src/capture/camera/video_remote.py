@@ -37,7 +37,8 @@ try:
             continue
         
         date_str = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        rcc.start("video", args.sync_mode, f'{args.save_path}/{date_str}/raw', fps=args.fps)
+        rcc.arm(syncMode=args.sync_mode, fps=args.fps)
+        rcc.set_record(f'{args.save_path}/{date_str}/raw', on=True)
         if args.sync_mode:
             signal_gen.start(fps=args.fps)
         print(f"Capturing video to {args.save_path}/{date_str}/raw")

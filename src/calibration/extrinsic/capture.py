@@ -28,7 +28,8 @@ dc = DataCollector()
 dc.start()
 
 cs = CommandSender()
-rcc.start("stream", False, fps=30)
+rcc.arm(syncMode=False, fps=30)
+rcc.set_stream(True)
 
 saved_corner_img = {}# serial_num:np.ones((1536, 2048, 3), dtype=np.uint8)*255 for serial_num in serial_list}
 saved_corner_mask = {}
@@ -38,6 +39,7 @@ img_dict = {}
 img_text = {}
 
 save_num = 0
+saved_count = {}  # serial_num -> number of captures this camera actually saved corners for
 
 while True:
     waiting_save = False
@@ -59,7 +61,7 @@ while True:
                 
                 if image is not None:
                     img_dict[item_name] = image
-                    img_text[item_name] = str(frame_id)
+                    img_text[item_name] = f"{frame_id} | n={saved_count.get(item_name, 0)}"
                 
         
         elif item_data.get('type') == 'charuco_detection':
@@ -112,8 +114,9 @@ while True:
             if corners.shape[0] > 0:
                 draw_charuco(saved_corner_img[serial_num], corners, BOARD_COLORS[1], 1, -1)
                 ys, xs, _ = np.where(saved_corner_img[serial_num] != 0)
-                
+
                 saved_corner_mask[serial_num] = np.stack([xs, ys], axis=1)
+                saved_count[serial_num] = saved_count.get(serial_num, 0) + 1
         time.sleep(0.01)
     
 print("Stopping capture...")

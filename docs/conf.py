@@ -21,6 +21,7 @@ extensions = [
 myst_enable_extensions = [
     'colon_fence',
     'deflist',
+    'fieldlist',                # :param:/:returns:/:rtype: → Parameters/Returns
     'attrs_inline',
     'substitution',
     'tasklist',

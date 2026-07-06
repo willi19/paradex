@@ -7,29 +7,18 @@ the code; internal/private methods are omitted. Click a class to expand.
 :::{dropdown} `start()` — parameters
 :open:
 
-`start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)`
-
 Same signature on `Camera`, `CameraLoader`, and `remote_camera_controller`.
 
-**Parameters**
+```{py:function} start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+:no-index:
 
-`mode` : str
-: `image` / `video` / `stream` / `full`.
-
-`syncMode` : bool
-: Use the hardware trigger (wait for pulses) instead of free-running.
-
-`save_path` : str, optional
-: Relative output dir for `image`/`video`; `None` for `stream`.
-
-`fps` : int, default `30`
-: Frame rate when free-running.
-
-`exposure_time` : float, optional
-: Microseconds. `None` → the per-camera `camera.json` value.
-
-`gain` : float, optional
-: dB. `None` → the per-camera `camera.json` value.
+:param mode: ``image`` / ``video`` / ``stream`` / ``full``.
+:param syncMode: Use the hardware trigger (wait for pulses) instead of free-running.
+:param save_path: Relative output dir for ``image`` / ``video``; ``None`` for ``stream``.
+:param fps: Frame rate when free-running (default ``30``).
+:param exposure_time: Microseconds; ``None`` → the per-camera ``camera.json`` value.
+:param gain: dB; ``None`` → the per-camera ``camera.json`` value.
+```
 :::
 
 :::{dropdown} `remote_camera_controller` — main PC
@@ -37,55 +26,127 @@ Same signature on `Camera`, `CameraLoader`, and `remote_camera_controller`.
 Drives every capture PC over ZMQ. `start()`/`stop()` set events; the background
 `run()` loop does the actual send.
 
-`remote_camera_controller(name, pc_list=None, auto_reload=False, stall_timeout=3.0)`
-: Construct; spawn the `run()` thread. `pc_list=None` → all capture PCs.
+```{py:function} remote_camera_controller(name, pc_list=None, auto_reload=False, stall_timeout=3.0)
+:no-index:
 
-`start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)` → None
-: Begin capture on all PCs. Raises the init error if the daemon connection failed.
+Construct; spawn the ``run()`` thread. ``pc_list=None`` → all capture PCs.
+```
 
-`stop()` → None
-: Stop capture on all PCs.
+```{py:function} start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+:no-index:
 
-`end()` → None
-: Release the lock, join the loop thread.
+Begin capture on all PCs. Raises the init error if the daemon connection failed.
 
-`reload_cameras()` → None
-: Ask every daemon to re-init its cameras.
+:rtype: None
+```
 
-`force_takeover()` → dict
-: Grab the lock even if another controller holds it (per-PC result).
+```{py:function} stop()
+:no-index:
 
-`is_error()` → bool
-: `True` if any camera reported an error.
+Stop capture on all PCs.
 
-`get_status()` → dict
-: Live health: error flag, stalled serials, per-PC status, last raw responses.
+:rtype: None
+```
+
+```{py:function} end()
+:no-index:
+
+Release the lock, join the loop thread.
+
+:rtype: None
+```
+
+```{py:function} reload_cameras()
+:no-index:
+
+Ask every daemon to re-init its cameras.
+
+:rtype: None
+```
+
+```{py:function} force_takeover()
+:no-index:
+
+Grab the lock even if another controller holds it.
+
+:returns: per-PC result
+:rtype: dict
+```
+
+```{py:function} is_error()
+:no-index:
+
+:returns: ``True`` if any camera reported an error.
+:rtype: bool
+```
+
+```{py:function} get_status()
+:no-index:
+
+Live health snapshot.
+
+:returns: error flag, stalled serials, per-PC status, last raw responses
+:rtype: dict
+```
 :::
 
 :::{dropdown} `CameraLoader` — capture PC
 
 Owns the local cameras and drives them together.
 
-`CameraLoader(types=["pyspin"])`
-: Detect and open every local camera.
+```{py:function} CameraLoader(types=["pyspin"])
+:no-index:
 
-`start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)` → None
-: Start all cameras concurrently (blocks until all started).
+Detect and open every local camera.
+```
 
-`stop()` → None
-: Stop all cameras.
+```{py:function} start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+:no-index:
 
-`end()` → None
-: Stop + release all cameras (DeInit + free SHM).
+Start all cameras concurrently (blocks until all started).
 
-`get_status_list()` → list[dict]
-: Per-camera status dict (see `Camera.get_status`).
+:rtype: None
+```
 
-`get_summary()` → dict
-: Compact daemon payload: counts, serials, per-camera states / frame ids / errors.
+```{py:function} stop()
+:no-index:
 
-`get_all_errors()` → dict[str, tuple]
-: `{serial: (msg, traceback)}` for cameras in error.
+Stop all cameras.
+
+:rtype: None
+```
+
+```{py:function} end()
+:no-index:
+
+Stop + release all cameras (DeInit + free SHM).
+
+:rtype: None
+```
+
+```{py:function} get_status_list()
+:no-index:
+
+Per-camera status dict (see ``Camera.get_status``).
+
+:rtype: list[dict]
+```
+
+```{py:function} get_summary()
+:no-index:
+
+Compact daemon payload: counts, serials, per-camera states / frame ids / errors.
+
+:rtype: dict
+```
+
+```{py:function} get_all_errors()
+:no-index:
+
+``{serial: (msg, traceback)}`` for cameras in error.
+
+:rtype: dict[str, tuple]
+```
 
 **Attributes** — `camera_names` (`list[str]` serials), `cameralist` (`list[Camera]`).
 :::
@@ -94,46 +155,104 @@ Owns the local cameras and drives them together.
 
 One camera + its capture thread. See the {doc}`lifecycle contract <camera_system>`.
 
-`Camera(cam_type, name, frame_shape=(1536,2048,3), cfg=None)`
-: Open the camera, allocate SHM, spawn the capture thread. `cfg` = the per-serial `camera.json` entry.
+```{py:function} Camera(cam_type, name, frame_shape=(1536, 2048, 3), cfg=None)
+:no-index:
 
-`start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)` → None
-: Begin capture in `mode`; blocks until acquiring.
+Open the camera, allocate SHM, spawn the capture thread. ``cfg`` = the per-serial ``camera.json`` entry.
+```
 
-`stop(timeout=5.0)` → None
-: Stop capture; finite wait (warns and returns on timeout).
+```{py:function} start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+:no-index:
 
-`end(timeout=5.0)` → None
-: Stop + release (DeInit + free SHM); finite wait.
+Begin capture in ``mode``; blocks until acquiring.
 
-`get_status()` → dict
-: `{state, frame_id, name, mode, fps, syncMode, save_path, time}`.
+:rtype: None
+```
 
-`get_state()` → str
-: `CONNECTING` / `READY` / `STARTING` / `CAPTURING` / `ERROR` / `STOPPED`.
+```{py:function} stop(timeout=5.0)
+:no-index:
 
-`get_frame_id()` → int
-: Last processed frame id.
+Stop capture; finite wait (warns and returns on timeout).
 
-`get_error()` → (bool, (str, str))
-: `(has_error, (message, traceback))`.
+:rtype: None
+```
+
+```{py:function} end(timeout=5.0)
+:no-index:
+
+Stop + release (DeInit + free SHM); finite wait.
+
+:rtype: None
+```
+
+```{py:function} get_status()
+:no-index:
+
+``{state, frame_id, name, mode, fps, syncMode, save_path, time}``.
+
+:rtype: dict
+```
+
+```{py:function} get_state()
+:no-index:
+
+One of ``CONNECTING`` / ``READY`` / ``STARTING`` / ``CAPTURING`` / ``ERROR`` / ``STOPPED``.
+
+:rtype: str
+```
+
+```{py:function} get_frame_id()
+:no-index:
+
+Last processed frame id.
+
+:rtype: int
+```
+
+```{py:function} get_error()
+:no-index:
+
+``(has_error, (message, traceback))``.
+
+:rtype: (bool, (str, str))
+```
 :::
 
 :::{dropdown} `PyspinCamera` — driver
 
 Thin wrapper over the PySpin SDK. `Camera` holds one as `self.camera`.
 
-`get_image()` → (ndarray, dict) | (None, dict) | (None, None)
-: Grab one frame. `(None, None)` on grab timeout (`GRAB_TIMEOUT_MS`); `(None, frame_data)` on incomplete/zero-size. `dict = {pc_time, frameID}`.
+```{py:function} get_image()
+:no-index:
 
-`start(mode, syncMode, frame_rate=None, gain=None, exposure_time=None)` → None
-: Re-apply changed config + `BeginAcquisition`. `mode` = `"single"` | `"continuous"`.
+Grab one frame. ``(None, None)`` on grab timeout (``GRAB_TIMEOUT_MS``); ``(None, frame_data)`` on incomplete/zero-size. ``dict = {pc_time, frameID}``.
 
-`stop()` → None
-: `EndAcquisition` (camera stays connected).
+:rtype: (ndarray, dict) | (None, dict) | (None, None)
+```
 
-`release()` → None
-: `DeInit` (disconnect).
+```{py:function} start(mode, syncMode, frame_rate=None, gain=None, exposure_time=None)
+:no-index:
+
+Re-apply changed config + ``BeginAcquisition``. ``mode`` = ``"single"`` | ``"continuous"``.
+
+:rtype: None
+```
+
+```{py:function} stop()
+:no-index:
+
+``EndAcquisition`` (camera stays connected).
+
+:rtype: None
+```
+
+```{py:function} release()
+:no-index:
+
+``DeInit`` (disconnect).
+
+:rtype: None
+```
 
 **Module-level** — `get_serial_list()` → `list[str]`, `autoforce_ip()`,
 `load_camera(serial, cfg=None)` → `PyspinCamera`,

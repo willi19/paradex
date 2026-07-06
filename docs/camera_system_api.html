@@ -379,107 +379,336 @@ the code; internal/private methods are omitted. Click a class to expand.</p>
 <details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3" open="open">
 <summary class="sd-summary-title sd-card-header">
 <span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">start()</span></code> — parameters</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
-<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">save_path=None,</span> <span class="pre">fps=30,</span> <span class="pre">exposure_time=None,</span> <span class="pre">gain=None)</span></code></p>
 <p class="sd-card-text">Same signature on <code class="docutils literal notranslate"><span class="pre">Camera</span></code>, <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code>, and <code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code>.</p>
-<p class="sd-card-text"><strong>Parameters</strong></p>
-<dl class="simple myst">
-<dt><code class="docutils literal notranslate"><span class="pre">mode</span></code> : str</dt><dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">syncMode</span></code> : bool</dt><dd><p class="sd-card-text">Use the hardware trigger (wait for pulses) instead of free-running.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">save_path</span></code> : str, optional</dt><dd><p class="sd-card-text">Relative output dir for <code class="docutils literal notranslate"><span class="pre">image</span></code>/<code class="docutils literal notranslate"><span class="pre">video</span></code>; <code class="docutils literal notranslate"><span class="pre">None</span></code> for <code class="docutils literal notranslate"><span class="pre">stream</span></code>.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">fps</span></code> : int, default <code class="docutils literal notranslate"><span class="pre">30</span></code></dt><dd><p class="sd-card-text">Frame rate when free-running.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">exposure_time</span></code> : float, optional</dt><dd><p class="sd-card-text">Microseconds. <code class="docutils literal notranslate"><span class="pre">None</span></code> → the per-camera <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> value.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">gain</span></code> : float, optional</dt><dd><p class="sd-card-text">dB. <code class="docutils literal notranslate"><span class="pre">None</span></code> → the per-camera <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> value.</p>
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncMode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><dl class="myst field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p class="sd-card-text"><strong>mode</strong> – <code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>.</p></li>
+<li><p class="sd-card-text"><strong>syncMode</strong> – Use the hardware trigger (wait for pulses) instead of free-running.</p></li>
+<li><p class="sd-card-text"><strong>save_path</strong> – Relative output dir for <code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code>; <code class="docutils literal notranslate"><span class="pre">None</span></code> for <code class="docutils literal notranslate"><span class="pre">stream</span></code>.</p></li>
+<li><p class="sd-card-text"><strong>fps</strong> – Frame rate when free-running (default <code class="docutils literal notranslate"><span class="pre">30</span></code>).</p></li>
+<li><p class="sd-card-text"><strong>exposure_time</strong> – Microseconds; <code class="docutils literal notranslate"><span class="pre">None</span></code> → the per-camera <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> value.</p></li>
+<li><p class="sd-card-text"><strong>gain</strong> – dB; <code class="docutils literal notranslate"><span class="pre">None</span></code> → the per-camera <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> value.</p></li>
+</ul>
 </dd>
 </dl>
+</dd></dl>
+
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
 <summary class="sd-summary-title sd-card-header">
 <span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> — main PC</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Drives every capture PC over ZMQ. <code class="docutils literal notranslate"><span class="pre">start()</span></code>/<code class="docutils literal notranslate"><span class="pre">stop()</span></code> set events; the background
 <code class="docutils literal notranslate"><span class="pre">run()</span></code> loop does the actual send.</p>
-<dl class="simple myst">
-<dt><code class="docutils literal notranslate"><span class="pre">remote_camera_controller(name,</span> <span class="pre">pc_list=None,</span> <span class="pre">auto_reload=False,</span> <span class="pre">stall_timeout=3.0)</span></code></dt><dd><p class="sd-card-text">Construct; spawn the <code class="docutils literal notranslate"><span class="pre">run()</span></code> thread. <code class="docutils literal notranslate"><span class="pre">pc_list=None</span></code> → all capture PCs.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">save_path=None,</span> <span class="pre">fps=30,</span> <span class="pre">exposure_time=None,</span> <span class="pre">gain=None)</span></code> → None</dt><dd><p class="sd-card-text">Begin capture on all PCs. Raises the init error if the daemon connection failed.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">stop()</span></code> → None</dt><dd><p class="sd-card-text">Stop capture on all PCs.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">end()</span></code> → None</dt><dd><p class="sd-card-text">Release the lock, join the loop thread.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">reload_cameras()</span></code> → None</dt><dd><p class="sd-card-text">Ask every daemon to re-init its cameras.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">force_takeover()</span></code> → dict</dt><dd><p class="sd-card-text">Grab the lock even if another controller holds it (per-PC result).</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">is_error()</span></code> → bool</dt><dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">True</span></code> if any camera reported an error.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">get_status()</span></code> → dict</dt><dd><p class="sd-card-text">Live health: error flag, stalled serials, per-PC status, last raw responses.</p>
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">remote_camera_controller</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pc_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_reload</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stall_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.0</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Construct; spawn the <code class="docutils literal notranslate"><span class="pre">run()</span></code> thread. <code class="docutils literal notranslate"><span class="pre">pc_list=None</span></code> → all capture PCs.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncMode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Begin capture on all PCs. Raises the init error if the daemon connection failed.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Stop capture on all PCs.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">end</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Release the lock, join the loop thread.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">reload_cameras</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Ask every daemon to re-init its cameras.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">force_takeover</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Grab the lock even if another controller holds it.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">per-PC result</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p class="sd-card-text">dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">is_error</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><dl class="myst field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">True</span></code> if any camera reported an error.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p class="sd-card-text">bool</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Live health snapshot.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">error flag, stalled serials, per-PC status, last raw responses</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p class="sd-card-text">dict</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
 <summary class="sd-summary-title sd-card-header">
 <span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> — capture PC</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Owns the local cameras and drives them together.</p>
-<dl class="simple myst">
-<dt><code class="docutils literal notranslate"><span class="pre">CameraLoader(types=[&quot;pyspin&quot;])</span></code></dt><dd><p class="sd-card-text">Detect and open every local camera.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">save_path=None,</span> <span class="pre">fps=30,</span> <span class="pre">exposure_time=None,</span> <span class="pre">gain=None)</span></code> → None</dt><dd><p class="sd-card-text">Start all cameras concurrently (blocks until all started).</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">stop()</span></code> → None</dt><dd><p class="sd-card-text">Stop all cameras.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">end()</span></code> → None</dt><dd><p class="sd-card-text">Stop + release all cameras (DeInit + free SHM).</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">get_status_list()</span></code> → list[dict]</dt><dd><p class="sd-card-text">Per-camera status dict (see <code class="docutils literal notranslate"><span class="pre">Camera.get_status</span></code>).</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">get_summary()</span></code> → dict</dt><dd><p class="sd-card-text">Compact daemon payload: counts, serials, per-camera states / frame ids / errors.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">get_all_errors()</span></code> → dict[str, tuple]</dt><dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">(msg,</span> <span class="pre">traceback)}</span></code> for cameras in error.</p>
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">CameraLoader</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">types</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">['pyspin']</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Detect and open every local camera.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncMode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Start all cameras concurrently (blocks until all started).</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Stop all cameras.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">end</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Stop + release all cameras (DeInit + free SHM).</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_status_list</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Per-camera status dict (see <code class="docutils literal notranslate"><span class="pre">Camera.get_status</span></code>).</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">list[dict]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Compact daemon payload: counts, serials, per-camera states / frame ids / errors.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_all_errors</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">(msg,</span> <span class="pre">traceback)}</span></code> for cameras in error.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">dict[str, tuple]</p>
+</dd>
+</dl>
+</dd></dl>
+
 <p class="sd-card-text"><strong>Attributes</strong> — <code class="docutils literal notranslate"><span class="pre">camera_names</span></code> (<code class="docutils literal notranslate"><span class="pre">list[str]</span></code> serials), <code class="docutils literal notranslate"><span class="pre">cameralist</span></code> (<code class="docutils literal notranslate"><span class="pre">list[Camera]</span></code>).</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
 <summary class="sd-summary-title sd-card-header">
 <span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">Camera</span></code> — capture PC</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">One camera + its capture thread. See the <a class="reference internal" href="camera_system.html"><span class="doc">lifecycle contract</span></a>.</p>
-<dl class="simple myst">
-<dt><code class="docutils literal notranslate"><span class="pre">Camera(cam_type,</span> <span class="pre">name,</span> <span class="pre">frame_shape=(1536,2048,3),</span> <span class="pre">cfg=None)</span></code></dt><dd><p class="sd-card-text">Open the camera, allocate SHM, spawn the capture thread. <code class="docutils literal notranslate"><span class="pre">cfg</span></code> = the per-serial <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> entry.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">save_path=None,</span> <span class="pre">fps=30,</span> <span class="pre">exposure_time=None,</span> <span class="pre">gain=None)</span></code> → None</dt><dd><p class="sd-card-text">Begin capture in <code class="docutils literal notranslate"><span class="pre">mode</span></code>; blocks until acquiring.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">stop(timeout=5.0)</span></code> → None</dt><dd><p class="sd-card-text">Stop capture; finite wait (warns and returns on timeout).</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">end(timeout=5.0)</span></code> → None</dt><dd><p class="sd-card-text">Stop + release (DeInit + free SHM); finite wait.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">get_status()</span></code> → dict</dt><dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{state,</span> <span class="pre">frame_id,</span> <span class="pre">name,</span> <span class="pre">mode,</span> <span class="pre">fps,</span> <span class="pre">syncMode,</span> <span class="pre">save_path,</span> <span class="pre">time}</span></code>.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">get_state()</span></code> → str</dt><dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">CONNECTING</span></code> / <code class="docutils literal notranslate"><span class="pre">READY</span></code> / <code class="docutils literal notranslate"><span class="pre">STARTING</span></code> / <code class="docutils literal notranslate"><span class="pre">CAPTURING</span></code> / <code class="docutils literal notranslate"><span class="pre">ERROR</span></code> / <code class="docutils literal notranslate"><span class="pre">STOPPED</span></code>.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">get_frame_id()</span></code> → int</dt><dd><p class="sd-card-text">Last processed frame id.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">get_error()</span></code> → (bool, (str, str))</dt><dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(has_error,</span> <span class="pre">(message,</span> <span class="pre">traceback))</span></code>.</p>
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">Camera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cam_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1536,</span> <span class="pre">2048,</span> <span class="pre">3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Open the camera, allocate SHM, spawn the capture thread. <code class="docutils literal notranslate"><span class="pre">cfg</span></code> = the per-serial <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> entry.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncMode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Begin capture in <code class="docutils literal notranslate"><span class="pre">mode</span></code>; blocks until acquiring.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Stop capture; finite wait (warns and returns on timeout).</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">end</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">5.0</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Stop + release (DeInit + free SHM); finite wait.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_status</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{state,</span> <span class="pre">frame_id,</span> <span class="pre">name,</span> <span class="pre">mode,</span> <span class="pre">fps,</span> <span class="pre">syncMode,</span> <span class="pre">save_path,</span> <span class="pre">time}</span></code>.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">One of <code class="docutils literal notranslate"><span class="pre">CONNECTING</span></code> / <code class="docutils literal notranslate"><span class="pre">READY</span></code> / <code class="docutils literal notranslate"><span class="pre">STARTING</span></code> / <code class="docutils literal notranslate"><span class="pre">CAPTURING</span></code> / <code class="docutils literal notranslate"><span class="pre">ERROR</span></code> / <code class="docutils literal notranslate"><span class="pre">STOPPED</span></code>.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">str</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_frame_id</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Last processed frame id.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">int</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_error</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(has_error,</span> <span class="pre">(message,</span> <span class="pre">traceback))</span></code>.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">(bool, (str, str))</p>
+</dd>
+</dl>
+</dd></dl>
+
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
 <summary class="sd-summary-title sd-card-header">
 <span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> — driver</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Thin wrapper over the PySpin SDK. <code class="docutils literal notranslate"><span class="pre">Camera</span></code> holds one as <code class="docutils literal notranslate"><span class="pre">self.camera</span></code>.</p>
-<dl class="simple myst">
-<dt><code class="docutils literal notranslate"><span class="pre">get_image()</span></code> → (ndarray, dict) | (None, dict) | (None, None)</dt><dd><p class="sd-card-text">Grab one frame. <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code> on grab timeout (<code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span></code>); <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">frame_data)</span></code> on incomplete/zero-size. <code class="docutils literal notranslate"><span class="pre">dict</span> <span class="pre">=</span> <span class="pre">{pc_time,</span> <span class="pre">frameID}</span></code>.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">frame_rate=None,</span> <span class="pre">gain=None,</span> <span class="pre">exposure_time=None)</span></code> → None</dt><dd><p class="sd-card-text">Re-apply changed config + <code class="docutils literal notranslate"><span class="pre">BeginAcquisition</span></code>. <code class="docutils literal notranslate"><span class="pre">mode</span></code> = <code class="docutils literal notranslate"><span class="pre">&quot;single&quot;</span></code> | <code class="docutils literal notranslate"><span class="pre">&quot;continuous&quot;</span></code>.</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">stop()</span></code> → None</dt><dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">EndAcquisition</span></code> (camera stays connected).</p>
-</dd>
-<dt><code class="docutils literal notranslate"><span class="pre">release()</span></code> → None</dt><dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">DeInit</span></code> (disconnect).</p>
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">get_image</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Grab one frame. <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code> on grab timeout (<code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span></code>); <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">frame_data)</span></code> on incomplete/zero-size. <code class="docutils literal notranslate"><span class="pre">dict</span> <span class="pre">=</span> <span class="pre">{pc_time,</span> <span class="pre">frameID}</span></code>.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">(ndarray, dict) | (None, dict) | (None, None)</p>
 </dd>
 </dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">syncMode</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_rate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text">Re-apply changed config + <code class="docutils literal notranslate"><span class="pre">BeginAcquisition</span></code>. <code class="docutils literal notranslate"><span class="pre">mode</span></code> = <code class="docutils literal notranslate"><span class="pre">&quot;single&quot;</span></code> | <code class="docutils literal notranslate"><span class="pre">&quot;continuous&quot;</span></code>.</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">EndAcquisition</span></code> (camera stays connected).</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py">
+<span class="sig-name descname"><span class="pre">release</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span></dt>
+<dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">DeInit</span></code> (disconnect).</p>
+<dl class="myst field-list simple">
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p class="sd-card-text">None</p>
+</dd>
+</dl>
+</dd></dl>
+
 <p class="sd-card-text"><strong>Module-level</strong> — <code class="docutils literal notranslate"><span class="pre">get_serial_list()</span></code> → <code class="docutils literal notranslate"><span class="pre">list[str]</span></code>, <code class="docutils literal notranslate"><span class="pre">autoforce_ip()</span></code>,
 <code class="docutils literal notranslate"><span class="pre">load_camera(serial,</span> <span class="pre">cfg=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code>,
 <code class="docutils literal notranslate"><span class="pre">load_timestamp_monitor(serial,</span> <span class="pre">cfg=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor</span></code>; constant

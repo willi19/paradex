@@ -12,8 +12,8 @@ Paradex = distributed multi-camera vision + robot framework. `paradex/` = librar
 
 | Your task | Open |
 |-----------|------|
-| Capture images/video from code (use `rcc`) | `paradex/io/camera_system/README.md` |
-| Change camera internals (daemon / acquire / pyspin) | in-file docstrings + `docs/camera_system_api.md` |
+| Capture images/video from code (use `rcc`) | `paradex/io/camera_system/docs/usage.md` |
+| Change camera internals (daemon / acquire / pyspin) | `paradex/io/camera_system/docs/internals.md` |
 | Camera design / roadmap / known limits | `design/camera-recording-redesign.md` |
 | Robot / capture / process subsystems | `docs/robot.md` · `docs/capture.md` · `docs/process.md` |
 | Run/understand a specific app | `src/<app>/README.md` (+ `CLAUDE.md`) |

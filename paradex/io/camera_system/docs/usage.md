@@ -5,6 +5,9 @@ callers from flailing. Full reference: the online docs
 (`willi19.github.io/paradex/camera_system.html`) and
 [`camera_system_api`](https://github.com/willi19/paradex/blob/main/docs/camera_system_api.md).
 
+> **Editing the camera code itself** (daemon / acquisition / pyspin / lifecycle),
+> not just calling it? Read [`internals.md`](internals.md) instead.
+
 ## TL;DR — which class do I use?
 
 - **On the MAIN PC (almost always you):** use `remote_camera_controller` (`rcc`).

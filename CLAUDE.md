@@ -71,7 +71,8 @@ from paradex.utils.file_io import load_yaml
 **On the main PC use `remote_camera_controller` (rcc)** — it drives the capture-PC
 daemons. Do NOT use `CameraLoader`/`Camera` directly on the main PC (that's the
 daemon's job). Full recipe / modes / error handling / gotchas:
-[`paradex/io/camera_system/README.md`](paradex/io/camera_system/README.md).
+[`paradex/io/camera_system/docs/usage.md`](paradex/io/camera_system/docs/usage.md)
+(editing camera internals? see [`docs/internals.md`](paradex/io/camera_system/docs/internals.md)).
 ```python
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
 rcc = remote_camera_controller("my_app")                 # needs server_daemon.py up on each capture PC

@@ -19,6 +19,8 @@ Module Contents
 
 .. py:data:: extrinsic_dir
 
+.. py:data:: intrinsic_dir
+
 .. py:function:: load_current_camparam(name=None)
 
 .. py:function:: load_camparam(demo_path)

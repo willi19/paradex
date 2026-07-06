@@ -1,47 +1,26 @@
 # AGENTS.md
 
-Cross-tool guide for AI coding agents (Codex, Cursor, Claude, …) working in this
-repo. (Claude also reads `CLAUDE.md`.)
+Thin index for AI agents (Codex / Cursor / Claude). **Read this, then open ONLY the
+one doc for your task — do not scan the whole repo.** Detailed guidance lives next to
+the code it describes (each `src/<app>/` and key module has its own README/CLAUDE);
+prefer the local one over anything global.
 
-## What this repo is
+Paradex = distributed multi-camera vision + robot framework. `paradex/` = library,
+`src/` = apps, `system/current/` = per-machine config, `docs/` = generated site.
 
-Paradex — a distributed multi-camera vision + robot control framework.
-`paradex/` is the reusable library; `src/` are application scripts; `system/current/`
-holds the active machine config; `docs/` is the generated site
-(`willi19.github.io/paradex`).
+## Where to look (open only what you need)
 
-## Using the camera system (read this before capturing images/video)
+| Your task | Open |
+|-----------|------|
+| Capture images/video from code (use `rcc`) | `paradex/io/camera_system/README.md` |
+| Change camera internals (daemon / acquire / pyspin) | in-file docstrings + `docs/camera_system_api.md` |
+| Camera design / roadmap / known limits | `design/camera-recording-redesign.md` |
+| Robot / capture / process subsystems | `docs/robot.md` · `docs/capture.md` · `docs/process.md` |
+| Run/understand a specific app | `src/<app>/README.md` (+ `CLAUDE.md`) |
+| Full doc site | `willi19.github.io/paradex` |
 
-Most callers waste time rediscovering this. **On the main PC, use
-`remote_camera_controller` (`rcc`)** — do not instantiate `Camera`/`CameraLoader`
-directly. Full recipe, modes, error handling, gotchas:
-
-→ **[`paradex/io/camera_system/README.md`](paradex/io/camera_system/README.md)**
-
-Minimal:
-```python
-from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
-rcc = remote_camera_controller("my_app")
-rcc.start("image", False, save_path="dataset/001/raw")   # image/video/stream/full
-rcc.stop(); rcc.end()                                     # end() releases the lock
-# health: rcc.get_status() -> {'error', 'stalled', 'pc': {...}}
-```
-
-## Key docs by topic
-
-| Topic | Where |
-|-------|-------|
-| Camera system (how it works) | online docs `camera_system.html`; API `docs/camera_system_api.md` |
-| Camera usage recipe | `paradex/io/camera_system/README.md` |
-| Robot / capture / process subsystems | `docs/{robot,capture,process}.md` (+ `_api`) |
-| Per-app run steps | each `src/<app>/README.md` |
-| Camera redesign roadmap / known limits | `design/camera-recording-redesign.md` |
-
-## Conventions
-
+## Global conventions
 - Camera serial numbers are string keys everywhere.
-- Module typo `dataset_acqusition` (missing 'i') is intentional — do not "rename fix" it.
-- `system/current/` is per-machine config (not in git); don't hardcode PC lists / serials.
+- Module typo `dataset_acqusition` (missing 'i') is intentional — don't "fix" it.
+- `system/current/` is per-machine config (not in git); never hardcode PC lists / serials.
 - No test suite — validate via `src/validate/` scripts.
-- Docs site is built from `docs/` via GitHub Actions on push to `main`; the `docs/`
-  markdown is Sphinx (MyST) — `make html` in `docs/` to rebuild.

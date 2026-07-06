@@ -87,7 +87,7 @@ Module Contents
 
 
 
-   .. py:method:: start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+   .. py:method:: start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None, timeout=10.0)
 
       Begin capture; blocks until the camera is actually acquiring.
 
@@ -108,6 +108,9 @@ Module Contents
       :type exposure_time: float, optional
       :param gain: Overrides; ``None`` keeps the camera.json baseline.
       :type gain: float, optional
+      :param timeout: Max seconds to wait for the capture thread to begin acquiring before
+                      logging a warning and returning, by default 10.0.
+      :type timeout: float, optional
 
 
 

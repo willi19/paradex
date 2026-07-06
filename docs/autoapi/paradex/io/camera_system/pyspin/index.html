@@ -493,7 +493,7 @@ when configuration of camera parameters fails.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">PyspinCamera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camPtr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">PyspinCamera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camPtr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera" title="Link to this definition">¶</a></dt>
 <dd><p>Thin wrapper around a single FLIR (Spinnaker) camera.</p>
 <p>Owns an initialized PySpin camera pointer and exposes a small, hardware-
 agnostic API (<a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.start" title="paradex.io.camera_system.pyspin.PyspinCamera.start"><code class="xref py py-meth docutils literal notranslate"><span class="pre">start()</span></code></a>, <a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.get_image" title="paradex.io.camera_system.pyspin.PyspinCamera.get_image"><code class="xref py py-meth docutils literal notranslate"><span class="pre">get_image()</span></code></a>, <a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.stop" title="paradex.io.camera_system.pyspin.PyspinCamera.stop"><code class="xref py py-meth docutils literal notranslate"><span class="pre">stop()</span></code></a>,
@@ -523,6 +523,11 @@ format) via <code class="xref py py-meth docutils literal notranslate"><span cla
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera.frame_rate">
 <span class="sig-name descname"><span class="pre">frame_rate</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera.frame_rate" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera.cfg">
+<span class="sig-name descname"><span class="pre">cfg</span></span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera.cfg" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -580,6 +585,12 @@ timeout or an incomplete/zero-size frame.</p></li>
 </ul>
 </p>
 </dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>PySpin.SpinnakerException</strong> – On any non-timeout grab error (e.g. the camera disconnected). It is
+re-raised so <code class="xref py py-meth docutils literal notranslate"><span class="pre">Camera.continuous_acquire()</span></code> records it in the
+camera’s error state and the remote controller can see it via the
+heartbeat / <code class="docutils literal notranslate"><span class="pre">get_status()</span></code>.</p>
+</dd>
 </dl>
 </dd></dl>
 
@@ -630,7 +641,7 @@ afterward.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinTimestampMonitor">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">PyspinTimestampMonitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camPtr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">PyspinTimestampMonitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camPtr</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor" title="Link to this definition">¶</a></dt>
 <dd><dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinTimestampMonitor.mode">
 <span class="sig-name descname"><span class="pre">mode</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.mode" title="Link to this definition">¶</a></dt>
@@ -644,6 +655,11 @@ afterward.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinTimestampMonitor.frame_rate">
 <span class="sig-name descname"><span class="pre">frame_rate</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.frame_rate" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinTimestampMonitor.cfg">
+<span class="sig-name descname"><span class="pre">cfg</span></span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.cfg" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -781,6 +797,7 @@ Spinnaker system instance before returning.</p>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.mode"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.mode</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.syncMode"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.syncMode</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.frame_rate"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.frame_rate</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.cfg"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.cfg</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.gain"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.gain</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.exposure_time"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.exposure_time</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.cam"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.cam</span></code></a></li>
@@ -798,6 +815,7 @@ Spinnaker system instance before returning.</p>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.mode"><code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor.mode</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.syncMode"><code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor.syncMode</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.frame_rate"><code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor.frame_rate</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.cfg"><code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor.cfg</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.gain"><code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor.gain</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.exposure_time"><code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor.exposure_time</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.cam"><code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor.cam</span></code></a></li>

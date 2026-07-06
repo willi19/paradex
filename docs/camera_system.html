@@ -551,8 +551,50 @@ exposure sweep) never leaks into the next capture. Tune live with
 <strong>locally on each capture PC</strong> from <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> (never sent over the network); the
 runtime parameters travel from the main PC as a <strong>JSON command over ZMQ</strong>, and the
 capture-PC <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> resolves the two together before applying them to the PySpin
-nodes. Only <code class="docutils literal notranslate"><span class="pre">gain</span></code>/<code class="docutils literal notranslate"><span class="pre">exposure</span></code> live in <code class="docutils literal notranslate"><span class="pre">camera.json</span></code>; packet size, buffer count, trigger
-mode, and pixel format are fixed in <code class="docutils literal notranslate"><span class="pre">PyspinCameraConfig</span></code>.</p>
+nodes.</p>
+<p><strong>Per-camera hardware settings.</strong> A <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> entry may override these keys per
+serial; any absent key falls back to the <code class="docutils literal notranslate"><span class="pre">PyspinCameraConfig</span></code> default:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>key</p></th>
+<th class="head"><p>PySpin node</p></th>
+<th class="head"><p>default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gain</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Gain</span></code></p></td>
+<td><p>3.0 dB</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">exposure</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">ExposureTime</span></code></p></td>
+<td><p>2500 µs</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pixel_format</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">PixelFormat</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BayerRG8</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">packet_size</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">GevSCPSPacketSize</span></code></p></td>
+<td><p>9000</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">buffer_count</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">StreamBufferCountManual</span></code></p></td>
+<td><p>10</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">buffer_mode</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">StreamBufferHandlingMode</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OldestFirst</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="highlight-jsonc notranslate"><div class="highlight"><pre><span></span>{ &quot;25305466&quot;: { &quot;gain&quot;: 15.0, &quot;exposure&quot;: 2500.0, &quot;pixel_format&quot;: &quot;Mono8&quot; } }
+</pre></div>
+</div>
+<p>Trigger wiring, chunk (timestamp) data, and auto-gain/exposure-off stay fixed in code —
+they are rig-wide policy, not per-camera.</p>
 <pre  class="mermaid">
         flowchart TB
     subgraph MainPC[&quot;Main PC&quot;]

@@ -108,7 +108,7 @@ Module Contents
    when configuration of camera parameters fails.
 
 
-.. py:class:: PyspinCamera(camPtr, gain, exposure_time)
+.. py:class:: PyspinCamera(camPtr, gain, exposure_time, cfg=None)
 
    Thin wrapper around a single FLIR (Spinnaker) camera.
 
@@ -140,6 +140,9 @@ Module Contents
    .. py:attribute:: frame_rate
       :value: None
 
+
+
+   .. py:attribute:: cfg
 
 
    .. py:attribute:: gain
@@ -178,6 +181,11 @@ Module Contents
                   timeout or an incomplete/zero-size frame.
                 * **frame_data** (*dict or None*) -- ``{"pc_time": float, "frameID": int}`` metadata for the frame, or
                   ``None`` on grab timeout.
+
+      :raises PySpin.SpinnakerException: On any non-timeout grab error (e.g. the camera disconnected). It is
+          re-raised so :meth:`Camera.continuous_acquire` records it in the
+          camera's error state and the remote controller can see it via the
+          heartbeat / ``get_status()``.
 
 
 
@@ -226,7 +234,7 @@ Module Contents
 
 
 
-.. py:class:: PyspinTimestampMonitor(camPtr, gain, exposure_time)
+.. py:class:: PyspinTimestampMonitor(camPtr, gain, exposure_time, cfg=None)
 
    .. py:attribute:: mode
       :value: None
@@ -241,6 +249,9 @@ Module Contents
    .. py:attribute:: frame_rate
       :value: None
 
+
+
+   .. py:attribute:: cfg
 
 
    .. py:attribute:: gain

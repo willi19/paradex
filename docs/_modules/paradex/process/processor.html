@@ -414,9 +414,14 @@
 <span class="sd">                 (path from ``ctx.output(name)``) and which are uploaded to NAS</span>
 <span class="sd">                 after it returns successfully.</span>
 <span class="sd">        meta:    Arbitrary extra data for your ``process`` fn (``job.meta[...]``).</span>
-<span class="sd">        done:    Optional ``(job) -&gt; bool`` override for the skip check. By</span>
-<span class="sd">                 default a job is skipped when *all* its ``outputs`` already</span>
-<span class="sd">                 exist on NAS.</span>
+<span class="sd">        done:    Optional ``(job) -&gt; bool`` completion predicate. This is an</span>
+<span class="sd">                 intentional idempotency extension point for jobs whose real</span>
+<span class="sd">                 completion cannot be proven by output-file existence alone</span>
+<span class="sd">                 (for example multi-file manifests or external quality gates).</span>
+<span class="sd">                 When supplied it is authoritative; otherwise the conservative</span>
+<span class="sd">                 default skips only when *all* declared ``outputs`` already</span>
+<span class="sd">                 exist on NAS. For ``num_workers &gt; 1`` the callable must be</span>
+<span class="sd">                 picklable, just like ``process_fn``.</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="nb">id</span><span class="p">:</span> <span class="nb">str</span>
     <span class="n">inputs</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">default_factory</span><span class="o">=</span><span class="nb">dict</span><span class="p">)</span>
@@ -487,6 +492,14 @@
 
 
 <span class="k">def</span><span class="w"> </span><span class="nf">_is_done</span><span class="p">(</span><span class="n">job</span><span class="p">:</span> <span class="n">Job</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return whether ``job`` can be skipped before caching/processing.</span>
+
+<span class="sd">    The default rule is deliberately conservative and data-grounded: only</span>
+<span class="sd">    declared NAS outputs prove completion. ``job.done`` is the explicit escape</span>
+<span class="sd">    hatch for workflows whose completion record is not one output path; errors</span>
+<span class="sd">    from that predicate are allowed to propagate so a bad predicate fails the job</span>
+<span class="sd">    instead of silently bypassing work.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="k">if</span> <span class="n">job</span><span class="o">.</span><span class="n">done</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
         <span class="k">return</span> <span class="nb">bool</span><span class="p">(</span><span class="n">job</span><span class="o">.</span><span class="n">done</span><span class="p">(</span><span class="n">job</span><span class="p">))</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">job</span><span class="o">.</span><span class="n">outputs</span><span class="p">:</span>

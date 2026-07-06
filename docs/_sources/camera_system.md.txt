@@ -152,8 +152,26 @@ flowchart LR
 **locally on each capture PC** from `camera.json` (never sent over the network); the
 runtime parameters travel from the main PC as a **JSON command over ZMQ**, and the
 capture-PC `CameraLoader` resolves the two together before applying them to the PySpin
-nodes. Only `gain`/`exposure` live in `camera.json`; packet size, buffer count, trigger
-mode, and pixel format are fixed in `PyspinCameraConfig`.
+nodes.
+
+**Per-camera hardware settings.** A `camera.json` entry may override these keys per
+serial; any absent key falls back to the `PyspinCameraConfig` default:
+
+| key | PySpin node | default |
+|-----|-------------|---------|
+| `gain` | `Gain` | 3.0 dB |
+| `exposure` | `ExposureTime` | 2500 µs |
+| `pixel_format` | `PixelFormat` | `BayerRG8` |
+| `packet_size` | `GevSCPSPacketSize` | 9000 |
+| `buffer_count` | `StreamBufferCountManual` | 10 |
+| `buffer_mode` | `StreamBufferHandlingMode` | `OldestFirst` |
+
+```jsonc
+{ "25305466": { "gain": 15.0, "exposure": 2500.0, "pixel_format": "Mono8" } }
+```
+
+Trigger wiring, chunk (timestamp) data, and auto-gain/exposure-off stay fixed in code —
+they are rig-wide policy, not per-camera.
 
 ```{mermaid}
 flowchart TB

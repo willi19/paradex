@@ -434,9 +434,14 @@ after it returns successfully.</p>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.process.processor.Job.done">
 <span class="sig-name descname"><span class="pre">done</span></span><a class="headerlink" href="#paradex.process.processor.Job.done" title="Link to this definition">¶</a></dt>
-<dd><p>Optional <code class="docutils literal notranslate"><span class="pre">(job)</span> <span class="pre">-&gt;</span> <span class="pre">bool</span></code> override for the skip check. By
-default a job is skipped when <em>all</em> its <code class="docutils literal notranslate"><span class="pre">outputs</span></code> already
-exist on NAS.</p>
+<dd><p>Optional <code class="docutils literal notranslate"><span class="pre">(job)</span> <span class="pre">-&gt;</span> <span class="pre">bool</span></code> completion predicate. This is an
+intentional idempotency extension point for jobs whose real
+completion cannot be proven by output-file existence alone
+(for example multi-file manifests or external quality gates).
+When supplied it is authoritative; otherwise the conservative
+default skips only when <em>all</em> declared <code class="docutils literal notranslate"><span class="pre">outputs</span></code> already
+exist on NAS. For <code class="docutils literal notranslate"><span class="pre">num_workers</span> <span class="pre">&gt;</span> <span class="pre">1</span></code> the callable must be
+picklable, just like <code class="docutils literal notranslate"><span class="pre">process_fn</span></code>.</p>
 </dd></dl>
 
 <dl class="py attribute">

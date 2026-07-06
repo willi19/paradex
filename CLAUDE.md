@@ -68,12 +68,16 @@ from paradex.utils.file_io import load_yaml
 ```
 
 ### Camera Access
+**On the main PC use `remote_camera_controller` (rcc)** — it drives the capture-PC
+daemons. Do NOT use `CameraLoader`/`Camera` directly on the main PC (that's the
+daemon's job). Full recipe / modes / error handling / gotchas:
+[`paradex/io/camera_system/README.md`](paradex/io/camera_system/README.md).
 ```python
-from paradex.io.camera_system.camera_loader import CameraLoader
-camera = CameraLoader()
-camera.start(mode="image|video|full", syncMode=False, save_path="dataset/001")
-camera.stop()
-camera.end()
+from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
+rcc = remote_camera_controller("my_app")                 # needs server_daemon.py up on each capture PC
+rcc.start("image", False, save_path="dataset/001/raw")   # image | video | stream | full
+rcc.stop(); rcc.end()                                    # end() releases the lock
+# health while capturing: rcc.get_status() -> {'error', 'stalled', 'pc': {...}}
 ```
 
 ### Multi-Camera Images = Dict[serial_num: str, image: np.ndarray]

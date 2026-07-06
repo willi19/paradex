@@ -23,6 +23,10 @@
     .btn-restart:hover { background: #4a3c22; }
     .btn-all { background: #402024; color: #ff9aa0; border: 1px solid #6a2f35; margin-left: auto; align-self: center; }
     .btn-all:hover { background: #55282e; }
+    .btn-stop { background: #3a1a1a; color: #ff8888; border: 1px solid #5a2020; margin-left: 6px; }
+    .btn-stop:hover { background: #4a2222; }
+    .btn-stopall { background: #2a2a2a; color: #cccccc; border: 1px solid #444; margin-left: 8px; align-self: center; }
+    .btn-stopall:hover { background: #383838; }
 
     .pc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(420px, 1fr)); gap: 16px; }
     .pc-card { background: #1e2127; border: 1px solid #2b2f37; border-radius: 10px; padding: 16px; }
@@ -86,6 +90,22 @@
       btn.disabled = true; btn.textContent = '…restarting all';
       try { await fetch('/api/restart_all', { method: 'POST' }); } catch (e) {}
       setTimeout(() => { btn.disabled = false; btn.textContent = '↻ restart all'; }, 3000);
+    }
+    async function stop(pc, btn) {
+      if (!confirm(`Stop camera server on ${pc}? (no relaunch)`)) return;
+      btn.disabled = true; btn.textContent = '…stopping';
+      try {
+        const r = await fetch(`/api/stop/${pc}`, { method: 'POST' });
+        const j = await r.json();
+        btn.textContent = j.ok ? '✓ stopped' : '✗ failed';
+      } catch (e) { btn.textContent = '✗ error'; }
+      setTimeout(() => { btn.disabled = false; btn.textContent = '■ stop'; }, 2500);
+    }
+    async function stopAll(btn) {
+      if (!confirm('Stop ALL camera servers? (no relaunch)')) return;
+      btn.disabled = true; btn.textContent = '…stopping all';
+      try { await fetch('/api/stop_all', { method: 'POST' }); } catch (e) {}
+      setTimeout(() => { btn.disabled = false; btn.textContent = '■ stop all'; }, 3000);
     }
 
     function effState(pc, cam) {
@@ -153,6 +173,7 @@
             <span class="pc-name">${pc}</span>
             <span class="badge ${up ? 'b-run' : 'b-down'}">${up ? 'UP' : 'DOWN'}</span>
             <button class="btn btn-restart" onclick="restart('${pc}', this)">↻ restart</button>
+            <button class="btn btn-stop" onclick="stop('${pc}', this)">■ stop</button>
           </div>
           <div class="controller">controller: <b>${controller}</b></div>
           ${rows}`;
@@ -165,7 +186,8 @@
         <div class="stat"><div class="n">${camTotal}</div><div class="l">cameras</div></div>
         <div class="stat err"><div class="n">${errN}</div><div class="l">errors</div></div>
         <div class="stat stall"><div class="n">${stallN}</div><div class="l">stalled</div></div>
-        <button class="btn btn-all" onclick="restartAll(this)">↻ restart all</button>`;
+        <button class="btn btn-all" onclick="restartAll(this)">↻ restart all</button>
+        <button class="btn btn-stopall" onclick="stopAll(this)">■ stop all</button>`;
 
       const t = new Date(data.timestamp * 1000);
       document.getElementById('foot').textContent = 'updated ' + t.toLocaleTimeString();

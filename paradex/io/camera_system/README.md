@@ -42,6 +42,9 @@ python src/camera/reset_cameras.py      # pkill -9 + relaunch on every capture P
 `↻ restart` buttons in the monitor dashboard. **After a `git pull`, restart the daemons**
 so code changes take effect — `reset_cameras.py` does that in one shot.
 
+**Stop only (no relaunch):** `python src/camera/reset_cameras.py --no_restart` (main PC),
+or the `■ stop` / `■ stop all` buttons in the monitor dashboard.
+
 ## The 90% recipe
 
 ```python

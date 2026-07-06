@@ -68,6 +68,16 @@ class CameraMonitor:
         @self.app.route('/api/restart_all', methods=['POST'])
         def restart_all():
             return jsonify({pc: self.restart_server(pc) for pc in self.pc_list})
+
+        @self.app.route('/api/stop/<pc>', methods=['POST'])
+        def stop(pc):
+            if pc not in self.pc_list:
+                return jsonify({'pc': pc, 'ok': False, 'msg': 'unknown pc'}), 404
+            return jsonify({'pc': pc, 'ok': self.stop_server(pc)})
+
+        @self.app.route('/api/stop_all', methods=['POST'])
+        def stop_all():
+            return jsonify({pc: self.stop_server(pc) for pc in self.pc_list})
     
     def initialize(self):
         """초기 서버 확인 및 시작"""
@@ -126,6 +136,22 @@ class CameraMonitor:
             print(f"{pc}: kill failed - {e}")
         self.pc_state[pc] = pc_state.DISCONNECTED
         return self.start_server(pc)
+
+    def stop_server(self, pc):
+        """Kill the daemon on `pc` WITHOUT relaunching (stop-only cleanup)."""
+        print(f"{pc}: stopping camera server...")
+        ip = get_pc_ip(pc)
+        try:
+            subprocess.run(
+                f"ssh -p {ssh_port} {pc}@{ip} "
+                f"'pkill -9 -f \"python.*src/camera/server_daemon.py\"; sleep 0.3'",
+                shell=True,
+            )
+        except Exception as e:
+            print(f"{pc}: stop failed - {e}")
+            return False
+        self.pc_state[pc] = pc_state.DISCONNECTED
+        return True
     
     def setup_monitor_sockets(self):
         """5481 SUB 소켓 구독"""

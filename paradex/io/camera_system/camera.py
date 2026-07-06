@@ -253,8 +253,16 @@ class Camera():
         print(f"[INFO] Camera {self.name} will start.")
 
         if not self.event["acquisition"].wait(timeout=timeout):
+            # Surface the failure instead of silently returning "started": clear
+            # start and set the error state so CameraLoader.get_all_errors and the
+            # daemon report a start failure.
             print(f"[WARN] Camera {self.name} start() timed out after {timeout}s "
                   f"waiting for acquisition to begin.")
+            self.event["start"].clear()
+            self.last_error = f"start() timed out after {timeout}s waiting for acquisition"
+            self.last_traceback = ""
+            self.event["error"].set()
+            self.event["error_reset"].clear()
             return
         print(f"[INFO] Camera {self.name} acquisition started.")
 
@@ -419,7 +427,10 @@ class Camera():
                 self.event["error_reset"].wait()
                 break
 
-        self.camera.stop()
+        try:
+            self.camera.stop()
+        except Exception as e:
+            print(f"[WARN] Camera {self.name} continuous_acquire stop() failed: {e}")
         self.event["acquisition"].clear()
 
         if stream:
@@ -442,29 +453,45 @@ class Camera():
         max_attempts : int, optional
             Grab attempts before giving up (and skipping the write), by default 5.
         """
-        self.camera.start("single", self.syncMode, gain=self.gain, exposure_time=self.exposure_time)
-        self.event["acquisition"].set()
+        try:
+            self.camera.start("single", self.syncMode, gain=self.gain, exposure_time=self.exposure_time)
+            self.event["acquisition"].set()
 
-        # get_image() now times out instead of blocking forever, so retry a few
-        # times to stay reliable on a transient miss without hanging on a dead link.
-        frame = None
-        for _ in range(max_attempts):
-            if self.event["exit"].is_set():
-                break
-            frame, _ = self.camera.get_image()
+            # get_image() now times out instead of blocking forever, so retry a few
+            # times to stay reliable on a transient miss without hanging on a dead link.
+            frame = None
+            for _ in range(max_attempts):
+                if self.event["exit"].is_set():
+                    break
+                frame, _ = self.camera.get_image()
+                if frame is not None and getattr(frame, "size", 0) > 0:
+                    break
+
             if frame is not None and getattr(frame, "size", 0) > 0:
-                break
+                cv2.imwrite(self.save_path, frame)
+            else:
+                print(f"[WARN] Camera {self.name}: single_acquire got no frame after "
+                      f"{max_attempts} attempts, skipping write")
 
-        if frame is not None and getattr(frame, "size", 0) > 0:
-            cv2.imwrite(self.save_path, frame)
-        else:
-            print(f"[WARN] Camera {self.name}: single_acquire got no frame after "
-                  f"{max_attempts} attempts, skipping write")
+        except Exception as e:
+            self.event["error"].set()
+            self.event["error_reset"].clear()
+            self.last_error = str(e)
+            self.last_traceback = traceback.format_exc()
+            print(f"[ERROR] Camera {self.name} single_acquire error: {e}")
+            print(self.last_traceback)
+            self.event["acquisition"].set()   # release Camera.start()'s wait on failure
 
-        self.event["acquisition"].clear()
-        self.event["start"].clear()
-        self.camera.stop()
-        self.event["stop"].set()
+        finally:
+            # Always leave a deterministic state: acquisition/start cleared, camera
+            # acquisition ended (guarded), and stop signalled so stop()/end() return.
+            self.event["acquisition"].clear()
+            self.event["start"].clear()
+            try:
+                self.camera.stop()
+            except Exception as e:
+                print(f"[WARN] Camera {self.name} single_acquire stop() failed: {e}")
+            self.event["stop"].set()
 
     def connect_camera(self):
         """Open the underlying hardware camera and signal ``connection``.

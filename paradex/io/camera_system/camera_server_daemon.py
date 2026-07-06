@@ -113,6 +113,14 @@ class camera_server_daemon:
                         )
                 self.cameras_running = True
                 dt = time.time() - t0
+                # A camera can fail to arm without camera_loader.start() raising
+                # (e.g. a per-camera start() timeout or BeginAcquisition error).
+                # Check the error state before reporting success.
+                errs = self.camera_loader.get_all_errors()
+                if errs:
+                    detail = {name: msg for name, (msg, tb) in errs.items()}
+                    print(f"[Warning] start: {len(errs)} camera(s) failed to arm: {detail}")
+                    return {"status": "error", "msg": f"start: camera errors: {detail}"}
                 print(f"[Info] start completed in {dt:.2f}s mode={cmd.get('mode')} sync={cmd.get('syncMode')} fps={cmd.get('fps',30)} exposure_time={cmd.get('exposure_time')} gain={cmd.get('gain')}")
                 return {"status":"ok", "msg":"started"}
 

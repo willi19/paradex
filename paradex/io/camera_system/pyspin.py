@@ -370,7 +370,10 @@ class PyspinCamera():
         Only stops acquiring — use :meth:`release` to disconnect the camera.
         """
         self._abort_streaming()
-        self.cam.EndAcquisition()
+        try:
+            self.cam.EndAcquisition()
+        except ps.SpinnakerException as e:
+            print(f"[WARN] {self.serial_num} EndAcquisition failed: {e}")
         # Flush buffer command (있으면)
         try:
             while True:

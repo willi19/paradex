@@ -1,10 +1,14 @@
-from threading import Event, Thread
+from threading import Event, Thread, Lock
 import time
 import cv2
 from multiprocessing import shared_memory
 import numpy as np
 import os
 import traceback
+
+from paradex.utils.log import get_logger
+
+logger = get_logger("camera")
 
 
 class Camera():
@@ -58,11 +62,20 @@ class Camera():
 
         self.last_frame_id = 0
 
+        # ── runtime sinks (decoupled from a fixed capture mode) ──────────────
+        # Desired sink state; the acquire loop reconciles the real VideoWriter /
+        # SHM against these under _sink_lock, so sinks can be toggled mid-capture.
+        self._sink_lock = Lock()
+        self._want_video = False           # .avi video sink
+        self._video_path = None            # dir or file for the video sink
+        self._want_stream = False          # shared-memory double-buffer sink
+        self._snapshot = None              # {'path','count','remaining'} one-shot image sink
+
         self.last_error = None
         self.last_traceback = None
 
         self.load_shared_memory()
-        print(f"[INFO] Camera {self.name} shared memory loaded.")
+        logger.info(f"Camera {self.name} shared memory loaded.")
         self.capture_thread = Thread(target=self.run)
         self.capture_thread.start()
 
@@ -82,7 +95,7 @@ class Camera():
             self.name + "_fid_b",
             self.name + "_flag"
         ]
-        print("unlink existing shm if any:", shm_names)
+        logger.info(f"unlink existing shm if any: {shm_names}")
         for shm_name in shm_names:
             try:
                 shm = shared_memory.SharedMemory(name=shm_name)
@@ -172,7 +185,7 @@ class Camera():
 
         self.write_flag_shm.close()
         self.write_flag_shm.unlink()
-        print(f"[INFO] Camera {self.name} shared memory released.")
+        logger.info(f"Camera {self.name} shared memory released.")
 
     def clear_shared_memory(self):
         """Zero the frame ids, write flag, and both image buffers."""
@@ -227,10 +240,10 @@ class Camera():
 
             self.last_error = "Acquisition is already running."
             self.last_traceback = ""
-            print(f"[WARNING] Camera {self.name} acquisition is already running.")
+            logger.warning(f"Camera {self.name} acquisition is already running.")
 
         if self.event["error"].is_set():
-            print(f"[WARNING] Camera {self.name} is in ERROR state. Resetting error state.")
+            logger.warning(f"Camera {self.name} is in ERROR state. Resetting error state.")
             self.event["stop"].set()
             return
 
@@ -240,6 +253,15 @@ class Camera():
         self.exposure_time = exposure_time
         self.gain = gain
         self.last_frame_id = 0
+
+        # Compat: map the fixed mode to the initial runtime sinks. The new API arms
+        # with mode="acquire" (no sink) and toggles later via set_sink(); "image"
+        # keeps the legacy one-shot path (single_acquire), so no sink here.
+        with self._sink_lock:
+            self._want_video = mode in ("video", "full")
+            self._want_stream = mode in ("stream", "full")
+            self._video_path = save_path if self._want_video else None
+            self._snapshot = None
 
         if save_path is not None:
             _, ext = os.path.splitext(save_path)
@@ -255,14 +277,14 @@ class Camera():
 
         self.event["stop"].clear()
         self.event["start"].set()
-        print(f"[INFO] Camera {self.name} will start.")
+        logger.info(f"Camera {self.name} will start.")
 
         if not self.event["acquisition"].wait(timeout=timeout):
             # Surface the failure instead of silently returning "started": clear
             # start and set the error state so CameraLoader.get_all_errors and the
             # daemon report a start failure.
-            print(f"[WARN] Camera {self.name} start() timed out after {timeout}s "
-                  f"waiting for acquisition to begin.")
+            logger.warning(f"Camera {self.name} start() timed out after {timeout}s "
+                           f"waiting for acquisition to begin.")
             self.event["start"].clear()
             self.last_error = f"start() timed out after {timeout}s waiting for acquisition"
             self.last_traceback = ""
@@ -270,7 +292,50 @@ class Camera():
             self.event["error_reset"].clear()
             self.event["stop"].set()
             return
-        print(f"[INFO] Camera {self.name} acquisition started.")
+        logger.info(f"Camera {self.name} acquisition started.")
+
+    def _resolve_save_path(self, save_path, default_ext):
+        """Turn a dir-or-file ``save_path`` into a concrete per-camera file path.
+
+        A path with no extension is treated as a directory and the file becomes
+        ``<save_path>/<serial><default_ext>``; a path with an extension is used
+        verbatim. Returns ``None`` if ``save_path`` is ``None``.
+        """
+        if save_path is None:
+            return None
+        _, ext = os.path.splitext(save_path)
+        if not ext:
+            return os.path.join(save_path, f"{self.name}{default_ext}")
+        return save_path
+
+    def set_sink(self, video=None, stream=None, save_path=None, snapshot=None):
+        """Toggle output sinks at runtime — safe to call while capturing.
+
+        Records only the *desired* sink state; the acquire loop opens/closes the
+        real ``VideoWriter`` and SHM on the capture thread, so nothing here
+        touches OpenCV/SHM from the caller's thread.
+
+        Parameters
+        ----------
+        video : bool, optional
+            Turn the ``.avi`` video sink on/off. Use ``save_path`` to set where.
+        stream : bool, optional
+            Turn the shared-memory stream sink on/off.
+        save_path : str, optional
+            Destination dir/file for the video sink (applied when it turns on).
+        snapshot : tuple, optional
+            ``(path, count)`` — write the next ``count`` frames as images.
+        """
+        with self._sink_lock:
+            if save_path is not None:
+                self._video_path = save_path
+            if video is not None:
+                self._want_video = bool(video)
+            if stream is not None:
+                self._want_stream = bool(stream)
+            if snapshot is not None:
+                path, count = snapshot
+                self._snapshot = {'path': path, 'count': int(count), 'remaining': int(count)}
 
     def error_reset(self):
         """Clear the error state and release anyone waiting on ``error_reset``."""
@@ -313,10 +378,10 @@ class Camera():
             self.error_reset()
 
         if not self.event["stop"].wait(timeout=timeout):
-            print(f"[WARN] Camera {self.name} stop() timed out after {timeout}s "
-                  f"(acquire thread may be stuck); continuing without blocking.")
+            logger.warning(f"Camera {self.name} stop() timed out after {timeout}s "
+                           f"(acquire thread may be stuck); continuing without blocking.")
             return
-        print(f"[INFO] Camera {self.name} has been stopped.")
+        logger.info(f"Camera {self.name} has been stopped.")
 
     def end(self, timeout=5.0):
         """Stop, then release the camera (DeInit + free SHM) and join the thread.
@@ -334,30 +399,30 @@ class Camera():
         self.event["exit"].set()
         self.capture_thread.join(timeout=timeout)
         if self.capture_thread.is_alive():
-            print(f"[WARN] Camera {self.name} end(): capture thread still alive after "
-                  f"{timeout}s; not blocking daemon.")
+            logger.warning(f"Camera {self.name} end(): capture thread still alive after "
+                           f"{timeout}s; not blocking daemon.")
             return
-        print(f"[INFO] Camera {self.name} has been successfully ended.")
+        logger.info(f"Camera {self.name} has been successfully ended.")
 
-    def continuous_acquire(self):
-        """Capture loop for ``video`` / ``stream`` / ``full`` modes.
+    def acquire(self):
+        """Unified capture loop: acquire continuously, route to runtime sinks.
 
         Arms the PySpin camera (``BeginAcquisition``), signals ``acquisition``,
         then loops grabbing frames until ``start`` clears or ``exit`` sets. Each
-        frame is written to the video sink (with blank frames inserted for drops)
-        and/or the SHM double buffer. On any exception it records the error and
-        waits for ``error_reset``. Runs on the capture thread only.
+        frame is routed to whichever sinks are currently enabled — video, SHM
+        stream, one-shot snapshot — read fresh every iteration from the
+        :meth:`set_sink` state, so sinks can be toggled live. The real
+        ``VideoWriter`` is opened/closed *here* (capture thread) when the video
+        sink flips. On any exception it records the error and waits for
+        ``error_reset``. Runs on the capture thread only.
         """
-        save_video = (self.mode in ["video", "full"] and self.save_path is not None)
-        stream = (self.mode in ["stream", "full"])
         blank_frame = np.zeros(self.frame_shape, dtype=np.uint8)
         blank_frame[::2, ::2] = 255  # checkerboard pattern for dropped frames
+        fourcc = cv2.VideoWriter_fourcc(*'MJPG')
+        video_writer = None
+        video_last_fid = None        # drop-accounting baseline, reset when the sink opens
 
-        print(f"[INFO] Camera {self.name} starting continuous acquisition.")
-        if save_video:
-            fourcc = cv2.VideoWriter_fourcc(*'MJPG')
-            video_writer = cv2.VideoWriter(self.save_path, fourcc, fps=self.fps, frameSize=(self.frame_shape[1], self.frame_shape[0]))
-
+        logger.info(f"Camera {self.name} starting continuous acquisition.")
         try:
             self.camera.start("continuous", self.syncMode, self.fps, gain=self.gain, exposure_time=self.exposure_time)
 
@@ -368,10 +433,10 @@ class Camera():
             self.last_error = str(e)
             self.last_traceback = traceback.format_exc()
 
-            print(f"[ERROR] Camera {self.name} exception occurred:")
-            print(f"Exception Type: {type(e).__name__}")
-            print(f"Exception Message: {str(e)}")
-            print(self.last_traceback)
+            logger.error(f"Camera {self.name} exception occurred:\n"
+                         f"Exception Type: {type(e).__name__}\n"
+                         f"Exception Message: {str(e)}\n"
+                         f"{self.last_traceback}")
 
             self.event["acquisition"].set()  # To avoid deadlock
 
@@ -380,11 +445,8 @@ class Camera():
             self.event["acquisition"].clear()
             self.event["stop"].set()
 
-            if save_video:
-                video_writer.release()
-            if stream:
-                self.clear_shared_memory()
-            print(f"[INFO] Camera {self.name} acquisition aborted due to error during start.")
+            self.clear_shared_memory()
+            logger.info(f"Camera {self.name} acquisition aborted due to error during start.")
             return
 
 
@@ -392,6 +454,31 @@ class Camera():
 
         while self.event["start"].is_set() and not self.event["exit"].is_set():
             try:
+                # Read the desired sink state once per iteration.
+                with self._sink_lock:
+                    want_video = self._want_video
+                    video_path = self._video_path
+                    want_stream = self._want_stream
+                    snap = self._snapshot
+
+                # Reconcile the video sink on this (capture) thread.
+                if want_video and video_writer is None:
+                    resolved = self._resolve_save_path(video_path, ".avi")
+                    if resolved is None:
+                        logger.warning(f"Camera {self.name} video sink requested without a save_path; ignoring.")
+                    else:
+                        d = os.path.dirname(resolved)
+                        if d:
+                            os.makedirs(d, exist_ok=True)
+                        video_writer = cv2.VideoWriter(resolved, fourcc, self.fps,
+                                                       (self.frame_shape[1], self.frame_shape[0]))
+                        video_last_fid = None
+                        logger.info(f"Camera {self.name} video sink open -> {resolved}")
+                elif not want_video and video_writer is not None:
+                    video_writer.release()
+                    video_writer = None
+                    logger.info(f"Camera {self.name} video sink closed")
+
                 frame, frame_data = self.camera.get_image()
                 if frame is None:
                     continue
@@ -400,14 +487,16 @@ class Camera():
                 if self.last_frame_id > current_frame_id:
                     continue  # Skip out-of-order frames
 
-                if save_video:
-                    for _ in range(current_frame_id - self.last_frame_id-1):
-                        print(f"frame drop {self.name}: missing frame id", current_frame_id-self.last_frame_id-1)
-                        video_writer.write(blank_frame)
+                # Video sink: insert blanks for frames dropped since the sink opened.
+                if video_writer is not None:
+                    if video_last_fid is not None:
+                        for _ in range(current_frame_id - video_last_fid - 1):
+                            video_writer.write(blank_frame)
                     video_writer.write(frame)
+                    video_last_fid = current_frame_id
 
-                if stream:
-                    # Write to shared memory
+                # Stream sink: shared-memory double buffer.
+                if want_stream:
                     if self.write_flag[0] == 0:
                         np.copyto(self.image_array_a, frame)
                         self.fid_array_a[0] = current_frame_id
@@ -416,6 +505,23 @@ class Camera():
                         np.copyto(self.image_array_b, frame)
                         self.fid_array_b[0] = current_frame_id
                         self.write_flag[0] = 0
+
+                # Snapshot sink: write the next N frames as images, then clear.
+                if snap is not None and snap['remaining'] > 0:
+                    base = self._resolve_save_path(snap['path'], ".png")
+                    if base is not None:
+                        if snap['count'] > 1:
+                            stem, ext = os.path.splitext(base)
+                            base = f"{stem}_{snap['count'] - snap['remaining']}{ext}"
+                        d = os.path.dirname(base)
+                        if d:
+                            os.makedirs(d, exist_ok=True)
+                        cv2.imwrite(base, frame)
+                    with self._sink_lock:
+                        if self._snapshot is not None:
+                            self._snapshot['remaining'] -= 1
+                            if self._snapshot['remaining'] <= 0:
+                                self._snapshot = None
 
                 self.last_frame_id = current_frame_id
 
@@ -426,10 +532,10 @@ class Camera():
                 self.last_error = str(e)
                 self.last_traceback = traceback.format_exc()
 
-                print(f"[ERROR] Camera {self.name} exception occurred during acquisition:")
-                print(f"Exception Type: {type(e).__name__}")
-                print(f"Exception Message: {str(e)}")
-                print(self.last_traceback)
+                logger.error(f"Camera {self.name} exception occurred during acquisition:\n"
+                             f"Exception Type: {type(e).__name__}\n"
+                             f"Exception Message: {str(e)}\n"
+                             f"{self.last_traceback}")
 
                 self.event["error_reset"].wait()
                 break
@@ -437,14 +543,12 @@ class Camera():
         try:
             self.camera.stop()
         except Exception as e:
-            print(f"[WARN] Camera {self.name} continuous_acquire stop() failed: {e}")
+            logger.warning(f"Camera {self.name} acquire stop() failed: {e}")
         self.event["acquisition"].clear()
 
-        if stream:
-            self.clear_shared_memory()
-
-        if save_video:
+        if video_writer is not None:
             video_writer.release()
+        self.clear_shared_memory()
 
         self.event["stop"].set()
 
@@ -477,16 +581,16 @@ class Camera():
             if frame is not None and getattr(frame, "size", 0) > 0:
                 cv2.imwrite(self.save_path, frame)
             else:
-                print(f"[WARN] Camera {self.name}: single_acquire got no frame after "
-                      f"{max_attempts} attempts, skipping write")
+                logger.warning(f"Camera {self.name}: single_acquire got no frame after "
+                               f"{max_attempts} attempts, skipping write")
 
         except Exception as e:
             self.event["error"].set()
             self.event["error_reset"].clear()
             self.last_error = str(e)
             self.last_traceback = traceback.format_exc()
-            print(f"[ERROR] Camera {self.name} single_acquire error: {e}")
-            print(self.last_traceback)
+            logger.error(f"Camera {self.name} single_acquire error: {e}\n"
+                         f"{self.last_traceback}")
             self.event["acquisition"].set()   # release Camera.start()'s wait on failure
 
         finally:
@@ -497,7 +601,7 @@ class Camera():
             try:
                 self.camera.stop()
             except Exception as e:
-                print(f"[WARN] Camera {self.name} single_acquire stop() failed: {e}")
+                logger.warning(f"Camera {self.name} single_acquire stop() failed: {e}")
             self.event["stop"].set()
 
     def connect_camera(self):
@@ -521,8 +625,8 @@ class Camera():
             self.last_traceback = traceback.format_exc()
             self.event["error"].set()
             self.event["error_reset"].clear()
-            print(f"[ERROR] Camera {self.name} connection failed: {e}")
-            print(self.last_traceback)
+            logger.error(f"Camera {self.name} connection failed: {e}\n"
+                         f"{self.last_traceback}")
         finally:
             self.event["connection"].set()
 
@@ -532,9 +636,9 @@ class Camera():
             try:
                 self.camera.release()
             except Exception as e:
-                print(f"[WARN] Camera {self.name} release() failed: {e}")
+                logger.warning(f"Camera {self.name} release() failed: {e}")
         self.release_shared_memory()
-        print(f"[INFO] Camera {self.name} shared memory released.")
+        logger.info(f"Camera {self.name} shared memory released.")
         self.event["release"].set()
 
     def get_state(self):
@@ -580,6 +684,7 @@ class Camera():
             'frame_id': self.get_frame_id(),
             'name': self.name,
             'mode': getattr(self, 'mode', None),
+            'sinks': {'video': self._want_video, 'stream': self._want_stream},
             'fps': getattr(self, 'fps', None),
             'syncMode': getattr(self, 'syncMode', None),
             'save_path': getattr(self, 'save_path', None),
@@ -597,11 +702,13 @@ class Camera():
 
         while not self.event["exit"].is_set(): # we should maintain the connection until exit
             if self.event["start"].is_set(): # Start data acquisition
-                if self.mode in ["full", "video", "stream"]:
-                    print(f"[INFO] Camera {self.name} entering continuous acquisition mode.")
-                    self.continuous_acquire()
-                else:
+                # "image" keeps the legacy one-shot path; every other mode
+                # (video/stream/full/acquire) uses the unified sink-driven loop.
+                if getattr(self, "mode", None) == "image":
                     self.single_acquire()
+                else:
+                    logger.info(f"Camera {self.name} entering continuous acquisition mode.")
+                    self.acquire()
 
             time.sleep(0.001)
 

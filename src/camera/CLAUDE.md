@@ -1,41 +1,33 @@
 # CLAUDE.md — src/camera
 
-## Purpose
-Capture-PC-side long-running daemons. These run on the 6 capture PCs and expose
-cameras to the network. The main PC drives them via the `*_remote.py` scripts in
-`src/capture/camera`.
+Capture-PC daemon entry points. Keep this file short. Editing camera internals?
+The canonical agent guide is `agent_docs/camera_system/internals.md` (layer map,
+lifecycle, config, failure modes); the human overview is `docs/camera_system.md`.
 
 ## Files
-- `server_daemon.py` — instantiates `camera_server_daemon()` (ZMQ server wrapping
-  one `CameraLoader`) then sleeps forever. Capture-PC role. Receives `register /
-  start / stop / heartbeat / reload / end` commands. Ports: ping 5480 (REP),
-  monitor 5481 (PUB status), command 5482 (REP).
-- `monitor_daemon.py` — one-liner: `CameraMonitor(web_port=1234)`. Capture-PC role.
-  Web dashboard of camera status.
-- `reset_cameras.py` — **Main-PC** recovery. SSHes each capture PC, `pkill -9` the
-  daemons, then relaunches `server_daemon.py` via `run_script`. Use when cameras
-  hang and the next run can't start them. Args: `--pc_list`, `--no_restart`.
 
-## paradex modules used
-- `paradex.io.camera_system.camera_server_daemon.camera_server_daemon`
-- `paradex.io.camera_system.monitor_daemon.CameraMonitor`
+- `server_daemon.py` — capture-PC ZMQ command server. Instantiates
+  `camera_server_daemon()`, which owns `CameraLoader -> Camera -> PyspinCamera`.
+  Receives `register / start / stop / heartbeat / reload / end`.
+- `monitor_daemon.py` — capture-PC web/status monitor.
+- `reset_cameras.py` — main-PC recovery tool. SSHes capture PCs, kills/restarts
+  daemons. Use when cameras hang and the next run cannot start them.
 
-## Data flow & IO
-Main PC's `remote_camera_controller` (in `src/capture/camera/*_remote.py`) sends
-JSON commands over ZMQ. `server_daemon` translates `start(mode, syncMode, save_path,
-fps, exposure_time, gain)` into `CameraLoader` calls; files land on the capture PC's
-disk at the `save_path` carried in the command.
+## Runtime Boundary
 
-## When working here
-- These are entry points only — logic lives in `paradex/io/camera_system/`.
-- `server_daemon.py` must be running before any remote orchestrator connects, or
-  `remote_camera_controller.initialize()` raises `ConnectionError`.
+Main-PC apps and `src/capture/camera/*_remote.py` talk to
+`remote_camera_controller`; they do not instantiate hardware cameras. Actual
+hardware opens only inside the capture-PC daemon path:
 
-## Gotchas
-- `server_daemon.py` blocks forever via `while True: time.sleep(1)`; the server runs
-  in background threads.
-- The string passed to `remote_camera_controller(name)` (e.g. `"image_main.py"`) is
-  only a controller label — there is NO `image_main.py` file. The work is dispatched
-  to `server_daemon.py` here.
-- Server enforces a single-controller lock (register/force_takeover); a second
-  controller must `force_takeover` to grab it.
+```text
+server_daemon.py -> CameraLoader -> Camera -> PyspinCamera
+```
+
+## Operational Notes
+
+- `server_daemon.py` must be running before remote capture scripts connect.
+- Ports: ping `5480`, monitor `5481`, command `5482`.
+- Idle/dead-man timeout: `PARADEX_CAMERA_IDLE_TIMEOUT_S`, default `5.0`.
+- The string passed to `remote_camera_controller(name)` is a controller label,
+  not a script filename.
+- Changing daemon-side camera code requires restarting daemons on every capture PC.

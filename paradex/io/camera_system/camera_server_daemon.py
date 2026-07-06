@@ -232,7 +232,7 @@ class camera_server_daemon:
                         f"[Info] Idle timeout (>{self.idle_timeout_s}s, actual={idle:.1f}s): "
                         f"released controller='{released}' last_action='{last_act}' "
                         f"mode='{mode}' cameras_were_running={running}. "
-                        f"Cause: controller did not send heartbeat/end within 15s."
+                        f"Cause: controller did not send heartbeat/end within {self.idle_timeout_s}s."
                     )
 
             except Exception as e:

@@ -5,6 +5,9 @@ import time
 from threading import Thread, Event, Lock
 
 from paradex.utils.system import get_pc_list, get_pc_ip
+from paradex.utils.log import get_logger
+
+logger = get_logger("rcc")
 
 class remote_camera_controller:
     """Main-PC driver for a cluster of capture-PC camera daemons.
@@ -121,7 +124,7 @@ class remote_camera_controller:
             msock.connect(f"tcp://{get_pc_ip(pc)}:{self.monitor_port}")
             self.monitor_sockets[pc] = msock
             self.cmd_queue[pc] = queue.Queue()
-            print(f"{pc}: Command + health sockets connected")
+            logger.info(f"{pc}: Command + health sockets connected")
 
         self.last_err = {pc: None for pc in self.pc_list}
         self.pc_status = {pc: {'status': None, 'msg': None} for pc in self.pc_list}
@@ -332,13 +335,70 @@ class remote_camera_controller:
         
         for pc, resp in response.items():
             if resp['status'] == 'error':
-                print(f"{pc}: {resp['msg']}")
+                logger.info(f"{pc}: {resp['msg']}")
                 self.error_event.set()
 
     def force_takeover(self):
         """다른 controller 가 lock 잡고 있어도 강제로 register 재시도."""
         cmd = {'action': 'register', 'force': True}
         return self.send_command(cmd)
+
+    def arm(self, syncMode=False, fps=30, exposure_time=None, gain=None):
+        """Start acquiring with **no** sink; toggle sinks later with
+        :meth:`set_record` / :meth:`set_stream` / :meth:`snapshot`.
+
+        Convenience for ``start("acquire", ...)`` — the decoupled-sink entry point.
+        Cameras grab frames continuously; nothing is written or streamed until a
+        sink is enabled.
+        """
+        self.start("acquire", syncMode, save_path=None, fps=fps,
+                   exposure_time=exposure_time, gain=gain)
+
+    def set_sink(self, video=None, stream=None, save_path=None, snapshot=None):
+        """Toggle output sinks on the running capture — any time, any combination.
+
+        Thread-safe (goes through the per-PC workers). Only the given sinks change.
+
+        Parameters
+        ----------
+        video : bool, optional
+            Turn the ``.avi`` video sink on/off.
+        stream : bool, optional
+            Turn the shared-memory stream sink on/off.
+        save_path : str, optional
+            Session-relative dir for the video sink (used when it turns on).
+        snapshot : tuple, optional
+            ``(save_path, count)`` — write the next ``count`` frames as images.
+
+        Returns
+        -------
+        dict
+            Per-PC reply from the ``sink`` command.
+        """
+        if self.init_error is not None:
+            raise self.init_error
+        cmd = {'action': 'sink'}
+        if video is not None:
+            cmd['video'] = bool(video)
+        if stream is not None:
+            cmd['stream'] = bool(stream)
+        if save_path is not None:
+            cmd['save_path'] = save_path
+        if snapshot is not None:
+            cmd['snapshot'] = list(snapshot)   # tuple → JSON array
+        return self.send_command(cmd)
+
+    def set_record(self, save_path=None, on=True):
+        """Turn the video (.avi) sink on (with ``save_path``) or off, live."""
+        return self.set_sink(video=on, save_path=save_path if on else None)
+
+    def set_stream(self, on=True):
+        """Turn the shared-memory stream sink on/off, live."""
+        return self.set_sink(stream=on)
+
+    def snapshot(self, save_path, count=1):
+        """Write the next ``count`` frames from every camera as images."""
+        return self.set_sink(snapshot=(save_path, count))
 
     def run(self):
         try:
@@ -476,7 +536,7 @@ class remote_camera_controller:
                 if now - self.pc_last_seen.get(pc, 0.0) > self.pub_timeout:
                     any_bad = True
                     if self.last_err.get(pc) != 'no telemetry':
-                        print(f"[{pc}] no health telemetry (daemon down / PUB silent)")
+                        logger.info(f"[{pc}] no health telemetry (daemon down / PUB silent)")
                         self.last_err[pc] = 'no telemetry'
                     continue
                 st = self.pc_status.get(pc) or {}
@@ -487,16 +547,16 @@ class remote_camera_controller:
                 if bad:
                     any_bad = True
                     if self.last_err.get(pc) != msg:
-                        print(f"[{pc}] {msg or 'camera count mismatch'}")
+                        logger.info(f"[{pc}] {msg or 'camera count mismatch'}")
                         self.last_err[pc] = msg
                 elif self.last_err.get(pc) is not None:
-                    print(f"[{pc}] recovered after {self.last_err[pc]}")
+                    logger.info(f"[{pc}] recovered after {self.last_err[pc]}")
                     self.last_err[pc] = None
 
         if stalled:
             any_bad = True
             if stalled != self._last_stalled_print:
-                print(f"[stall] no new frames from: {sorted(stalled)} (> {self.stall_timeout}s)")
+                logger.info(f"[stall] no new frames from: {sorted(stalled)} (> {self.stall_timeout}s)")
                 self._last_stalled_print = set(stalled)
         else:
             self._last_stalled_print = set()
@@ -511,7 +571,7 @@ class remote_camera_controller:
         # Routed through run() (the command-socket owner) via _reload_request.
         if self.auto_reload and any_bad and (now - self._last_reload_ts) > 10.0:
             self._last_reload_ts = now
-            print("[auto_reload] problem detected → requesting camera reload")
+            logger.info("[auto_reload] problem detected → requesting camera reload")
             self._reload_request.set()
             with self.status_lock:
                 self.cam_progress = {}

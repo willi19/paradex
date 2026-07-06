@@ -5,6 +5,7 @@ import time
 from threading import Thread, Event, Lock
 
 from paradex.utils.system import get_pc_list, get_pc_ip
+from paradex.io.camera_system.protocol import PROTOCOL_VERSION, get_auth_token
 from paradex.utils.log import get_logger
 
 logger = get_logger("rcc")
@@ -67,6 +68,12 @@ class remote_camera_controller:
         self._last_reload_ts = 0.0
         self.health_thread = None
         self._reload_request = Event()          # health thread asks run() to reload
+
+        # auth + re-register-on-orphan
+        self._auth_token = get_auth_token()
+        self._registered = False                # True once we hold the lock
+        self._reregister_request = Event()      # health thread asks run() to re-claim
+        self._last_reregister_ts = 0.0
 
         # ── per-PC command workers ───────────────────────────────────────
         # Each PC gets its own worker thread that owns that PC's command socket
@@ -186,6 +193,8 @@ class remote_camera_controller:
         errors become an ``{'status': 'error', ...}`` dict rather than raising.
         """
         socket = self.command_sockets[pc]
+        if self._auth_token is not None:
+            cmd = {**cmd, 'token': self._auth_token}
         timeout_ms = 30000 if cmd.get('action') in ('start', 'stop') else 2000
         try:
             socket.setsockopt(zmq.RCVTIMEO, timeout_ms)
@@ -260,8 +269,18 @@ class remote_camera_controller:
             
     def register(self):
         """Claim the daemons for this controller by sending a ``register`` command."""
-        cmd = {'action': 'register'}
-        self.send_command(cmd)
+        cmd = {'action': 'register', 'version': PROTOCOL_VERSION}
+        response = self.send_command(cmd)
+        self._registered = True
+        # Give the daemon's PUB a grace window to reflect this registration before
+        # the orphan check can fire (avoids a spurious re-register at startup).
+        self._last_reregister_ts = time.time()
+        for pc, resp in response.items():
+            if resp.get('warning'):
+                logger.warning(f"{pc}: {resp['warning']}")
+            if resp.get('status') == 'error':
+                logger.warning(f"{pc}: register -> {resp.get('msg')}")
+        return response
         
     def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None):
         """Begin a capture across all PCs; blocks until the command is sent.
@@ -422,6 +441,10 @@ class remote_camera_controller:
         # Event-driven: the per-PC workers keepalive on their own, so this loop
         # only issues the real commands (start / stop / reload) when asked.
         while not self.exit_event.is_set():
+            if self._reregister_request.is_set():
+                self._reregister_request.clear()
+                self.register()   # re-claim an orphaned/restarted daemon's lock
+
             if self._reload_request.is_set():
                 self._reload_request.clear()
                 self.send_command({'action': 'reload'})
@@ -566,6 +589,20 @@ class remote_camera_controller:
             self.error_event.set()
         else:
             self.error_event.clear()
+
+        # Re-claim an orphaned daemon: alive (PUBbing) but its controller is
+        # cleared — it was restarted, or the idle dead-man released the lock. Only
+        # re-register when the lock is *empty* ('None'), never when another named
+        # controller holds it (that's a real takeover we must not fight).
+        if self._registered and not self.exit_event.is_set() and (now - self._last_reregister_ts) > 2.0:
+            with self.status_lock:
+                orphaned = [pc for pc in self.pc_list
+                            if (now - self.pc_last_seen.get(pc, 0.0)) < self.pub_timeout
+                            and (self.pc_status.get(pc) or {}).get('controller') in (None, 'None', '')]
+            if orphaned:
+                self._last_reregister_ts = now
+                logger.warning(f"[rcc] daemon(s) orphaned (lock cleared), re-registering: {orphaned}")
+                self._reregister_request.set()
 
         # Optional self-heal: reload cameras on a persistent problem (throttled).
         # Routed through run() (the command-socket owner) via _reload_request.

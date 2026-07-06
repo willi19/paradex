@@ -5,6 +5,9 @@ import time
 from paradex.io.camera_system.camera import Camera
 from paradex.utils.path import home_path, capture_path_list
 from paradex.utils.system import get_camera_list, get_camera_config
+from paradex.utils.log import get_logger
+
+logger = get_logger("camera")
 
 RETRY_COUNT = 5
 RETRY_DELAY = 2  # seconds
@@ -72,18 +75,18 @@ class CameraLoader:
         # that were not ready at the first call would never be forced. Re-run
         # autoforce_ip() on every retry until the expected count appears.
         if len(serial_list) != expected:
-            print(f"[Warning] Configured camera count ({expected}) does not match "
-                  f"detected camera count ({len(serial_list)}). Retrying (re-forcing IP)...")
+            logger.warning(f"Configured camera count ({expected}) does not match "
+                           f"detected camera count ({len(serial_list)}). Retrying (re-forcing IP)...")
             for _ in range(RETRY_COUNT):
                 time.sleep(RETRY_DELAY)
                 autoforce_ip()
                 serial_list = get_serial_list()
                 if len(serial_list) == expected:
-                    print("[Info] Camera count matched after retry.")
+                    logger.info("Camera count matched after retry.")
                     break
             else:
-                print(f"[Warning] Still {len(serial_list)}/{expected} cameras after "
-                      f"{RETRY_COUNT} retries; proceeding with detected cameras.")
+                logger.warning(f"Still {len(serial_list)}/{expected} cameras after "
+                               f"{RETRY_COUNT} retries; proceeding with detected cameras.")
                 
         self.cameralist = [
             Camera("pyspin", serial, cfg=self.cam_config.get(serial, {}))
@@ -124,7 +127,7 @@ class CameraLoader:
         """
         if mode == "image":
             save_paths = [os.path.join(home_path, save_path, "images") for _ in self.cameralist]
-            print("image save paths:", save_paths)
+            logger.info(f"image save paths: {save_paths}")
             for path in save_paths:
                 os.makedirs(path, exist_ok=True)
 
@@ -132,11 +135,11 @@ class CameraLoader:
             save_paths = [os.path.join(capture_path_list[ind % len(capture_path_list)], save_path, "videos") for ind, _ in enumerate(self.cameralist)]
             for path in save_paths:
                 os.makedirs(path, exist_ok=True)
-            print("video save paths:", save_paths)
+            logger.info(f"video save paths: {save_paths}")
             
         else:
             save_paths = [None for _ in self.cameralist]
-        print("starting cameras... cameras:", self.camera_names)
+        logger.info(f"starting cameras... cameras: {self.camera_names}")
         threads = []
         for camera, path in zip(self.cameralist, save_paths):
             # Resolve deterministically: explicit arg > camera.json baseline > default.
@@ -156,10 +159,44 @@ class CameraLoader:
             t.join()
         errors = self.get_all_errors()
         if errors:
-            print(f"[Warning] camera start completed with errors: {errors}")
+            logger.warning(f"camera start completed with errors: {errors}")
         else:
-            print("all cameras started.")
+            logger.info("all cameras started.")
     
+    def set_sink(self, video=None, stream=None, save_path=None, snapshot=None):
+        """Toggle output sinks on every camera at runtime (see :meth:`Camera.set_sink`).
+
+        Resolves per-camera destinations the same way :meth:`start` does — the
+        video sink spreads across ``capture_path_list``; snapshots land under
+        ``home_path`` — then flips each camera's desired sink state. Cheap and
+        non-blocking: the real VideoWriter opens/closes on each capture thread.
+
+        Parameters
+        ----------
+        video : bool, optional
+            Turn the video (.avi) sink on/off on all cameras.
+        stream : bool, optional
+            Turn the shared-memory stream sink on/off on all cameras.
+        save_path : str, optional
+            Session-relative dir for the video sink (applied when it turns on).
+        snapshot : tuple, optional
+            ``(save_path, count)`` — write the next ``count`` frames as images.
+        """
+        for ind, camera in enumerate(self.cameralist):
+            kw = {}
+            if video is not None:
+                kw['video'] = video
+            if stream is not None:
+                kw['stream'] = stream
+            if save_path is not None:
+                kw['save_path'] = os.path.join(
+                    capture_path_list[ind % len(capture_path_list)], save_path, "videos")
+            if snapshot is not None:
+                spath, count = snapshot
+                kw['snapshot'] = (os.path.join(home_path, spath, "images"), count)
+            if kw:
+                camera.set_sink(**kw)
+
     def _broadcast(self, method_name):
         """Call ``method_name`` on every camera in parallel and wait for all.
 

@@ -530,6 +530,24 @@ touches OpenCV/SHM from the caller’s thread.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.set_param">
+<span class="sig-name descname"><span class="pre">set_param</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.set_param"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.set_param" title="Link to this definition">¶</a></dt>
+<dd><p>Apply new gain (dB) / exposure (microseconds) to the camera <strong>live</strong>.</p>
+<p>Recorded here and applied on the capture thread at the next acquire
+iteration (FLIR <code class="docutils literal notranslate"><span class="pre">Gain</span></code>/<code class="docutils literal notranslate"><span class="pre">ExposureTime</span></code> are writable during
+acquisition), so it is safe to call while capturing. Takes effect only in
+<code class="docutils literal notranslate"><span class="pre">acquire</span></code> mode while running.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gain</strong> (<em>float</em><em>, </em><em>optional</em>) – New gain in dB.</p></li>
+<li><p><strong>exposure</strong> (<em>float</em><em>, </em><em>optional</em>) – New exposure time in microseconds.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.error_reset">
 <span class="sig-name descname"><span class="pre">error_reset</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera.error_reset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.error_reset" title="Link to this definition">¶</a></dt>
 <dd><p>Clear the error state and release anyone waiting on <code class="docutils literal notranslate"><span class="pre">error_reset</span></code>.</p>
@@ -728,6 +746,7 @@ sinks) or <a class="reference internal" href="#paradex.io.camera_system.camera.C
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.clear_shared_memory"><code class="docutils literal notranslate"><span class="pre">Camera.clear_shared_memory()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.start"><code class="docutils literal notranslate"><span class="pre">Camera.start()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.set_sink"><code class="docutils literal notranslate"><span class="pre">Camera.set_sink()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.set_param"><code class="docutils literal notranslate"><span class="pre">Camera.set_param()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.error_reset"><code class="docutils literal notranslate"><span class="pre">Camera.error_reset()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.get_error"><code class="docutils literal notranslate"><span class="pre">Camera.get_error()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.stop"><code class="docutils literal notranslate"><span class="pre">Camera.stop()</span></code></a></li>

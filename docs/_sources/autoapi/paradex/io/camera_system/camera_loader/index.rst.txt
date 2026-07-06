@@ -133,6 +133,20 @@ Module Contents
 
 
 
+   .. py:method:: set_param(gain=None, exposure=None)
+
+      Apply gain/exposure to cameras live (see :meth:`Camera.set_param`).
+
+      Each of ``gain`` / ``exposure`` may be a scalar (applied to every camera)
+      or a ``{serial: value}`` dict (per-camera); ``None`` leaves it unchanged.
+
+      :param gain: New gain in dB — scalar for all, or ``{serial: dB}``.
+      :type gain: float or dict, optional
+      :param exposure: New exposure in microseconds — scalar for all, or ``{serial: us}``.
+      :type exposure: float or dict, optional
+
+
+
    .. py:method:: stop()
 
       Stop capture on all cameras in parallel (broadcasts :meth:`Camera.stop`).

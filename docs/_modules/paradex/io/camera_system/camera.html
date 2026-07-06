@@ -454,6 +454,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">_video_path</span> <span class="o">=</span> <span class="kc">None</span>            <span class="c1"># dir or file for the video sink</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_want_stream</span> <span class="o">=</span> <span class="kc">False</span>          <span class="c1"># shared-memory double-buffer sink</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_snapshot</span> <span class="o">=</span> <span class="kc">None</span>              <span class="c1"># {&#39;path&#39;,&#39;count&#39;,&#39;remaining&#39;} one-shot image sink</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_pending_param</span> <span class="o">=</span> <span class="kc">None</span>         <span class="c1"># {&#39;gain&#39;,&#39;exposure&#39;} to apply live on the capture thread</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">last_error</span> <span class="o">=</span> <span class="kc">None</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">last_traceback</span> <span class="o">=</span> <span class="kc">None</span>
@@ -745,6 +746,32 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">_snapshot</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;path&#39;</span><span class="p">:</span> <span class="n">path</span><span class="p">,</span> <span class="s1">&#39;count&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">),</span> <span class="s1">&#39;remaining&#39;</span><span class="p">:</span> <span class="nb">int</span><span class="p">(</span><span class="n">count</span><span class="p">)}</span></div>
 
 
+<div class="viewcode-block" id="Camera.set_param">
+<a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.set_param">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_param</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exposure</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply new gain (dB) / exposure (microseconds) to the camera **live**.</span>
+
+<span class="sd">        Recorded here and applied on the capture thread at the next acquire</span>
+<span class="sd">        iteration (FLIR ``Gain``/``ExposureTime`` are writable during</span>
+<span class="sd">        acquisition), so it is safe to call while capturing. Takes effect only in</span>
+<span class="sd">        ``acquire`` mode while running.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        gain : float, optional</span>
+<span class="sd">            New gain in dB.</span>
+<span class="sd">        exposure : float, optional</span>
+<span class="sd">            New exposure time in microseconds.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sink_lock</span><span class="p">:</span>
+            <span class="n">p</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_pending_param</span> <span class="ow">or</span> <span class="p">{})</span>
+            <span class="k">if</span> <span class="n">gain</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">p</span><span class="p">[</span><span class="s1">&#39;gain&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">gain</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">exposure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">p</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">exposure</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_pending_param</span> <span class="o">=</span> <span class="n">p</span></div>
+
+
 <div class="viewcode-block" id="Camera.error_reset">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.error_reset">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">error_reset</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
@@ -876,12 +903,27 @@
 
         <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;start&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">()</span> <span class="ow">and</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;exit&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
             <span class="k">try</span><span class="p">:</span>
-                <span class="c1"># Read the desired sink state once per iteration.</span>
+                <span class="c1"># Read the desired sink + param state once per iteration.</span>
                 <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">_sink_lock</span><span class="p">:</span>
                     <span class="n">want_video</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_want_video</span>
                     <span class="n">video_path</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_video_path</span>
                     <span class="n">want_stream</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_want_stream</span>
                     <span class="n">snap</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_snapshot</span>
+                    <span class="n">pending_param</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_pending_param</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_pending_param</span> <span class="o">=</span> <span class="kc">None</span>
+
+                <span class="c1"># Apply a live gain/exposure change on this (capture) thread.</span>
+                <span class="k">if</span> <span class="n">pending_param</span><span class="p">:</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="s1">&#39;gain&#39;</span> <span class="ow">in</span> <span class="n">pending_param</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">set_gain</span><span class="p">(</span><span class="n">pending_param</span><span class="p">[</span><span class="s1">&#39;gain&#39;</span><span class="p">])</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">gain</span> <span class="o">=</span> <span class="n">pending_param</span><span class="p">[</span><span class="s1">&#39;gain&#39;</span><span class="p">]</span>
+                        <span class="k">if</span> <span class="s1">&#39;exposure&#39;</span> <span class="ow">in</span> <span class="n">pending_param</span><span class="p">:</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">set_exposure</span><span class="p">(</span><span class="n">pending_param</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">])</span>
+                            <span class="bp">self</span><span class="o">.</span><span class="n">exposure_time</span> <span class="o">=</span> <span class="n">pending_param</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">]</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> live param -&gt; </span><span class="si">{</span><span class="n">pending_param</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Camera </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2"> set_param failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
 
                 <span class="c1"># Reconcile the video sink on this (capture) thread.</span>
                 <span class="k">if</span> <span class="n">want_video</span> <span class="ow">and</span> <span class="n">video_writer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>

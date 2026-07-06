@@ -281,6 +281,23 @@ Module Contents
 
 
 
+   .. py:method:: set_param(gain=None, exposure=None)
+
+      Change gain/exposure on the running capture **live** (no restart).
+
+      Each of ``gain`` / ``exposure`` may be a scalar (all cameras) or a
+      ``{serial: value}`` dict (per-camera). Used by the live tuner.
+
+      :param gain: New gain in dB — scalar or ``{serial: dB}``.
+      :type gain: float or dict, optional
+      :param exposure: New exposure in microseconds — scalar or ``{serial: us}``.
+      :type exposure: float or dict, optional
+
+      :returns: Per-PC reply from the ``param`` command.
+      :rtype: dict
+
+
+
    .. py:method:: set_record(save_path=None, on=True)
 
       Turn the video (.avi) sink on (with ``save_path``) or off, live.

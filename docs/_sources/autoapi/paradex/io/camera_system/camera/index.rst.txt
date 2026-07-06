@@ -148,6 +148,22 @@ Module Contents
 
 
 
+   .. py:method:: set_param(gain=None, exposure=None)
+
+      Apply new gain (dB) / exposure (microseconds) to the camera **live**.
+
+      Recorded here and applied on the capture thread at the next acquire
+      iteration (FLIR ``Gain``/``ExposureTime`` are writable during
+      acquisition), so it is safe to call while capturing. Takes effect only in
+      ``acquire`` mode while running.
+
+      :param gain: New gain in dB.
+      :type gain: float, optional
+      :param exposure: New exposure time in microseconds.
+      :type exposure: float, optional
+
+
+
    .. py:method:: error_reset()
 
       Clear the error state and release anyone waiting on ``error_reset``.

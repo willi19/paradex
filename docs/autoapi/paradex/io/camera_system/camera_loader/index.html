@@ -518,6 +518,22 @@ non-blocking: the real VideoWriter opens/closes on each capture thread.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.set_param">
+<span class="sig-name descname"><span class="pre">set_param</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader.set_param"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.set_param" title="Link to this definition">¶</a></dt>
+<dd><p>Apply gain/exposure to cameras live (see <code class="xref py py-meth docutils literal notranslate"><span class="pre">Camera.set_param()</span></code>).</p>
+<p>Each of <code class="docutils literal notranslate"><span class="pre">gain</span></code> / <code class="docutils literal notranslate"><span class="pre">exposure</span></code> may be a scalar (applied to every camera)
+or a <code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">value}</span></code> dict (per-camera); <code class="docutils literal notranslate"><span class="pre">None</span></code> leaves it unchanged.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gain</strong> (<em>float</em><em> or </em><em>dict</em><em>, </em><em>optional</em>) – New gain in dB — scalar for all, or <code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">dB}</span></code>.</p></li>
+<li><p><strong>exposure</strong> (<em>float</em><em> or </em><em>dict</em><em>, </em><em>optional</em>) – New exposure in microseconds — scalar for all, or <code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">us}</span></code>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.stop">
 <span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader.stop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.stop" title="Link to this definition">¶</a></dt>
 <dd><p>Stop capture on all cameras in parallel (broadcasts <code class="xref py py-meth docutils literal notranslate"><span class="pre">Camera.stop()</span></code>).</p>
@@ -623,6 +639,7 @@ an active error. Empty when no camera is in error.</p>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.load_pyspin_camera"><code class="docutils literal notranslate"><span class="pre">CameraLoader.load_pyspin_camera()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.start"><code class="docutils literal notranslate"><span class="pre">CameraLoader.start()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.set_sink"><code class="docutils literal notranslate"><span class="pre">CameraLoader.set_sink()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.set_param"><code class="docutils literal notranslate"><span class="pre">CameraLoader.set_param()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.stop"><code class="docutils literal notranslate"><span class="pre">CameraLoader.stop()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.end"><code class="docutils literal notranslate"><span class="pre">CameraLoader.end()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.get_status_list"><code class="docutils literal notranslate"><span class="pre">CameraLoader.get_status_list()</span></code></a></li>

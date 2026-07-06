@@ -641,6 +641,19 @@ video/stream capture.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera.set_gain">
+<span class="sig-name descname"><span class="pre">set_gain</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gain</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera.set_gain" title="Link to this definition">¶</a></dt>
+<dd><p>Apply a new gain (dB) live — Gain is writable during acquisition.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera.set_exposure">
+<span class="sig-name descname"><span class="pre">set_exposure</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera.set_exposure" title="Link to this definition">¶</a></dt>
+<dd><p>Apply a new exposure (microseconds) live — ExposureTime is writable
+during acquisition.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.PyspinCamera.stop">
 <span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.PyspinCamera.stop" title="Link to this definition">¶</a></dt>
 <dd><p>Stop acquisition and drain the buffer; keep the connection open.</p>
@@ -829,6 +842,8 @@ Spinnaker system instance before returning.</p>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.init_time"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.init_time</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.get_image"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.get_image()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.start"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.start()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.set_gain"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.set_gain()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.set_exposure"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.set_exposure()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.stop"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.stop()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera.release"><code class="docutils literal notranslate"><span class="pre">PyspinCamera.release()</span></code></a></li>
 </ul>

@@ -219,6 +219,19 @@ Module Contents
 
 
 
+   .. py:method:: set_gain(gain)
+
+      Apply a new gain (dB) live — Gain is writable during acquisition.
+
+
+
+   .. py:method:: set_exposure(exposure_time)
+
+      Apply a new exposure (microseconds) live — ExposureTime is writable
+      during acquisition.
+
+
+
    .. py:method:: stop()
 
       Stop acquisition and drain the buffer; keep the connection open.

@@ -828,6 +828,36 @@
         <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="remote_camera_controller.set_param">
+<a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_param">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_param</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exposure</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Change gain/exposure on the running capture **live** (no restart).</span>
+
+<span class="sd">        Each of ``gain`` / ``exposure`` may be a scalar (all cameras) or a</span>
+<span class="sd">        ``{serial: value}`` dict (per-camera). Used by the live tuner.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        gain : float or dict, optional</span>
+<span class="sd">            New gain in dB — scalar or ``{serial: dB}``.</span>
+<span class="sd">        exposure : float or dict, optional</span>
+<span class="sd">            New exposure in microseconds — scalar or ``{serial: us}``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict</span>
+<span class="sd">            Per-PC reply from the ``param`` command.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span>
+        <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;param&#39;</span><span class="p">}</span>
+        <span class="k">if</span> <span class="n">gain</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;gain&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gain</span>
+        <span class="k">if</span> <span class="n">exposure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;exposure&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">exposure</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span></div>
+
+
 <div class="viewcode-block" id="remote_camera_controller.set_record">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_record">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">set_record</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">save_path</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>

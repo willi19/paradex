@@ -581,6 +581,28 @@
                 <span class="n">camera</span><span class="o">.</span><span class="n">set_sink</span><span class="p">(</span><span class="o">**</span><span class="n">kw</span><span class="p">)</span></div>
 
 
+<div class="viewcode-block" id="CameraLoader.set_param">
+<a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.CameraLoader.set_param">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">set_param</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">gain</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">exposure</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply gain/exposure to cameras live (see :meth:`Camera.set_param`).</span>
+
+<span class="sd">        Each of ``gain`` / ``exposure`` may be a scalar (applied to every camera)</span>
+<span class="sd">        or a ``{serial: value}`` dict (per-camera); ``None`` leaves it unchanged.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        gain : float or dict, optional</span>
+<span class="sd">            New gain in dB — scalar for all, or ``{serial: dB}``.</span>
+<span class="sd">        exposure : float or dict, optional</span>
+<span class="sd">            New exposure in microseconds — scalar for all, or ``{serial: us}``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">camera</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameralist</span><span class="p">:</span>
+            <span class="n">g</span> <span class="o">=</span> <span class="n">gain</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">camera</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">gain</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">gain</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">exposure</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">camera</span><span class="o">.</span><span class="n">name</span><span class="p">)</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">exposure</span><span class="p">,</span> <span class="nb">dict</span><span class="p">)</span> <span class="k">else</span> <span class="n">exposure</span>
+            <span class="k">if</span> <span class="n">g</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">e</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">camera</span><span class="o">.</span><span class="n">set_param</span><span class="p">(</span><span class="n">gain</span><span class="o">=</span><span class="n">g</span><span class="p">,</span> <span class="n">exposure</span><span class="o">=</span><span class="n">e</span><span class="p">)</span></div>
+
+
     <span class="k">def</span><span class="w"> </span><span class="nf">_broadcast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method_name</span><span class="p">):</span>
 <span class="w">        </span><span class="sd">&quot;&quot;&quot;Call ``method_name`` on every camera in parallel and wait for all.</span>
 

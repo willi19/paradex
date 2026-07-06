@@ -697,6 +697,28 @@ sink is enabled.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_param">
+<span class="sig-name descname"><span class="pre">set_param</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.set_param"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_param" title="Link to this definition">¶</a></dt>
+<dd><p>Change gain/exposure on the running capture <strong>live</strong> (no restart).</p>
+<p>Each of <code class="docutils literal notranslate"><span class="pre">gain</span></code> / <code class="docutils literal notranslate"><span class="pre">exposure</span></code> may be a scalar (all cameras) or a
+<code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">value}</span></code> dict (per-camera). Used by the live tuner.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gain</strong> (<em>float</em><em> or </em><em>dict</em><em>, </em><em>optional</em>) – New gain in dB — scalar or <code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">dB}</span></code>.</p></li>
+<li><p><strong>exposure</strong> (<em>float</em><em> or </em><em>dict</em><em>, </em><em>optional</em>) – New exposure in microseconds — scalar or <code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">us}</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Per-PC reply from the <code class="docutils literal notranslate"><span class="pre">param</span></code> command.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_record">
 <span class="sig-name descname"><span class="pre">set_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.set_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_record" title="Link to this definition">¶</a></dt>
 <dd><p>Turn the video (.avi) sink on (with <code class="docutils literal notranslate"><span class="pre">save_path</span></code>) or off, live.</p>
@@ -831,6 +853,7 @@ resumed. Sticky until the next <a class="reference internal" href="#paradex.io.c
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.force_takeover"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.force_takeover()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.arm"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.arm()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_sink"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.set_sink()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_param"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.set_param()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_record"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.set_record()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_stream"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.set_stream()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.snapshot"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.snapshot()</span></code></a></li>

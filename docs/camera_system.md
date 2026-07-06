@@ -117,28 +117,34 @@ Important details:
 
 ## 4. Data Path
 
-`mode` currently chooses both acquisition behavior and frame sinks.
+Acquisition and outputs are **decoupled**. There are two acquisition modes, and on
+top of continuous acquisition the outputs are independent **sinks** toggled at runtime.
 
-| Mode | Acquisition | Sink |
-|------|-------------|------|
+| Mode | Acquisition | Outputs |
+|------|-------------|---------|
 | `image` | one-shot `single_acquire()` | one `.png` |
-| `video` | continuous | `.avi` |
-| `stream` | continuous | shared memory double buffer |
-| `full` | continuous | `.avi` + shared memory |
+| `acquire` | continuous `acquire()` loop | none until a sink is enabled |
+
+| Sink (on `acquire`) | Toggle | Output |
+|---------------------|--------|--------|
+| video | `set_record(path, on)` | `.avi` |
+| stream | `set_stream(on)` | shared-memory double buffer |
+| snapshot | `snapshot(path, count)` | next N frames as images |
 
 ```{mermaid}
 flowchart TD
-    START["Camera.start(mode, ...)"] --> RUN["Camera.run thread"]
-    RUN --> ONE["single_acquire<br/>image"]
-    RUN --> CONT["continuous_acquire<br/>video / stream / full"]
+    START["Camera.start(image)"] --> ONE["single_acquire<br/>one .png"]
+    ARM["arm() -> Camera.start(acquire)"] --> CONT["acquire loop"]
     CONT --> GRAB["PyspinCamera.get_image(timeout)"]
-    GRAB --> SHM["SHM double buffer<br/>stream/full"]
-    GRAB --> AVI["VideoWriter .avi<br/>video/full"]
+    GRAB --> ROUTE{"sinks enabled?"}
+    ROUTE -->|set_stream| SHM["SHM double buffer"]
+    ROUTE -->|set_record| AVI["VideoWriter .avi"]
+    ROUTE -->|snapshot| PNG["images"]
     GRAB -. "timeout -> (None, None)" .-> CONT
 ```
 
-This coupling is why the redesign proposal wants to split acquisition from sinks
-(`go_live`, `start_recording`, `grab_still`). That is not the current API.
+`video` / `stream` / `full` are no longer modes — that is just `acquire` with the
+corresponding sink(s) on. `set_param(gain/exposure)` also applies live in this loop.
 
 ---
 

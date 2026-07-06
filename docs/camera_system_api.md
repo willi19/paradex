@@ -4,40 +4,72 @@ Method reference for the camera stack. For the architecture and how these fit
 together, see the {doc}`overview <camera_system>`. Signatures are verified against
 the code; internal/private methods are omitted. Click a class to expand.
 
-:::{dropdown} `start()` — parameters
-:open:
-
-Same signature on `Camera`, `CameraLoader`, and `remote_camera_controller`.
-
-```{py:function} start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
-:no-index:
-
-:param mode: ``image`` / ``video`` / ``stream`` / ``full``.
-:param syncMode: Use the hardware trigger (wait for pulses) instead of free-running.
-:param save_path: Relative output dir for ``image`` / ``video``; ``None`` for ``stream``.
-:param fps: Frame rate when free-running (default ``30``).
-:param exposure_time: Microseconds; ``None`` → the per-camera ``camera.json`` value.
-:param gain: dB; ``None`` → the per-camera ``camera.json`` value.
-```
-:::
+**Model:** two acquisition modes — `image` (single-frame still) and `acquire`
+(continuous) — plus orthogonal **sinks** on top of `acquire`: video (`.avi`), stream
+(shared memory), snapshot (images). `syncMode=True` waits for the UTGE900 trigger;
+`exposure_time`/`gain` `None` → the per-camera `camera.json` baseline. `video` /
+`stream` / `full` are **not** modes.
 
 :::{dropdown} `remote_camera_controller` — main PC
+:open:
 
-Drives every capture PC over ZMQ. `start()`/`stop()` set events; the background
-`run()` loop does the actual send.
+Drives every capture PC over ZMQ. All calls are thread-safe (routed through per-PC
+command workers).
 
 ```{py:function} remote_camera_controller(name, pc_list=None, auto_reload=False, stall_timeout=3.0)
 :no-index:
 
-Construct; spawn the ``run()`` thread. ``pc_list=None`` → all capture PCs.
+Construct; spawn the background loop + health threads. ``pc_list=None`` → all capture PCs.
 ```
 
-```{py:function} start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
+```{py:function} arm(syncMode=False, fps=30, exposure_time=None, gain=None)
 :no-index:
 
-Begin capture on all PCs. Raises the init error if the daemon connection failed.
+Begin continuous acquisition (mode ``acquire``) with **no** sink. Enable outputs with
+the sink toggles below.
 
 :rtype: None
+```
+
+```{py:function} start(mode='image', syncMode=False, save_path=None, fps=30, exposure_time=None, gain=None)
+:no-index:
+
+Single-frame still (``mode='image'``, needs ``save_path``). For continuous capture use
+:func:`arm` + the sinks.
+
+:rtype: None
+```
+
+```{py:function} set_record(save_path=None, on=True)
+:no-index:
+
+Turn the ``.avi`` video sink on (with ``save_path``) or off — live, any time.
+
+:rtype: dict
+```
+
+```{py:function} set_stream(on=True)
+:no-index:
+
+Turn the shared-memory stream sink on/off — live.
+
+:rtype: dict
+```
+
+```{py:function} snapshot(save_path, count=1)
+:no-index:
+
+Write the next ``count`` frames from every camera as images.
+
+:rtype: dict
+```
+
+```{py:function} set_param(gain=None, exposure=None)
+:no-index:
+
+Change gain (dB) / exposure (us) **live** — scalar (all cameras) or ``{serial: value}``.
+
+:rtype: dict
 ```
 
 ```{py:function} stop()
@@ -76,7 +108,14 @@ Grab the lock even if another controller holds it.
 ```{py:function} is_error()
 :no-index:
 
-:returns: ``True`` if any camera reported an error.
+:returns: ``True`` if any PC is erroring/stalled (live) **or** a capture was interrupted (sticky).
+:rtype: bool
+```
+
+```{py:function} capture_interrupted()
+:no-index:
+
+:returns: ``True`` if a daemon died/restarted mid-capture (sticky until the next arm/start; capture is NOT auto-resumed).
 :rtype: bool
 ```
 
@@ -85,7 +124,7 @@ Grab the lock even if another controller holds it.
 
 Live health snapshot.
 
-:returns: error flag, stalled serials, per-PC status, last raw responses
+:returns: ``{error, stalled, capture_interrupted, interrupt_msg, pc, last_response}``
 :rtype: dict
 ```
 :::
@@ -103,7 +142,24 @@ Detect and open every local camera.
 ```{py:function} start(mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None)
 :no-index:
 
-Start all cameras concurrently (blocks until all started).
+Start all cameras concurrently (blocks until all started). ``mode`` is ``image`` or
+``acquire``.
+
+:rtype: None
+```
+
+```{py:function} set_sink(video=None, stream=None, save_path=None, snapshot=None)
+:no-index:
+
+Toggle sinks on every camera live (video/stream/snapshot).
+
+:rtype: None
+```
+
+```{py:function} set_param(gain=None, exposure=None)
+:no-index:
+
+Live gain/exposure — scalar or ``{serial: value}``.
 
 :rtype: None
 ```

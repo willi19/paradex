@@ -37,6 +37,7 @@ class remote_camera_controller:
         self.pc_list = get_pc_list() if pc_list is None else pc_list
 
         self.ping_port = 5480
+        self.monitor_port = 5481    # daemon PUB health telemetry (we SUB it)
         self.command_port = 5482
 
         self.exit_event = Event()
@@ -53,11 +54,15 @@ class remote_camera_controller:
         self.continuous = False
         self.cam_progress = {}                  # cam -> (last_frame_id, last_change_time)
         self.stalled = set()                    # cameras whose frame_id stopped advancing
-        self.pc_status = {}                     # pc -> {'status', 'msg'} (last heartbeat)
-        self.last_response = {}                 # last raw per-PC command/heartbeat response
+        self.pc_status = {}                     # pc -> {'status', 'msg', ...} (from PUB)
+        self.last_response = {}                 # last raw per-PC command reply (register/start/stop/reload)
+        self.pc_last_seen = {}                  # pc -> monotonic time of last PUB health message
+        self.pub_timeout = 2.0                  # s without any PUB from a PC → treat as down
         self.status_lock = Lock()
         self._last_stalled_print = set()
         self._last_reload_ts = 0.0
+        self.health_thread = None
+        self._reload_request = Event()          # health thread asks run() to reload
 
         self.run_thread = Thread(target=self.run, daemon=True)
         self.run_thread.start()
@@ -79,13 +84,14 @@ class remote_camera_controller:
         """
         self.ctx = zmq.Context()
         self.command_sockets = {}
+        self.monitor_sockets = {}
         failed_pcs = []
 
         for pc in self.pc_list:
             if not self.check_server_alive(pc):
                 failed_pcs.append(pc)
                 continue
-            
+
             socket = self.ctx.socket(zmq.REQ)
             socket.setsockopt(zmq.LINGER, 0)
             socket.setsockopt(zmq.RCVTIMEO, 1000)
@@ -94,10 +100,22 @@ class remote_camera_controller:
             socket.setsockopt(zmq.REQ_CORRELATE, 1)
             socket.connect(f"tcp://{get_pc_ip(pc)}:{self.command_port}")
             self.command_sockets[pc] = socket
-            print(f"{pc}: Command socket connected")
+
+            # SUB to the daemon's health telemetry (5481). Health is read from
+            # here, not from the command reply, so a slow command on one PC can't
+            # delay another PC's health/keepalive.
+            msock = self.ctx.socket(zmq.SUB)
+            msock.setsockopt(zmq.LINGER, 0)
+            msock.setsockopt_string(zmq.SUBSCRIBE, '')
+            msock.setsockopt(zmq.RCVHWM, 4)      # keep only the freshest few
+            msock.setsockopt(zmq.CONFLATE, 0)    # (multipart json; conflate unsafe)
+            msock.connect(f"tcp://{get_pc_ip(pc)}:{self.monitor_port}")
+            self.monitor_sockets[pc] = msock
+            print(f"{pc}: Command + health sockets connected")
 
         self.last_err = {pc: None for pc in self.pc_list}
         self.pc_status = {pc: {'status': None, 'msg': None} for pc in self.pc_list}
+        self.pc_last_seen = {pc: 0.0 for pc in self.pc_list}
 
         if failed_pcs:
             raise ConnectionError(
@@ -288,7 +306,18 @@ class remote_camera_controller:
             self.sending_event.set()
             return
 
+        # Health is now read off the daemon PUB stream (5481) by this thread,
+        # independent of the command channel below.
+        self.health_thread = Thread(target=self._health_loop, daemon=True)
+        self.health_thread.start()
+
         while not self.exit_event.is_set():
+            # auto_reload asked for by the health thread — sent here so command
+            # sockets are only ever touched by this thread.
+            if self._reload_request.is_set():
+                self._reload_request.clear()
+                self.send_command({'action': 'reload'})
+
             cmd = {'action': 'heartbeat'}
 
             if self.start_event.is_set():
@@ -309,10 +338,12 @@ class remote_camera_controller:
 
             response = self.send_command(cmd)
 
-            self._update_health(cmd['action'], response)
+            # Command replies drive control flow only (did the daemon accept the
+            # start/stop). Continuous health/stall/error now comes from _health_loop.
+            if cmd['action'] != 'heartbeat':
+                with self.status_lock:
+                    self.last_response = {pc: dict(resp) for pc, resp in response.items()}
 
-            # Track whether we should be seeing a continuous frame stream only
-            # after the command response says every daemon accepted the start.
             if cmd['action'] == 'start':
                 ok = all(resp.get('status') == 'ok' for resp in response.values())
                 self.continuous = self.mode in ('video', 'stream', 'full')
@@ -329,54 +360,96 @@ class remote_camera_controller:
             time.sleep(0.1)
 
         self.send_command({'action': 'end'})
+        # Stop the health thread before tearing down its sockets/context.
+        if self.health_thread is not None:
+            self.health_thread.join(timeout=2)
         for socket in self.command_sockets.values():
+            socket.close()
+        for socket in self.monitor_sockets.values():
             socket.close()
         self.ctx.term()
 
-    def _update_health(self, action, response):
-        """Update live per-PC status, detect frame stalls, and set/clear error_event.
+    def _health_loop(self):
+        """Consume each daemon's PUB health (5481) and maintain the live view.
 
-        Runs every loop tick from run(). error_event reflects the CURRENT state
-        (not sticky). Frame stalls are detected from the per-camera frame_ids the
-        daemon returns in heartbeat responses."""
-        now = time.time()
-        any_bad = False
-        stalled = set()
+        Runs on its own thread, independent of the command channel, so a slow
+        ``start`` / ``stop`` on one PC never delays another PC's health or stall
+        detection. For each PC it drains the SUB socket to the freshest message,
+        folds it into per-PC status + per-camera stall tracking, then recomputes
+        the aggregate ``error_event`` — including PC liveness, so a daemon that
+        stops publishing is treated as down.
+        """
+        while not self.exit_event.is_set():
+            now = time.time()
+            for pc, sock in self.monitor_sockets.items():
+                latest = None
+                while True:                       # drain to the newest message
+                    try:
+                        latest = sock.recv_json(flags=zmq.NOBLOCK)
+                    except (zmq.Again, zmq.ZMQError):
+                        break
+                if latest is not None:
+                    self._ingest_health(pc, latest, now)
+            self._recompute_error(now)
+            time.sleep(0.05)
 
+    def _ingest_health(self, pc, msg, now):
+        """Fold one PUB health message from ``pc`` into pc_status + stall tracking."""
+        summary = msg.get('summary') or {}
+        errors = summary.get('errors') or {}
+        frame_ids = summary.get('frame_ids') or {}
         with self.status_lock:
-            self.last_response = {pc: dict(resp) for pc, resp in response.items()}
-            for pc, resp in response.items():
-                self.pc_status[pc] = {
-                    'status': resp.get('status'),
-                    'msg': resp.get('msg'),
-                    'states': dict(resp.get('states') or {}),
-                    'frame_ids': dict(resp.get('frame_ids') or {}),
-                    'running': resp.get('running'),
-                    'expected_camera_count': resp.get('expected_camera_count'),
-                    'detected_camera_count': resp.get('detected_camera_count'),
-                }
+            self.pc_last_seen[pc] = now
+            self.pc_status[pc] = {
+                'status': 'error' if errors else 'ok',
+                'msg': (f"camera errors: {errors}" if errors else None),
+                'states': dict(summary.get('states') or {}),
+                'frame_ids': dict(frame_ids),
+                'running': msg.get('running'),
+                'controller': msg.get('controller'),
+                'expected_camera_count': summary.get('expected_camera_count'),
+                'detected_camera_count': summary.get('detected_camera_count'),
+            }
+            # Stall detection: only while a continuous capture should be flowing.
+            if self.capturing and self.continuous:
+                for cam, fid in frame_ids.items():
+                    last = self.cam_progress.get(cam)
+                    if last is None or fid != last[0]:
+                        self.cam_progress[cam] = (fid, now)  # advanced → not stalled
 
-                if resp.get('status') == 'error':
-                    any_bad = True
-                    msg = resp.get('msg')
-                    if self.last_err.get(pc) != msg:
-                        print(f"[{pc}] {action} failed: {msg}")
-                        self.last_err[pc] = msg
-                else:
-                    if self.last_err.get(pc) is not None:
-                        print(f"[{pc}] recovered after {self.last_err[pc]}")
-                        self.last_err[pc] = None
-
-                # Stall detection: only while a continuous capture should be flowing.
-                if self.capturing and self.continuous:
-                    for cam, fid in (resp.get('frame_ids') or {}).items():
-                        last = self.cam_progress.get(cam)
-                        if last is None or fid != last[0]:
-                            self.cam_progress[cam] = (fid, now)
-                        elif now - last[1] > self.stall_timeout:
-                            stalled.add(cam)
-
+    def _recompute_error(self, now):
+        """Aggregate per-PC status, PC liveness and stalls into error_event (live)."""
+        any_bad = False
+        with self.status_lock:
+            # A camera is stalled if its frame id hasn't advanced within the window.
+            stalled = set()
+            if self.capturing and self.continuous:
+                for cam, (fid, ts) in self.cam_progress.items():
+                    if now - ts > self.stall_timeout:
+                        stalled.add(cam)
             self.stalled = stalled
+
+            for pc in self.pc_list:
+                # Liveness: a daemon that stopped publishing is down.
+                if now - self.pc_last_seen.get(pc, 0.0) > self.pub_timeout:
+                    any_bad = True
+                    if self.last_err.get(pc) != 'no telemetry':
+                        print(f"[{pc}] no health telemetry (daemon down / PUB silent)")
+                        self.last_err[pc] = 'no telemetry'
+                    continue
+                st = self.pc_status.get(pc) or {}
+                exp, det = st.get('expected_camera_count'), st.get('detected_camera_count')
+                msg = st.get('msg')
+                bad = (st.get('status') == 'error') or (
+                    exp is not None and det is not None and det < exp)
+                if bad:
+                    any_bad = True
+                    if self.last_err.get(pc) != msg:
+                        print(f"[{pc}] {msg or 'camera count mismatch'}")
+                        self.last_err[pc] = msg
+                elif self.last_err.get(pc) is not None:
+                    print(f"[{pc}] recovered after {self.last_err[pc]}")
+                    self.last_err[pc] = None
 
         if stalled:
             any_bad = True
@@ -393,11 +466,13 @@ class remote_camera_controller:
             self.error_event.clear()
 
         # Optional self-heal: reload cameras on a persistent problem (throttled).
+        # Routed through run() (the command-socket owner) via _reload_request.
         if self.auto_reload and any_bad and (now - self._last_reload_ts) > 10.0:
             self._last_reload_ts = now
-            print("[auto_reload] problem detected → reloading cameras")
-            resp = self.send_command({'action': 'reload'})
-            self.cam_progress = {}
+            print("[auto_reload] problem detected → requesting camera reload")
+            self._reload_request.set()
+            with self.status_lock:
+                self.cam_progress = {}
 
     def is_error(self):
         """True if any PC is currently erroring or any camera is stalled (live)."""

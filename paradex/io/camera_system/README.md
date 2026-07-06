@@ -19,6 +19,29 @@ callers from flailing. Full reference: the online docs
 construction raises `ConnectionError` naming the unreachable PC(s). Start/monitor
 them with the dashboard (`monitor_daemon.py`) or `src/camera/reset_cameras.py`.
 
+## Running the daemon (start / stop / restart)
+
+The daemon (`src/camera/server_daemon.py`) is the capture-PC process `rcc` talks to.
+
+```bash
+# start (on each capture PC)
+python src/camera/server_daemon.py
+PARADEX_CAMERA_IDLE_TIMEOUT_S=3 python src/camera/server_daemon.py   # shorter dead-man
+
+# start them all from the main PC (SSH)
+python src/camera/monitor_daemon.py     # dashboard; auto-starts missing daemons
+python src/camera/reset_cameras.py      # pkill -9 + relaunch on every capture PC
+```
+
+| Stop with | Result |
+|-----------|--------|
+| `Ctrl-C` / `kill <pid>` (SIGTERM) | clean — the signal handler runs `shutdown()` → DeInit + free SHM |
+| `pkill -9 -f server_daemon.py` (SIGKILL) | forced — no cleanup (SHM self-heals on next start; camera may need re-force) |
+
+**Restart / easy cleanup:** `python src/camera/reset_cameras.py` (main PC), or the
+`↻ restart` buttons in the monitor dashboard. **After a `git pull`, restart the daemons**
+so code changes take effect — `reset_cameras.py` does that in one shot.
+
 ## The 90% recipe
 
 ```python

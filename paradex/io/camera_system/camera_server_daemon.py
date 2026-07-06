@@ -68,13 +68,30 @@ class camera_server_daemon:
                 time.sleep(0.1)
 
     def monitor_thread(self):
+        """Broadcast this daemon's health on the PUB port (5481) ~10 Hz.
+
+        Two consumers subscribe to the same stream:
+
+        * the monitor dashboard, which reads ``cameras`` / ``controller``;
+        * ``remote_camera_controller``, which reads ``summary`` / ``running`` /
+          ``controller`` for its live health view (so health no longer has to
+          ride the command REQ/REP reply — see the redesign in
+          ``design/camera-recording-redesign.md``).
+
+        Fire-and-forget: a subscriber that misses a message just picks up the
+        next one 0.1 s later.
+        """
         monitor_socket = self.ctx.socket(zmq.PUB)
         monitor_socket.bind(f"tcp://*:{self.monitor_port}")
-        
+
         while True:
             status = {
+                # dashboard-facing (unchanged keys, kept for back-compat)
                 'cameras': self.camera_loader.get_status_list(),
-                'controller': self.current_controller if self.current_controller else 'None'
+                'controller': self.current_controller if self.current_controller else 'None',
+                # controller-facing health telemetry
+                'running': self.cameras_running,
+                'summary': self.camera_loader.get_summary(),
             }
             monitor_socket.send_json(status)
             time.sleep(0.1)

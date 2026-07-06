@@ -79,8 +79,8 @@ def load_camera(serialnum):
         gain = 3.0
         exposure = 2500.0
     
-    cam = PyspinCamera(camPtr, gain, exposure)
-    
+    cam = PyspinCamera(camPtr, gain, exposure, cfg=cam_info.get(serialnum, {}))
+
     cam_list.Clear()
         
     return cam
@@ -123,8 +123,8 @@ def load_timestamp_monitor(serialnum):
         gain = 3.0
         exposure = 2500.0
 
-    cam = PyspinTimestampMonitor(camPtr, gain, exposure)
-    
+    cam = PyspinTimestampMonitor(camPtr, gain, exposure, cfg=cam_info.get(serialnum, {}))
+
     cam_list.Clear()
         
     return cam
@@ -174,21 +174,24 @@ class PyspinCamera():
         self,
         camPtr,
         gain,
-        exposure_time
+        exposure_time,
+        cfg=None
     ):
         """Initialize and configure a FLIR camera.
 
         :param camPtr: PySpin camera pointer
         :param gain: Camera gain (dB)
         :param exposure_time: Exposure time (microseconds)
-        :param frame_rate: Frame rate in Hz (only when syncMode=False)
-        :param mode: 'image', 'video', or 'stream'
-        :param syncMode: Use hardware trigger if True
+        :param cfg: Optional per-camera config dict (camera.json entry). Keys like
+            ``packet_size``, ``buffer_count``, ``buffer_mode``, ``pixel_format``
+            override the :class:`PyspinCameraConfig` defaults for this camera; any
+            key that is absent falls back to the default.
         """
         self.mode = None
         self.syncMode = None
         self.frame_rate = None
-        
+
+        self.cfg = cfg or {}
         self.gain = gain
         self.exposure_time = exposure_time
         
@@ -626,7 +629,7 @@ class PyspinCamera():
     def _configurePacketSize(self) -> None:
         """configure GigE Vision packet size for optimal network performance."""
         ptrPayloadSize = self._get_node(self.nodeMap, "GevSCPSPacketSize", "int", readable=True, writable=True)
-        ptrPayloadSize.SetValue(PyspinCameraConfig.PACKET_SIZE)
+        ptrPayloadSize.SetValue(self.cfg.get("packet_size", PyspinCameraConfig.PACKET_SIZE))
 
     def _configureChunk(self) -> None:
         """Enable chunk data to include timestamps in image metadata."""
@@ -658,7 +661,7 @@ class PyspinCamera():
     def _configureBuffer(self) -> None:
         """Configure camera buffer settings based on operation mode."""
         buf_mode =  self._get_node(self.stream_nodemap, "StreamBufferHandlingMode", "enum", readable=True, writable=True)
-        self._set_node_value(buf_mode, "enum", "OldestFirst")
+        self._set_node_value(buf_mode, "enum", self.cfg.get("buffer_mode", "OldestFirst"))
 
         # Set stream buffer Count Mode to manual
         BufferCountMode = self._get_node(self.stream_nodemap, "StreamBufferCountMode", "enum", readable=True, writable=True)
@@ -666,13 +669,13 @@ class PyspinCamera():
         
         # Set stream buffer Count
         bufferCount = self._get_node(self.stream_nodemap, "StreamBufferCountManual", "int", readable=True, writable=True)
-        bufferCount.SetValue(PyspinCameraConfig.BUFFER_COUNT)
+        bufferCount.SetValue(self.cfg.get("buffer_count", PyspinCameraConfig.BUFFER_COUNT))
 
     def _configurePixelFormat(self) -> None:
         """Configure pixel format to BayerRG8."""
         try:
             pixelFormat = self._get_node(self.nodeMap, "PixelFormat", "enum", readable=True, writable=True)
-            self._set_node_value(pixelFormat, "enum", "BayerRG8")
+            self._set_node_value(pixelFormat, "enum", self.cfg.get("pixel_format", "BayerRG8"))
             
         except Exception as e:
             pass
@@ -682,21 +685,22 @@ class PyspinTimestampMonitor():
         self,
         camPtr,
         gain,
-        exposure_time
+        exposure_time,
+        cfg=None
     ):
         """Initialize and configure a FLIR camera.
-        
+
         :param camPtr: PySpin camera pointer
         :param gain: Camera gain (dB)
         :param exposure_time: Exposure time (microseconds)
-        :param frame_rate: Frame rate in Hz (only when syncMode=False)
-        :param mode: 'image', 'video', or 'stream'
-        :param syncMode: Use hardware trigger if True
+        :param cfg: Optional per-camera config dict (camera.json entry); same
+            override keys as :class:`PyspinCamera`.
         """
         self.mode = None
         self.syncMode = None
         self.frame_rate = None
-        
+
+        self.cfg = cfg or {}
         self.gain = gain
         self.exposure_time = exposure_time
         
@@ -983,7 +987,7 @@ class PyspinTimestampMonitor():
     def _configurePacketSize(self) -> None:
         """configure GigE Vision packet size for optimal network performance."""
         ptrPayloadSize = self._get_node(self.nodeMap, "GevSCPSPacketSize", "int", readable=True, writable=True)
-        ptrPayloadSize.SetValue(PyspinCameraConfig.PACKET_SIZE)
+        ptrPayloadSize.SetValue(self.cfg.get("packet_size", PyspinCameraConfig.PACKET_SIZE))
 
     def _configureChunk(self) -> None:
         """Enable chunk data to include timestamps in image metadata."""
@@ -1023,13 +1027,13 @@ class PyspinTimestampMonitor():
         
         # Set stream buffer Count
         bufferCount = self._get_node(self.stream_nodemap, "StreamBufferCountManual", "int", readable=True, writable=True)
-        bufferCount.SetValue(PyspinCameraConfig.BUFFER_COUNT)
+        bufferCount.SetValue(self.cfg.get("buffer_count", PyspinCameraConfig.BUFFER_COUNT))
 
     def _configurePixelFormat(self) -> None:
         """Configure pixel format to BayerRG8."""
         try:
             pixelFormat = self._get_node(self.nodeMap, "PixelFormat", "enum", readable=True, writable=True)
-            self._set_node_value(pixelFormat, "enum", "BayerRG8")
+            self._set_node_value(pixelFormat, "enum", self.cfg.get("pixel_format", "BayerRG8"))
             
         except Exception as e:
             pass

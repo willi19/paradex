@@ -206,6 +206,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../../camera_system.html">Camera System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../image.html">Image Layer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../process.html">Video Processing</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
@@ -213,6 +215,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../../camera_system_api.html">Camera System — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../image_api.html">Image Layer — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../process_api.html">Video Processing — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -312,6 +316,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/file_io/index.html">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../utils/log/index.html">paradex.utils.log</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/path/index.html">paradex.utils.path</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/upload_file/index.html">paradex.utils.upload_file</a></li>
@@ -324,7 +329,12 @@
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../visualization/robot/index.html">paradex.visualization.robot</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../../visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -375,6 +385,11 @@
 <span id="paradex-io-camera-system-camera-server-daemon"></span><h1>paradex.io.camera_system.camera_server_daemon<a class="headerlink" href="#module-paradex.io.camera_system.camera_server_daemon" title="Link to this heading">¶</a></h1>
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
+<dl class="py data">
+<dt class="sig sig-object py" id="paradex.io.camera_system.camera_server_daemon.logger">
+<span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.camera_server_daemon.</span></span><span class="sig-name descname"><span class="pre">logger</span></span><a class="headerlink" href="#paradex.io.camera_system.camera_server_daemon.logger" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_server_daemon.camera_server_daemon">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.camera_server_daemon.</span></span><span class="sig-name descname"><span class="pre">camera_server_daemon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">idle_timeout_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_server_daemon.html#camera_server_daemon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon" title="Link to this definition">¶</a></dt>
@@ -464,7 +479,18 @@ SIGKILL (-9) cannot be caught (next daemon start cleans up leaked SHM).</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_server_daemon.camera_server_daemon.monitor_thread">
 <span class="sig-name descname"><span class="pre">monitor_thread</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_server_daemon.html#camera_server_daemon.monitor_thread"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.monitor_thread" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Broadcast this daemon’s health on the PUB port (5481) ~10 Hz.</p>
+<p>Two consumers subscribe to the same stream:</p>
+<ul class="simple">
+<li><p>the monitor dashboard, which reads <code class="docutils literal notranslate"><span class="pre">cameras</span></code> / <code class="docutils literal notranslate"><span class="pre">controller</span></code>;</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code>, which reads <code class="docutils literal notranslate"><span class="pre">summary</span></code> / <code class="docutils literal notranslate"><span class="pre">running</span></code> /
+<code class="docutils literal notranslate"><span class="pre">controller</span></code> for its live health view (so health no longer has to
+ride the command REQ/REP reply — see the redesign in
+<code class="docutils literal notranslate"><span class="pre">design/camera-recording-redesign.md</span></code>).</p></li>
+</ul>
+<p>Fire-and-forget: a subscriber that misses a message just picks up the
+next one 0.1 s later.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_server_daemon.camera_server_daemon.execute_command">
@@ -520,6 +546,7 @@ SIGKILL (-9) cannot be caught (next daemon start cleans up leaked SHM).</p>
             <ul>
 <li><a class="reference internal" href="#">paradex.io.camera_system.camera_server_daemon</a><ul>
 <li><a class="reference internal" href="#module-contents">Module Contents</a><ul>
+<li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.logger"><code class="docutils literal notranslate"><span class="pre">logger</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon</span></code></a><ul>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.camera_loader"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.camera_loader</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.ping_port"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.ping_port</span></code></a></li>

@@ -1,0 +1,119 @@
+paradex.visualization.scene.open3d_backend
+==========================================
+
+.. py:module:: paradex.visualization.scene.open3d_backend
+
+.. autoapi-nested-parse::
+
+   Headless open3d backend for the shared :class:`Scene` API.
+
+   ``Open3DScene`` mirrors ``ViserScene``'s call surface but renders offscreen to
+   images / mp4 — no browser, no client. It exists so the ~20 hand-rolled
+   ``OffscreenRenderer`` figure/video scripts can share one scene + color API
+   instead of duplicating material/camera/convert boilerplate.
+
+   Robot/object state lives in a registry; each rendered frame rebuilds the o3d
+   scene from that state (o3d geometry is static, so re-adding is the simplest
+   correct model).
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: Open3DScene(width: int = 1280, height: int = 720, fps: float = 30.0, background=(1.0, 1.0, 1.0, 1.0))
+
+   Bases: :py:obj:`paradex.visualization.scene.base.Scene`
+
+
+   Abstract backend-agnostic scene.
+
+   Concrete methods here (``animate``, ``sequence``, ``goto_frame``, color
+   handling) are backend-independent. Everything a backend must supply is an
+   ``@abstractmethod`` below.
+
+
+   .. py:attribute:: width
+      :value: 1280
+
+
+
+   .. py:attribute:: height
+      :value: 720
+
+
+
+   .. py:attribute:: renderer
+
+
+   .. py:method:: add_robot(name: str, urdf_path: str, pose: Optional[paradex.visualization.scene.base.Pose] = None, color: paradex.visualization.scene.base.Color = None) -> _RobotEntry
+
+      Load a URDF robot under ``name``. ``color`` (RGBA 0-1) applies to all
+      links at load time; ``pose`` is the 4x4 root transform.
+
+
+
+   .. py:method:: add_object(name: str, mesh: trimesh.Trimesh, pose: Optional[paradex.visualization.scene.base.Pose] = None, color: paradex.visualization.scene.base.Color = None) -> _ObjectEntry
+
+      Add a ``trimesh`` object under ``name``.
+
+
+
+   .. py:attribute:: add_trimesh
+
+
+   .. py:method:: set_qpos(name: str, qpos: numpy.ndarray) -> None
+
+      Set a robot's joint configuration.
+
+
+
+   .. py:method:: set_pose(name: str, pose: paradex.visualization.scene.base.Pose) -> None
+
+      Set the 4x4 root pose of a robot or object.
+
+
+
+   .. py:method:: change_color(name: str, color: paradex.visualization.scene.base.Color, links: Optional[Sequence[str]] = None) -> None
+
+      Recolor a robot or object. ``color`` is RGB/RGBA 0-1. For robots,
+      ``links=None`` recolors every link; pass a list to target specific ones.
+
+
+
+   .. py:method:: set_opacity(name: str, opacity: float) -> None
+
+
+   .. py:method:: set_visible(name: str, visible: bool) -> None
+
+
+   .. py:method:: remove(name: str) -> None
+
+
+   .. py:method:: clear() -> None
+
+
+   .. py:method:: set_camera(eye=(1.5, 1.5, 1.5), center=(0.0, 0.0, 0.15), up=(0.0, 0.0, 1.0), fov: float = 60.0) -> None
+
+
+   .. py:method:: set_intrinsic(K: numpy.ndarray, extrinsic: numpy.ndarray) -> None
+
+      Pin the camera from a 3x3 intrinsic K and 4x4 world-from-cam (or
+      cam-from-world) extrinsic, matching the raw-o3d scripts' setup_camera.
+
+
+
+   .. py:method:: render_frame(t: Optional[int] = None) -> numpy.ndarray
+
+      Render the current (or frame ``t``) scene state to an RGB uint8 array.
+
+
+
+   .. py:method:: export_video(path: str, fps: Optional[float] = None) -> str
+
+      Render the installed timeline to a video file and return its path.
+
+
+

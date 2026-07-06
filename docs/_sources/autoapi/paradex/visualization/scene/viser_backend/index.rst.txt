@@ -1,0 +1,164 @@
+paradex.visualization.scene.viser_backend
+=========================================
+
+.. py:module:: paradex.visualization.scene.viser_backend
+
+.. autoapi-nested-parse::
+
+   Interactive viser backend for the shared :class:`Scene` API.
+
+   ``ViserScene`` renders in a browser and owns a built-in playback GUI, so callers
+   never re-implement a slider/loop. It reuses the proven URDF mesh loader
+   ``ViserRobotModule`` from the legacy ``visualizer.viser`` module.
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ViserScene(up_direction=(0, 0, 1), port: int = 8080, dark: bool = True)
+
+   Bases: :py:obj:`paradex.visualization.scene.base.Scene`
+
+
+   Abstract backend-agnostic scene.
+
+   Concrete methods here (``animate``, ``sequence``, ``goto_frame``, color
+   handling) are backend-independent. Everything a backend must supply is an
+   ``@abstractmethod`` below.
+
+
+   .. py:attribute:: port
+      :value: 8080
+
+
+
+   .. py:attribute:: server
+
+
+   .. py:method:: add_robot(name: str, urdf_path: str, pose: Optional[paradex.visualization.scene.base.Pose] = None, color: paradex.visualization.scene.base.Color = None) -> paradex.visualization.visualizer.viser.ViserRobotModule
+
+      Load a URDF robot under ``name``. ``color`` (RGBA 0-1) applies to all
+      links at load time; ``pose`` is the 4x4 root transform.
+
+
+
+   .. py:method:: add_object(name: str, mesh: trimesh.Trimesh, pose: Optional[paradex.visualization.scene.base.Pose] = None, color: paradex.visualization.scene.base.Color = None)
+
+      Add a ``trimesh`` object under ``name``.
+
+
+
+   .. py:attribute:: add_trimesh
+
+
+   .. py:method:: set_qpos(name: str, qpos: numpy.ndarray) -> None
+
+      Set a robot's joint configuration.
+
+
+
+   .. py:method:: set_pose(name: str, pose: paradex.visualization.scene.base.Pose) -> None
+
+      Set the 4x4 root pose of a robot or object.
+
+
+
+   .. py:method:: change_color(name: str, color: paradex.visualization.scene.base.Color, links: Optional[Sequence[str]] = None) -> None
+
+      Recolor a robot or object. ``color`` is RGB/RGBA 0-1. For robots,
+      ``links=None`` recolors every link; pass a list to target specific ones.
+
+
+
+   .. py:method:: set_visible(name: str, visible: bool) -> None
+
+
+   .. py:method:: set_opacity(name: str, opacity: float) -> None
+
+      Set an object's opacity (0-1) without touching its RGB. Robots have
+      no RGB-independent opacity handle — pass RGBA to ``change_color`` for
+      those.
+
+
+
+   .. py:method:: remove(name: str) -> None
+
+      Remove a robot or object from the scene.
+
+
+
+   .. py:method:: clear() -> None
+
+      Remove every robot and object and drop the timeline.
+
+
+
+   .. py:method:: add_sphere(name: str, position, radius: float = 0.05, color=(1.0, 0.0, 0.0))
+
+
+   .. py:method:: add_frame(name: str, T: paradex.visualization.scene.base.Pose, scale: float = 0.1)
+
+
+   .. py:method:: add_grid(size: float = 10.0, cell_size: float = 0.1, height: float = 0.0)
+
+
+   .. py:method:: add_appearance_panel(folder: str = 'Appearance') -> None
+
+      Auto-generate per-entity color / opacity / visibility controls for
+      every robot and object currently in the scene. Wired to
+      ``change_color`` / ``set_visible`` — no per-app copy needed.
+
+      Call *after* you've added your robots/objects.
+
+
+
+   .. py:method:: add_capture_panel(folder: str = 'Capture') -> None
+
+      GUI to set a start/end camera view, record an interpolated fly-through
+      video, and grab stills. Needs a connected browser client.
+
+
+
+   .. py:method:: record_flythrough(out_path: str, n_frames: Optional[int] = None) -> str
+
+      Render an interpolated video between the start/end views set in the
+      capture panel (position lerp + rotation slerp).
+
+
+
+   .. py:method:: capture_turntable(out_path: str, center=(0, 0, 0), radius: float = 1.5, height: float = 0.5, n_frames: int = 60, fps: int = 30, width: int = 1280, img_height: int = 720) -> str
+
+      Orbit the camera 360° around ``center`` and render an mp4. Needs a
+      connected browser client (uses ``client.camera.look_at``).
+
+
+
+   .. py:method:: add_view_io_panel(folder: str = 'View I/O') -> None
+
+      Save / load / level the current camera view (JSON).
+
+
+
+   .. py:method:: show(block: bool = True) -> None
+
+      Run the playback loop. ``block=False`` runs it in a daemon thread.
+
+
+
+   .. py:method:: stop() -> None
+
+
+   .. py:method:: capture_png(out_path: str, width: int = 720, height: int = 720) -> str
+
+
+   .. py:method:: export_video(path: str, fps: Optional[float] = None, width: int = 1280, height: int = 720) -> str
+
+      Render the installed timeline to mp4. Requires a connected browser
+      client (viser renders through a client). For headless rendering use the
+      open3d backend instead.
+
+
+

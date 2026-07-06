@@ -9,8 +9,9 @@
       <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../../_static/styles/furo-extensions.css?v=302659d7" />
-    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=b00e8357" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/custom.css?v=1fe19d68" />
     
     
 
@@ -204,6 +205,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system.html">Camera System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../image.html">Image Layer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../process.html">Video Processing</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
@@ -211,6 +214,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system_api.html">Camera System — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../image_api.html">Image Layer — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../process_api.html">Video Processing — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -310,6 +315,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../../autoapi/paradex/utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/paradex/utils/file_io/index.html">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/paradex/utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/paradex/utils/log/index.html">paradex.utils.log</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/paradex/utils/path/index.html">paradex.utils.path</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/paradex/utils/system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/paradex/utils/upload_file/index.html">paradex.utils.upload_file</a></li>
@@ -322,7 +328,12 @@
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../../autoapi/paradex/visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/paradex/visualization/robot/index.html">paradex.visualization.robot</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../../../autoapi/paradex/visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../../autoapi/paradex/visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../../autoapi/paradex/visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../../autoapi/paradex/visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../../autoapi/paradex/visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -371,12 +382,21 @@
 <span class="kn">import</span><span class="w"> </span><span class="nn">traceback</span>
 
 <span class="kn">from</span><span class="w"> </span><span class="nn">paradex.io.camera_system.camera_loader</span><span class="w"> </span><span class="kn">import</span> <span class="n">CameraLoader</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.io.camera_system.protocol</span><span class="w"> </span><span class="kn">import</span> <span class="n">PROTOCOL_VERSION</span><span class="p">,</span> <span class="n">get_auth_token</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.utils.log</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_logger</span>
+
+<span class="n">logger</span> <span class="o">=</span> <span class="n">get_logger</span><span class="p">(</span><span class="s2">&quot;camera&quot;</span><span class="p">)</span>
 
 <div class="viewcode-block" id="camera_server_daemon">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera_server_daemon/index.html#paradex.io.camera_system.camera_server_daemon.camera_server_daemon">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">camera_server_daemon</span><span class="p">:</span>
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">idle_timeout_s</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span> <span class="o">=</span> <span class="n">CameraLoader</span><span class="p">()</span>
+
+        <span class="c1"># Optional shared secret; None = accept any peer (closed-LAN default).</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_auth_token</span> <span class="o">=</span> <span class="n">get_auth_token</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auth_token</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;command auth token required (PARADEX_CAMERA_TOKEN set)&quot;</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">ping_port</span> <span class="o">=</span> <span class="mi">5480</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">monitor_port</span> <span class="o">=</span> <span class="mi">5481</span>
@@ -412,7 +432,7 @@
         <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span> <span class="o">=</span> <span class="n">CameraLoader</span><span class="p">()</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Info] Camera loader reloaded.&quot;</span><span class="p">)</span></div>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Camera loader reloaded.&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="camera_server_daemon.shutdown">
@@ -422,11 +442,11 @@
 
 <span class="sd">        Call from a SIGTERM/SIGINT handler so a normal kill releases the hardware;</span>
 <span class="sd">        SIGKILL (-9) cannot be caught (next daemon start cleans up leaked SHM).&quot;&quot;&quot;</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Info] Shutting down: releasing cameras...&quot;</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s2">&quot;Shutting down: releasing cameras...&quot;</span><span class="p">)</span>
         <span class="k">try</span><span class="p">:</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">end</span><span class="p">()</span>
         <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Warning] shutdown: camera_loader.end() failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;shutdown: camera_loader.end() failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="camera_server_daemon.pingpong_thread">
@@ -440,22 +460,48 @@
             <span class="k">try</span><span class="p">:</span>
                 <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ping_socket</span><span class="o">.</span><span class="n">recv_string</span><span class="p">(</span><span class="n">flags</span><span class="o">=</span><span class="n">zmq</span><span class="o">.</span><span class="n">NOBLOCK</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">ping_socket</span><span class="o">.</span><span class="n">send_string</span><span class="p">(</span><span class="s2">&quot;pong&quot;</span><span class="p">)</span>
-            <span class="k">except</span> <span class="n">zmq</span><span class="o">.</span><span class="n">ZMQError</span><span class="p">:</span>
+            <span class="k">except</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Again</span><span class="p">:</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>          <span class="c1"># no ping waiting — normal</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;pingpong_thread error (continuing): </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span></div>
 
 
 <div class="viewcode-block" id="camera_server_daemon.monitor_thread">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera_server_daemon/index.html#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.monitor_thread">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">monitor_thread</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Broadcast this daemon&#39;s health on the PUB port (5481) ~10 Hz.</span>
+
+<span class="sd">        Two consumers subscribe to the same stream:</span>
+
+<span class="sd">        * the monitor dashboard, which reads ``cameras`` / ``controller``;</span>
+<span class="sd">        * ``remote_camera_controller``, which reads ``summary`` / ``running`` /</span>
+<span class="sd">          ``controller`` for its live health view (so health no longer has to</span>
+<span class="sd">          ride the command REQ/REP reply — see the redesign in</span>
+<span class="sd">          ``design/camera-recording-redesign.md``).</span>
+
+<span class="sd">        Fire-and-forget: a subscriber that misses a message just picks up the</span>
+<span class="sd">        next one 0.1 s later.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">monitor_socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ctx</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">PUB</span><span class="p">)</span>
         <span class="n">monitor_socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tcp://*:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">monitor_port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
+
         <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
-            <span class="n">status</span> <span class="o">=</span> <span class="p">{</span>
-                <span class="s1">&#39;cameras&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">get_status_list</span><span class="p">(),</span>
-                <span class="s1">&#39;controller&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span> <span class="k">else</span> <span class="s1">&#39;None&#39;</span>
-            <span class="p">}</span>
-            <span class="n">monitor_socket</span><span class="o">.</span><span class="n">send_json</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+            <span class="c1"># Keep publishing even if a snapshot build hiccups — if this thread</span>
+            <span class="c1"># died, the controller would (correctly but misleadingly) read the whole</span>
+            <span class="c1"># daemon as &quot;down&quot; from the PUB silence.</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">status</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="c1"># dashboard-facing (unchanged keys, kept for back-compat)</span>
+                    <span class="s1">&#39;cameras&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">get_status_list</span><span class="p">(),</span>
+                    <span class="s1">&#39;controller&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span> <span class="k">else</span> <span class="s1">&#39;None&#39;</span><span class="p">,</span>
+                    <span class="c1"># controller-facing health telemetry</span>
+                    <span class="s1">&#39;running&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span><span class="p">,</span>
+                    <span class="s1">&#39;summary&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">get_summary</span><span class="p">(),</span>
+                <span class="p">}</span>
+                <span class="n">monitor_socket</span><span class="o">.</span><span class="n">send_json</span><span class="p">(</span><span class="n">status</span><span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;monitor_thread iteration failed (continuing): </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span></div>
 
 
@@ -466,23 +512,45 @@
         <span class="n">controller_name</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;controller_name&#39;</span><span class="p">)</span>
         <span class="n">force</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;force&#39;</span><span class="p">,</span> <span class="kc">False</span><span class="p">)</span>
 
+        <span class="c1"># Authentication: reject any peer without the shared token (when one is set).</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auth_token</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;token&#39;</span><span class="p">)</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_auth_token</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;rejected </span><span class="si">{</span><span class="n">action</span><span class="si">}</span><span class="s2"> from &#39;</span><span class="si">{</span><span class="n">controller_name</span><span class="si">}</span><span class="s2">&#39;: bad/missing auth token&quot;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="s2">&quot;auth failed&quot;</span><span class="p">}</span>
+
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;register&quot;</span><span class="p">:</span>
             <span class="n">prev</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span>
-            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span><span class="p">:</span>
+            <span class="c1"># Real lock: refuse to steal a live controller&#39;s session unless forced</span>
+            <span class="c1"># (force_takeover). A daemon that was just restarted has prev=None, and</span>
+            <span class="c1"># the idle dead-man clears prev, so a legitimate (re)claim still works.</span>
+            <span class="k">if</span> <span class="n">prev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">prev</span> <span class="o">!=</span> <span class="n">controller_name</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">force</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;register from &#39;</span><span class="si">{</span><span class="n">controller_name</span><span class="si">}</span><span class="s2">&#39; refused: locked by &#39;</span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&#39;&quot;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;locked by </span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">; use force_takeover&quot;</span><span class="p">}</span>
+            <span class="c1"># Only clear a running capture on an actual takeover (a *different*</span>
+            <span class="c1"># controller claiming the lock). A same-controller re-register — the</span>
+            <span class="c1"># recovery path when one PC&#39;s daemon restarted — must NOT stop capture</span>
+            <span class="c1"># on the healthy PCs that also receive the broadcast register.</span>
+            <span class="n">takeover</span> <span class="o">=</span> <span class="n">prev</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">prev</span> <span class="o">!=</span> <span class="n">controller_name</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span> <span class="ow">and</span> <span class="n">takeover</span><span class="p">:</span>
                 <span class="k">try</span><span class="p">:</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
                 <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Warning] stop on register failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;stop on register failed: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span> <span class="o">=</span> <span class="kc">False</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span> <span class="o">=</span> <span class="n">controller_name</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">last_action</span> <span class="o">=</span> <span class="n">action</span>
             <span class="bp">self</span><span class="o">.</span><span class="n">last_action_time</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
             <span class="k">if</span> <span class="n">prev</span> <span class="ow">and</span> <span class="n">prev</span> <span class="o">!=</span> <span class="n">controller_name</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Info] controller takeover: &#39;</span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&#39; -&gt; &#39;</span><span class="si">{</span><span class="n">controller_name</span><span class="si">}</span><span class="s2">&#39; (force=</span><span class="si">{</span><span class="n">force</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
-            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span><span class="s2">&quot;registered&quot;</span><span class="p">}</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;controller takeover: &#39;</span><span class="si">{</span><span class="n">prev</span><span class="si">}</span><span class="s2">&#39; -&gt; &#39;</span><span class="si">{</span><span class="n">controller_name</span><span class="si">}</span><span class="s2">&#39; (force=</span><span class="si">{</span><span class="n">force</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+            <span class="n">resp</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="s2">&quot;registered&quot;</span><span class="p">,</span> <span class="s2">&quot;version&quot;</span><span class="p">:</span> <span class="n">PROTOCOL_VERSION</span><span class="p">}</span>
+            <span class="n">client_ver</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;version&quot;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">client_ver</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">client_ver</span> <span class="o">!=</span> <span class="n">PROTOCOL_VERSION</span><span class="p">:</span>
+                <span class="n">warn</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;protocol mismatch: controller=</span><span class="si">{</span><span class="n">client_ver</span><span class="si">}</span><span class="s2"> daemon=</span><span class="si">{</span><span class="n">PROTOCOL_VERSION</span><span class="si">}</span><span class="s2"> (git out of sync?)&quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">warn</span><span class="p">)</span>
+                <span class="n">resp</span><span class="p">[</span><span class="s2">&quot;warning&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">warn</span>
+            <span class="k">return</span> <span class="n">resp</span>
 
         <span class="k">if</span> <span class="n">controller_name</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Warning] </span><span class="si">{</span><span class="n">controller_name</span><span class="si">}</span><span class="s2"> tried to access, but locked by </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">controller_name</span><span class="si">}</span><span class="s2"> tried to access, but locked by </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
             <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span><span class="sa">f</span><span class="s2">&quot;locked by </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">}</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">last_action</span> <span class="o">=</span> <span class="n">action</span>
@@ -512,12 +580,14 @@
                 <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="kc">False</span>
                 <span class="k">if</span> <span class="n">errs</span><span class="p">:</span>
                     <span class="n">detail</span> <span class="o">=</span> <span class="p">{</span><span class="n">name</span><span class="p">:</span> <span class="n">msg</span> <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="p">(</span><span class="n">msg</span><span class="p">,</span> <span class="n">tb</span><span class="p">)</span> <span class="ow">in</span> <span class="n">errs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
-                    <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Warning] start: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">errs</span><span class="p">)</span><span class="si">}</span><span class="s2"> camera(s) failed to arm: </span><span class="si">{</span><span class="n">detail</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;start: </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">errs</span><span class="p">)</span><span class="si">}</span><span class="s2"> camera(s) failed to arm: </span><span class="si">{</span><span class="n">detail</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                     <span class="n">payload</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;start: camera errors: </span><span class="si">{</span><span class="n">detail</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
                     <span class="k">return</span> <span class="n">payload</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mode&#39;</span><span class="p">)</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;video&quot;</span><span class="p">,</span> <span class="s2">&quot;stream&quot;</span><span class="p">,</span> <span class="s2">&quot;full&quot;</span><span class="p">)</span>
+                <span class="c1"># &quot;acquire&quot; = armed continuously (sinks toggled via the &#39;sink&#39;</span>
+                <span class="c1"># command); a running capture. &quot;image&quot; is a one-shot, not running.</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span> <span class="o">=</span> <span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mode&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s2">&quot;acquire&quot;</span>
                 <span class="n">payload</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Info] start completed in </span><span class="si">{</span><span class="n">dt</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s mode=</span><span class="si">{</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mode&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> sync=</span><span class="si">{</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;syncMode&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> fps=</span><span class="si">{</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fps&#39;</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span><span class="si">}</span><span class="s2"> exposure_time=</span><span class="si">{</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;exposure_time&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> gain=</span><span class="si">{</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;gain&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;start completed in </span><span class="si">{</span><span class="n">dt</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s mode=</span><span class="si">{</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;mode&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> sync=</span><span class="si">{</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;syncMode&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> fps=</span><span class="si">{</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;fps&#39;</span><span class="p">,</span><span class="mi">30</span><span class="p">)</span><span class="si">}</span><span class="s2"> exposure_time=</span><span class="si">{</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;exposure_time&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2"> gain=</span><span class="si">{</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;gain&#39;</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
                 <span class="n">payload</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span><span class="s2">&quot;started&quot;</span><span class="p">})</span>
                 <span class="k">return</span> <span class="n">payload</span>
 
@@ -534,7 +604,7 @@
                 <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span> <span class="o">=</span> <span class="kc">False</span>
                 <span class="n">dt</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Info] stop completed in </span><span class="si">{</span><span class="n">dt</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;stop completed in </span><span class="si">{</span><span class="n">dt</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
                 <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">get_summary</span><span class="p">()</span>
                 <span class="n">payload</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span><span class="s2">&quot;stopped&quot;</span><span class="p">,</span> <span class="s2">&quot;running&quot;</span><span class="p">:</span> <span class="kc">False</span><span class="p">})</span>
                 <span class="k">return</span> <span class="n">payload</span>
@@ -543,6 +613,26 @@
                 <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
                 <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">get_summary</span><span class="p">()</span>
                 <span class="n">payload</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span><span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span><span class="sa">f</span><span class="s2">&quot;stop failed after </span><span class="si">{</span><span class="n">dt</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s2">&quot;running&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span><span class="p">})</span>
+                <span class="k">return</span> <span class="n">payload</span>
+
+        <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;sink&quot;</span><span class="p">:</span>
+            <span class="c1"># Toggle output sinks (video / stream / snapshot) on a running capture</span>
+            <span class="c1"># without restarting acquisition. Requires an armed capture.</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">set_sink</span><span class="p">(</span>
+                    <span class="n">video</span><span class="o">=</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;video&#39;</span><span class="p">),</span>
+                    <span class="n">stream</span><span class="o">=</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;stream&#39;</span><span class="p">),</span>
+                    <span class="n">save_path</span><span class="o">=</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;save_path&#39;</span><span class="p">),</span>
+                    <span class="n">snapshot</span><span class="o">=</span><span class="n">cmd</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;snapshot&#39;</span><span class="p">),</span>
+                <span class="p">)</span>
+                <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">get_summary</span><span class="p">()</span>
+                <span class="n">payload</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="s2">&quot;sink set&quot;</span><span class="p">,</span> <span class="s2">&quot;running&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span><span class="p">})</span>
+                <span class="k">return</span> <span class="n">payload</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">traceback</span><span class="o">.</span><span class="n">print_exc</span><span class="p">()</span>
+                <span class="n">payload</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">get_summary</span><span class="p">()</span>
+                <span class="n">payload</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;sink failed: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                                <span class="s2">&quot;running&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span><span class="p">})</span>
                 <span class="k">return</span> <span class="n">payload</span>
 
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;end&quot;</span><span class="p">:</span>
@@ -561,20 +651,10 @@
                 <span class="k">return</span> <span class="n">payload</span>
 
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;heartbeat&quot;</span><span class="p">:</span>
-            <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
-            <span class="n">errs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">get_all_errors</span><span class="p">()</span>
-            <span class="c1"># Per-camera frame ids so the controller can detect stalls (frames that</span>
-            <span class="c1"># stop arriving without raising an error).</span>
-            <span class="n">resp</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera_loader</span><span class="o">.</span><span class="n">get_summary</span><span class="p">()</span>
-            <span class="n">resp</span><span class="p">[</span><span class="s2">&quot;running&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span>
-            <span class="n">dt</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span> <span class="o">-</span> <span class="n">t0</span>
-            <span class="k">if</span> <span class="n">dt</span> <span class="o">&gt;</span> <span class="mf">0.5</span><span class="p">:</span>
-                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Warning] heartbeat get_all_errors took </span><span class="si">{</span><span class="n">dt</span><span class="o">*</span><span class="mi">1000</span><span class="si">:</span><span class="s2">.0f</span><span class="si">}</span><span class="s2">ms (&gt;500ms)&quot;</span><span class="p">)</span>
-            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">errs</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
-                <span class="n">resp</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="s2">&quot;heartbeat received&quot;</span><span class="p">})</span>
-            <span class="k">else</span><span class="p">:</span>
-                <span class="n">resp</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;error&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;camera errors detected: </span><span class="si">{</span><span class="n">errs</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">})</span>
-            <span class="k">return</span> <span class="n">resp</span>
+            <span class="c1"># Health/errors/frame-ids now travel on the PUB channel (5481), so the</span>
+            <span class="c1"># heartbeat is just a cheap keepalive that resets the dead-man timer —</span>
+            <span class="c1"># no get_summary()/get_all_errors() on the keepalive path.</span>
+            <span class="k">return</span> <span class="p">{</span><span class="s2">&quot;status&quot;</span><span class="p">:</span> <span class="s2">&quot;ok&quot;</span><span class="p">,</span> <span class="s2">&quot;msg&quot;</span><span class="p">:</span> <span class="s2">&quot;heartbeat&quot;</span><span class="p">,</span> <span class="s2">&quot;running&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span><span class="p">}</span>
 
         <span class="k">if</span> <span class="n">action</span> <span class="o">==</span> <span class="s2">&quot;reload&quot;</span><span class="p">:</span>
             <span class="k">try</span><span class="p">:</span>
@@ -613,8 +693,8 @@
                         <span class="bp">self</span><span class="o">.</span><span class="n">cameras_running</span> <span class="o">=</span> <span class="kc">False</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">current_controller</span> <span class="o">=</span> <span class="kc">None</span>
                     <span class="bp">self</span><span class="o">.</span><span class="n">last_mode</span> <span class="o">=</span> <span class="kc">None</span>
-                    <span class="nb">print</span><span class="p">(</span>
-                        <span class="sa">f</span><span class="s2">&quot;[Info] Idle timeout (&gt;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">idle_timeout_s</span><span class="si">}</span><span class="s2">s, actual=</span><span class="si">{</span><span class="n">idle</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s): &quot;</span>
+                    <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s2">&quot;Idle timeout (&gt;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">idle_timeout_s</span><span class="si">}</span><span class="s2">s, actual=</span><span class="si">{</span><span class="n">idle</span><span class="si">:</span><span class="s2">.1f</span><span class="si">}</span><span class="s2">s): &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;released controller=&#39;</span><span class="si">{</span><span class="n">released</span><span class="si">}</span><span class="s2">&#39; last_action=&#39;</span><span class="si">{</span><span class="n">last_act</span><span class="si">}</span><span class="s2">&#39; &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;mode=&#39;</span><span class="si">{</span><span class="n">mode</span><span class="si">}</span><span class="s2">&#39; cameras_were_running=</span><span class="si">{</span><span class="n">running</span><span class="si">}</span><span class="s2">. &quot;</span>
                         <span class="sa">f</span><span class="s2">&quot;Cause: controller did not send heartbeat/end within </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">idle_timeout_s</span><span class="si">}</span><span class="s2">s.&quot;</span>
@@ -634,8 +714,8 @@
                     <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;error&#39;</span><span class="p">,</span>
                     <span class="s1">&#39;msg&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s1">: </span><span class="si">{</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="si">}</span><span class="s1"> traceback : </span><span class="si">{</span><span class="n">traceback</span><span class="o">.</span><span class="n">format_exc</span><span class="p">()</span><span class="si">}</span><span class="s1">&#39;</span>
                 <span class="p">})</span>
-                <span class="nb">print</span><span class="p">(</span>
-                    <span class="sa">f</span><span class="s2">&quot;[Error] Exception in command thread: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">. &quot;</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Exception in command thread: </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">e</span><span class="p">)</span><span class="o">.</span><span class="vm">__name__</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">. &quot;</span>
                     <span class="sa">f</span><span class="s2">&quot;Released controller=&#39;</span><span class="si">{</span><span class="n">released</span><span class="si">}</span><span class="s2">&#39; last_action=&#39;</span><span class="si">{</span><span class="n">last_act</span><span class="si">}</span><span class="s2">&#39;.&quot;</span>
                 <span class="p">)</span></div>
 </div>
@@ -676,6 +756,7 @@
     <script src="../../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="../../../../_static/design-tabs.js?v=f930bc37"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
     <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
 

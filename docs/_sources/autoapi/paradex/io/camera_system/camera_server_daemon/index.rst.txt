@@ -6,8 +6,12 @@ paradex.io.camera_system.camera_server_daemon
 
 
 
+
+
 Module Contents
 ---------------
+
+.. py:data:: logger
 
 .. py:class:: camera_server_daemon(idle_timeout_s=None)
 
@@ -86,6 +90,20 @@ Module Contents
 
 
    .. py:method:: monitor_thread()
+
+      Broadcast this daemon's health on the PUB port (5481) ~10 Hz.
+
+      Two consumers subscribe to the same stream:
+
+      * the monitor dashboard, which reads ``cameras`` / ``controller``;
+      * ``remote_camera_controller``, which reads ``summary`` / ``running`` /
+        ``controller`` for its live health view (so health no longer has to
+        ride the command REQ/REP reply — see the redesign in
+        ``design/camera-recording-redesign.md``).
+
+      Fire-and-forget: a subscriber that misses a message just picks up the
+      next one 0.1 s later.
+
 
 
    .. py:method:: execute_command(cmd)

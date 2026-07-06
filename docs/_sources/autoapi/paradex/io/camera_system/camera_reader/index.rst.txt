@@ -6,8 +6,12 @@ paradex.io.camera_system.camera_reader
 
 
 
+
+
 Module Contents
 ---------------
+
+.. py:data:: logger
 
 .. py:class:: CameraReader(camera_name, frame_shape=(1536, 2048, 3), timeout=5.0)
 

@@ -205,6 +205,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../camera_system.html">Camera System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../image.html">Image Layer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../process.html">Video Processing</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
@@ -212,6 +214,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../camera_system_api.html">Camera System — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../image_api.html">Image Layer — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../process_api.html">Video Processing — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -311,6 +315,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../autoapi/paradex/utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../autoapi/paradex/utils/file_io/index.html">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../autoapi/paradex/utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../autoapi/paradex/utils/log/index.html">paradex.utils.log</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../autoapi/paradex/utils/path/index.html">paradex.utils.path</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../autoapi/paradex/utils/system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../autoapi/paradex/utils/upload_file/index.html">paradex.utils.upload_file</a></li>
@@ -323,7 +328,12 @@
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../autoapi/paradex/visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../autoapi/paradex/visualization/robot/index.html">paradex.visualization.robot</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../autoapi/paradex/visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../autoapi/paradex/visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../autoapi/paradex/visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../autoapi/paradex/visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../autoapi/paradex/visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -378,6 +388,7 @@
 <li><a href="paradex/io/camera_system/camera_loader.html">paradex.io.camera_system.camera_loader</a></li>
 <li><a href="paradex/io/camera_system/camera_reader.html">paradex.io.camera_system.camera_reader</a></li>
 <li><a href="paradex/io/camera_system/camera_server_daemon.html">paradex.io.camera_system.camera_server_daemon</a></li>
+<li><a href="paradex/io/camera_system/protocol.html">paradex.io.camera_system.protocol</a></li>
 <li><a href="paradex/io/camera_system/remote_camera_controller.html">paradex.io.camera_system.remote_camera_controller</a></li>
 <li><a href="paradex/io/camera_system/signal_generator.html">paradex.io.camera_system.signal_generator</a></li>
 <li><a href="paradex/io/camera_system/timestamp_monitor.html">paradex.io.camera_system.timestamp_monitor</a></li>
@@ -401,14 +412,13 @@
 <li><a href="paradex/transforms/triangulate.html">paradex.transforms.triangulate</a></li>
 <li><a href="paradex/utils/file_io.html">paradex.utils.file_io</a></li>
 <li><a href="paradex/utils/keyboard_listener.html">paradex.utils.keyboard_listener</a></li>
+<li><a href="paradex/utils/log.html">paradex.utils.log</a></li>
 <li><a href="paradex/utils/system.html">paradex.utils.system</a></li>
 <li><a href="paradex/utils/upload_file.html">paradex.utils.upload_file</a></li>
 <li><a href="paradex/video/raw_video_processor.html">paradex.video.raw_video_processor</a></li>
 <li><a href="paradex/video/util.html">paradex.video.util</a></li>
-<li><a href="paradex/visualization/deprecated/shape.html">paradex.visualization.deprecated.shape</a></li>
-<li><a href="paradex/visualization/deprecated/visual_hull.html">paradex.visualization.deprecated.visual_hull</a></li>
 <li><a href="paradex/visualization/robot.html">paradex.visualization.robot</a></li>
-<li><a href="paradex/visualization/visual_hull.html">paradex.visualization.visual_hull</a></li>
+<li><a href="paradex/visualization/scene/base.html">paradex.visualization.scene.base</a></li>
 </ul>
         </article>
       </div>

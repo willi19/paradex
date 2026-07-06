@@ -1,0 +1,748 @@
+<!doctype html>
+<html class="no-js" lang="en" data-content_root="./">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
+    <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Video Processing — API" href="process_api.html" /><link rel="prev" title="Dataset Acquisition — API" href="dataset_acquisition_api.html" />
+
+    <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
+        <title>Image Layer — API - paradex 0.0.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=354aac6f" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
+    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=302659d7" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=1fe19d68" />
+    
+    
+
+
+<style>
+  body {
+    --color-code-background: #f8f8f8;
+  --color-code-foreground: black;
+  
+  }
+  @media not print {
+    body[data-theme="dark"] {
+      --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+    }
+    @media (prefers-color-scheme: dark) {
+      body:not([data-theme="light"]) {
+        --color-code-background: #202020;
+  --color-code-foreground: #d0d0d0;
+  
+      }
+    }
+  }
+</style></head>
+  <body>
+    
+    <script>
+      document.body.dataset.theme = localStorage.getItem("theme") || "auto";
+    </script>
+    
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+  <symbol id="svg-toc" viewBox="0 0 24 24">
+    <title>Contents</title>
+    <svg stroke="currentColor" fill="currentColor" stroke-width="0" viewBox="0 0 1024 1024">
+      <path d="M408 442h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8zm-8 204c0 4.4 3.6 8 8 8h480c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8H408c-4.4 0-8 3.6-8 8v56zm504-486H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zm0 632H120c-4.4 0-8 3.6-8 8v56c0 4.4 3.6 8 8 8h784c4.4 0 8-3.6 8-8v-56c0-4.4-3.6-8-8-8zM115.4 518.9L271.7 642c5.8 4.6 14.4.5 14.4-6.9V388.9c0-7.4-8.5-11.5-14.4-6.9L115.4 505.1a8.74 8.74 0 0 0 0 13.8z"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-menu" viewBox="0 0 24 24">
+    <title>Menu</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-menu">
+      <line x1="3" y1="12" x2="21" y2="12"></line>
+      <line x1="3" y1="6" x2="21" y2="6"></line>
+      <line x1="3" y1="18" x2="21" y2="18"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-arrow-right" viewBox="0 0 24 24">
+    <title>Expand</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather-chevron-right">
+      <polyline points="9 18 15 12 9 6"></polyline>
+    </svg>
+  </symbol>
+  <symbol id="svg-sun" viewBox="0 0 24 24">
+    <title>Light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="feather-sun">
+      <circle cx="12" cy="12" r="5"></circle>
+      <line x1="12" y1="1" x2="12" y2="3"></line>
+      <line x1="12" y1="21" x2="12" y2="23"></line>
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+      <line x1="1" y1="12" x2="3" y2="12"></line>
+      <line x1="21" y1="12" x2="23" y2="12"></line>
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon" viewBox="0 0 24 24">
+    <title>Dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-moon">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z" />
+    </svg>
+  </symbol>
+  <symbol id="svg-sun-with-moon" viewBox="0 0 24 24">
+    <title>Auto light/dark, in light mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path style="opacity: 50%" d="M 5.411 14.504 C 5.471 14.504 5.532 14.504 5.591 14.504 C 3.639 16.319 4.383 19.569 6.931 20.352 C 7.693 20.586 8.512 20.551 9.25 20.252 C 8.023 23.207 4.056 23.725 2.11 21.184 C 0.166 18.642 1.702 14.949 4.874 14.536 C 5.051 14.512 5.231 14.5 5.411 14.5 L 5.411 14.504 Z"/>
+      <line x1="14.5" y1="3.25" x2="14.5" y2="1.25"/>
+      <line x1="14.5" y1="15.85" x2="14.5" y2="17.85"/>
+      <line x1="10.044" y1="5.094" x2="8.63" y2="3.68"/>
+      <line x1="19" y1="14.05" x2="20.414" y2="15.464"/>
+      <line x1="8.2" y1="9.55" x2="6.2" y2="9.55"/>
+      <line x1="20.8" y1="9.55" x2="22.8" y2="9.55"/>
+      <line x1="10.044" y1="14.006" x2="8.63" y2="15.42"/>
+      <line x1="19" y1="5.05" x2="20.414" y2="3.636"/>
+      <circle cx="14.5" cy="9.55" r="3.6"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-moon-with-sun" viewBox="0 0 24 24">
+    <title>Auto light/dark, in dark mode</title>
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round"
+      class="icon-custom-derived-from-feather-sun-and-tabler-moon">
+      <path d="M 8.282 7.007 C 8.385 7.007 8.494 7.007 8.595 7.007 C 5.18 10.184 6.481 15.869 10.942 17.24 C 12.275 17.648 13.706 17.589 15 17.066 C 12.851 22.236 5.91 23.143 2.505 18.696 C -0.897 14.249 1.791 7.786 7.342 7.063 C 7.652 7.021 7.965 7 8.282 7 L 8.282 7.007 Z"/>
+      <line style="opacity: 50%" x1="18" y1="3.705" x2="18" y2="2.5"/>
+      <line style="opacity: 50%" x1="18" y1="11.295" x2="18" y2="12.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="4.816" x2="14.464" y2="3.964"/>
+      <line style="opacity: 50%" x1="20.711" y1="10.212" x2="21.563" y2="11.063"/>
+      <line style="opacity: 50%" x1="14.205" y1="7.5" x2="13.001" y2="7.5"/>
+      <line style="opacity: 50%" x1="21.795" y1="7.5" x2="23" y2="7.5"/>
+      <line style="opacity: 50%" x1="15.316" y1="10.184" x2="14.464" y2="11.036"/>
+      <line style="opacity: 50%" x1="20.711" y1="4.789" x2="21.563" y2="3.937"/>
+      <circle style="opacity: 50%" cx="18" cy="7.5" r="2.169"/>
+    </svg>
+  </symbol>
+  <symbol id="svg-pencil" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-pencil-code">
+      <path d="M4 20h4l10.5 -10.5a2.828 2.828 0 1 0 -4 -4l-10.5 10.5v4" />
+      <path d="M13.5 6.5l4 4" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+  <symbol id="svg-eye" viewBox="0 0 24 24">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="icon-tabler-eye-code">
+      <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+      <path d="M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0" />
+      <path
+        d="M11.11 17.958c-3.209 -.307 -5.91 -2.293 -8.11 -5.958c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6c-.21 .352 -.427 .688 -.647 1.008" />
+      <path d="M20 21l2 -2l-2 -2" />
+      <path d="M17 17l-2 2l2 2" />
+    </svg>
+  </symbol>
+</svg>
+
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
+
+<a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
+
+
+
+<div class="page">
+  <header class="mobile-header">
+    <div class="header-left">
+      <label class="nav-overlay-icon" for="__navigation">
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
+      </label>
+    </div>
+    <div class="header-center">
+      <a href="index.html"><div class="brand">paradex 0.0.0 documentation</div></a>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle-container theme-toggle-header">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+          <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+          <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+          <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+          <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+        </button>
+      </div>
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+      </label>
+    </div>
+  </header>
+  <aside class="sidebar-drawer">
+    <div class="sidebar-container">
+      
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="index.html">
+  
+  
+  <span class="sidebar-brand-text">paradex 0.0.0 documentation</span>
+  
+</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+  <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
+  <input type="hidden" name="check_keywords" value="yes">
+  <input type="hidden" name="area" value="default">
+</form>
+<div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
+  <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robot.html">Robot Control</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image.html">Image Layer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="process.html">Video Processing</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robot_api.html">Robot Control — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Image Layer — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="process_api.html">Video Processing — API</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
+<ul>
+<li class="toctree-l1 has-children"><a class="reference internal" href="autoapi/index.html">API Reference</a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" role="switch" type="checkbox"/><label for="toctree-checkbox-1"><div class="visually-hidden">Toggle navigation of API Reference</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="autoapi/paradex/index.html">paradex</a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" role="switch" type="checkbox"/><label for="toctree-checkbox-2"><div class="visually-hidden">Toggle navigation of paradex</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/calibration/index.html">paradex.calibration</a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" role="switch" type="checkbox"/><label for="toctree-checkbox-3"><div class="visually-hidden">Toggle navigation of paradex.calibration</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/calibration/Tsai_Lenz/index.html">paradex.calibration.Tsai_Lenz</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/calibration/colmap/index.html">paradex.calibration.colmap</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/calibration/utils/index.html">paradex.calibration.utils</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/dataset_acqusition/index.html">paradex.dataset_acqusition</a><input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" role="switch" type="checkbox"/><label for="toctree-checkbox-4"><div class="visually-hidden">Toggle navigation of paradex.dataset_acqusition</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/dataset_acqusition/capture/index.html">paradex.dataset_acqusition.capture</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/dataset_acqusition/match_sync/index.html">paradex.dataset_acqusition.match_sync</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/image/index.html">paradex.image</a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" role="switch" type="checkbox"/><label for="toctree-checkbox-5"><div class="visually-hidden">Toggle navigation of paradex.image</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/aruco/index.html">paradex.image.aruco</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/grid/index.html">paradex.image.grid</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/image_dict/index.html">paradex.image.image_dict</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/merge/index.html">paradex.image.merge</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/overlay/index.html">paradex.image.overlay</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/projection/index.html">paradex.image.projection</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/image/undistort/index.html">paradex.image.undistort</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/io/index.html">paradex.io</a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" role="switch" type="checkbox"/><label for="toctree-checkbox-6"><div class="visually-hidden">Toggle navigation of paradex.io</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/io/capture_pc/index.html">paradex.io.capture_pc</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/command_sender/index.html">paradex.io.capture_pc.command_sender</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/data_sender/index.html">paradex.io.capture_pc.data_sender</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/processor/index.html">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+</ul>
+</li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/io/robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/allegro_controller/index.html">paradex.io.robot_controller.allegro_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/gui_controller/index.html">paradex.io.robot_controller.gui_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/gui_controller_simple/index.html">paradex.io.robot_controller.gui_controller_simple</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/inspire_controller/index.html">paradex.io.robot_controller.inspire_controller</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html">paradex.io.robot_controller.inspire_controller_ip</a></li>
+<li class="toctree-l5 has-children"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/index.html">paradex.io.robot_controller.under_test</a><input class="toctree-checkbox" id="toctree-checkbox-9" name="toctree-checkbox-9" role="switch" type="checkbox"/><label for="toctree-checkbox-9"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller.under_test</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/cli/index.html">paradex.io.robot_controller.under_test.cli</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/exceptions/index.html">paradex.io.robot_controller.under_test.exceptions</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/hand_demo/index.html">paradex.io.robot_controller.under_test.hand_demo</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html">paradex.io.robot_controller.under_test.hand_rh56dftp</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/inspire_hand_ip_demo/index.html">paradex.io.robot_controller.under_test.inspire_hand_ip_demo</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/modbus/index.html">paradex.io.robot_controller.under_test.modbus</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/verify_tactile/index.html">paradex.io.robot_controller.under_test.verify_tactile</a></li>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/robot_controller/under_test/visualize_contact/index.html">paradex.io.robot_controller.under_test.visualize_contact</a></li>
+</ul>
+</li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/robot_controller/xarm_controller/index.html">paradex.io.robot_controller.xarm_controller</a></li>
+</ul>
+</li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/io/teleop/index.html">paradex.io.teleop</a><input class="toctree-checkbox" id="toctree-checkbox-10" name="toctree-checkbox-10" role="switch" type="checkbox"/><label for="toctree-checkbox-10"><div class="visually-hidden">Toggle navigation of paradex.io.teleop</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5 has-children"><a class="reference internal" href="autoapi/paradex/io/teleop/xsens/index.html">paradex.io.teleop.xsens</a><input class="toctree-checkbox" id="toctree-checkbox-11" name="toctree-checkbox-11" role="switch" type="checkbox"/><label for="toctree-checkbox-11"><div class="visually-hidden">Toggle navigation of paradex.io.teleop.xsens</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l6"><a class="reference internal" href="autoapi/paradex/io/teleop/xsens/receiver/index.html">paradex.io.teleop.xsens.receiver</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/process/index.html">paradex.process</a><input class="toctree-checkbox" id="toctree-checkbox-12" name="toctree-checkbox-12" role="switch" type="checkbox"/><label for="toctree-checkbox-12"><div class="visually-hidden">Toggle navigation of paradex.process</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/process/distributed/index.html">paradex.process.distributed</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/process/processor/index.html">paradex.process.processor</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/retargetor/index.html">paradex.retargetor</a><input class="toctree-checkbox" id="toctree-checkbox-13" name="toctree-checkbox-13" role="switch" type="checkbox"/><label for="toctree-checkbox-13"><div class="visually-hidden">Toggle navigation of paradex.retargetor</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/retargetor/hand_regargetor/index.html">paradex.retargetor.hand_regargetor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/retargetor/state/index.html">paradex.retargetor.state</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/retargetor/unimanual/index.html">paradex.retargetor.unimanual</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/robot/index.html">paradex.robot</a><input class="toctree-checkbox" id="toctree-checkbox-14" name="toctree-checkbox-14" role="switch" type="checkbox"/><label for="toctree-checkbox-14"><div class="visually-hidden">Toggle navigation of paradex.robot</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/curobo/index.html">paradex.robot.curobo</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/inspire/index.html">paradex.robot.inspire</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/mimic_joint/index.html">paradex.robot.mimic_joint</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/robot_wrapper/index.html">paradex.robot.robot_wrapper</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/robot_wrapper_updating/index.html">paradex.robot.robot_wrapper_updating</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/urdf/index.html">paradex.robot.urdf</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/utils/index.html">paradex.robot.utils</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/robot/xarm_kinematic_calib/index.html">paradex.robot.xarm_kinematic_calib</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/simulator/index.html">paradex.simulator</a><input class="toctree-checkbox" id="toctree-checkbox-15" name="toctree-checkbox-15" role="switch" type="checkbox"/><label for="toctree-checkbox-15"><div class="visually-hidden">Toggle navigation of paradex.simulator</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/simulator/isaac/index.html">paradex.simulator.isaac</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/transforms/index.html">paradex.transforms</a><input class="toctree-checkbox" id="toctree-checkbox-16" name="toctree-checkbox-16" role="switch" type="checkbox"/><label for="toctree-checkbox-16"><div class="visually-hidden">Toggle navigation of paradex.transforms</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/transforms/conversion/index.html">paradex.transforms.conversion</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/transforms/coordinate/index.html">paradex.transforms.coordinate</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/transforms/triangulate/index.html">paradex.transforms.triangulate</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/file_io/index.html">paradex.utils.file_io</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/log/index.html">paradex.utils.log</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/path/index.html">paradex.utils.path</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/system/index.html">paradex.utils.system</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/upload_file/index.html">paradex.utils.upload_file</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/video/index.html">paradex.video</a><input class="toctree-checkbox" id="toctree-checkbox-18" name="toctree-checkbox-18" role="switch" type="checkbox"/><label for="toctree-checkbox-18"><div class="visually-hidden">Toggle navigation of paradex.video</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/video/raw_video_processor/index.html">paradex.video.raw_video_processor</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/video/util/index.html">paradex.video.util</a></li>
+</ul>
+</li>
+<li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/visualization/robot/index.html">paradex.visualization.robot</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+</div>
+
+      </div>
+      
+    </div>
+  </aside>
+  <div class="main">
+    <div class="content">
+      <div class="article-container">
+        <a href="#" class="back-to-top muted-link">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+            <path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8v12z"></path>
+          </svg>
+          <span>Back to top</span>
+        </a>
+        <div class="content-icon-container">
+          <div class="view-this-page">
+  <a class="muted-link" href="_sources/image_api.md.txt" title="View this page">
+    <svg><use href="#svg-eye"></use></svg>
+    <span class="visually-hidden">View this page</span>
+  </a>
+</div>
+<div class="theme-toggle-container theme-toggle-content">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
+              <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
+              <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
+              <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
+              <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
+            </button>
+          </div>
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
+          </label>
+        </div>
+        <article role="main" id="furo-main-content">
+          <section id="image-layer-api">
+<h1>Image Layer — API<a class="headerlink" href="#image-layer-api" title="Link to this heading">¶</a></h1>
+<p>Method reference for the 2D image subsystem: parameters (input) and return values (output). For
+the architecture and how these fit together, see the <a class="reference internal" href="image.html"><span class="doc">overview</span></a>.</p>
+<p>Signatures are verified against the code. The subsystem lives in <code class="docutils literal notranslate"><span class="pre">paradex/image/</span></code>. Everything is
+keyed by <strong>camera serial string</strong>.</p>
+<p>Each entry is collapsed below — click to expand.</p>
+<details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3" open="open">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">ImageDict</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/image/image_dict.py</span></code>)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">Multi-camera image container wrapping <code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">image}</span></code> + <code class="docutils literal notranslate"><span class="pre">intrinsic</span></code>/<code class="docutils literal notranslate"><span class="pre">extrinsic</span></code>, with batch
+operations. Geometry ops go through <code class="docutils literal notranslate"><span class="pre">get_cammtx</span></code> (3×4 per serial from <code class="docutils literal notranslate"><span class="pre">intrinsics_undistort</span></code>) —
+feed them <strong>undistorted</strong> 2D.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ImageDict(images,</span> <span class="pre">intrinsic=None,</span> <span class="pre">extrinsic=None,</span> <span class="pre">path=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">images:</span> <span class="pre">{str:</span> <span class="pre">ndarray}</span></code>, <code class="docutils literal notranslate"><span class="pre">intrinsic:</span> <span class="pre">{str:</span> <span class="pre">dict}</span></code>, <code class="docutils literal notranslate"><span class="pre">extrinsic:</span> <span class="pre">{str:</span> <span class="pre">ndarray}</span></code>, <code class="docutils literal notranslate"><span class="pre">path</span></code></p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Store dict + calibration; empty <code class="docutils literal notranslate"><span class="pre">_cache</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ImageDict.from_path(path)</span></code> <em>(classmethod)</em></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">path:</span> <span class="pre">str|Path</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ImageDict</span></code></p></td>
+<td><p class="sd-card-text">Load <code class="docutils literal notranslate"><span class="pre">images/</span></code> → <code class="docutils literal notranslate"><span class="pre">raw/images/</span></code> → <code class="docutils literal notranslate"><span class="pre">path</span></code>; load calibration iff <code class="docutils literal notranslate"><span class="pre">cam_param/</span></code> exists. Raises if no images found.</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.undistort(save_path=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path</span></code></p></td>
+<td><p class="sd-card-text">new <code class="docutils literal notranslate"><span class="pre">ImageDict</span></code></p></td>
+<td><p class="sd-card-text">Per-serial <code class="docutils literal notranslate"><span class="pre">cv2.remap</span></code> via a cached undistort map; saves if <code class="docutils literal notranslate"><span class="pre">save_path</span></code> given. Needs <code class="docutils literal notranslate"><span class="pre">intrinsic</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.apply(func,</span> <span class="pre">use_camparam=False,</span> <span class="pre">**kw)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">func(img,</span> <span class="pre">**kw)</span></code>, <code class="docutils literal notranslate"><span class="pre">use_camparam:</span> <span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">result}</span></code></p></td>
+<td><p class="sd-card-text">Run <code class="docutils literal notranslate"><span class="pre">func</span></code> on every image; <code class="docutils literal notranslate"><span class="pre">use_camparam=True</span></code> also passes <code class="docutils literal notranslate"><span class="pre">intrinsic=</span></code>/<code class="docutils literal notranslate"><span class="pre">extrinsic=</span></code> (raises if missing).</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.map_images(func,</span> <span class="pre">use_camparam=False,</span> <span class="pre">**kw)</span></code></p></td>
+<td><p class="sd-card-text">as above</p></td>
+<td><p class="sd-card-text">new <code class="docutils literal notranslate"><span class="pre">ImageDict</span></code></p></td>
+<td><p class="sd-card-text">Like <code class="docutils literal notranslate"><span class="pre">apply</span></code>, rewrapping results as images.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.triangulate_markers(dict_type='6X6_1000')</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict_type:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(marker_2d,</span> <span class="pre">marker_3d)</span></code></p></td>
+<td><p class="sd-card-text">Detect ArUco per view, group by id, triangulate → <code class="docutils literal notranslate"><span class="pre">{id:</span> <span class="pre">(3,)}</span></code>. <code class="docutils literal notranslate"><span class="pre">marker_2d</span></code> holds per-id 2D + cammtx lists.</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.triangulate_charuco()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{board_id:</span> <span class="pre">{checkerIDs,</span> <span class="pre">checkerCorner}}</span></code></p></td>
+<td><p class="sd-card-text">Detect ChArUco per view, triangulate each corner id.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.traingulate_points(points_2d)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">points_2d:</span> <span class="pre">{serial:</span> <span class="pre">(N,2)}</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(N,3)</span></code></p></td>
+<td><p class="sd-card-text">Triangulate matched 2D across views (method name misspelled in source).</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.project_pointcloud(points_3d)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">points_3d:</span> <span class="pre">(N,3)</span></code> or <code class="docutils literal notranslate"><span class="pre">(3,)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">(N,2)}</span></code></p></td>
+<td><p class="sd-card-text">Project world points into every camera.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.project_mesh(object,</span> <span class="pre">color=(0,255,0),</span> <span class="pre">alpha=0.5)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">object</span></code>: trimesh/o3d mesh, <code class="docutils literal notranslate"><span class="pre">color</span></code>, <code class="docutils literal notranslate"><span class="pre">alpha</span></code></p></td>
+<td><p class="sd-card-text">new <code class="docutils literal notranslate"><span class="pre">ImageDict</span></code></p></td>
+<td><p class="sd-card-text">Render mesh via <code class="docutils literal notranslate"><span class="pre">BatchRenderer</span></code>, overlay each mask. <strong>Needs CUDA + nvdiffrast.</strong></p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.merge(image_text={})</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">image_text:</span> <span class="pre">{serial:</span> <span class="pre">str}</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code></p></td>
+<td><p class="sd-card-text">Labeled grid preview (<code class="docutils literal notranslate"><span class="pre">merge_image</span></code>).</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.draw_keypoint(keypoints,</span> <span class="pre">color,</span> <span class="pre">radius=3,</span> <span class="pre">thickness=-1)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">keypoints:</span> <span class="pre">{serial:</span> <span class="pre">(N,2)}</span></code></p></td>
+<td><p class="sd-card-text">new <code class="docutils literal notranslate"><span class="pre">ImageDict</span></code></p></td>
+<td><p class="sd-card-text">Draw dots per serial.</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.set_camparam(intrinsic,</span> <span class="pre">extrinsic)</span></code> / <code class="docutils literal notranslate"><span class="pre">.load_current_camparam()</span></code></p></td>
+<td><p class="sd-card-text">params / —</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Attach calibration (explicit / latest global).</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.save(path=None)</span></code> / <code class="docutils literal notranslate"><span class="pre">.save_camparam(path=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">path</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Write <code class="docutils literal notranslate"><span class="pre">images/*.png</span></code> / <code class="docutils literal notranslate"><span class="pre">cam_param/{intrinsics,extrinsics}.json</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.copy()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ImageDict</span></code></p></td>
+<td><p class="sd-card-text">Deep copy of images + calibration.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="sd-card-text"><strong>Dict interface</strong>: <code class="docutils literal notranslate"><span class="pre">imgs[serial]</span></code>, <code class="docutils literal notranslate"><span class="pre">imgs[serial]=img</span></code>, <code class="docutils literal notranslate"><span class="pre">len(imgs)</span></code>, <code class="docutils literal notranslate"><span class="pre">for</span> <span class="pre">serial,img</span> <span class="pre">in</span> <span class="pre">imgs</span></code>,
+<code class="docutils literal notranslate"><span class="pre">serial</span> <span class="pre">in</span> <span class="pre">imgs</span></code>, <code class="docutils literal notranslate"><span class="pre">.serial_list</span></code>, <code class="docutils literal notranslate"><span class="pre">.keys()/.values()/.items()</span></code>, <code class="docutils literal notranslate"><span class="pre">.update(dict)</span></code>, <code class="docutils literal notranslate"><span class="pre">.update_path(path)</span></code>.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning</p>
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">_cache</span></code> (<code class="docutils literal notranslate"><span class="pre">proj_mtx</span></code>, <code class="docutils literal notranslate"><span class="pre">undistort_map</span></code>, <code class="docutils literal notranslate"><span class="pre">render</span></code>) is lazily filled and never invalidated — mutating
+calibration afterward is unsafe; build a fresh <code class="docutils literal notranslate"><span class="pre">ImageDict</span></code>. <code class="docutils literal notranslate"><span class="pre">__repr__</span></code> references a nonexistent
+<code class="docutils literal notranslate"><span class="pre">self.serials</span></code> (→ <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code>); use <code class="docutils literal notranslate"><span class="pre">.serial_list</span></code>.</p>
+</div>
+</div>
+</details><div class="docutils">
+<details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text">Detection — <code class="docutils literal notranslate"><span class="pre">aruco.py</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/image/aruco.py</span></code>)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">Single-image detectors + helpers. Board <em>semantics</em> (config, scale, <code class="docutils literal notranslate"><span class="pre">setLegacyPattern</span></code>) are
+documented with the calibration subsystem; this is the call surface only.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Function</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">detect_aruco(img,</span> <span class="pre">dict_type='6X6_1000')</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">img</span></code>, <code class="docutils literal notranslate"><span class="pre">dict_type:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(corners,</span> <span class="pre">ids)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ids</span></code> is <code class="docutils literal notranslate"><span class="pre">(N,1)</span></code> int; returns <code class="docutils literal notranslate"><span class="pre">([],</span> <span class="pre">(0,1))</span></code> when none. Cached detector per dict-type.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">detect_charuco(img)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">img</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{b_id:</span> <span class="pre">{checkerCorner</span> <span class="pre">(n,2),</span> <span class="pre">checkerIDs</span> <span class="pre">(n,)}}</span></code></p></td>
+<td><p class="sd-card-text">Runs every board’s cached <code class="docutils literal notranslate"><span class="pre">CharucoDetector</span></code>; omits boards with no detection.</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">merge_charuco_detection(detection)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">detection:</span> <span class="pre">{b_id:</span> <span class="pre">{...}}</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{checkerCorner,</span> <span class="pre">checkerIDs}</span></code></p></td>
+<td><p class="sd-card-text">Concat all boards with per-board id offset <code class="docutils literal notranslate"><span class="pre">Σ(numX-1)(numY-1)</span></code>; empty → <code class="docutils literal notranslate"><span class="pre">(0,2)</span></code>/<code class="docutils literal notranslate"><span class="pre">(0,1)</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">find_common_indices(ids1,</span> <span class="pre">ids2)</span></code></p></td>
+<td><p class="sd-card-text">two id arrays</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(idx1,</span> <span class="pre">idx2)</span></code> or <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code></p></td>
+<td><p class="sd-card-text">Indices that align corners by shared id (sorted).</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_board_cor()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{b_id:</span> <span class="pre">{checkerIDs,</span> <span class="pre">checkerCorner}}</span></code></p></td>
+<td><p class="sd-card-text">Board object points (<code class="docutils literal notranslate"><span class="pre">getChessboardCorners()</span></code> × 0.05 — board-<code class="docutils literal notranslate"><span class="pre">&quot;3&quot;</span></code>-specific scale).</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_adjecent_ids()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{id:</span> <span class="pre">[neighbor_ids]}</span></code></p></td>
+<td><p class="sd-card-text">Corner adjacency graph (per-board offsets); used by turntable outlier checks.</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_aruco_detector(dict_type)</span></code> / <code class="docutils literal notranslate"><span class="pre">get_charuco_detector()</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict_type</span></code> / —</p></td>
+<td><p class="sd-card-text">detector(s)</p></td>
+<td><p class="sd-card-text">Cached detector accessors; charuco applies <code class="docutils literal notranslate"><span class="pre">setLegacyPattern</span></code> per board.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">draw_aruco</span></code> / <code class="docutils literal notranslate"><span class="pre">draw_charuco</span></code> / <code class="docutils literal notranslate"><span class="pre">draw_keypoint</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">img</span></code>, corners, …</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">img</span></code></p></td>
+<td><p class="sd-card-text">Debug drawing (mutate/return the image).</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="sd-card-text">Import-time: <code class="docutils literal notranslate"><span class="pre">boardinfo_dict</span></code> + <code class="docutils literal notranslate"><span class="pre">_charuco_board_cache</span></code> are loaded from
+<code class="docutils literal notranslate"><span class="pre">config_dir/charuco_info.json</span></code> — import fails if it’s absent.</p>
+</div>
+</details></div>
+<details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text">Undistortion — <code class="docutils literal notranslate"><span class="pre">undistort.py</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/image/undistort.py</span></code>)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Function</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">undistort_img(img,</span> <span class="pre">intrinsic)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">img</span></code>, <code class="docutils literal notranslate"><span class="pre">intrinsic:</span> <span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ndarray</span></code></p></td>
+<td><p class="sd-card-text">One-shot <code class="docutils literal notranslate"><span class="pre">cv2.undistort</span></code> with <code class="docutils literal notranslate"><span class="pre">original_intrinsics</span></code>/<code class="docutils literal notranslate"><span class="pre">dist_params</span></code> → <code class="docutils literal notranslate"><span class="pre">intrinsics_undistort</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">undistort_points(pts,</span> <span class="pre">intrinsic)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">pts:</span> <span class="pre">(N,1,2)</span></code>/<code class="docutils literal notranslate"><span class="pre">(N,2)</span></code>, <code class="docutils literal notranslate"><span class="pre">intrinsic</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(N,2)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">cv2.undistortPoints</span></code> then re-apply <code class="docutils literal notranslate"><span class="pre">intrinsics_undistort</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">precomute_undistort_map(intrinsic)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">intrinsic</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(new_cammtx,</span> <span class="pre">mapx,</span> <span class="pre">mapy)</span></code></p></td>
+<td><p class="sd-card-text">Build a <code class="docutils literal notranslate"><span class="pre">CV_16SC2</span></code> remap (name misspelled, public API).</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">apply_undistort_map(img,</span> <span class="pre">mapx,</span> <span class="pre">mapy)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">img</span></code>, maps</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ndarray</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">cv2.remap</span></code> (fast, for many frames).</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">precompute_undistort_map_torch(intrinsic,</span> <span class="pre">device='cuda')</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">intrinsic</span></code>, <code class="docutils literal notranslate"><span class="pre">device</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(new_cammtx,</span> <span class="pre">grid_tensor)</span></code></p></td>
+<td><p class="sd-card-text">GPU <code class="docutils literal notranslate"><span class="pre">grid_sample</span></code> grid <code class="docutils literal notranslate"><span class="pre">(1,H,W,2)</span></code>.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">apply_undistort_torch(img_bgr,</span> <span class="pre">grid_tensor)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">img_bgr:</span> <span class="pre">uint8</span> <span class="pre">HxWx3</span></code>, <code class="docutils literal notranslate"><span class="pre">grid_tensor</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">uint8</span> <span class="pre">HxWx3</span></code></p></td>
+<td><p class="sd-card-text">GPU undistort via <code class="docutils literal notranslate"><span class="pre">grid_sample</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">remap_corners(corners,</span> <span class="pre">cammtx,</span> <span class="pre">dist_coef,</span> <span class="pre">sn,</span> <span class="pre">img=None)</span></code></p></td>
+<td><p class="sd-card-text">corners, K, dist, …</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(mapped_pixels,</span> <span class="pre">new_cammtx)</span></code></p></td>
+<td><p class="sd-card-text">Legacy; hardcodes <code class="docutils literal notranslate"><span class="pre">2048×1536</span></code> and its own optimal matrix. Prefer the intrinsic-driven path.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text">Mesh rendering — <code class="docutils literal notranslate"><span class="pre">projection.py</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/image/projection.py</span></code>)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">Requires CUDA + <code class="docutils literal notranslate"><span class="pre">nvdiffrast</span></code> (imported in a <code class="docutils literal notranslate"><span class="pre">try/except</span></code>; <code class="docutils literal notranslate"><span class="pre">BatchRenderer()</span></code> fails without it).</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method / function</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">BatchRenderer(intrinsics,</span> <span class="pre">extrinsics,</span> <span class="pre">near=0.01,</span> <span class="pre">far=2)</span></code></p></td>
+<td><p class="sd-card-text">calibration dicts, clip planes</p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Precompute GL projections, <code class="docutils literal notranslate"><span class="pre">flip_z</span></code>, stacked extrinsics; one batch = all serials (sorted).</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.render(mesh)</span></code></p></td>
+<td><p class="sd-card-text">trimesh/o3d mesh</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(color_dict,</span> <span class="pre">mask_dict,</span> <span class="pre">depth_dict)</span></code></p></td>
+<td><p class="sd-card-text">Single mesh; <code class="docutils literal notranslate"><span class="pre">mask</span></code> is <strong>bool</strong> per serial.</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.render_multi(mesh_list)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">list[mesh]</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(color,</span> <span class="pre">mask,</span> <span class="pre">depth,</span> <span class="pre">id_dict)</span></code></p></td>
+<td><p class="sd-card-text">Multi-mesh; <code class="docutils literal notranslate"><span class="pre">mask</span></code> is <strong>float</strong>, plus 1-indexed instance-id map (0=bg).</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">mesh_to_obj_dict(mesh,</span> <span class="pre">device='cuda',</span> <span class="pre">texture_type='vertex_color')</span></code></p></td>
+<td><p class="sd-card-text">mesh, …</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text">Convert trimesh/o3d → torch verts/faces/colors (or UVs+texture).</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">intr_opencv_to_opengl_proj(K,</span> <span class="pre">width,</span> <span class="pre">height,</span> <span class="pre">near,</span> <span class="pre">far)</span></code></p></td>
+<td><p class="sd-card-text">K, size, planes</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(4,4)</span></code></p></td>
+<td><p class="sd-card-text">OpenCV intrinsics → GL projection.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">project_point(verts,</span> <span class="pre">cammtx,</span> <span class="pre">image,</span> <span class="pre">color)</span></code></p></td>
+<td><p class="sd-card-text">verts, <code class="docutils literal notranslate"><span class="pre">(3,4)</span></code>, image</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">image</span></code></p></td>
+<td><p class="sd-card-text">Draw projected 3D points as circles.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p class="sd-card-text">Depth: <code class="docutils literal notranslate"><span class="pre">_denormalize_depth</span></code> inverts the rasterizer’s inverse-depth encoding; background is forced
+to <code class="docutils literal notranslate"><span class="pre">far</span></code>. Outputs are vertically flipped (<code class="docutils literal notranslate"><span class="pre">torch.flip</span></code>) to undo the GL y-origin.</p>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text">Preview &amp; compositing — <code class="docutils literal notranslate"><span class="pre">merge.py</span></code> / <code class="docutils literal notranslate"><span class="pre">grid.py</span></code> / <code class="docutils literal notranslate"><span class="pre">overlay.py</span></code></span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Function</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">merge_image(image_dict,</span> <span class="pre">image_text={},</span> <span class="pre">put_text=True)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">img}</span></code>, <code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">str}</span></code>, <code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code></p></td>
+<td><p class="sd-card-text">Labeled near-square grid; auto-sizes caption font. Assumes ~2048×1536 sources.</p></td>
+</tr>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">make_image_grid(images)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">list[ndarray]</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code></p></td>
+<td><p class="sd-card-text">Bare tiling; resizes odd-sized tiles. Empty list → <code class="docutils literal notranslate"><span class="pre">(1,1,3)</span></code>.</p></td>
+</tr>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">overlay_mask(image,</span> <span class="pre">mask,</span> <span class="pre">color,</span> <span class="pre">alpha=0.7)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">image</span></code>, <code class="docutils literal notranslate"><span class="pre">mask:</span> <span class="pre">bool</span> <span class="pre">HxW</span></code>, <code class="docutils literal notranslate"><span class="pre">color</span></code>, <code class="docutils literal notranslate"><span class="pre">alpha</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">image</span></code></p></td>
+<td><p class="sd-card-text"><strong>In-place</strong> alpha blend; asserts <code class="docutils literal notranslate"><span class="pre">mask.ndim==2</span></code> and matching HxW.</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</details></section>
+
+        </article>
+      </div>
+      <footer>
+        
+        <div class="related-pages">
+          <a class="next-page" href="process_api.html">
+              <div class="page-info">
+                <div class="context">
+                  <span>Next</span>
+                </div>
+                <div class="title">Video Processing — API</div>
+              </div>
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+            </a>
+          <a class="prev-page" href="dataset_acquisition_api.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">Dataset Acquisition — API</div>
+                
+              </div>
+            </a>
+        </div>
+        <div class="bottom-of-page">
+          <div class="left-details">
+            <div class="copyright">
+                Copyright &#169; 2025, Mingi Choi
+            </div>
+            Made with <a href="https://www.sphinx-doc.org/">Sphinx</a> and <a class="muted-link" href="https://pradyunsg.me">@pradyunsg</a>'s
+            
+            <a href="https://github.com/pradyunsg/furo">Furo</a>
+            
+          </div>
+          <div class="right-details">
+            
+          </div>
+        </div>
+        
+      </footer>
+    </div>
+    <aside class="toc-drawer no-toc">
+      
+      
+      
+    </aside>
+  </div>
+</div><script src="_static/documentation_options.js?v=7026087e"></script>
+    <script src="_static/doctools.js?v=9bcbadda"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
+    </body>
+</html>

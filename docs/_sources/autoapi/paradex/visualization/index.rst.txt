@@ -11,6 +11,6 @@ Submodules
    :maxdepth: 1
 
    /autoapi/paradex/visualization/robot/index
-   /autoapi/paradex/visualization/visual_hull/index
+   /autoapi/paradex/visualization/scene/index
 
 

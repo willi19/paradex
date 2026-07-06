@@ -204,6 +204,8 @@
 <li class="toctree-l1"><a class="reference internal" href="camera_system.html">Camera System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image.html">Image Layer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="process.html">Video Processing</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
@@ -211,6 +213,8 @@
 <li class="toctree-l1"><a class="reference internal" href="camera_system_api.html">Camera System — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_api.html">Image Layer — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="process_api.html">Video Processing — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -310,6 +314,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/file_io/index.html">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/log/index.html">paradex.utils.log</a></li>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/path/index.html">paradex.utils.path</a></li>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/upload_file/index.html">paradex.utils.upload_file</a></li>
@@ -322,7 +327,12 @@
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/visualization/robot/index.html">paradex.visualization.robot</a></li>
-<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -506,6 +516,12 @@
     <td></td>
     <td>&#160;&#160;&#160;
         <a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#module-paradex.io.camera_system.monitor_daemon"><code class="xref">paradex.io.camera_system.monitor_daemon</code></a></td><td>
+    <em></em></td>
+  </tr>
+  <tr class="cg-1">
+    <td></td>
+    <td>&#160;&#160;&#160;
+        <a href="autoapi/paradex/io/camera_system/protocol/index.html#module-paradex.io.camera_system.protocol"><code class="xref">paradex.io.camera_system.protocol</code></a></td><td>
     <em></em></td>
   </tr>
   <tr class="cg-1">
@@ -865,6 +881,12 @@
   <tr class="cg-1">
     <td></td>
     <td>&#160;&#160;&#160;
+        <a href="autoapi/paradex/utils/log/index.html#module-paradex.utils.log"><code class="xref">paradex.utils.log</code></a></td><td>
+    <em></em></td>
+  </tr>
+  <tr class="cg-1">
+    <td></td>
+    <td>&#160;&#160;&#160;
         <a href="autoapi/paradex/utils/path/index.html#module-paradex.utils.path"><code class="xref">paradex.utils.path</code></a></td><td>
     <em></em></td>
   </tr>
@@ -907,55 +929,31 @@
   <tr class="cg-1">
     <td></td>
     <td>&#160;&#160;&#160;
-        <a href="autoapi/paradex/visualization/deprecated/contact_graph/index.html#module-paradex.visualization.deprecated.contact_graph"><code class="xref">paradex.visualization.deprecated.contact_graph</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr class="cg-1">
-    <td></td>
-    <td>&#160;&#160;&#160;
-        <a href="autoapi/paradex/visualization/deprecated/renderer/index.html#module-paradex.visualization.deprecated.renderer"><code class="xref">paradex.visualization.deprecated.renderer</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr class="cg-1">
-    <td></td>
-    <td>&#160;&#160;&#160;
-        <a href="autoapi/paradex/visualization/deprecated/shape/index.html#module-paradex.visualization.deprecated.shape"><code class="xref">paradex.visualization.deprecated.shape</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr class="cg-1">
-    <td></td>
-    <td>&#160;&#160;&#160;
-        <a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#module-paradex.visualization.deprecated.skeleton.body"><code class="xref">paradex.visualization.deprecated.skeleton.body</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr class="cg-1">
-    <td></td>
-    <td>&#160;&#160;&#160;
-        <a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#module-paradex.visualization.deprecated.skeleton.hand"><code class="xref">paradex.visualization.deprecated.skeleton.hand</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr class="cg-1">
-    <td></td>
-    <td>&#160;&#160;&#160;
-        <a href="autoapi/paradex/visualization/deprecated/viewer/index.html#module-paradex.visualization.deprecated.viewer"><code class="xref">paradex.visualization.deprecated.viewer</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr class="cg-1">
-    <td></td>
-    <td>&#160;&#160;&#160;
-        <a href="autoapi/paradex/visualization/deprecated/visual_hull/index.html#module-paradex.visualization.deprecated.visual_hull"><code class="xref">paradex.visualization.deprecated.visual_hull</code></a></td><td>
-    <em></em></td>
-  </tr>
-  <tr class="cg-1">
-    <td></td>
-    <td>&#160;&#160;&#160;
         <a href="autoapi/paradex/visualization/robot/index.html#module-paradex.visualization.robot"><code class="xref">paradex.visualization.robot</code></a></td><td>
     <em></em></td>
   </tr>
   <tr class="cg-1">
     <td></td>
     <td>&#160;&#160;&#160;
-        <a href="autoapi/paradex/visualization/visual_hull/index.html#module-paradex.visualization.visual_hull"><code class="xref">paradex.visualization.visual_hull</code></a></td><td>
+        <a href="autoapi/paradex/visualization/scene/index.html#module-paradex.visualization.scene"><code class="xref">paradex.visualization.scene</code></a></td><td>
+    <em></em></td>
+  </tr>
+  <tr class="cg-1">
+    <td></td>
+    <td>&#160;&#160;&#160;
+        <a href="autoapi/paradex/visualization/scene/base/index.html#module-paradex.visualization.scene.base"><code class="xref">paradex.visualization.scene.base</code></a></td><td>
+    <em></em></td>
+  </tr>
+  <tr class="cg-1">
+    <td></td>
+    <td>&#160;&#160;&#160;
+        <a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#module-paradex.visualization.scene.open3d_backend"><code class="xref">paradex.visualization.scene.open3d_backend</code></a></td><td>
+    <em></em></td>
+  </tr>
+  <tr class="cg-1">
+    <td></td>
+    <td>&#160;&#160;&#160;
+        <a href="autoapi/paradex/visualization/scene/viser_backend/index.html#module-paradex.visualization.scene.viser_backend"><code class="xref">paradex.visualization.scene.viser_backend</code></a></td><td>
     <em></em></td>
   </tr>
   <tr class="cg-1">

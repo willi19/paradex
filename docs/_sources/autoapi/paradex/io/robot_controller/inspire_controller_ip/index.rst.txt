@@ -11,6 +11,8 @@ paradex.io.robot_controller.inspire_controller_ip
 Module Contents
 ---------------
 
+.. py:data:: logger
+
 .. py:data:: action_dof
    :value: 6
 

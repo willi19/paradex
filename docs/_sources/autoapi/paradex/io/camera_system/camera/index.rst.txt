@@ -6,8 +6,12 @@ paradex.io.camera_system.camera
 
 
 
+
+
 Module Contents
 ---------------
+
+.. py:data:: logger
 
 .. py:class:: Camera(cam_type, name, frame_shape=(1536, 2048, 3), cfg=None)
 
@@ -18,12 +22,17 @@ Module Contents
    coordinate through a set of :class:`threading.Event` objects (``start``,
    ``stop``, ``exit``, ``acquisition`` ...) — a handshake, not plain flags.
 
-   Frames are routed to *sinks* depending on ``mode``:
+   Two acquisition modes: ``image`` (one single-frame still) and ``acquire``
+   (continuous). In ``acquire`` mode frames are routed to whichever *sinks* are
+   enabled — toggled independently at runtime via :meth:`set_sink`:
 
-   - ``stream`` / ``full`` → a double-buffered shared-memory block read by
+   - **stream** sink → a double-buffered shared-memory block read by
      :class:`MultiCameraReader`.
-   - ``video`` / ``full`` → an ``.avi`` file on disk.
-   - ``image`` → a single still.
+   - **video** sink → an ``.avi`` file on disk.
+   - **snapshot** sink → the next N frames written as images.
+
+   (``video`` / ``stream`` / ``full`` are no longer modes — that's just
+   ``acquire`` with the corresponding sink(s) on.)
 
    :param cam_type: Backend, currently only ``"pyspin"``.
    :type cam_type: str
@@ -101,11 +110,12 @@ Module Contents
       signals the capture thread via ``event["start"]`` and waits on
       ``event["acquisition"]`` (the handshake).
 
-      :param mode: ``image`` / ``video`` / ``stream`` / ``full``.
+      :param mode: ``image`` (single-frame still) or ``acquire`` (continuous; enable
+                   outputs with :meth:`set_sink`).
       :type mode: str
       :param syncMode: Wait on the hardware trigger if ``True``.
       :type syncMode: bool
-      :param save_path: Output dir/file for ``video``/``image`` (required for those modes).
+      :param save_path: Output dir/file for ``image`` (required for ``image`` mode).
       :type save_path: str, optional
       :param fps: Frame rate for free-run, by default 30.
       :type fps: int, optional
@@ -116,6 +126,25 @@ Module Contents
       :param timeout: Max seconds to wait for the capture thread to begin acquiring before
                       logging a warning and returning, by default 10.0.
       :type timeout: float, optional
+
+
+
+   .. py:method:: set_sink(video=None, stream=None, save_path=None, snapshot=None)
+
+      Toggle output sinks at runtime — safe to call while capturing.
+
+      Records only the *desired* sink state; the acquire loop opens/closes the
+      real ``VideoWriter`` and SHM on the capture thread, so nothing here
+      touches OpenCV/SHM from the caller's thread.
+
+      :param video: Turn the ``.avi`` video sink on/off. Use ``save_path`` to set where.
+      :type video: bool, optional
+      :param stream: Turn the shared-memory stream sink on/off.
+      :type stream: bool, optional
+      :param save_path: Destination dir/file for the video sink (applied when it turns on).
+      :type save_path: str, optional
+      :param snapshot: ``(path, count)`` — write the next ``count`` frames as images.
+      :type snapshot: tuple, optional
 
 
 
@@ -160,15 +189,18 @@ Module Contents
 
 
 
-   .. py:method:: continuous_acquire()
+   .. py:method:: acquire()
 
-      Capture loop for ``video`` / ``stream`` / ``full`` modes.
+      Unified capture loop: acquire continuously, route to runtime sinks.
 
       Arms the PySpin camera (``BeginAcquisition``), signals ``acquisition``,
       then loops grabbing frames until ``start`` clears or ``exit`` sets. Each
-      frame is written to the video sink (with blank frames inserted for drops)
-      and/or the SHM double buffer. On any exception it records the error and
-      waits for ``error_reset``. Runs on the capture thread only.
+      frame is routed to whichever sinks are currently enabled — video, SHM
+      stream, one-shot snapshot — read fresh every iteration from the
+      :meth:`set_sink` state, so sinks can be toggled live. The real
+      ``VideoWriter`` is opened/closed *here* (capture thread) when the video
+      sink flips. On any exception it records the error and waits for
+      ``error_reset``. Runs on the capture thread only.
 
 
 
@@ -230,8 +262,8 @@ Module Contents
       Capture-thread main loop.
 
       Connects the camera, then until ``exit`` is set: when ``start`` is set,
-      dispatches to :meth:`continuous_acquire` (video/stream/full) or
-      :meth:`single_acquire` (image). Releases the camera on exit.
+      dispatches to :meth:`acquire` (mode ``acquire`` — continuous + runtime
+      sinks) or :meth:`single_acquire` (mode ``image``). Releases on exit.
 
 
 

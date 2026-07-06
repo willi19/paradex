@@ -11,6 +11,10 @@ so agents stop rediscovering subsystem structure from scratch every session.
 | Subsystem | Start at |
 |-----------|----------|
 | Camera system | [`camera_system/README.md`](camera_system/README.md) |
+| Calibration (params & pipeline) | [`calibration/README.md`](calibration/README.md) |
+| Dataset acquisition (`CaptureSession`, `match_sync`) | [`dataset_acquisition/README.md`](dataset_acquisition/README.md) |
+| Image layer (`ImageDict`, aruco, undistort, render) | [`image/README.md`](image/README.md) |
+| Video post-processing (raw→undistort→H.264→NAS upload) | [`video/README.md`](video/README.md) |
 
 Design/roadmap docs stay in `design/` (repo root); generated API reference stays in
 `docs/`. This directory is orientation, not the plan and not the reference.

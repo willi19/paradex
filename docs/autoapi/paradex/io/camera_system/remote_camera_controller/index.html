@@ -206,6 +206,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../../camera_system.html">Camera System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../image.html">Image Layer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../process.html">Video Processing</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
@@ -213,6 +215,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../../camera_system_api.html">Camera System — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../image_api.html">Image Layer — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../process_api.html">Video Processing — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -312,6 +316,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/file_io/index.html">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../utils/log/index.html">paradex.utils.log</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/path/index.html">paradex.utils.path</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/upload_file/index.html">paradex.utils.upload_file</a></li>
@@ -324,7 +329,12 @@
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../visualization/robot/index.html">paradex.visualization.robot</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../../visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -375,6 +385,11 @@
 <span id="paradex-io-camera-system-remote-camera-controller"></span><h1>paradex.io.camera_system.remote_camera_controller<a class="headerlink" href="#module-paradex.io.camera_system.remote_camera_controller" title="Link to this heading">¶</a></h1>
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
+<dl class="py data">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.logger">
+<span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.remote_camera_controller.</span></span><span class="sig-name descname"><span class="pre">logger</span></span><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.logger" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.remote_camera_controller.</span></span><span class="sig-name descname"><span class="pre">remote_camera_controller</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pc_list</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">auto_reload</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stall_timeout</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.0</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller" title="Link to this definition">¶</a></dt>
@@ -412,6 +427,11 @@ by default 3.0.</p></li>
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.ping_port">
 <span class="sig-name descname"><span class="pre">ping_port</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5480</span></em><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.ping_port" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.monitor_port">
+<span class="sig-name descname"><span class="pre">monitor_port</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5481</span></em><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.monitor_port" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -490,8 +510,38 @@ by default 3.0.</p></li>
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pc_last_seen">
+<span class="sig-name descname"><span class="pre">pc_last_seen</span></span><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pc_last_seen" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pub_timeout">
+<span class="sig-name descname"><span class="pre">pub_timeout</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">2.0</span></em><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pub_timeout" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.status_lock">
 <span class="sig-name descname"><span class="pre">status_lock</span></span><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.status_lock" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.health_thread">
+<span class="sig-name descname"><span class="pre">health_thread</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.health_thread" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.cmd_queue">
+<span class="sig-name descname"><span class="pre">cmd_queue</span></span><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.cmd_queue" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.worker_threads">
+<span class="sig-name descname"><span class="pre">worker_threads</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.worker_threads" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.worker_stop">
+<span class="sig-name descname"><span class="pre">worker_stop</span></span><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.worker_stop" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -538,19 +588,17 @@ error or mismatched reply.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.send_command">
 <span class="sig-name descname"><span class="pre">send_command</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cmd</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.send_command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.send_command" title="Link to this definition">¶</a></dt>
-<dd><p>Broadcast a command to every PC in parallel and collect replies.</p>
-<p>명령 전송 및 응답 수신 (PC 병렬 처리). Stamps <code class="docutils literal notranslate"><span class="pre">cmd</span></code> with this
-controller’s name, then fans the request out over all command sockets
-on one thread each, joining before returning. <code class="docutils literal notranslate"><span class="pre">start</span></code> / <code class="docutils literal notranslate"><span class="pre">stop</span></code>
-actions get a longer receive timeout than other actions. Socket-level
-failures are turned into an <code class="docutils literal notranslate"><span class="pre">error</span></code> status entry rather than raised.</p>
+<dd><p>Broadcast <code class="docutils literal notranslate"><span class="pre">cmd</span></code> to every PC via its worker and collect the replies.</p>
+<p>Enqueues the command on each per-PC worker (which owns the socket) and
+waits until all have replied. A slow PC delays only <em>this</em> call’s return,
+not other PCs’ keepalive. Same signature/return as before.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>cmd</strong> (<em>dict</em>) – Command payload with at least an <code class="docutils literal notranslate"><span class="pre">action</span></code> key; sent as JSON.</p>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Maps each PC name to its JSON reply (or a synthesized
-<code class="docutils literal notranslate"><span class="pre">{'status':</span> <span class="pre">'error',</span> <span class="pre">...}</span></code> dict on timeout/ZMQ error).</p>
+<code class="docutils literal notranslate"><span class="pre">{'status':</span> <span class="pre">'error',</span> <span class="pre">...}</span></code> dict on timeout / no worker reply).</p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>dict</p>
@@ -616,6 +664,57 @@ PC whose reply reports an error.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.arm">
+<span class="sig-name descname"><span class="pre">arm</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">syncMode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.arm"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.arm" title="Link to this definition">¶</a></dt>
+<dd><p>Start acquiring with <strong>no</strong> sink; toggle sinks later with
+<a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_record" title="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_record"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_record()</span></code></a> / <a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_stream" title="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_stream"><code class="xref py py-meth docutils literal notranslate"><span class="pre">set_stream()</span></code></a> / <a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.snapshot" title="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.snapshot"><code class="xref py py-meth docutils literal notranslate"><span class="pre">snapshot()</span></code></a>.</p>
+<p>Convenience for <code class="docutils literal notranslate"><span class="pre">start(&quot;acquire&quot;,</span> <span class="pre">...)</span></code> — the decoupled-sink entry point.
+Cameras grab frames continuously; nothing is written or streamed until a
+sink is enabled.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_sink">
+<span class="sig-name descname"><span class="pre">set_sink</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">video</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stream</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">snapshot</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.set_sink"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_sink" title="Link to this definition">¶</a></dt>
+<dd><p>Toggle output sinks on the running capture — any time, any combination.</p>
+<p>Thread-safe (goes through the per-PC workers). Only the given sinks change.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>video</strong> (<em>bool</em><em>, </em><em>optional</em>) – Turn the <code class="docutils literal notranslate"><span class="pre">.avi</span></code> video sink on/off.</p></li>
+<li><p><strong>stream</strong> (<em>bool</em><em>, </em><em>optional</em>) – Turn the shared-memory stream sink on/off.</p></li>
+<li><p><strong>save_path</strong> (<em>str</em><em>, </em><em>optional</em>) – Session-relative dir for the video sink (used when it turns on).</p></li>
+<li><p><strong>snapshot</strong> (<em>tuple</em><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">(save_path,</span> <span class="pre">count)</span></code> — write the next <code class="docutils literal notranslate"><span class="pre">count</span></code> frames as images.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Per-PC reply from the <code class="docutils literal notranslate"><span class="pre">sink</span></code> command.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_record">
+<span class="sig-name descname"><span class="pre">set_record</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.set_record"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_record" title="Link to this definition">¶</a></dt>
+<dd><p>Turn the video (.avi) sink on (with <code class="docutils literal notranslate"><span class="pre">save_path</span></code>) or off, live.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_stream">
+<span class="sig-name descname"><span class="pre">set_stream</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">on</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.set_stream"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_stream" title="Link to this definition">¶</a></dt>
+<dd><p>Turn the shared-memory stream sink on/off, live.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.snapshot">
+<span class="sig-name descname"><span class="pre">snapshot</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">count</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.snapshot"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.snapshot" title="Link to this definition">¶</a></dt>
+<dd><p>Write the next <code class="docutils literal notranslate"><span class="pre">count</span></code> frames from every camera as images.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.run">
 <span class="sig-name descname"><span class="pre">run</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.run"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.run" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -623,7 +722,15 @@ PC whose reply reports an error.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.is_error">
 <span class="sig-name descname"><span class="pre">is_error</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.is_error"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.is_error" title="Link to this definition">¶</a></dt>
-<dd><p>True if any PC is currently erroring or any camera is stalled (live).</p>
+<dd><p>True if any PC is currently erroring/stalled (live) or a capture was
+interrupted (sticky, until the next <a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.start" title="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.start"><code class="xref py py-meth docutils literal notranslate"><span class="pre">start()</span></code></a>).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.capture_interrupted">
+<span class="sig-name descname"><span class="pre">capture_interrupted</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/remote_camera_controller.html#remote_camera_controller.capture_interrupted"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.capture_interrupted" title="Link to this definition">¶</a></dt>
+<dd><p>True if a daemon died/restarted mid-capture and the recording was not
+resumed. Sticky until the next <a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.start" title="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.start"><code class="xref py py-meth docutils literal notranslate"><span class="pre">start()</span></code></a> / <a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.arm" title="paradex.io.camera_system.remote_camera_controller.remote_camera_controller.arm"><code class="xref py py-meth docutils literal notranslate"><span class="pre">arm()</span></code></a>.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -684,10 +791,12 @@ PC whose reply reports an error.</p>
             <ul>
 <li><a class="reference internal" href="#">paradex.io.camera_system.remote_camera_controller</a><ul>
 <li><a class="reference internal" href="#module-contents">Module Contents</a><ul>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.logger"><code class="docutils literal notranslate"><span class="pre">logger</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code></a><ul>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.name"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.name</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pc_list"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.pc_list</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.ping_port"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.ping_port</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.monitor_port"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.monitor_port</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.command_port"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.command_port</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.exit_event"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.exit_event</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.start_event"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.start_event</span></code></a></li>
@@ -703,7 +812,13 @@ PC whose reply reports an error.</p>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.stalled"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.stalled</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pc_status"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.pc_status</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.last_response"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.last_response</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pc_last_seen"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.pc_last_seen</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pub_timeout"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.pub_timeout</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.status_lock"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.status_lock</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.health_thread"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.health_thread</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.cmd_queue"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.cmd_queue</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.worker_threads"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.worker_threads</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.worker_stop"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.worker_stop</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.run_thread"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.run_thread</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.initialize"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.initialize()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.check_server_alive"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.check_server_alive()</span></code></a></li>
@@ -714,8 +829,14 @@ PC whose reply reports an error.</p>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.end"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.end()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.reload_cameras"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.reload_cameras()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.force_takeover"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.force_takeover()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.arm"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.arm()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_sink"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.set_sink()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_record"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.set_record()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_stream"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.set_stream()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.snapshot"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.snapshot()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.run"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.run()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.is_error"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.is_error()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.capture_interrupted"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.capture_interrupted()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.get_status"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.get_status()</span></code></a></li>
 </ul>
 </li>

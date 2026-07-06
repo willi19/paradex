@@ -12,6 +12,7 @@ Submodules
 
    /autoapi/paradex/utils/file_io/index
    /autoapi/paradex/utils/keyboard_listener/index
+   /autoapi/paradex/utils/log/index
    /autoapi/paradex/utils/path/index
    /autoapi/paradex/utils/system/index
    /autoapi/paradex/utils/upload_file/index

@@ -1,0 +1,188 @@
+paradex.visualization.scene.base
+================================
+
+.. py:module:: paradex.visualization.scene.base
+
+.. autoapi-nested-parse::
+
+   Backend-agnostic scene + animation API shared by the viser and open3d backends.
+
+   The design separates two concerns that the old ``ViserViewer`` tangled together:
+
+   * **Scene** — *what* is in the world: named robots and objects. You build it once
+     with :meth:`Scene.add_robot` / :meth:`Scene.add_object`.
+   * **Timeline** — *how* those named entities move over frames. You declare it once
+     with :meth:`Scene.animate`; the base class owns the player state, frame clamping
+     and video export. Backends only implement "put entity X into state Y".
+
+   Both backends (`ViserScene`, `Open3DScene`) subclass :class:`Scene` and therefore
+   share the *exact same* call surface. A single script can drive an interactive
+   viser window or render an mp4 with open3d by swapping the constructor.
+
+   Color convention everywhere: **RGB or RGBA float in 0.0–1.0**. ``None`` means
+   "keep the mesh's native color".
+
+
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: Color
+
+.. py:data:: Pose
+
+.. py:class:: Timeline
+
+   A single shared timeline. ``apply(t)`` mutates the scene to frame ``t``.
+
+
+   .. py:attribute:: num_frames
+      :type:  int
+
+
+   .. py:attribute:: fps
+      :type:  float
+
+
+   .. py:attribute:: apply
+      :type:  Callable[[int], None]
+
+
+.. py:function:: normalize_color(color: Color) -> Tuple[Optional[Tuple[float, float, float]], Optional[float]]
+
+   Split an RGB/RGBA 0-1 color into ``(rgb, opacity)``.
+
+   Returns ``(None, None)`` for ``color is None`` (keep native color).
+   ``opacity`` is ``None`` when only RGB was given, so callers can leave the
+   existing opacity untouched instead of forcing it to 1.0.
+
+
+.. py:class:: Scene
+
+   Bases: :py:obj:`abc.ABC`
+
+
+   Abstract backend-agnostic scene.
+
+   Concrete methods here (``animate``, ``sequence``, ``goto_frame``, color
+   handling) are backend-independent. Everything a backend must supply is an
+   ``@abstractmethod`` below.
+
+
+   .. py:method:: animate(robot: Optional[Dict[str, numpy.ndarray]] = None, object: Optional[Dict[str, numpy.ndarray]] = None, *, num_frames: Optional[int] = None, fps: float = 30.0) -> Union[Scene, Callable]
+
+      Declare the animation. Two forms, one method:
+
+      **Declarative** (90% case) — pass per-entity arrays that share one
+      timeline and all play *together*::
+
+          scene.animate(
+              robot={"arm": qpos},        # (T, ndof)
+              object={"cup": cup_poses},  # (T, 4, 4)
+              fps=30,
+          )
+
+      Entity names must already exist (via ``add_robot`` / ``add_object``).
+      Entities not mentioned hold their current state. ``num_frames`` is the
+      longest array; shorter arrays clamp on their last value.
+
+      **Callback** — for procedural / externally-driven per-frame logic. Use
+      as a decorator; this is what replaces hand-rolled players::
+
+          @scene.animate(num_frames=T, fps=30)
+          def frame(t):
+              scene.set_qpos("arm", plan.qpos[t])
+              scene.set_pose("cup", track[t])
+
+      Either form installs exactly one timeline, snaps to frame 0, and wires
+      the backend player. Calling ``animate`` again *replaces* the timeline;
+      use :meth:`sequence` to play clips back-to-back.
+
+
+
+   .. py:method:: sequence(clips: Sequence[Dict[str, Dict[str, numpy.ndarray]]], *, fps: float = 30.0) -> Scene
+
+      Play several declarative clips back-to-back on one concatenated
+      timeline. Each clip is ``{"robot": {...}, "object": {...}}``. This is
+      the *explicit* opt-in for the old ``add_traj``-appends-in-time behavior,
+      so sequencing never happens by accident.
+
+
+
+   .. py:method:: goto_frame(t: int) -> None
+
+      Clamp ``t`` to the timeline, apply it, and let the backend redraw.
+
+
+
+   .. py:property:: num_frames
+      :type: int
+
+
+
+   .. py:property:: fps
+      :type: float
+
+
+
+   .. py:property:: frame
+      :type: int
+
+
+
+   .. py:method:: add_robot(name: str, urdf_path: str, pose: Optional[Pose] = None, color: Color = None) -> object
+      :abstractmethod:
+
+
+      Load a URDF robot under ``name``. ``color`` (RGBA 0-1) applies to all
+      links at load time; ``pose`` is the 4x4 root transform.
+
+
+
+   .. py:method:: add_object(name: str, mesh, pose: Optional[Pose] = None, color: Color = None) -> object
+      :abstractmethod:
+
+
+      Add a ``trimesh`` object under ``name``.
+
+
+
+   .. py:method:: set_qpos(name: str, qpos: numpy.ndarray) -> None
+      :abstractmethod:
+
+
+      Set a robot's joint configuration.
+
+
+
+   .. py:method:: set_pose(name: str, pose: Pose) -> None
+      :abstractmethod:
+
+
+      Set the 4x4 root pose of a robot or object.
+
+
+
+   .. py:method:: change_color(name: str, color: Color, links: Optional[Sequence[str]] = None) -> None
+      :abstractmethod:
+
+
+      Recolor a robot or object. ``color`` is RGB/RGBA 0-1. For robots,
+      ``links=None`` recolors every link; pass a list to target specific ones.
+
+
+
+   .. py:method:: export_video(path: str, fps: Optional[float] = None) -> str
+      :abstractmethod:
+
+
+      Render the installed timeline to a video file and return its path.
+
+
+

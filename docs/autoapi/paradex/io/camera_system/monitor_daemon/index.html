@@ -206,6 +206,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../../camera_system.html">Camera System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../image.html">Image Layer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../process.html">Video Processing</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
@@ -213,6 +215,8 @@
 <li class="toctree-l1"><a class="reference internal" href="../../../../../camera_system_api.html">Camera System — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../../image_api.html">Image Layer — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../../process_api.html">Video Processing — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -312,6 +316,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/file_io/index.html">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../utils/log/index.html">paradex.utils.log</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/path/index.html">paradex.utils.path</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../utils/upload_file/index.html">paradex.utils.upload_file</a></li>
@@ -324,7 +329,12 @@
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../visualization/robot/index.html">paradex.visualization.robot</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../../visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -375,6 +385,11 @@
 <span id="paradex-io-camera-system-monitor-daemon"></span><h1>paradex.io.camera_system.monitor_daemon<a class="headerlink" href="#module-paradex.io.camera_system.monitor_daemon" title="Link to this heading">¶</a></h1>
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
+<dl class="py data">
+<dt class="sig sig-object py" id="paradex.io.camera_system.monitor_daemon.logger">
+<span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.monitor_daemon.</span></span><span class="sig-name descname"><span class="pre">logger</span></span><a class="headerlink" href="#paradex.io.camera_system.monitor_daemon.logger" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.monitor_daemon.pc_state">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.monitor_daemon.</span></span><span class="sig-name descname"><span class="pre">pc_state</span></span><a class="headerlink" href="#paradex.io.camera_system.monitor_daemon.pc_state" title="Link to this definition">¶</a></dt>
@@ -436,6 +451,16 @@
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.monitor_daemon.CameraMonitor.controller_states">
 <span class="sig-name descname"><span class="pre">controller_states</span></span><a class="headerlink" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.controller_states" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.monitor_daemon.CameraMonitor.camera_summary">
+<span class="sig-name descname"><span class="pre">camera_summary</span></span><a class="headerlink" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.camera_summary" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.monitor_daemon.CameraMonitor.pc_running">
+<span class="sig-name descname"><span class="pre">pc_running</span></span><a class="headerlink" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.pc_running" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -551,6 +576,7 @@
             <ul>
 <li><a class="reference internal" href="#">paradex.io.camera_system.monitor_daemon</a><ul>
 <li><a class="reference internal" href="#module-contents">Module Contents</a><ul>
+<li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.logger"><code class="docutils literal notranslate"><span class="pre">logger</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.pc_state"><code class="docutils literal notranslate"><span class="pre">pc_state</span></code></a><ul>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.pc_state.DISCONNECTED"><code class="docutils literal notranslate"><span class="pre">pc_state.DISCONNECTED</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.pc_state.CONNECTED"><code class="docutils literal notranslate"><span class="pre">pc_state.CONNECTED</span></code></a></li>
@@ -566,6 +592,8 @@
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.pc_state"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.pc_state</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.camera_states"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.camera_states</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.controller_states"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.controller_states</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.camera_summary"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.camera_summary</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.pc_running"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.pc_running</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.ctx"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.ctx</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.monitor_sockets"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.monitor_sockets</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.app"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.app</span></code></a></li>

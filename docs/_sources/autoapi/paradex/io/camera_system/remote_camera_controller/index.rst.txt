@@ -6,8 +6,12 @@ paradex.io.camera_system.remote_camera_controller
 
 
 
+
+
 Module Contents
 ---------------
+
+.. py:data:: logger
 
 .. py:class:: remote_camera_controller(name, pc_list=None, auto_reload=False, stall_timeout=3.0)
 
@@ -42,6 +46,11 @@ Module Contents
 
    .. py:attribute:: ping_port
       :value: 5480
+
+
+
+   .. py:attribute:: monitor_port
+      :value: 5481
 
 
 
@@ -102,7 +111,31 @@ Module Contents
    .. py:attribute:: last_response
 
 
+   .. py:attribute:: pc_last_seen
+
+
+   .. py:attribute:: pub_timeout
+      :value: 2.0
+
+
+
    .. py:attribute:: status_lock
+
+
+   .. py:attribute:: health_thread
+      :value: None
+
+
+
+   .. py:attribute:: cmd_queue
+
+
+   .. py:attribute:: worker_threads
+      :value: []
+
+
+
+   .. py:attribute:: worker_stop
 
 
    .. py:attribute:: run_thread
@@ -140,19 +173,17 @@ Module Contents
 
    .. py:method:: send_command(cmd)
 
-      Broadcast a command to every PC in parallel and collect replies.
+      Broadcast ``cmd`` to every PC via its worker and collect the replies.
 
-      명령 전송 및 응답 수신 (PC 병렬 처리). Stamps ``cmd`` with this
-      controller's name, then fans the request out over all command sockets
-      on one thread each, joining before returning. ``start`` / ``stop``
-      actions get a longer receive timeout than other actions. Socket-level
-      failures are turned into an ``error`` status entry rather than raised.
+      Enqueues the command on each per-PC worker (which owns the socket) and
+      waits until all have replied. A slow PC delays only *this* call's return,
+      not other PCs' keepalive. Same signature/return as before.
 
       :param cmd: Command payload with at least an ``action`` key; sent as JSON.
       :type cmd: dict
 
       :returns: Maps each PC name to its JSON reply (or a synthesized
-                ``{'status': 'error', ...}`` dict on timeout/ZMQ error).
+                ``{'status': 'error', ...}`` dict on timeout / no worker reply).
       :rtype: dict
 
 
@@ -219,12 +250,69 @@ Module Contents
 
 
 
+   .. py:method:: arm(syncMode=False, fps=30, exposure_time=None, gain=None)
+
+      Start acquiring with **no** sink; toggle sinks later with
+      :meth:`set_record` / :meth:`set_stream` / :meth:`snapshot`.
+
+      Convenience for ``start("acquire", ...)`` — the decoupled-sink entry point.
+      Cameras grab frames continuously; nothing is written or streamed until a
+      sink is enabled.
+
+
+
+   .. py:method:: set_sink(video=None, stream=None, save_path=None, snapshot=None)
+
+      Toggle output sinks on the running capture — any time, any combination.
+
+      Thread-safe (goes through the per-PC workers). Only the given sinks change.
+
+      :param video: Turn the ``.avi`` video sink on/off.
+      :type video: bool, optional
+      :param stream: Turn the shared-memory stream sink on/off.
+      :type stream: bool, optional
+      :param save_path: Session-relative dir for the video sink (used when it turns on).
+      :type save_path: str, optional
+      :param snapshot: ``(save_path, count)`` — write the next ``count`` frames as images.
+      :type snapshot: tuple, optional
+
+      :returns: Per-PC reply from the ``sink`` command.
+      :rtype: dict
+
+
+
+   .. py:method:: set_record(save_path=None, on=True)
+
+      Turn the video (.avi) sink on (with ``save_path``) or off, live.
+
+
+
+   .. py:method:: set_stream(on=True)
+
+      Turn the shared-memory stream sink on/off, live.
+
+
+
+   .. py:method:: snapshot(save_path, count=1)
+
+      Write the next ``count`` frames from every camera as images.
+
+
+
    .. py:method:: run()
 
 
    .. py:method:: is_error()
 
-      True if any PC is currently erroring or any camera is stalled (live).
+      True if any PC is currently erroring/stalled (live) or a capture was
+      interrupted (sticky, until the next :meth:`start`).
+
+
+
+   .. py:method:: capture_interrupted()
+
+      True if a daemon died/restarted mid-capture and the recording was not
+      resumed. Sticky until the next :meth:`start` / :meth:`arm`.
 
 
 

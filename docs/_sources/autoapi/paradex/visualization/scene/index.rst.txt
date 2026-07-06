@@ -1,0 +1,34 @@
+paradex.visualization.scene
+===========================
+
+.. py:module:: paradex.visualization.scene
+
+.. autoapi-nested-parse::
+
+   Backend-agnostic scene + animation API.
+
+   One call surface, two backends:
+
+   * :class:`ViserScene` — interactive browser viewer with a built-in player.
+   * :class:`Open3DScene` — headless offscreen renderer for figures / mp4.
+
+   Backends are imported lazily so importing this package does not require both
+   ``viser`` and ``open3d`` to be installed.
+
+       from paradex.visualization.scene import ViserScene   # or Open3DScene
+
+   See ``agent_docs/visualization/usage.md``.
+
+
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 1
+
+   /autoapi/paradex/visualization/scene/base/index
+   /autoapi/paradex/visualization/scene/open3d_backend/index
+   /autoapi/paradex/visualization/scene/viser_backend/index
+
+

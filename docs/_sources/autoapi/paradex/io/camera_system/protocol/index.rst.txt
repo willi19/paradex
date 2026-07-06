@@ -1,0 +1,37 @@
+paradex.io.camera_system.protocol
+=================================
+
+.. py:module:: paradex.io.camera_system.protocol
+
+.. autoapi-nested-parse::
+
+   Shared wire protocol constants for the camera command channel (5482).
+
+   Kept in its own tiny module so both the main-PC controller
+   (``remote_camera_controller``) and the capture-PC daemon
+   (``camera_server_daemon``) import the same values without dragging in each
+   other's heavy dependencies (PySpin, OpenCV, ...).
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: PROTOCOL_VERSION
+   :value: 1
+
+
+.. py:function:: get_auth_token()
+
+   Return the shared command token, or ``None`` for no authentication.
+
+   Read from ``PARADEX_CAMERA_TOKEN``. When unset (the default) the daemon
+   accepts commands from any peer — fine on a closed lab LAN. Set the *same*
+   value on every capture PC's daemon and on the controller to require it, so a
+   stray process on the network can't drive the cameras.
+
+

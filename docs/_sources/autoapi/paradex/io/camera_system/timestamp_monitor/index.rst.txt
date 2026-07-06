@@ -6,8 +6,12 @@ paradex.io.camera_system.timestamp_monitor
 
 
 
+
+
 Module Contents
 ---------------
+
+.. py:data:: logger
 
 .. py:class:: TimestampMonitor(cam_type, name)
 

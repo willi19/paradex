@@ -204,6 +204,8 @@
 <li class="toctree-l1"><a class="reference internal" href="camera_system.html">Camera System</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image.html">Image Layer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="process.html">Video Processing</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
@@ -211,6 +213,8 @@
 <li class="toctree-l1"><a class="reference internal" href="camera_system_api.html">Camera System — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="image_api.html">Image Layer — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="process_api.html">Video Processing — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -310,6 +314,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/file_io/index.html">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/log/index.html">paradex.utils.log</a></li>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/path/index.html">paradex.utils.path</a></li>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/utils/upload_file/index.html">paradex.utils.upload_file</a></li>
@@ -322,7 +327,12 @@
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="autoapi/paradex/visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/visualization/robot/index.html">paradex.visualization.robot</a></li>
-<li class="toctree-l4"><a class="reference internal" href="autoapi/paradex/visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -376,6 +386,8 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.ErrorStatus.Abnormal_Operation_Motor">Abnormal_Operation_Motor (paradex.io.robot_controller.under_test.hand_rh56dftp.ErrorStatus attribute)</a>
 </li>
+        <li><a href="autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.acquire">acquire() (paradex.io.camera_system.camera.Camera method)</a>
+</li>
         <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.AllegroController.action">action (paradex.io.robot_controller.allegro_controller.AllegroController attribute)</a>
 
         <ul>
@@ -394,6 +406,8 @@
         </ul></li>
         <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.actor_handle_dict">actor_handle_dict (paradex.simulator.isaac.Simulator attribute)</a>
 </li>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.add_appearance_panel">add_appearance_panel() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_arrow">add_arrow() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.COLMAPDatabase.add_camera">add_camera() (paradex.calibration.colmap.COLMAPDatabase method)</a>
@@ -403,6 +417,8 @@
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_camera_path_gui">add_camera_path_gui() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.add_capture_panel">add_capture_panel() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_contact_module">add_contact_module() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
@@ -418,23 +434,19 @@
           <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_floor">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_frame">add_frame() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.add_frames">add_frames() (paradex.visualization.deprecated.viewer.ViserViewer method)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.add_geometry">add_geometry() (paradex.visualization.deprecated.skeleton.body.BodyVisualizer method)</a>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.add_frame">add_frame() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.add_geometry">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
+          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_frame">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_grid">add_grid() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.add_grid">add_grid() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_grid">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.add_grid_lines">add_grid_lines() (paradex.visualization.deprecated.viewer.ViserViewer method)</a>
-</li>
+        </ul></li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.COLMAPDatabase.add_image">add_image() (paradex.calibration.colmap.COLMAPDatabase method)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.add_initial_meshes">add_initial_meshes() (paradex.visualization.deprecated.viewer.ViserViewer method)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.COLMAPDatabase.add_keypoints">add_keypoints() (paradex.calibration.colmap.COLMAPDatabase method)</a>
 </li>
@@ -442,31 +454,51 @@
 </li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.COLMAPDatabase.add_matches">add_matches() (paradex.calibration.colmap.COLMAPDatabase method)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_object">add_object() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.add_object">add_object() (paradex.visualization.scene.base.Scene method)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.add_object">(paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
 </li>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.add_object">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_object">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
+</li>
+        </ul></li>
         <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.add_plane">add_plane() (paradex.simulator.isaac.Simulator method)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_player">add_player() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.add_robot">add_robot() (paradex.visualization.scene.base.Scene method)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.add_plane">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
+          <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.add_robot">(paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.add_robot">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_robot">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.add_player">add_player() (paradex.visualization.deprecated.viewer.ViserViewer method)</a>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.add_sphere">add_sphere() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_player">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
+          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_sphere">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_robot">add_robot() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_sphere">add_sphere() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
-</li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_traj">add_traj() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_trimesh">add_trimesh() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.add_trimesh">add_trimesh (paradex.visualization.scene.open3d_backend.Open3DScene attribute)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.add_trimesh">(paradex.visualization.scene.viser_backend.ViserScene attribute)</a>
+</li>
+        </ul></li>
+        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_trimesh">add_trimesh() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
+</li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.COLMAPDatabase.add_two_view_geometry">add_two_view_geometry() (paradex.calibration.colmap.COLMAPDatabase method)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.add_view_io_panel">add_view_io_panel() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.add_view_save_gui">add_view_save_gui() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
@@ -498,7 +530,11 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.ANGLE_SET">ANGLE_SET (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.animate">animate() (paradex.visualization.scene.base.Scene method)</a>
+</li>
         <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.CameraMonitor.app">app (paradex.io.camera_system.monitor_daemon.CameraMonitor attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Timeline.apply">apply (paradex.visualization.scene.base.Timeline attribute)</a>
 </li>
         <li><a href="autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.apply">apply() (paradex.image.image_dict.ImageDict method)</a>
 </li>
@@ -528,6 +564,8 @@
         </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/camera_reader/index.html#paradex.io.camera_system.camera_reader.MultiCameraReader.are_active">are_active() (paradex.io.camera_system.camera_reader.MultiCameraReader method)</a>
 </li>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.arm">arm() (paradex.io.camera_system.remote_camera_controller.remote_camera_controller method)</a>
+</li>
         <li><a href="autoapi/paradex/retargetor/unimanual/index.html#paradex.retargetor.unimanual.Retargetor.arm_name">arm_name (paradex.retargetor.unimanual.Retargetor attribute)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.array_to_blob">array_to_blob() (in module paradex.calibration.colmap)</a>
@@ -546,12 +584,6 @@
 </li>
         <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.autoforce_ip">autoforce_ip() (in module paradex.io.camera_system.pyspin)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.axes">axes (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.axes">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
-</li>
-        </ul></li>
     </ul></td>
   </tr></table>
 </section>
@@ -569,22 +601,12 @@
         <li><a href="autoapi/paradex/robot/curobo/index.html#paradex.robot.curobo.CuroboPlanner.batch_plan_config">batch_plan_config (paradex.robot.curobo.CuroboPlanner attribute)</a>
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.batch_size">batch_size (paradex.image.projection.BatchRenderer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.batch_size">(paradex.visualization.deprecated.renderer.BatchRenderer attribute)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer">BatchRenderer (class in paradex.image.projection)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer">(class in paradex.visualization.deprecated.renderer)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.BAUD_RATE">BAUD_RATE (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/modbus/index.html#paradex.io.robot_controller.under_test.modbus.ModbusClient.baudrate">baudrate (paradex.io.robot_controller.under_test.modbus.ModbusClient attribute)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.bilinear_downsample">bilinear_downsample() (in module paradex.visualization.deprecated.renderer)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.blob_to_array">blob_to_array() (in module paradex.calibration.colmap)</a>
 </li>
@@ -596,14 +618,6 @@
 
         <ul>
           <li><a href="autoapi/paradex/io/teleop/occulus/receiver/index.html#paradex.io.teleop.occulus.receiver.OculusReceiver.body_pose">(paradex.io.teleop.occulus.receiver.OculusReceiver attribute)</a>
-</li>
-        </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer">BodyVisualizer (class in paradex.visualization.deprecated.skeleton.body)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.bones">bones (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.bones">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.PyspinCameraConfig.BUFFER_COUNT">BUFFER_COUNT (paradex.io.camera_system.pyspin.PyspinCameraConfig attribute)</a>
@@ -647,11 +661,7 @@
         <li><a href="autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.CameraLoader.cam_config">cam_config (paradex.io.camera_system.camera_loader.CameraLoader attribute)</a>
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.cam_extrs_t">cam_extrs_t (paradex.image.projection.BatchRenderer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.cam_extrs_t">(paradex.visualization.deprecated.renderer.BatchRenderer attribute)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.cam_info">cam_info (in module paradex.io.camera_system.pyspin)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/utils/index.html#paradex.calibration.utils.cam_param_dir">cam_param_dir (in module paradex.calibration.utils)</a>
@@ -674,6 +684,8 @@
 </li>
         <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.CameraMonitor.camera_states">camera_states (paradex.io.camera_system.monitor_daemon.CameraMonitor attribute)</a>
 </li>
+        <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.CameraMonitor.camera_summary">camera_summary (paradex.io.camera_system.monitor_daemon.CameraMonitor attribute)</a>
+</li>
         <li><a href="autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.CameraLoader.cameralist">cameralist (paradex.io.camera_system.camera_loader.CameraLoader attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.CameraLoader">CameraLoader (class in paradex.io.camera_system.camera_loader)</a>
@@ -684,9 +696,13 @@
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera_server_daemon/index.html#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.cameras_running">cameras_running (paradex.io.camera_system.camera_server_daemon.camera_server_daemon attribute)</a>
 </li>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.capture_interrupted">capture_interrupted() (paradex.io.camera_system.remote_camera_controller.remote_camera_controller method)</a>
+</li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP.capture_path">capture_path (paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/utils/path/index.html#paradex.utils.path.capture_path_list">capture_path_list (in module paradex.utils.path)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.capture_png">capture_png() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.capture_scene_png">capture_scene_png() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
@@ -696,6 +712,8 @@
           <li><a href="autoapi/paradex/io/camera_system/timestamp_monitor/index.html#paradex.io.camera_system.timestamp_monitor.TimestampMonitor.capture_thread">(paradex.io.camera_system.timestamp_monitor.TimestampMonitor attribute)</a>
 </li>
         </ul></li>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.capture_turntable">capture_turntable() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
         <li><a href="autoapi/paradex/dataset_acqusition/capture/index.html#paradex.dataset_acqusition.capture.CaptureSession">CaptureSession (class in paradex.dataset_acqusition.capture)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.capturing">capturing (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
@@ -718,12 +736,6 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.WaypointType.CARTESIAN">CARTESIAN (paradex.io.robot_controller.gui_controller.WaypointType attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.center_camera_on_objects">center_camera_on_objects() (paradex.visualization.deprecated.skeleton.body.BodyVisualizer method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.center_camera_on_objects">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
-</li>
-        </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.cfg">cfg (paradex.io.camera_system.camera.Camera attribute)</a>
 
         <ul>
@@ -734,9 +746,15 @@
         </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/signal_generator/index.html#paradex.io.camera_system.signal_generator.UTGE900.ch">ch (paradex.io.camera_system.signal_generator.UTGE900 attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserRobotModule.change_color">change_color() (paradex.visualization.visualizer.viser.ViserRobotModule method)</a>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.change_color">change_color() (paradex.visualization.scene.base.Scene method)</a>
 
         <ul>
+          <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.change_color">(paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.change_color">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserRobotModule.change_color">(paradex.visualization.visualizer.viser.ViserRobotModule method)</a>
+</li>
           <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.change_color">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
         </ul></li>
@@ -752,8 +770,12 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller/index.html#paradex.io.robot_controller.inspire_controller.checknum">checknum() (in module paradex.io.robot_controller.inspire_controller)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.child_indices">child_indices (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.clear">clear() (paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.clear">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
 </li>
+        </ul></li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.CLEAR_ERROR">CLEAR_ERROR (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/xarm_controller/index.html#paradex.io.robot_controller.xarm_controller.XArmController.clear_error">clear_error() (paradex.io.robot_controller.xarm_controller.XArmController method)</a>
@@ -774,6 +796,8 @@
           <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP.close">(paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP method)</a>
 </li>
         </ul></li>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.cmd_queue">cmd_queue (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
+</li>
         <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.collecting">collecting (paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.collection_thread">collection_thread (paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
@@ -781,6 +805,8 @@
         <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.collision_scene">collision_scene (paradex.visualization.robot.RobotModule property)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.COLMAPDatabase">COLMAPDatabase (class in paradex.calibration.colmap)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Color">Color (in module paradex.visualization.scene.base)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller/index.html#paradex.io.robot_controller.inspire_controller.command">command (in module paradex.io.robot_controller.inspire_controller)</a>
 </li>
@@ -790,14 +816,14 @@
           <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.command_port">(paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/camera_system/camera_server_daemon/index.html#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.command_thread">command_thread() (paradex.io.camera_system.camera_server_daemon.camera_server_daemon method)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.COMMAND_TOPIC">COMMAND_TOPIC (in module paradex.io.robot_controller.allegro_controller)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/exceptions/index.html#paradex.io.robot_controller.under_test.exceptions.CommandError">CommandError</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandReceiver">CommandReceiver (class in paradex.io.capture_pc.command_sender)</a>
 </li>
         <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandSender">CommandSender (class in paradex.io.capture_pc.command_sender)</a>
@@ -866,12 +892,8 @@
         </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.continuous">continuous (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.continuous_acquire">continuous_acquire() (paradex.io.camera_system.camera.Camera method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/io/camera_system/timestamp_monitor/index.html#paradex.io.camera_system.timestamp_monitor.TimestampMonitor.continuous_acquire">(paradex.io.camera_system.timestamp_monitor.TimestampMonitor method)</a>
+        <li><a href="autoapi/paradex/io/camera_system/timestamp_monitor/index.html#paradex.io.camera_system.timestamp_monitor.TimestampMonitor.continuous_acquire">continuous_acquire() (paradex.io.camera_system.timestamp_monitor.TimestampMonitor method)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.AllegroController.control_loop">control_loop() (paradex.io.robot_controller.allegro_controller.AllegroController method)</a>
 
         <ul>
@@ -917,8 +939,6 @@
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.CREATE_DESCRIPTORS_TABLE">CREATE_DESCRIPTORS_TABLE (in module paradex.calibration.colmap)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.COLMAPDatabase.create_descriptors_table">create_descriptors_table (paradex.calibration.colmap.COLMAPDatabase attribute)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.create_floor_mesh">create_floor_mesh() (paradex.visualization.deprecated.viewer.ViserViewer method)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.CREATE_IMAGES_TABLE">CREATE_IMAGES_TABLE (in module paradex.calibration.colmap)</a>
 </li>
@@ -992,8 +1012,6 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/modbus/index.html#paradex.io.robot_controller.under_test.modbus.ModbusClient.debug">debug (paradex.io.robot_controller.under_test.modbus.ModbusClient attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.DEFAULT_DEVICE">DEFAULT_DEVICE (in module paradex.visualization.deprecated.viewer)</a>
-</li>
         <li><a href="autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.DEFAULT_EXPOSURE">DEFAULT_EXPOSURE (in module paradex.io.camera_system.camera_loader)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.DEFAULT_FORCE_SET">DEFAULT_FORCE_SET (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
@@ -1012,14 +1030,10 @@
 </li>
         <li><a href="autoapi/paradex/image/aruco/index.html#paradex.image.aruco.detect_charuco">detect_charuco() (in module paradex.image.aruco)</a>
 </li>
-        <li><a href="autoapi/paradex/io/camera_system/signal_generator/index.html#paradex.io.camera_system.signal_generator.UTGE900.device">device (paradex.io.camera_system.signal_generator.UTGE900 attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.device">(paradex.visualization.deprecated.renderer.BatchRenderer attribute)</a>
-</li>
-        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="autoapi/paradex/io/camera_system/signal_generator/index.html#paradex.io.camera_system.signal_generator.UTGE900.device">device (paradex.io.camera_system.signal_generator.UTGE900 attribute)</a>
+</li>
         <li><a href="autoapi/paradex/transforms/coordinate/index.html#paradex.transforms.coordinate.DEVICE2GLOBAL">DEVICE2GLOBAL (in module paradex.transforms.coordinate)</a>
 </li>
         <li><a href="autoapi/paradex/transforms/coordinate/index.html#paradex.transforms.coordinate.DEVICE2WRIST">DEVICE2WRIST (in module paradex.transforms.coordinate)</a>
@@ -1027,8 +1041,6 @@
         <li><a href="autoapi/paradex/io/robot_controller/under_test/modbus/index.html#paradex.io.robot_controller.under_test.modbus.ModbusClient.disconnect">disconnect() (paradex.io.robot_controller.under_test.modbus.ModbusClient method)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.pc_state.DISCONNECTED">DISCONNECTED (paradex.io.camera_system.monitor_daemon.pc_state attribute)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.display_image">display_image() (in module paradex.visualization.deprecated.renderer)</a>
 </li>
         <li><a href="autoapi/paradex/robot/robot_wrapper/index.html#paradex.robot.robot_wrapper.RobotWrapper.dof">dof (paradex.robot.robot_wrapper.RobotWrapper property)</a>
 
@@ -1058,14 +1070,6 @@
           <li><a href="autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.draw_keypoint">(paradex.image.image_dict.ImageDict method)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/shape/index.html#paradex.visualization.deprecated.shape.draw_mask">draw_mask() (in module paradex.visualization.deprecated.shape)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/shape/index.html#paradex.visualization.deprecated.shape.draw_points">draw_points() (in module paradex.visualization.deprecated.shape)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/shape/index.html#paradex.visualization.deprecated.shape.draw_pose_axes">draw_pose_axes() (in module paradex.visualization.deprecated.shape)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/shape/index.html#paradex.visualization.deprecated.shape.draw_rectangle">draw_rectangle() (in module paradex.visualization.deprecated.shape)</a>
-</li>
         <li><a href="autoapi/paradex/io/robot_controller/gui_controller_simple/index.html#paradex.io.robot_controller.gui_controller_simple.QposTrajectoryGUIController.dt">dt (paradex.io.robot_controller.gui_controller_simple.QposTrajectoryGUIController attribute)</a>
 </li>
     </ul></td>
@@ -1168,6 +1172,14 @@
         </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.CameraLoader.expected_camera_count">expected_camera_count (paradex.io.camera_system.camera_loader.CameraLoader attribute)</a>
 </li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.export_video">export_video() (paradex.visualization.scene.base.Scene method)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.export_video">(paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.export_video">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
+        </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.PyspinCamera.exposure_time">exposure_time (paradex.io.camera_system.pyspin.PyspinCamera attribute)</a>
 
         <ul>
@@ -1207,23 +1219,19 @@
         <li><a href="autoapi/paradex/video/raw_video_processor/index.html#paradex.video.raw_video_processor.RawVideoProcessor.finished">finished() (paradex.video.raw_video_processor.RawVideoProcessor method)</a>
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.flip_z">flip_z (paradex.image.projection.BatchRenderer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.flip_z">(paradex.visualization.deprecated.renderer.BatchRenderer attribute)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.FORCE_ACT">FORCE_ACT (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP.force_calibration">force_calibration() (paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP method)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/inspire_hand_ip_demo/index.html#paradex.io.robot_controller.under_test.inspire_hand_ip_demo.force_demo">force_demo() (in module paradex.io.robot_controller.under_test.inspire_hand_ip_demo)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.FORCE_MAX">FORCE_MAX (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.FORCE_SENSOR_CALIB">FORCE_SENSOR_CALIB (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.FORCE_SET">FORCE_SET (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.force_takeover">force_takeover() (paradex.io.camera_system.remote_camera_controller.remote_camera_controller method)</a>
@@ -1235,9 +1243,15 @@
         <li><a href="autoapi/paradex/io/robot_controller/xarm_controller/index.html#paradex.io.robot_controller.xarm_controller.XArmController.fps">fps (paradex.io.robot_controller.xarm_controller.XArmController attribute)</a>
 
         <ul>
+          <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.fps">(paradex.visualization.scene.base.Scene property)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Timeline.fps">(paradex.visualization.scene.base.Timeline attribute)</a>
+</li>
           <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.fps">(paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
 </li>
         </ul></li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.frame">frame (paradex.visualization.scene.base.Scene property)</a>
+</li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.frame_nodes">frame_nodes (paradex.visualization.visualizer.viser.ViserViewer attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.PyspinCamera.frame_rate">frame_rate (paradex.io.camera_system.pyspin.PyspinCamera attribute)</a>
@@ -1299,6 +1313,8 @@
         <li><a href="autoapi/paradex/io/robot_controller/index.html#paradex.io.robot_controller.get_arm">get_arm() (in module paradex.io.robot_controller)</a>
 </li>
         <li><a href="autoapi/paradex/image/aruco/index.html#paradex.image.aruco.get_aruco_detector">get_aruco_detector() (in module paradex.image.aruco)</a>
+</li>
+        <li><a href="autoapi/paradex/io/camera_system/protocol/index.html#paradex.io.camera_system.protocol.get_auth_token">get_auth_token() (in module paradex.io.camera_system.protocol)</a>
 </li>
         <li><a href="autoapi/paradex/image/aruco/index.html#paradex.image.aruco.get_board_cor">get_board_cor() (in module paradex.image.aruco)</a>
 </li>
@@ -1400,14 +1416,14 @@
           <li><a href="autoapi/paradex/robot/robot_wrapper_updating/index.html#paradex.robot.robot_wrapper_updating.RobotWrapper.get_joint_index">(paradex.robot.robot_wrapper_updating.RobotWrapper method)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/robot/robot_wrapper/index.html#paradex.robot.robot_wrapper.RobotWrapper.get_joint_indices">get_joint_indices() (paradex.robot.robot_wrapper.RobotWrapper method)</a>
 
         <ul>
           <li><a href="autoapi/paradex/robot/robot_wrapper_updating/index.html#paradex.robot.robot_wrapper_updating.RobotWrapper.get_joint_indices">(paradex.robot.robot_wrapper_updating.RobotWrapper method)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.get_joint_limits">get_joint_limits() (paradex.visualization.robot.RobotModule method)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.get_joint_names">get_joint_names() (paradex.visualization.robot.RobotModule method)</a>
@@ -1454,6 +1470,8 @@
         </ul></li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserRobotModule.get_link_vertices">get_link_vertices() (paradex.visualization.visualizer.viser.ViserRobotModule method)</a>
 </li>
+        <li><a href="autoapi/paradex/utils/log/index.html#paradex.utils.log.get_logger">get_logger() (in module paradex.utils.log)</a>
+</li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.COLMAPDatabase.get_matches">get_matches() (paradex.calibration.colmap.COLMAPDatabase method)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.get_num_joints">get_num_joints() (paradex.visualization.robot.RobotModule method)</a>
@@ -1475,8 +1493,6 @@
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP.get_qpos">get_qpos() (paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP method)</a>
 </li>
         <li><a href="autoapi/paradex/video/raw_video_processor/index.html#paradex.video.raw_video_processor.get_raw_videopath_list">get_raw_videopath_list() (in module paradex.video.raw_video_processor)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.get_rendered_faces">get_rendered_faces() (paradex.visualization.deprecated.renderer.BatchRenderer method)</a>
 </li>
         <li><a href="autoapi/paradex/robot/curobo/index.html#paradex.robot.curobo.CuroboPlanner.get_robot_mesh">get_robot_mesh() (paradex.robot.curobo.CuroboPlanner method)</a>
 
@@ -1528,19 +1544,13 @@
           <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.COLMAPDatabase.get_two_view_geometries">(paradex.calibration.colmap.COLMAPDatabase method)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/visual_hull/index.html#paradex.visualization.visual_hull.get_visual_hull">get_visual_hull() (in module paradex.visualization.visual_hull)</a>
-</li>
         <li><a href="autoapi/paradex/io/camera_system/signal_generator/index.html#paradex.io.camera_system.signal_generator.UTGE900.getName">getName() (paradex.io.camera_system.signal_generator.UTGE900 method)</a>
 </li>
         <li><a href="autoapi/paradex/io/capture_pc/ssh/index.html#paradex.io.capture_pc.ssh.git_pull">git_pull() (in module paradex.io.capture_pc.ssh)</a>
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.glctx">glctx (paradex.image.projection.BatchRenderer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.glctx">(paradex.visualization.deprecated.renderer.BatchRenderer attribute)</a>
 </li>
-        </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.global_axis">global_axis (paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.goto_frame">goto_frame() (paradex.visualization.scene.base.Scene method)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.GRAB_TIMEOUT_MS">GRAB_TIMEOUT_MS (in module paradex.io.camera_system.pyspin)</a>
 </li>
@@ -1610,11 +1620,9 @@
           <li><a href="autoapi/paradex/io/teleop/xsens/receiver/index.html#paradex.io.teleop.xsens.receiver.XSensReceiver.hand_pose">(paradex.io.teleop.xsens.receiver.XSensReceiver attribute)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.Waypoint.hand_qpos">hand_qpos (paradex.io.robot_controller.gui_controller.Waypoint attribute)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.hand_range">hand_range (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
+        <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.Waypoint.hand_qpos">hand_qpos (paradex.io.robot_controller.gui_controller.Waypoint attribute)</a>
 </li>
         <li><a href="autoapi/paradex/retargetor/unimanual/index.html#paradex.retargetor.unimanual.Retargetor.hand_retargetor">hand_retargetor (paradex.retargetor.unimanual.Retargetor attribute)</a>
 </li>
@@ -1628,17 +1636,13 @@
 </li>
         <li><a href="autoapi/paradex/retargetor/state/index.html#paradex.retargetor.state.HandStateExtractor">HandStateExtractor (class in paradex.retargetor.state)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer">HandVisualizer (class in paradex.visualization.deprecated.skeleton.hand)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.head_idx">head_idx (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
-</li>
         <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.headless">headless (paradex.simulator.isaac.Simulator attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.height">height (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.health_thread">health_thread (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.height">height (paradex.visualization.scene.open3d_backend.Open3DScene attribute)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.height">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
-</li>
           <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.height">(paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
 </li>
         </ul></li>
@@ -1730,10 +1734,10 @@
 </li>
         <li><a href="autoapi/paradex/process/processor/index.html#id1">inputs (paradex.process.processor.Job attribute)</a>, <a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.Job.inputs">[1]</a>
 </li>
-        <li><a href="autoapi/paradex/retargetor/hand_regargetor/index.html#paradex.retargetor.hand_regargetor.inspire">inspire() (in module paradex.retargetor.hand_regargetor)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="autoapi/paradex/retargetor/hand_regargetor/index.html#paradex.retargetor.hand_regargetor.inspire">inspire() (in module paradex.retargetor.hand_regargetor)</a>
+</li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller/index.html#paradex.io.robot_controller.inspire_controller.InspireController">InspireController (class in paradex.io.robot_controller.inspire_controller)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP">InspireControllerIP (class in paradex.io.robot_controller.inspire_controller_ip)</a>
@@ -1751,17 +1755,9 @@
         <li><a href="autoapi/paradex/io/robot_controller/under_test/cli/index.html#paradex.io.robot_controller.under_test.cli.interactive_mode">interactive_mode() (in module paradex.io.robot_controller.under_test.cli)</a>
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.intr_opencv_to_opengl_proj">intr_opencv_to_opengl_proj() (in module paradex.image.projection)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.intr_opencv_to_opengl_proj">(in module paradex.visualization.deprecated.renderer)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.intr_opengl">intr_opengl (paradex.image.projection.BatchRenderer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.intr_opengl">(paradex.visualization.deprecated.renderer.BatchRenderer attribute)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.intrinsic">intrinsic (paradex.image.image_dict.ImageDict attribute)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/utils/index.html#paradex.calibration.utils.intrinsic_dir">intrinsic_dir (in module paradex.calibration.utils)</a>
@@ -1894,8 +1890,6 @@
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera_server_daemon/index.html#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.last_mode">last_mode (paradex.io.camera_system.camera_server_daemon.camera_server_daemon attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.last_obj_number">last_obj_number (paradex.visualization.deprecated.viewer.ViserViewer attribute)</a>
-</li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.last_response">last_response (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.last_traceback">last_traceback (paradex.io.camera_system.camera.Camera attribute)</a>
@@ -1946,8 +1940,6 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.FingerID.LITTLE">LITTLE (paradex.io.robot_controller.under_test.hand_rh56dftp.FingerID attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/contact_graph/index.html#paradex.visualization.deprecated.contact_graph.live_plot_contact_data">live_plot_contact_data() (in module paradex.visualization.deprecated.contact_graph)</a>
-</li>
         <li><a href="autoapi/paradex/io/camera_system/signal_generator/index.html#paradex.io.camera_system.signal_generator.UTGE900.llCh">llCh() (paradex.io.camera_system.signal_generator.UTGE900 method)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/signal_generator/index.html#paradex.io.camera_system.signal_generator.UTGE900.llDown">llDown() (paradex.io.camera_system.signal_generator.UTGE900 method)</a>
@@ -1982,8 +1974,6 @@
           <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.load_camera">(paradex.simulator.isaac.Simulator method)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/calibration/utils/index.html#paradex.calibration.utils.load_camparam">load_camparam() (in module paradex.calibration.utils)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/colmap/index.html#paradex.calibration.colmap.load_colmap_camparam">load_colmap_camparam() (in module paradex.calibration.colmap)</a>
@@ -1998,6 +1988,8 @@
           <li><a href="autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.load_current_camparam">(paradex.image.image_dict.ImageDict method)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/calibration/utils/index.html#paradex.calibration.utils.load_current_eef">load_current_eef() (in module paradex.calibration.utils)</a>
 </li>
         <li><a href="autoapi/paradex/calibration/utils/index.html#paradex.calibration.utils.load_current_intrinsic">load_current_intrinsic() (in module paradex.calibration.utils)</a>
@@ -2034,12 +2026,8 @@
 </li>
         <li><a href="autoapi/paradex/utils/file_io/index.html#paradex.utils.file_io.load_robot_traj_prev">load_robot_traj_prev() (in module paradex.utils.file_io)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.load_server">load_server() (paradex.visualization.deprecated.viewer.ViserViewer method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.load_server">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
+        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.load_server">load_server() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.load_shared_memory">load_shared_memory() (paradex.io.camera_system.camera.Camera method)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.load_timestamp_monitor">load_timestamp_monitor() (in module paradex.io.camera_system.pyspin)</a>
@@ -2078,6 +2066,30 @@
           <li><a href="autoapi/paradex/video/raw_video_processor/index.html#paradex.video.raw_video_processor.RawVideoProcessor.log">(paradex.video.raw_video_processor.RawVideoProcessor attribute)</a>
 </li>
         </ul></li>
+        <li><a href="autoapi/paradex/utils/log/index.html#paradex.utils.log.log_root">log_root (in module paradex.utils.log)</a>
+</li>
+        <li><a href="autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.logger">logger (in module paradex.io.camera_system.camera)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.logger">(in module paradex.io.camera_system.camera_loader)</a>
+</li>
+          <li><a href="autoapi/paradex/io/camera_system/camera_reader/index.html#paradex.io.camera_system.camera_reader.logger">(in module paradex.io.camera_system.camera_reader)</a>
+</li>
+          <li><a href="autoapi/paradex/io/camera_system/camera_server_daemon/index.html#paradex.io.camera_system.camera_server_daemon.logger">(in module paradex.io.camera_system.camera_server_daemon)</a>
+</li>
+          <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.logger">(in module paradex.io.camera_system.monitor_daemon)</a>
+</li>
+          <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.logger">(in module paradex.io.camera_system.pyspin)</a>
+</li>
+          <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.logger">(in module paradex.io.camera_system.remote_camera_controller)</a>
+</li>
+          <li><a href="autoapi/paradex/io/camera_system/timestamp_monitor/index.html#paradex.io.camera_system.timestamp_monitor.logger">(in module paradex.io.camera_system.timestamp_monitor)</a>
+</li>
+          <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.logger">(in module paradex.io.robot_controller.inspire_controller_ip)</a>
+</li>
+          <li><a href="autoapi/paradex/io/robot_controller/xarm_controller/index.html#paradex.io.robot_controller.xarm_controller.logger">(in module paradex.io.robot_controller.xarm_controller)</a>
+</li>
+        </ul></li>
         <li><a href="autoapi/paradex/calibration/Tsai_Lenz/index.html#paradex.calibration.Tsai_Lenz.logR">logR() (in module paradex.calibration.Tsai_Lenz)</a>
 </li>
     </ul></td>
@@ -2098,12 +2110,6 @@
           <li><a href="autoapi/paradex/io/robot_controller/under_test/visualize_contact/index.html#paradex.io.robot_controller.under_test.visualize_contact.main">(in module paradex.io.robot_controller.under_test.visualize_contact)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.main_vis">main_vis (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.main_vis">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
-</li>
-        </ul></li>
         <li><a href="autoapi/paradex/image/grid/index.html#paradex.image.grid.make_image_grid">make_image_grid() (in module paradex.image.grid)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.RobotGUIController.manual_override">manual_override (paradex.io.robot_controller.gui_controller.RobotGUIController attribute)</a>
@@ -2120,18 +2126,10 @@
 </li>
         <li><a href="autoapi/paradex/image/merge/index.html#paradex.image.merge.merge_image">merge_image() (in module paradex.image.merge)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.mesh">mesh (paradex.visualization.deprecated.viewer.ViserViewer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.mesh">(paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
+        <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.mesh">mesh (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.mesh_to_obj_dict">mesh_to_obj_dict() (in module paradex.image.projection)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.mesh_to_obj_dict">(in module paradex.visualization.deprecated.renderer)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/process/processor/index.html#id3">meta (paradex.process.processor.Job attribute)</a>, <a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.Job.meta">[1]</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.MF_TOUCH">MF_TOUCH (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
@@ -2215,6 +2213,8 @@
           <li><a href="autoapi/paradex/io/camera_system/camera_server_daemon/index.html#module-paradex.io.camera_system.camera_server_daemon">paradex.io.camera_system.camera_server_daemon</a>
 </li>
           <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#module-paradex.io.camera_system.monitor_daemon">paradex.io.camera_system.monitor_daemon</a>
+</li>
+          <li><a href="autoapi/paradex/io/camera_system/protocol/index.html#module-paradex.io.camera_system.protocol">paradex.io.camera_system.protocol</a>
 </li>
           <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#module-paradex.io.camera_system.pyspin">paradex.io.camera_system.pyspin</a>
 </li>
@@ -2334,6 +2334,8 @@
 </li>
           <li><a href="autoapi/paradex/utils/keyboard_listener/index.html#module-paradex.utils.keyboard_listener">paradex.utils.keyboard_listener</a>
 </li>
+          <li><a href="autoapi/paradex/utils/log/index.html#module-paradex.utils.log">paradex.utils.log</a>
+</li>
           <li><a href="autoapi/paradex/utils/path/index.html#module-paradex.utils.path">paradex.utils.path</a>
 </li>
           <li><a href="autoapi/paradex/utils/system/index.html#module-paradex.utils.system">paradex.utils.system</a>
@@ -2348,23 +2350,15 @@
 </li>
           <li><a href="autoapi/paradex/visualization/index.html#module-paradex.visualization">paradex.visualization</a>
 </li>
-          <li><a href="autoapi/paradex/visualization/deprecated/contact_graph/index.html#module-paradex.visualization.deprecated.contact_graph">paradex.visualization.deprecated.contact_graph</a>
-</li>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#module-paradex.visualization.deprecated.renderer">paradex.visualization.deprecated.renderer</a>
-</li>
-          <li><a href="autoapi/paradex/visualization/deprecated/shape/index.html#module-paradex.visualization.deprecated.shape">paradex.visualization.deprecated.shape</a>
-</li>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#module-paradex.visualization.deprecated.skeleton.body">paradex.visualization.deprecated.skeleton.body</a>
-</li>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#module-paradex.visualization.deprecated.skeleton.hand">paradex.visualization.deprecated.skeleton.hand</a>
-</li>
-          <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#module-paradex.visualization.deprecated.viewer">paradex.visualization.deprecated.viewer</a>
-</li>
-          <li><a href="autoapi/paradex/visualization/deprecated/visual_hull/index.html#module-paradex.visualization.deprecated.visual_hull">paradex.visualization.deprecated.visual_hull</a>
-</li>
           <li><a href="autoapi/paradex/visualization/robot/index.html#module-paradex.visualization.robot">paradex.visualization.robot</a>
 </li>
-          <li><a href="autoapi/paradex/visualization/visual_hull/index.html#module-paradex.visualization.visual_hull">paradex.visualization.visual_hull</a>
+          <li><a href="autoapi/paradex/visualization/scene/index.html#module-paradex.visualization.scene">paradex.visualization.scene</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/scene/base/index.html#module-paradex.visualization.scene.base">paradex.visualization.scene.base</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#module-paradex.visualization.scene.open3d_backend">paradex.visualization.scene.open3d_backend</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#module-paradex.visualization.scene.viser_backend">paradex.visualization.scene.viser_backend</a>
 </li>
           <li><a href="autoapi/paradex/visualization/visualizer/open3d/index.html#module-paradex.visualization.visualizer.open3d">paradex.visualization.visualizer.open3d</a>
 </li>
@@ -2381,6 +2375,8 @@
 
         <ul>
           <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.CameraMonitor.monitor_port">(paradex.io.camera_system.monitor_daemon.CameraMonitor attribute)</a>
+</li>
+          <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.monitor_port">(paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.CameraMonitor.monitor_sockets">monitor_sockets (paradex.io.camera_system.monitor_daemon.CameraMonitor attribute)</a>
@@ -2439,24 +2435,24 @@
         </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.normalize_color">normalize_color() (in module paradex.visualization.scene.base)</a>
+</li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller/index.html#paradex.io.robot_controller.inspire_controller.num2str">num2str() (in module paradex.io.robot_controller.inspire_controller)</a>
 </li>
         <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.num_envs">num_envs (paradex.simulator.isaac.Simulator attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.num_frames">num_frames (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.num_frames">num_frames (paradex.visualization.scene.base.Scene property)</a>
 
         <ul>
+          <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Timeline.num_frames">(paradex.visualization.scene.base.Timeline attribute)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.num_frames">(paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
+</li>
           <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.num_frames">(paradex.visualization.visualizer.viser.ViserViewer attribute)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.num_joints">num_joints (paradex.visualization.robot.RobotModule attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.num_sphere">num_sphere (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.num_sphere">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
-</li>
-        </ul></li>
         <li><a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.Processor.num_workers">num_workers (paradex.process.processor.Processor attribute)</a>
 
         <ul>
@@ -2473,18 +2469,10 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.obj_dict">obj_dict (paradex.visualization.visualizer.viser.ViserViewer attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.obj_T">obj_T (paradex.visualization.deprecated.viewer.ViserViewer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.obj_T">(paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
+        <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.obj_T">obj_T (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
 </li>
-        </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.object_nm">object_nm (paradex.visualization.deprecated.viewer.ViserViewer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.object_nm">(paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
+        <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.object_nm">object_nm (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/robot/curobo/index.html#paradex.robot.curobo.CuroboPlanner.obstacle_dict">obstacle_dict (paradex.robot.curobo.CuroboPlanner attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/teleop/deprecated/occulus/receiver/index.html#paradex.io.teleop.deprecated.occulus.receiver.OCCULUS2WRIST_Left">OCCULUS2WRIST_Left (in module paradex.io.teleop.deprecated.occulus.receiver)</a>
@@ -2523,14 +2511,14 @@
           <li><a href="autoapi/paradex/io/teleop/occulus/receiver/index.html#paradex.io.teleop.occulus.receiver.occulus_hand_joint_parent">(in module paradex.io.teleop.occulus.receiver)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/teleop/deprecated/occulus/receiver/index.html#paradex.io.teleop.deprecated.occulus.receiver.occulus_hand_joint_parent_name">occulus_hand_joint_parent_name (in module paradex.io.teleop.deprecated.occulus.receiver)</a>
 
         <ul>
           <li><a href="autoapi/paradex/io/teleop/occulus/receiver/index.html#paradex.io.teleop.occulus.receiver.occulus_hand_joint_parent_name">(in module paradex.io.teleop.occulus.receiver)</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/teleop/deprecated/occulus/receiver/index.html#paradex.io.teleop.deprecated.occulus.receiver.occulus_upper_body_joint_parent">occulus_upper_body_joint_parent (in module paradex.io.teleop.deprecated.occulus.receiver)</a>
 
         <ul>
@@ -2546,6 +2534,8 @@
         <li><a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.Processor.on_update">on_update (paradex.process.processor.Processor attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP.open">open() (paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP method)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene">Open3DScene (class in paradex.visualization.scene.open3d_backend)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer">Open3DVideoRenderer (class in paradex.visualization.visualizer.open3d_viewer)</a>
 </li>
@@ -2733,6 +2723,13 @@
 
         <ul>
           <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#module-paradex.io.camera_system.monitor_daemon">module</a>
+</li>
+        </ul></li>
+        <li>
+    paradex.io.camera_system.protocol
+
+        <ul>
+          <li><a href="autoapi/paradex/io/camera_system/protocol/index.html#module-paradex.io.camera_system.protocol">module</a>
 </li>
         </ul></li>
         <li>
@@ -3092,6 +3089,8 @@
           <li><a href="autoapi/paradex/simulator/index.html#module-paradex.simulator">module</a>
 </li>
         </ul></li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li>
     paradex.simulator.isaac
 
@@ -3120,8 +3119,6 @@
           <li><a href="autoapi/paradex/transforms/coordinate/index.html#module-paradex.transforms.coordinate">module</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li>
     paradex.transforms.triangulate
 
@@ -3148,6 +3145,13 @@
 
         <ul>
           <li><a href="autoapi/paradex/utils/keyboard_listener/index.html#module-paradex.utils.keyboard_listener">module</a>
+</li>
+        </ul></li>
+        <li>
+    paradex.utils.log
+
+        <ul>
+          <li><a href="autoapi/paradex/utils/log/index.html#module-paradex.utils.log">module</a>
 </li>
         </ul></li>
         <li>
@@ -3200,55 +3204,6 @@
 </li>
         </ul></li>
         <li>
-    paradex.visualization.deprecated.contact_graph
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/contact_graph/index.html#module-paradex.visualization.deprecated.contact_graph">module</a>
-</li>
-        </ul></li>
-        <li>
-    paradex.visualization.deprecated.renderer
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#module-paradex.visualization.deprecated.renderer">module</a>
-</li>
-        </ul></li>
-        <li>
-    paradex.visualization.deprecated.shape
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/shape/index.html#module-paradex.visualization.deprecated.shape">module</a>
-</li>
-        </ul></li>
-        <li>
-    paradex.visualization.deprecated.skeleton.body
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#module-paradex.visualization.deprecated.skeleton.body">module</a>
-</li>
-        </ul></li>
-        <li>
-    paradex.visualization.deprecated.skeleton.hand
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#module-paradex.visualization.deprecated.skeleton.hand">module</a>
-</li>
-        </ul></li>
-        <li>
-    paradex.visualization.deprecated.viewer
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#module-paradex.visualization.deprecated.viewer">module</a>
-</li>
-        </ul></li>
-        <li>
-    paradex.visualization.deprecated.visual_hull
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/visual_hull/index.html#module-paradex.visualization.deprecated.visual_hull">module</a>
-</li>
-        </ul></li>
-        <li>
     paradex.visualization.robot
 
         <ul>
@@ -3256,10 +3211,31 @@
 </li>
         </ul></li>
         <li>
-    paradex.visualization.visual_hull
+    paradex.visualization.scene
 
         <ul>
-          <li><a href="autoapi/paradex/visualization/visual_hull/index.html#module-paradex.visualization.visual_hull">module</a>
+          <li><a href="autoapi/paradex/visualization/scene/index.html#module-paradex.visualization.scene">module</a>
+</li>
+        </ul></li>
+        <li>
+    paradex.visualization.scene.base
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/base/index.html#module-paradex.visualization.scene.base">module</a>
+</li>
+        </ul></li>
+        <li>
+    paradex.visualization.scene.open3d_backend
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#module-paradex.visualization.scene.open3d_backend">module</a>
+</li>
+        </ul></li>
+        <li>
+    paradex.visualization.scene.viser_backend
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#module-paradex.visualization.scene.viser_backend">module</a>
 </li>
         </ul></li>
         <li>
@@ -3286,8 +3262,6 @@
         <li><a href="autoapi/paradex/io/capture_pc/ssh/index.html#paradex.io.capture_pc.ssh.paradex_cache_path">paradex_cache_path (in module paradex.io.capture_pc.ssh)</a>
 </li>
         <li><a href="autoapi/paradex/retargetor/state/index.html#paradex.retargetor.state.HandStateExtractor.parent">parent (paradex.retargetor.state.HandStateExtractor attribute)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.parent_indices">parent_indices (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/teleop/xsens/receiver/index.html#paradex.io.teleop.xsens.receiver.XSensReceiver.parse">parse() (paradex.io.teleop.xsens.receiver.XSensReceiver method)</a>
 </li>
@@ -3323,6 +3297,8 @@
 </li>
         <li><a href="autoapi/paradex/utils/system/index.html#paradex.utils.system.pc_info">pc_info (in module paradex.utils.system)</a>
 </li>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pc_last_seen">pc_last_seen (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
+</li>
         <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.CameraMonitor.pc_list">pc_list (paradex.io.camera_system.monitor_daemon.CameraMonitor attribute)</a>
 
         <ul>
@@ -3339,6 +3315,8 @@
           <li><a href="autoapi/paradex/utils/system/index.html#paradex.utils.system.pc_name">(in module paradex.utils.system)</a>
 </li>
         </ul></li>
+        <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.CameraMonitor.pc_running">pc_running (paradex.io.camera_system.monitor_daemon.CameraMonitor attribute)</a>
+</li>
         <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.pc_state">pc_state (class in paradex.io.camera_system.monitor_daemon)</a>
 
         <ul>
@@ -3399,14 +3377,6 @@
 </li>
         <li><a href="autoapi/paradex/robot/curobo/index.html#paradex.robot.curobo.CuroboPlanner.plan_to_joint_target">plan_to_joint_target() (paradex.robot.curobo.CuroboPlanner method)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/visual_hull/index.html#paradex.visualization.deprecated.visual_hull.plot_3d_points">plot_3d_points() (in module paradex.visualization.deprecated.visual_hull)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/visual_hull/index.html#paradex.visualization.deprecated.visual_hull.plot_3d_points_colored">plot_3d_points_colored() (in module paradex.visualization.deprecated.visual_hull)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/contact_graph/index.html#paradex.visualization.deprecated.contact_graph.plot_contact_data">plot_contact_data() (in module paradex.visualization.deprecated.contact_graph)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/visual_hull/index.html#paradex.visualization.deprecated.visual_hull.plot_multiple_3d_points">plot_multiple_3d_points() (in module paradex.visualization.deprecated.visual_hull)</a>
-</li>
         <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.poller">poller (paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
 </li>
         <li><a href="autoapi/paradex/video/raw_video_processor/index.html#paradex.video.raw_video_processor.RawVideoProcessor.pool">pool (paradex.video.raw_video_processor.RawVideoProcessor attribute)</a>
@@ -3430,10 +3400,14 @@
 </li>
           <li><a href="autoapi/paradex/io/teleop/xsens/receiver/index.html#paradex.io.teleop.xsens.receiver.XSensReceiver.port">(paradex.io.teleop.xsens.receiver.XSensReceiver attribute)</a>
 </li>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.port">(paradex.visualization.scene.viser_backend.ViserScene attribute)</a>
+</li>
         </ul></li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.port_number">port_number (paradex.visualization.visualizer.viser.ViserViewer attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.POS_SET">POS_SET (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Pose">Pose (in module paradex.visualization.scene.base)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.POSE_ACT">POSE_ACT (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
@@ -3471,20 +3445,6 @@
           <li><a href="autoapi/paradex/io/robot_controller/deprecated/gui_controller_test/index.html#paradex.io.robot_controller.deprecated.gui_controller_test.RobotGUIController.predefined_poses">(paradex.io.robot_controller.deprecated.gui_controller_test.RobotGUIController attribute)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.prev_axis_inv_transforms">prev_axis_inv_transforms (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.prev_axis_inv_transforms">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
-</li>
-        </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.prev_bone_inv_transforms">prev_bone_inv_transforms (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.prev_bone_inv_transforms">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
-</li>
-        </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.prev_timestep">prev_timestep (paradex.visualization.deprecated.viewer.ViserViewer attribute)</a>
-</li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_demo/index.html#paradex.io.robot_controller.under_test.hand_demo.print_contact_info">print_contact_info() (in module paradex.io.robot_controller.under_test.hand_demo)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/cli/index.html#paradex.io.robot_controller.under_test.cli.print_finger_status">print_finger_status() (in module paradex.io.robot_controller.under_test.cli)</a>
@@ -3523,9 +3483,11 @@
 </li>
         <li><a href="autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.project_pointcloud">project_pointcloud() (paradex.image.image_dict.ImageDict method)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.projection">projection() (in module paradex.visualization.deprecated.renderer)</a>
+        <li><a href="autoapi/paradex/io/camera_system/protocol/index.html#paradex.io.camera_system.protocol.PROTOCOL_VERSION">PROTOCOL_VERSION (in module paradex.io.camera_system.protocol)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.AllegroController.pub_cmd">pub_cmd (paradex.io.robot_controller.allegro_controller.AllegroController attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pub_timeout">pub_timeout (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.publish_thread">publish_thread (paradex.io.capture_pc.data_sender.DataPublisher attribute)</a>
 </li>
@@ -3553,30 +3515,12 @@
           <li><a href="autoapi/paradex/robot/robot_wrapper_updating/index.html#paradex.robot.robot_wrapper_updating.RobotWrapper.q0">(paradex.robot.robot_wrapper_updating.RobotWrapper attribute)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.q_angle_deg">q_angle_deg() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.q_mul">q_mul() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.q_mul_torch">q_mul_torch() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.q_rnd">q_rnd() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.q_rnd_S4">q_rnd_S4() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.q_scale">q_scale() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.q_slerp">q_slerp() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.q_to_mtx">q_to_mtx() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.q_unit">q_unit() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
         <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.qpos">qpos (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/gui_controller_simple/index.html#paradex.io.robot_controller.gui_controller_simple.QposTrajectoryGUIController">QposTrajectoryGUIController (class in paradex.io.robot_controller.gui_controller_simple)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/camera_system/signal_generator/index.html#paradex.io.camera_system.signal_generator.UTGE900.query">query() (paradex.io.camera_system.signal_generator.UTGE900 method)</a>
 </li>
         <li><a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.Processor.quiet">quiet (paradex.process.processor.Processor attribute)</a>
@@ -3595,8 +3539,6 @@
   <h2>R</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.random_rotation_translation">random_rotation_translation() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
         <li><a href="autoapi/paradex/video/raw_video_processor/index.html#paradex.video.raw_video_processor.RawVideoProcessor">RawVideoProcessor (class in paradex.video.raw_video_processor)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.Waypoint.reached">reached (paradex.io.robot_controller.gui_controller.Waypoint attribute)</a>
@@ -3636,6 +3578,8 @@
         <li><a href="autoapi/paradex/robot/xarm_kinematic_calib/index.html#paradex.robot.xarm_kinematic_calib.read_xarm_kinematic_params">read_xarm_kinematic_params() (in module paradex.robot.xarm_kinematic_calib)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera_reader/index.html#paradex.io.camera_system.camera_reader.MultiCameraReader.readers">readers (paradex.io.camera_system.camera_reader.MultiCameraReader attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.record_flythrough">record_flythrough() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
 </li>
         <li><a href="autoapi/paradex/io/teleop/deprecated/occulus/receiver/index.html#paradex.io.teleop.deprecated.occulus.receiver.OculusReceiver.recv_thread">recv_thread (paradex.io.teleop.deprecated.occulus.receiver.OculusReceiver attribute)</a>
 
@@ -3683,52 +3627,38 @@
 </li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller">remote_camera_controller (class in paradex.io.camera_system.remote_camera_controller)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserRobotModule.remove">remove() (paradex.visualization.visualizer.viser.ViserRobotModule method)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.remove_geometry">remove_geometry() (paradex.visualization.deprecated.skeleton.body.BodyVisualizer method)</a>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.remove">remove() (paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.remove_geometry">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.remove">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserRobotModule.remove">(paradex.visualization.visualizer.viser.ViserRobotModule method)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/utils/file_io/index.html#paradex.utils.file_io.remove_home">remove_home() (in module paradex.utils.file_io)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.remove_plane">remove_plane() (paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
-</li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.render">render() (paradex.image.projection.BatchRenderer method)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.render_current_frame">render_current_frame() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.render_frame">render_frame() (paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.render">(paradex.visualization.deprecated.renderer.BatchRenderer method)</a>
+          <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.render_frame">(paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer method)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.render_current_frame">render_current_frame() (paradex.visualization.deprecated.viewer.ViserViewer method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.render_current_frame">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
-</li>
-        </ul></li>
-        <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.render_frame">render_frame() (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer method)</a>
-</li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.render_full_video">render_full_video() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.render_id">render_id() (paradex.visualization.deprecated.renderer.BatchRenderer method)</a>
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.render_multi">render_multi() (paradex.image.projection.BatchRenderer method)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.render_video">render_video() (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer method)</a>
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.render_wtexture">render_wtexture() (paradex.image.projection.BatchRenderer method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.render_wtexture">(paradex.visualization.deprecated.renderer.BatchRenderer method)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.render_wvertexcolor">render_wvertexcolor() (paradex.image.projection.BatchRenderer method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.BatchRenderer.render_wvertexcolor">(paradex.visualization.deprecated.renderer.BatchRenderer method)</a>
 </li>
-        </ul></li>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.renderer">renderer (paradex.visualization.scene.open3d_backend.Open3DScene attribute)</a>
+</li>
         <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.Waypoint.repeat_count">repeat_count (paradex.io.robot_controller.gui_controller.Waypoint attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.Waypoint.repeat_ticks">repeat_ticks (paradex.io.robot_controller.gui_controller.Waypoint attribute)</a>
@@ -3817,10 +3747,6 @@
         </ul></li>
         <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.RobotGUIController.rot_vel_limit">rot_vel_limit (paradex.io.robot_controller.gui_controller.RobotGUIController attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.rotate_x">rotate_x() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.rotate_y">rotate_y() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
         <li><a href="autoapi/paradex/utils/path/index.html#paradex.utils.path.rsc_path">rsc_path (in module paradex.utils.path)</a>
 </li>
         <li><a href="autoapi/paradex/utils/upload_file/index.html#paradex.utils.upload_file.rsync_copy">rsync_copy() (in module paradex.utils.upload_file)</a>
@@ -3851,10 +3777,6 @@
           <li><a href="autoapi/paradex/io/teleop/xsens/receiver/index.html#paradex.io.teleop.xsens.receiver.XSensReceiver.run">(paradex.io.teleop.xsens.receiver.XSensReceiver method)</a>
 </li>
           <li><a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.Processor.run">(paradex.process.processor.Processor method)</a>
-</li>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.run">(paradex.visualization.deprecated.skeleton.body.BodyVisualizer method)</a>
-</li>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.run">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/process/distributed/index.html#paradex.process.distributed.run_distributed">run_distributed() (in module paradex.process.distributed)</a>
@@ -3915,8 +3837,6 @@
           <li><a href="autoapi/paradex/io/teleop/xsens/receiver/index.html#paradex.io.teleop.xsens.receiver.XSensReceiver.save_event">(paradex.io.teleop.xsens.receiver.XSensReceiver attribute)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.save_image">save_image() (in module paradex.visualization.deprecated.renderer)</a>
-</li>
         <li><a href="autoapi/paradex/robot/xarm_kinematic_calib/index.html#paradex.robot.xarm_kinematic_calib.save_kinematic_yaml">save_kinematic_yaml() (in module paradex.robot.xarm_kinematic_calib)</a>
 </li>
         <li><a href="autoapi/paradex/dataset_acqusition/capture/index.html#paradex.dataset_acqusition.capture.CaptureSession.save_path">save_path (paradex.dataset_acqusition.capture.CaptureSession attribute)</a>
@@ -3926,6 +3846,8 @@
         <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.save_stateinfo">save_stateinfo() (paradex.simulator.isaac.Simulator method)</a>
 </li>
         <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.save_video">save_video (paradex.simulator.isaac.Simulator attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene">Scene (class in paradex.visualization.scene.base)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.scene">scene (paradex.visualization.robot.RobotModule property)</a>
 </li>
@@ -3947,6 +3869,8 @@
         </ul></li>
         <li><a href="autoapi/paradex/process/distributed/index.html#paradex.process.distributed.SENTINEL_PREFIX">SENTINEL_PREFIX (in module paradex.process.distributed)</a>
 </li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.sequence">sequence() (paradex.visualization.scene.base.Scene method)</a>
+</li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/modbus/index.html#paradex.io.robot_controller.under_test.modbus.ModbusClient.ser">ser (paradex.io.robot_controller.under_test.modbus.ModbusClient attribute)</a>
 </li>
         <li><a href="autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.serial_list">serial_list (paradex.image.image_dict.ImageDict property)</a>
@@ -3963,6 +3887,10 @@
         </ul></li>
         <li><a href="autoapi/paradex/process/distributed/index.html#paradex.process.distributed.serve_jobs">serve_jobs() (in module paradex.process.distributed)</a>
 </li>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.server">server (paradex.visualization.scene.viser_backend.ViserScene attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.set_camera">set_camera() (paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
+</li>
         <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.set_camera_view">set_camera_view() (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer method)</a>
 </li>
         <li><a href="autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.set_camparam">set_camparam() (paradex.image.image_dict.ImageDict method)</a>
@@ -3971,9 +3899,45 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP.set_homepose">set_homepose() (paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP method)</a>
 </li>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.set_intrinsic">set_intrinsic() (paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
+</li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP.set_joint_angle">set_joint_angle() (paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP method)</a>
 </li>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.set_opacity">set_opacity() (paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.set_opacity">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
+        </ul></li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.set_pose">set_pose() (paradex.visualization.scene.base.Scene method)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.set_pose">(paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.set_pose">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
+        </ul></li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.set_qpos">set_qpos() (paradex.visualization.scene.base.Scene method)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.set_qpos">(paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
+</li>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.set_qpos">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
+        </ul></li>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_record">set_record() (paradex.io.camera_system.remote_camera_controller.remote_camera_controller method)</a>
+</li>
+        <li><a href="autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.set_sink">set_sink() (paradex.io.camera_system.camera.Camera method)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.CameraLoader.set_sink">(paradex.io.camera_system.camera_loader.CameraLoader method)</a>
+</li>
+          <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_sink">(paradex.io.camera_system.remote_camera_controller.remote_camera_controller method)</a>
+</li>
+        </ul></li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP.set_speed">set_speed() (paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP method)</a>
+</li>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.set_stream">set_stream() (paradex.io.camera_system.remote_camera_controller.remote_camera_controller method)</a>
 </li>
         <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.set_videopath">set_videopath() (paradex.simulator.isaac.Simulator method)</a>
 </li>
@@ -3981,6 +3945,12 @@
 </li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserRobotModule.set_visibility">set_visibility() (paradex.visualization.visualizer.viser.ViserRobotModule method)</a>
 </li>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.set_visible">set_visible() (paradex.visualization.scene.open3d_backend.Open3DScene method)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.set_visible">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
+</li>
+        </ul></li>
         <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.setup_lighting">setup_lighting() (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer method)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.setup_materials">setup_materials() (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer method)</a>
@@ -3994,6 +3964,8 @@
         <li><a href="autoapi/paradex/process/distributed/index.html#paradex.process.distributed.shard">shard() (in module paradex.process.distributed)</a>
 </li>
         <li><a href="autoapi/paradex/utils/path/index.html#paradex.utils.path.shared_dir">shared_dir (in module paradex.utils.path)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.show">show() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserRobotModule.show_collision">show_collision (paradex.visualization.visualizer.viser.ViserRobotModule property)</a>
 </li>
@@ -4009,15 +3981,13 @@
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.single_acquire">single_acquire() (paradex.io.camera_system.camera.Camera method)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.skeleton_info">skeleton_info (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.skeleton_info">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
-</li>
-        </ul></li>
         <li><a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.Skip">Skip</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/modbus/index.html#paradex.io.robot_controller.under_test.modbus.ModbusClient.slave_id">slave_id (paradex.io.robot_controller.under_test.modbus.ModbusClient attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.snapshot">snapshot() (paradex.io.camera_system.remote_camera_controller.remote_camera_controller method)</a>
 </li>
         <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandReceiver.socket">socket (paradex.io.capture_pc.command_sender.CommandReceiver attribute)</a>
 
@@ -4043,18 +4013,10 @@
         </ul></li>
         <li><a href="autoapi/paradex/transforms/conversion/index.html#paradex.transforms.conversion.SOLVE_XA_B">SOLVE_XA_B() (in module paradex.transforms.conversion)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.SPEED_MAX">SPEED_MAX (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.SPEED_SET">SPEED_SET (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.sphere">sphere (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.sphere">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
-</li>
-        </ul></li>
         <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.AllegroController.spin_thread">spin_thread (paradex.io.robot_controller.allegro_controller.AllegroController attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/capture_pc/ssh/index.html#paradex.io.capture_pc.ssh.ssh_port">ssh_port (in module paradex.io.capture_pc.ssh)</a>
@@ -4103,12 +4065,8 @@
 </li>
         <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.CameraMonitor.start_server">start_server() (paradex.io.camera_system.monitor_daemon.CameraMonitor method)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.start_viewer">start_viewer() (paradex.visualization.deprecated.viewer.ViserViewer method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.start_viewer">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
+        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.start_viewer">start_viewer() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
-        </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/camera_server_daemon/index.html#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.state">state (paradex.io.camera_system.camera_server_daemon.camera_server_daemon attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.STATUS">STATUS (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
@@ -4156,9 +4114,7 @@
 </li>
           <li><a href="autoapi/paradex/video/raw_video_processor/index.html#paradex.video.raw_video_processor.RawVideoProcessor.stop">(paradex.video.raw_video_processor.RawVideoProcessor method)</a>
 </li>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.stop">(paradex.visualization.deprecated.skeleton.body.BodyVisualizer method)</a>
-</li>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.stop">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
+          <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.stop">(paradex.visualization.scene.viser_backend.ViserScene method)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.RobotGUIController.stop_and_clear">stop_and_clear() (paradex.io.robot_controller.gui_controller.RobotGUIController method)</a>
@@ -4257,14 +4213,12 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.FingerID.THUMB_ROTATE">THUMB_ROTATE (paradex.io.robot_controller.under_test.hand_rh56dftp.FingerID attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.tick">tick() (paradex.simulator.isaac.Simulator method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.tick">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
-</li>
-        </ul></li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.tick">tick() (paradex.simulator.isaac.Simulator method)</a>
+</li>
+        <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Timeline">Timeline (class in paradex.visualization.scene.base)</a>
+</li>
         <li><a href="autoapi/paradex/io/camera_system/camera_reader/index.html#paradex.io.camera_system.camera_reader.CameraReader.timeout">timeout (paradex.io.camera_system.camera_reader.CameraReader attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/timestamp_monitor/index.html#paradex.io.camera_system.timestamp_monitor.TimestampMonitor">TimestampMonitor (class in paradex.io.camera_system.timestamp_monitor)</a>
@@ -4296,12 +4250,6 @@
         <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.Waypoint.trajectory">trajectory (paradex.io.robot_controller.gui_controller.Waypoint attribute)</a>
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.transform_pos">transform_pos() (in module paradex.image.projection)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#id0">(in module paradex.visualization.deprecated.renderer)</a>, <a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.transform_pos">[1]</a>
-</li>
-        </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/renderer/index.html#paradex.visualization.deprecated.renderer.translate">translate() (in module paradex.visualization.deprecated.renderer)</a>
 </li>
         <li><a href="autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.triangulate_charuco">triangulate_charuco() (paradex.image.image_dict.ImageDict method)</a>
 </li>
@@ -4354,19 +4302,7 @@
         <li><a href="autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.update">update() (paradex.image.image_dict.ImageDict method)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.update">(paradex.visualization.deprecated.viewer.ViserViewer method)</a>
-</li>
           <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.update">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
-</li>
-        </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.update_axes">update_axes() (paradex.visualization.deprecated.skeleton.body.BodyVisualizer method)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.update_axis">update_axis() (paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
-</li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.update_bone_positions">update_bone_positions() (paradex.visualization.deprecated.skeleton.body.BodyVisualizer method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.update_bone_positions">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
 </li>
         </ul></li>
     </ul></td>
@@ -4377,30 +4313,14 @@
           <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserRobotModule.update_cfg">(paradex.visualization.visualizer.viser.ViserRobotModule method)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.update_cylinder">update_cylinder() (paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
+        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.update_floor">update_floor() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.update_floor">update_floor() (paradex.visualization.deprecated.viewer.ViserViewer method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.update_floor">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
-</li>
-        </ul></li>
         <li><a href="autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.update_path">update_path() (paradex.image.image_dict.ImageDict method)</a>
 </li>
         <li><a href="autoapi/paradex/video/raw_video_processor/index.html#paradex.video.raw_video_processor.update_progress">update_progress() (in module paradex.video.raw_video_processor)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer.update_scene">update_scene() (paradex.visualization.deprecated.viewer.ViserViewer method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.update_scene">(paradex.visualization.visualizer.viser.ViserViewer method)</a>
+        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.update_scene">update_scene() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
-        </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.update_sphere_positions">update_sphere_positions() (paradex.visualization.deprecated.skeleton.body.BodyVisualizer method)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.update_sphere_positions">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer method)</a>
-</li>
-        </ul></li>
         <li><a href="autoapi/paradex/robot/curobo/index.html#paradex.robot.curobo.CuroboPlanner.update_world">update_world() (paradex.robot.curobo.CuroboPlanner method)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.urdf">urdf (paradex.visualization.robot.RobotModule attribute)</a>
@@ -4409,11 +4329,9 @@
           <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserRobotModule.urdf">(paradex.visualization.visualizer.viser.ViserRobotModule property)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.urdf_path">urdf_path (in module paradex.visualization.deprecated.viewer)</a>
+        <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.urdf_path">urdf_path (paradex.visualization.robot.RobotModule attribute)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.urdf_path">(paradex.visualization.robot.RobotModule attribute)</a>
-</li>
           <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.urdf_path">(paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
 </li>
         </ul></li>
@@ -4435,12 +4353,10 @@
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="autoapi/paradex/visualization/deprecated/viewer/index.html#paradex.visualization.deprecated.viewer.ViserViewer">ViserViewer (class in paradex.visualization.deprecated.viewer)</a>
-
-        <ul>
-          <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer">(class in paradex.visualization.visualizer.viser)</a>
+        <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene">ViserScene (class in paradex.visualization.scene.viser_backend)</a>
 </li>
-        </ul></li>
+        <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer">ViserViewer (class in paradex.visualization.visualizer.viser)</a>
+</li>
         <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.visualize_camera">visualize_camera() (paradex.simulator.isaac.Simulator method)</a>
 </li>
     </ul></td>
@@ -4467,18 +4383,20 @@
 </li>
         <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.CameraMonitor.web_port">web_port (paradex.io.camera_system.monitor_daemon.CameraMonitor attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/visualization/deprecated/skeleton/body/index.html#paradex.visualization.deprecated.skeleton.body.BodyVisualizer.width">width (paradex.visualization.deprecated.skeleton.body.BodyVisualizer attribute)</a>
+        <li><a href="autoapi/paradex/visualization/scene/open3d_backend/index.html#paradex.visualization.scene.open3d_backend.Open3DScene.width">width (paradex.visualization.scene.open3d_backend.Open3DScene attribute)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/visualization/deprecated/skeleton/hand/index.html#paradex.visualization.deprecated.skeleton.hand.HandVisualizer.width">(paradex.visualization.deprecated.skeleton.hand.HandVisualizer attribute)</a>
-</li>
           <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.width">(paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer attribute)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/robot/curobo/index.html#paradex.robot.curobo.CuroboPlanner.world_cfg">world_cfg (paradex.robot.curobo.CuroboPlanner attribute)</a>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.worker_stop">worker_stop (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.worker_threads">worker_threads (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="autoapi/paradex/robot/curobo/index.html#paradex.robot.curobo.CuroboPlanner.world_cfg">world_cfg (paradex.robot.curobo.CuroboPlanner attribute)</a>
+</li>
         <li><a href="autoapi/paradex/io/camera_system/signal_generator/index.html#paradex.io.camera_system.signal_generator.UTGE900.write">write() (paradex.io.camera_system.signal_generator.UTGE900 method)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller/index.html#paradex.io.robot_controller.inspire_controller.InspireController.write6">write6() (paradex.io.robot_controller.inspire_controller.InspireController method)</a>

@@ -1,4 +1,5 @@
 import zmq
+import queue
 from datetime import datetime
 import time
 from threading import Thread, Event, Lock
@@ -64,6 +65,14 @@ class remote_camera_controller:
         self.health_thread = None
         self._reload_request = Event()          # health thread asks run() to reload
 
+        # ── per-PC command workers ───────────────────────────────────────
+        # Each PC gets its own worker thread that owns that PC's command socket
+        # and, when idle, sends the keepalive heartbeat itself. So a slow command
+        # on one PC never starves another PC's heartbeat (no cross-PC barrier).
+        self.cmd_queue = {}                     # pc -> queue.Queue of command items
+        self.worker_threads = []
+        self.worker_stop = Event()              # gate workers independently of exit_event
+
         self.run_thread = Thread(target=self.run, daemon=True)
         self.run_thread.start()
 
@@ -111,18 +120,27 @@ class remote_camera_controller:
             msock.setsockopt(zmq.CONFLATE, 0)    # (multipart json; conflate unsafe)
             msock.connect(f"tcp://{get_pc_ip(pc)}:{self.monitor_port}")
             self.monitor_sockets[pc] = msock
+            self.cmd_queue[pc] = queue.Queue()
             print(f"{pc}: Command + health sockets connected")
 
         self.last_err = {pc: None for pc in self.pc_list}
         self.pc_status = {pc: {'status': None, 'msg': None} for pc in self.pc_list}
-        self.pc_last_seen = {pc: 0.0 for pc in self.pc_list}
+        # Seed to now so the first PUB has a grace window (no spurious "down" flap).
+        self.pc_last_seen = {pc: time.time() for pc in self.pc_list}
 
         if failed_pcs:
             raise ConnectionError(
                 f"다음 PC들이 응답하지 않습니다: {failed_pcs}\n"
                 f"각 PC에서 'python src/camera/server_daemon.py'를 실행하세요."
             )
-        
+
+        # Start one worker per reachable PC; each owns its command socket from here
+        # on (nothing else may touch it). They keepalive on their own when idle.
+        for pc in self.command_sockets:
+            t = Thread(target=self._worker, args=(pc,), daemon=True)
+            t.start()
+            self.worker_threads.append(t)
+
         self.register()
     
     def check_server_alive(self, pc):
@@ -157,14 +175,56 @@ class remote_camera_controller:
         finally:
             socket.close()
     
-    def send_command(self, cmd):
-        """Broadcast a command to every PC in parallel and collect replies.
+    def _send_one(self, pc, cmd):
+        """Send one command to ``pc`` on its command socket and return the reply.
 
-        명령 전송 및 응답 수신 (PC 병렬 처리). Stamps ``cmd`` with this
-        controller's name, then fans the request out over all command sockets
-        on one thread each, joining before returning. ``start`` / ``stop``
-        actions get a longer receive timeout than other actions. Socket-level
-        failures are turned into an ``error`` status entry rather than raised.
+        Only ever called from that PC's worker thread, so the REQ socket has a
+        single owner and its send→recv alternation is never violated. Socket
+        errors become an ``{'status': 'error', ...}`` dict rather than raising.
+        """
+        socket = self.command_sockets[pc]
+        timeout_ms = 30000 if cmd.get('action') in ('start', 'stop') else 2000
+        try:
+            socket.setsockopt(zmq.RCVTIMEO, timeout_ms)
+            socket.setsockopt(zmq.SNDTIMEO, timeout_ms)
+            socket.send_json(cmd)
+            return socket.recv_json()
+        except zmq.Again:
+            return {'status': 'error', 'msg': 'timeout', 'errno': 'EAGAIN'}
+        except zmq.ZMQError as e:
+            return {'status': 'error',
+                    'msg': f'zmq:{e.errno}:{zmq.strerror(e.errno)}',
+                    'errno': e.errno}
+
+    def _worker(self, pc):
+        """Own ``pc``'s command socket: run queued commands, else keepalive.
+
+        Blocks up to 0.1 s for a queued command; on timeout it sends the daemon a
+        heartbeat so the dead-man timer stays reset. Because each PC has its own
+        worker, a slow command on one PC cannot delay another PC's heartbeat — the
+        cross-PC barrier that used to let a slow ``start`` trip a fast PC's
+        dead-man is gone.
+        """
+        q = self.cmd_queue[pc]
+        hb = {'action': 'heartbeat', 'controller_name': self.name}
+        while not self.worker_stop.is_set():
+            try:
+                cmd, results, latch, lock, expected = q.get(timeout=0.1)
+            except queue.Empty:
+                self._send_one(pc, hb)          # keepalive
+                continue
+            resp = self._send_one(pc, cmd)
+            with lock:
+                results[pc] = resp
+                if len(results) >= expected:
+                    latch.set()
+
+    def send_command(self, cmd):
+        """Broadcast ``cmd`` to every PC via its worker and collect the replies.
+
+        Enqueues the command on each per-PC worker (which owns the socket) and
+        waits until all have replied. A slow PC delays only *this* call's return,
+        not other PCs' keepalive. Same signature/return as before.
 
         Parameters
         ----------
@@ -175,37 +235,25 @@ class remote_camera_controller:
         -------
         dict
             Maps each PC name to its JSON reply (or a synthesized
-            ``{'status': 'error', ...}`` dict on timeout/ZMQ error).
+            ``{'status': 'error', ...}`` dict on timeout / no worker reply).
         """
+        cmd = dict(cmd)
         cmd['controller_name'] = self.name
-        response = {}
-        response_lock = Lock()
+        pcs = list(self.cmd_queue.keys())
+        if not pcs:
+            return {}
 
-        timeout_ms = 30000 if cmd.get('action') in ('start', 'stop') else 2000
+        results, latch, lock = {}, Event(), Lock()
+        expected = len(pcs)
+        for pc in pcs:
+            self.cmd_queue[pc].put((cmd, results, latch, lock, expected))
 
-        def _send_to_one(pc, socket):
-            try:
-                socket.setsockopt(zmq.RCVTIMEO, timeout_ms)
-                socket.setsockopt(zmq.SNDTIMEO, timeout_ms)
-                socket.send_json(cmd)
-                resp = socket.recv_json()
-            except zmq.Again:
-                resp = {'status': 'error', 'msg': 'timeout', 'errno': 'EAGAIN'}
-            except zmq.ZMQError as e:
-                resp = {'status': 'error',
-                        'msg': f'zmq:{e.errno}:{zmq.strerror(e.errno)}',
-                        'errno': e.errno}
-            with response_lock:
-                response[pc] = resp
-
-        threads = [Thread(target=_send_to_one, args=(pc, sock))
-                   for pc, sock in self.command_sockets.items()]
-        for t in threads:
-            t.start()
-        for t in threads:
-            t.join()
-
-        return response
+        wait_s = (30000 if cmd.get('action') in ('start', 'stop') else 2000) / 1000.0 + 5.0
+        latch.wait(timeout=wait_s)
+        with lock:
+            for pc in pcs:                       # fill in any PC that didn't answer
+                results.setdefault(pc, {'status': 'error', 'msg': 'no worker reply'})
+            return dict(results)
             
     def register(self):
         """Claim the daemons for this controller by sending a ``register`` command."""
@@ -307,60 +355,54 @@ class remote_camera_controller:
             return
 
         # Health is now read off the daemon PUB stream (5481) by this thread,
-        # independent of the command channel below.
+        # independent of the command channel.
         self.health_thread = Thread(target=self._health_loop, daemon=True)
         self.health_thread.start()
 
+        # Event-driven: the per-PC workers keepalive on their own, so this loop
+        # only issues the real commands (start / stop / reload) when asked.
         while not self.exit_event.is_set():
-            # auto_reload asked for by the health thread — sent here so command
-            # sockets are only ever touched by this thread.
             if self._reload_request.is_set():
                 self._reload_request.clear()
                 self.send_command({'action': 'reload'})
 
-            cmd = {'action': 'heartbeat'}
-
             if self.start_event.is_set():
-                cmd = {
+                self.start_event.clear()
+                response = self.send_command({
                     'action': 'start',
                     'mode': self.mode,
                     'syncMode': self.syncMode,
                     'save_path': self.save_path,
                     'fps': self.fps,
                     'exposure_time': self.exposure_time,
-                    'gain': self.gain
-                }
-                self.start_event.clear()
-
-            if self.stop_event.is_set():
-                cmd = {'action': 'stop'}
-                self.stop_event.clear()
-
-            response = self.send_command(cmd)
-
-            # Command replies drive control flow only (did the daemon accept the
-            # start/stop). Continuous health/stall/error now comes from _health_loop.
-            if cmd['action'] != 'heartbeat':
-                with self.status_lock:
-                    self.last_response = {pc: dict(resp) for pc, resp in response.items()}
-
-            if cmd['action'] == 'start':
+                    'gain': self.gain,
+                })
                 ok = all(resp.get('status') == 'ok' for resp in response.values())
                 self.continuous = self.mode in ('video', 'stream', 'full')
                 self.capturing = ok and self.continuous
-                self.cam_progress = {}
-            elif cmd['action'] == 'stop':
-                self.capturing = False
-                self.cam_progress = {}
                 with self.status_lock:
-                    self.stalled = set()
-
-            if cmd['action'] in ('start', 'stop'):
+                    self.cam_progress = {}
+                    self.last_response = {pc: dict(r) for pc, r in response.items()}
                 self.sending_event.set()
-            time.sleep(0.1)
 
+            elif self.stop_event.is_set():
+                self.stop_event.clear()
+                response = self.send_command({'action': 'stop'})
+                self.capturing = False
+                with self.status_lock:
+                    self.cam_progress = {}
+                    self.stalled = set()
+                    self.last_response = {pc: dict(r) for pc, r in response.items()}
+                self.sending_event.set()
+
+            time.sleep(0.05)
+
+        # Teardown: workers are gated on worker_stop (not exit_event), so they are
+        # still alive here to carry the final 'end' command before we stop them.
         self.send_command({'action': 'end'})
-        # Stop the health thread before tearing down its sockets/context.
+        self.worker_stop.set()
+        for t in self.worker_threads:
+            t.join(timeout=2)
         if self.health_thread is not None:
             self.health_thread.join(timeout=2)
         for socket in self.command_sockets.values():

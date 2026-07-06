@@ -196,20 +196,10 @@ class camera_server_daemon:
                 return payload
 
         if action == "heartbeat":
-            t0 = time.time()
-            errs = self.camera_loader.get_all_errors()
-            # Per-camera frame ids so the controller can detect stalls (frames that
-            # stop arriving without raising an error).
-            resp = self.camera_loader.get_summary()
-            resp["running"] = self.cameras_running
-            dt = time.time() - t0
-            if dt > 0.5:
-                print(f"[Warning] heartbeat get_all_errors took {dt*1000:.0f}ms (>500ms)")
-            if len(errs) == 0:
-                resp.update({"status": "ok", "msg": "heartbeat received"})
-            else:
-                resp.update({"status": "error", "msg": f"camera errors detected: {errs}"})
-            return resp
+            # Health/errors/frame-ids now travel on the PUB channel (5481), so the
+            # heartbeat is just a cheap keepalive that resets the dead-man timer —
+            # no get_summary()/get_all_errors() on the keepalive path.
+            return {"status": "ok", "msg": "heartbeat", "running": self.cameras_running}
 
         if action == "reload":
             try:

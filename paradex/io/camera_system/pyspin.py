@@ -7,6 +7,9 @@ import random
 import traceback
 
 from paradex.utils.system import get_camera_config
+from paradex.utils.log import get_logger
+
+logger = get_logger("camera")
 
 cam_info = get_camera_config()
 
@@ -89,7 +92,7 @@ def load_camera(serialnum, cfg=None):
     gain = cfg.get("gain", 3.0)
     exposure = cfg.get("exposure", 2500.0)
     if cfg:
-        print(f"serial_num Gain :{gain}, exposure {exposure}")
+        logger.info(f"serial_num Gain :{gain}, exposure {exposure}")
     
     cam = PyspinCamera(camPtr, gain, exposure, cfg=cfg)
 
@@ -293,9 +296,9 @@ class PyspinCamera():
             print(f"Frame ID: {frame_data['frameID']}", self.serial_num, time.time() - self.init_time)
         if pImageRaw.IsIncomplete() or pImageRaw.GetWidth() == 0 or pImageRaw.GetHeight() == 0:
             if pImageRaw.IsIncomplete():
-                print(f"Image incomplete with image status {pImageRaw.GetImageStatus()}")
+                logger.info(f"Image incomplete with image status {pImageRaw.GetImageStatus()}")
             else:
-                print("Image has zero width or height")
+                logger.info("Image has zero width or height")
             pImageRaw.Release()
             return None, frame_data
         
@@ -340,12 +343,12 @@ class PyspinCamera():
         self._configureThroughPut()
         
         if syncMode:
-            print("Configuring camera for hardware sync mode.")
+            logger.info("Configuring camera for hardware sync mode.")
             self.syncMode = syncMode
             self._configureTrigger()
             
         if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)) and (not syncMode):
-            print("Configuring camera for free-run mode.")
+            logger.info("Configuring camera for free-run mode.")
             self.frame_rate = frame_rate
             self._configureFrameRate()
         
@@ -371,6 +374,17 @@ class PyspinCamera():
         self.cam.BeginAcquisition()
         return
     
+    def set_gain(self, gain):
+        """Apply a new gain (dB) live — Gain is writable during acquisition."""
+        self.gain = float(gain)
+        self._configureGain()
+
+    def set_exposure(self, exposure_time):
+        """Apply a new exposure (microseconds) live — ExposureTime is writable
+        during acquisition."""
+        self.exposure_time = float(exposure_time)
+        self._configureExposure()
+
     def stop(self):
         """Stop acquisition and drain the buffer; keep the connection open.
 
@@ -382,7 +396,7 @@ class PyspinCamera():
         try:
             self.cam.EndAcquisition()
         except ps.SpinnakerException as e:
-            print(f"[WARN] {self.serial_num} EndAcquisition failed: {e}")
+            logger.warning(f"{self.serial_num} EndAcquisition failed: {e}")
         # Flush buffer command (있으면)
         try:
             while True:

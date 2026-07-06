@@ -242,6 +242,20 @@ class camera_server_daemon:
                                 "running": self.cameras_running})
                 return payload
 
+        if action == "param":
+            # Live gain/exposure change on a running capture (no restart).
+            try:
+                self.camera_loader.set_param(gain=cmd.get('gain'), exposure=cmd.get('exposure'))
+                payload = self.camera_loader.get_summary()
+                payload.update({"status": "ok", "msg": "param set", "running": self.cameras_running})
+                return payload
+            except Exception as e:
+                traceback.print_exc()
+                payload = self.camera_loader.get_summary()
+                payload.update({"status": "error", "msg": f"param failed: {type(e).__name__}:{e}",
+                                "running": self.cameras_running})
+                return payload
+
         if action == "end":
             try:
                 if self.cameras_running:

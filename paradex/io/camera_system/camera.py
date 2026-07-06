@@ -75,6 +75,7 @@ class Camera():
         self._video_path = None            # dir or file for the video sink
         self._want_stream = False          # shared-memory double-buffer sink
         self._snapshot = None              # {'path','count','remaining'} one-shot image sink
+        self._pending_param = None         # {'gain','exposure'} to apply live on the capture thread
 
         self.last_error = None
         self.last_traceback = None
@@ -351,6 +352,29 @@ class Camera():
                 path, count = snapshot
                 self._snapshot = {'path': path, 'count': int(count), 'remaining': int(count)}
 
+    def set_param(self, gain=None, exposure=None):
+        """Apply new gain (dB) / exposure (microseconds) to the camera **live**.
+
+        Recorded here and applied on the capture thread at the next acquire
+        iteration (FLIR ``Gain``/``ExposureTime`` are writable during
+        acquisition), so it is safe to call while capturing. Takes effect only in
+        ``acquire`` mode while running.
+
+        Parameters
+        ----------
+        gain : float, optional
+            New gain in dB.
+        exposure : float, optional
+            New exposure time in microseconds.
+        """
+        with self._sink_lock:
+            p = dict(self._pending_param or {})
+            if gain is not None:
+                p['gain'] = float(gain)
+            if exposure is not None:
+                p['exposure'] = float(exposure)
+            self._pending_param = p
+
     def error_reset(self):
         """Clear the error state and release anyone waiting on ``error_reset``."""
         self.last_error = None
@@ -468,12 +492,27 @@ class Camera():
 
         while self.event["start"].is_set() and not self.event["exit"].is_set():
             try:
-                # Read the desired sink state once per iteration.
+                # Read the desired sink + param state once per iteration.
                 with self._sink_lock:
                     want_video = self._want_video
                     video_path = self._video_path
                     want_stream = self._want_stream
                     snap = self._snapshot
+                    pending_param = self._pending_param
+                    self._pending_param = None
+
+                # Apply a live gain/exposure change on this (capture) thread.
+                if pending_param:
+                    try:
+                        if 'gain' in pending_param:
+                            self.camera.set_gain(pending_param['gain'])
+                            self.gain = pending_param['gain']
+                        if 'exposure' in pending_param:
+                            self.camera.set_exposure(pending_param['exposure'])
+                            self.exposure_time = pending_param['exposure']
+                        logger.info(f"Camera {self.name} live param -> {pending_param}")
+                    except Exception as e:
+                        logger.warning(f"Camera {self.name} set_param failed: {e}")
 
                 # Reconcile the video sink on this (capture) thread.
                 if want_video and video_writer is None:

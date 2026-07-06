@@ -416,6 +416,33 @@ class remote_camera_controller:
             cmd['snapshot'] = list(snapshot)   # tuple → JSON array
         return self.send_command(cmd)
 
+    def set_param(self, gain=None, exposure=None):
+        """Change gain/exposure on the running capture **live** (no restart).
+
+        Each of ``gain`` / ``exposure`` may be a scalar (all cameras) or a
+        ``{serial: value}`` dict (per-camera). Used by the live tuner.
+
+        Parameters
+        ----------
+        gain : float or dict, optional
+            New gain in dB — scalar or ``{serial: dB}``.
+        exposure : float or dict, optional
+            New exposure in microseconds — scalar or ``{serial: us}``.
+
+        Returns
+        -------
+        dict
+            Per-PC reply from the ``param`` command.
+        """
+        if self.init_error is not None:
+            raise self.init_error
+        cmd = {'action': 'param'}
+        if gain is not None:
+            cmd['gain'] = gain
+        if exposure is not None:
+            cmd['exposure'] = exposure
+        return self.send_command(cmd)
+
     def set_record(self, save_path=None, on=True):
         """Turn the video (.avi) sink on (with ``save_path``) or off, live."""
         return self.set_sink(video=on, save_path=save_path if on else None)

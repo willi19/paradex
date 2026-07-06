@@ -193,6 +193,25 @@ class CameraLoader:
             if kw:
                 camera.set_sink(**kw)
 
+    def set_param(self, gain=None, exposure=None):
+        """Apply gain/exposure to cameras live (see :meth:`Camera.set_param`).
+
+        Each of ``gain`` / ``exposure`` may be a scalar (applied to every camera)
+        or a ``{serial: value}`` dict (per-camera); ``None`` leaves it unchanged.
+
+        Parameters
+        ----------
+        gain : float or dict, optional
+            New gain in dB — scalar for all, or ``{serial: dB}``.
+        exposure : float or dict, optional
+            New exposure in microseconds — scalar for all, or ``{serial: us}``.
+        """
+        for camera in self.cameralist:
+            g = gain.get(camera.name) if isinstance(gain, dict) else gain
+            e = exposure.get(camera.name) if isinstance(exposure, dict) else exposure
+            if g is not None or e is not None:
+                camera.set_param(gain=g, exposure=e)
+
     def _broadcast(self, method_name):
         """Call ``method_name`` on every camera in parallel and wait for all.
 

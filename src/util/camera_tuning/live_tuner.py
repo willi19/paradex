@@ -39,13 +39,11 @@ WIN = "live_tuner"
 
 
 def _apply_exposure(cam, us):
-    cam.exposure_time = float(us)
-    cam._configureExposure()
+    cam.set_exposure(us)         # public live setter (was _configureExposure)
 
 
 def _apply_gain(cam, db):
-    cam.gain = float(db)
-    cam._configureGain()
+    cam.set_gain(db)             # public live setter (was _configureGain)
 
 
 def _save(serials, exp, gain):

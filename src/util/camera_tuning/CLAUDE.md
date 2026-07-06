@@ -6,13 +6,17 @@ lets you push exposure/gain changes to the selected camera in real time, then sa
 them to `camera.json`.
 
 ## Files
-- `live_tuner.py` — owns the cameras directly (single thread): `autoforce_ip()` →
-  `load_camera(serial)` per camera → `PyspinCamera.start("continuous", False, frame_rate=fps)`.
-  Main loop grabs `get_image()` from each, merges via `merge_image`, overlays
-  `exp`/`gain` and highlights the selected camera. OpenCV trackbars (`camera`,
-  `exp_us`, `gain_db`) + keys adjust the selected camera; `s` writes back to
-  `camera.json`, `q` quits. Applies changes with `PyspinCamera._configureExposure()`
-  / `_configureGain()` (ExposureTime/Gain are writable during acquisition).
+- `remote_tuner.py` — **Main PC**, whole-rig. Tunes every camera across all capture
+  PCs live **through the running daemon** (no daemon-off, no per-PC): `rcc.arm()` +
+  `rcc.set_stream(True)`, SSH-launches `stream_client.py` for the preview
+  (`DataCollector` receives JPEGs), merges + overlays exp/gain, and pushes edits with
+  `rcc.set_param(gain/exposure={serial: val})`. `s` saves to the main-PC
+  `camera.json`. Same keys as `live_tuner`. **Prefer this** for normal rig tuning.
+- `live_tuner.py` — **Capture PC**, single-PC, daemon-off. Owns cameras directly:
+  `autoforce_ip()` → `load_camera(serial)` → `PyspinCamera.start("continuous", ...)`.
+  Grabs `get_image()`, merges, overlays, trackbars/keys adjust the selected camera,
+  `s` saves to `camera.json`. Applies changes via the public `PyspinCamera.set_gain()`
+  / `set_exposure()` (ExposureTime/Gain are writable during acquisition).
 
 ## paradex modules used
 - `paradex.io.camera_system.pyspin` — `get_serial_list`, `autoforce_ip`, `load_camera`, `PyspinCamera`
@@ -26,11 +30,13 @@ the driver, and on `s` writes `{serial: {exposure, gain}}` back to
 `system/current/camera.json` (key names must stay `exposure`/`gain`).
 
 ## When working here
-- Run standalone on a capture PC — it opens the cameras directly, so a capture
-  daemon must NOT be holding them.
-- Reaching into `PyspinCamera._config*` is intentional; there is no public
-  set-exposure-while-live API yet (see design/camera-recording-redesign.md P3, which
-  proposes `set_exposure(serial, val)`).
+- `remote_tuner.py` (main PC) is the normal path — it goes through the daemon, so the
+  daemon SHOULD be up and it does not touch hardware directly.
+- `live_tuner.py` runs standalone on a capture PC — it opens the cameras directly, so a
+  capture daemon must NOT be holding them.
+- Live apply is now a first-class API: `PyspinCamera.set_gain/set_exposure` →
+  `Camera.set_param` → `CameraLoader.set_param` → daemon `param` command →
+  `rcc.set_param(gain/exposure=scalar or {serial: val})`. Use these, not `_config*`.
 
 ## Gotchas
 - `get_image()` returns `None` on a grab timeout (P4 fix) — the loop draws a black

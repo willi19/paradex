@@ -15,6 +15,7 @@ so agents stop rediscovering subsystem structure from scratch every session.
 | Dataset acquisition (`CaptureSession`, `match_sync`) | [`dataset_acquisition/README.md`](dataset_acquisition/README.md) |
 | Image layer (`ImageDict`, aruco, undistort, render) | [`image/README.md`](image/README.md) |
 | Video post-processing (raw→undistort→H.264→NAS upload) | [`video/README.md`](video/README.md) |
+| Visualization (`ViserScene`/`Open3DScene` — 3D viewer + figure/video render) | [`visualization/README.md`](visualization/README.md) |
 
 Design/roadmap docs stay in `design/` (repo root); generated API reference stays in
 `docs/`. This directory is orientation, not the plan and not the reference.

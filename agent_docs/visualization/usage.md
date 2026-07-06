@@ -26,6 +26,19 @@ The **same three lines** (`add_robot` / `add_object` / `animate`) drive an
 `Open3DScene` — swap the constructor and call `export_video()` instead of
 `show()`. No second code path for "make the paper video".
 
+Headless render (no browser) — same scene code, open3d backend:
+
+```python
+from paradex.visualization.scene import Open3DScene
+
+scene = Open3DScene(width=1280, height=720)
+scene.add_robot("arm", "/path/xarm_allegro.urdf", color=(0.2, 0.6, 1.0, 1.0))
+scene.add_object("cup", cup_trimesh, pose=cup_T, color=(0.8, 0.8, 0.8, 1.0))
+scene.set_camera(eye=(1.2, 1.2, 0.8), center=(0, 0, 0.15))
+scene.animate(robot={"arm": qpos}, object={"cup": cup_poses}, fps=30)
+scene.export_video("out.mp4")          # or: rgb = scene.render_frame(t)
+```
+
 ## The mental model: Scene vs Timeline
 
 Two separate concerns — keep them separate:

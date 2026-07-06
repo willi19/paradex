@@ -5,6 +5,7 @@ import time
 import traceback
 
 from paradex.io.camera_system.camera_loader import CameraLoader
+from paradex.io.camera_system.protocol import PROTOCOL_VERSION, get_auth_token
 from paradex.utils.log import get_logger
 
 logger = get_logger("camera")
@@ -12,6 +13,11 @@ logger = get_logger("camera")
 class camera_server_daemon:
     def __init__(self, idle_timeout_s=None):
         self.camera_loader = CameraLoader()
+
+        # Optional shared secret; None = accept any peer (closed-LAN default).
+        self._auth_token = get_auth_token()
+        if self._auth_token is not None:
+            logger.info("command auth token required (PARADEX_CAMERA_TOKEN set)")
 
         self.ping_port = 5480
         self.monitor_port = 5481
@@ -104,8 +110,19 @@ class camera_server_daemon:
         controller_name = cmd.get('controller_name')
         force = cmd.get('force', False)
 
+        # Authentication: reject any peer without the shared token (when one is set).
+        if self._auth_token is not None and cmd.get('token') != self._auth_token:
+            logger.warning(f"rejected {action} from '{controller_name}': bad/missing auth token")
+            return {"status": "error", "msg": "auth failed"}
+
         if action == "register":
             prev = self.current_controller
+            # Real lock: refuse to steal a live controller's session unless forced
+            # (force_takeover). A daemon that was just restarted has prev=None, and
+            # the idle dead-man clears prev, so a legitimate (re)claim still works.
+            if prev is not None and prev != controller_name and not force:
+                logger.warning(f"register from '{controller_name}' refused: locked by '{prev}'")
+                return {"status": "error", "msg": f"locked by {prev}; use force_takeover"}
             if self.cameras_running:
                 try:
                     self.camera_loader.stop()
@@ -117,7 +134,13 @@ class camera_server_daemon:
             self.last_action_time = time.time()
             if prev and prev != controller_name:
                 logger.info(f"controller takeover: '{prev}' -> '{controller_name}' (force={force})")
-            return {"status":"ok", "msg":"registered"}
+            resp = {"status": "ok", "msg": "registered", "version": PROTOCOL_VERSION}
+            client_ver = cmd.get("version")
+            if client_ver is not None and client_ver != PROTOCOL_VERSION:
+                warn = f"protocol mismatch: controller={client_ver} daemon={PROTOCOL_VERSION} (git out of sync?)"
+                logger.warning(warn)
+                resp["warning"] = warn
+            return resp
 
         if controller_name != self.current_controller and self.current_controller is not None:
             logger.warning(f"{controller_name} tried to access, but locked by {self.current_controller}")

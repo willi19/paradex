@@ -553,8 +553,10 @@ class Camera():
             Keys: ``state``, ``frame_id``, ``name``, ``mode``, ``fps``,
             ``syncMode``, ``save_path``, ``time``.
         """
+        has_error, (err_msg, _tb) = self.get_error()
         return {
-            'state': self.get_state(),
+            'state': "ERROR" if has_error else self.get_state(),
+            'error': err_msg if has_error else None,
             'frame_id': self.get_frame_id(),
             'name': self.name,
             'mode': getattr(self, 'mode', None),

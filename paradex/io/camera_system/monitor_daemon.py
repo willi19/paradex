@@ -1,10 +1,11 @@
 import time
+import subprocess
 import zmq
 from flask import Flask, render_template, jsonify
 from threading import Thread
 
 from paradex.utils.system import get_pc_list, get_pc_ip
-from paradex.io.capture_pc.ssh import run_script
+from paradex.io.capture_pc.ssh import run_script, ssh_port
 
 class pc_state:
     DISCONNECTED = 0
@@ -56,6 +57,17 @@ class CameraMonitor:
                 'camera_states': self.camera_states,
                 'controller_states': self.controller_states  # 추가
             })
+
+        @self.app.route('/api/restart/<pc>', methods=['POST'])
+        def restart(pc):
+            if pc not in self.pc_list:
+                return jsonify({'pc': pc, 'ok': False, 'msg': 'unknown pc'}), 404
+            ok = self.restart_server(pc)
+            return jsonify({'pc': pc, 'ok': ok})
+
+        @self.app.route('/api/restart_all', methods=['POST'])
+        def restart_all():
+            return jsonify({pc: self.restart_server(pc) for pc in self.pc_list})
     
     def initialize(self):
         """초기 서버 확인 및 시작"""
@@ -96,6 +108,24 @@ class CameraMonitor:
         except Exception as e:
             print(f"{pc}: Failed to start - {e}")
             return False
+
+    def restart_server(self, pc):
+        """Force-kill the daemon on `pc` and relaunch it (easy cleanup).
+
+        `-9` because a thread wedged in a native GetNextImage ignores SIGTERM.
+        """
+        print(f"{pc}: restarting camera server...")
+        ip = get_pc_ip(pc)
+        try:
+            subprocess.run(
+                f"ssh -p {ssh_port} {pc}@{ip} "
+                f"'pkill -9 -f \"src/camera/server_daemon.py\"; sleep 0.5'",
+                shell=True,
+            )
+        except Exception as e:
+            print(f"{pc}: kill failed - {e}")
+        self.pc_state[pc] = pc_state.DISCONNECTED
+        return self.start_server(pc)
     
     def setup_monitor_sockets(self):
         """5481 SUB 소켓 구독"""

@@ -15,7 +15,6 @@ from paradex.image.overlay import overlay_mask
 from paradex.image.aruco import detect_aruco, detect_charuco
 from paradex.transforms.triangulate import triangulation
 from paradex.image.merge import merge_image
-from paradex.visualization.deprecated.shape import draw_mask
 
 class ImageDict:
     def __init__(self, 
@@ -423,7 +422,6 @@ class ImageDict:
         images = {}
         for serial, m in mask.items():
             images[serial] = overlay_mask(self.images[serial], m, color=color, alpha=alpha)
-            # images[serial] = draw_mask(self.images[serial],m, color=color)
         new_img_dict = ImageDict(images, self.intrinsic, self.extrinsic, self.path)
         return new_img_dict
         

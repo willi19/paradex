@@ -57,6 +57,11 @@ class remote_camera_controller:
         self.stall_timeout = stall_timeout      # s without a new frame → "stalled"
         self.capturing = False                  # in a continuous (video/stream/full) capture
         self.continuous = False
+        # Sticky: set if a daemon died/restarted mid-capture. Stays set (even after
+        # the daemon recovers and we re-register) until the caller starts a new
+        # capture — so an interrupted recording is never silently "green" again.
+        self._capture_interrupted = False
+        self._interrupt_msg = None
         self.cam_progress = {}                  # cam -> (last_frame_id, last_change_time)
         self.stalled = set()                    # cameras whose frame_id stopped advancing
         self.pc_status = {}                     # pc -> {'status', 'msg', ...} (from PUB)
@@ -312,6 +317,10 @@ class remote_camera_controller:
         if self.init_error is not None:
             raise self.init_error
 
+        # New capture session → clear any prior "interrupted" flag.
+        self._capture_interrupted = False
+        self._interrupt_msg = None
+
         self.sending_event.clear()
         self.start_event.set()
 
@@ -461,7 +470,7 @@ class remote_camera_controller:
                     'gain': self.gain,
                 })
                 ok = all(resp.get('status') == 'ok' for resp in response.values())
-                self.continuous = self.mode in ('video', 'stream', 'full')
+                self.continuous = self.mode in ('video', 'stream', 'full', 'acquire')
                 self.capturing = ok and self.continuous
                 with self.status_lock:
                     self.cam_progress = {}
@@ -590,6 +599,22 @@ class remote_camera_controller:
         else:
             self.error_event.clear()
 
+        # Capture interruption: if we believe we're capturing but a PC went down
+        # (PUB silent) or was orphaned (daemon restarted), the recording on that PC
+        # is dead. Latch a sticky flag and stop pretending we're capturing — this
+        # survives the daemon's recovery + our re-register, so the caller always
+        # learns the recording broke (we do NOT auto-resume it).
+        if self.capturing:
+            with self.status_lock:
+                broken = [pc for pc in self.pc_list
+                          if (now - self.pc_last_seen.get(pc, 0.0)) > self.pub_timeout
+                          or (self.pc_status.get(pc) or {}).get('controller') in (None, 'None', '')]
+            if broken:
+                self._interrupt_msg = f"capture interrupted: daemon down/restarted on {sorted(broken)}"
+                logger.error(f"[rcc] {self._interrupt_msg}")
+                self._capture_interrupted = True
+                self.capturing = False
+
         # Re-claim an orphaned daemon: alive (PUBbing) but its controller is
         # cleared — it was restarted, or the idle dead-man released the lock. Only
         # re-register when the lock is *empty* ('None'), never when another named
@@ -614,8 +639,14 @@ class remote_camera_controller:
                 self.cam_progress = {}
 
     def is_error(self):
-        """True if any PC is currently erroring or any camera is stalled (live)."""
-        return self.error_event.is_set()
+        """True if any PC is currently erroring/stalled (live) or a capture was
+        interrupted (sticky, until the next :meth:`start`)."""
+        return self.error_event.is_set() or self._capture_interrupted
+
+    def capture_interrupted(self):
+        """True if a daemon died/restarted mid-capture and the recording was not
+        resumed. Sticky until the next :meth:`start` / :meth:`arm`."""
+        return self._capture_interrupted
 
     def get_status(self):
         """Live health snapshot for the caller to react to.
@@ -629,6 +660,8 @@ class remote_camera_controller:
             return {
                 'error': self.error_event.is_set(),
                 'stalled': sorted(self.stalled),
+                'capture_interrupted': self._capture_interrupted,
+                'interrupt_msg': self._interrupt_msg,
                 'pc': {pc: dict(s) for pc, s in self.pc_status.items()},
                 'last_response': {pc: dict(resp) for pc, resp in self.last_response.items()},
             }

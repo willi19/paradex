@@ -1,0 +1,108 @@
+/* paradex docs — custom styling on top of the Furo theme.
+   Loaded after furo.css (html_css_files), so these rules win.
+   Uses Furo's CSS variables so light & dark themes both work. */
+
+/* ============================================================
+   Tables — the default docutils tables were nearly invisible.
+   Full width, real borders, header band, zebra rows, hover.
+   ============================================================ */
+article table.docutils {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  margin: 1.4rem 0;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  border: 1px solid var(--color-background-border);
+  border-radius: 8px;
+  overflow: hidden;                 /* clip the rounded corners */
+}
+
+article table.docutils thead th.head {
+  background: var(--color-background-secondary);
+  color: var(--color-foreground-primary);
+  font-weight: 650;
+  text-align: left;
+  vertical-align: bottom;
+  border-bottom: 2px solid var(--color-background-border);
+}
+
+article table.docutils th,
+article table.docutils td {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--color-background-border);
+  border-right: 1px solid var(--color-background-border);
+  vertical-align: top;
+}
+/* no double border on the outer edges */
+article table.docutils th:last-child,
+article table.docutils td:last-child { border-right: 0; }
+article table.docutils tbody tr:last-child td { border-bottom: 0; }
+
+/* zebra striping + hover */
+article table.docutils tbody tr:nth-child(even) td {
+  background: var(--color-background-secondary);
+}
+article table.docutils tbody tr:hover td {
+  background: var(--color-background-hover);
+}
+
+/* keep inline code in cells from wrapping mid-token, but let long cells scroll */
+article table.docutils td code,
+article table.docutils th code { white-space: nowrap; }
+
+/* wide tables scroll horizontally instead of blowing out the page */
+.table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ============================================================
+   Section dividers — `---` (hr) was a faint hairline. Give it
+   air and a soft gradient so sections read as separate blocks.
+   ============================================================ */
+article hr.docutils,
+article hr {
+  height: 1px;
+  border: 0;
+  margin: 2.4rem 0;
+  background: linear-gradient(
+    to right,
+    transparent,
+    var(--color-background-border) 15%,
+    var(--color-background-border) 85%,
+    transparent
+  );
+}
+
+/* ============================================================
+   Headings — clearer visual hierarchy / section separation.
+   ============================================================ */
+article h2 {
+  margin-top: 2.6rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--color-background-border);
+}
+article h3 { margin-top: 1.9rem; }
+article h2:first-of-type { border-top: 0; padding-top: 0; }
+
+/* ============================================================
+   Code — a touch more contrast for fenced blocks & inline code.
+   ============================================================ */
+article div.highlight {
+  border: 1px solid var(--color-background-border);
+  border-radius: 8px;
+}
+article p code.literal,
+article li code.literal {
+  background: var(--color-background-secondary);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  font-size: 0.88em;
+}
+
+/* ============================================================
+   Admonitions (note/warning/tip) — stronger left accent so
+   callouts stand out from body text.
+   ============================================================ */
+article .admonition {
+  border-radius: 8px;
+  border-left-width: 4px;
+}

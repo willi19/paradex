@@ -262,7 +262,7 @@ class PyspinCamera():
             heartbeat / ``get_status()``.
         """
         try:
-            pImageRaw = self.cam.GetNextImage(GRAB_TIMEOUT_MS)
+            pImageRaw = self.cam.GetNextImage(getattr(self, 'grab_timeout_ms', GRAB_TIMEOUT_MS))
         except ps.SpinnakerException as e:
             # A grab timeout just means no frame arrived (dead trigger / LAN drop):
             # return None so the loop retries. Any OTHER Spinnaker error is real —
@@ -348,7 +348,14 @@ class PyspinCamera():
         if mode != self.mode:
             self.mode = mode
             self._configureAcquisition()
-        
+
+        # Grab timeout: at least the base, but >= 3 frame periods for low fps so a
+        # slow-but-healthy stream is not mistaken for a dead trigger.
+        if frame_rate and frame_rate > 0:
+            self.grab_timeout_ms = max(GRAB_TIMEOUT_MS, int(3 * 1000 / frame_rate))
+        else:
+            self.grab_timeout_ms = GRAB_TIMEOUT_MS
+
         self.cam.BeginAcquisition()
         return
     

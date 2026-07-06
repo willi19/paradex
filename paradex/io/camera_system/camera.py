@@ -179,7 +179,7 @@ class Camera():
         self.image_array_a.fill(0)
         self.image_array_b.fill(0)
 
-    def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None):
+    def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None, timeout=10.0):
         """Begin capture; blocks until the camera is actually acquiring.
 
         Validates the arguments (sets the error state on a bad combination),
@@ -199,6 +199,9 @@ class Camera():
             Frame rate for free-run, by default 30.
         exposure_time, gain : float, optional
             Overrides; ``None`` keeps the camera.json baseline.
+        timeout : float, optional
+            Max seconds to wait for the capture thread to begin acquiring before
+            logging a warning and returning, by default 10.0.
         """
         if fps < 0 and mode in ["video", "full"] and syncMode is False:
             self.event["error"].set()
@@ -249,7 +252,10 @@ class Camera():
         self.event["start"].set()
         print(f"[INFO] Camera {self.name} will start.")
 
-        self.event["acquisition"].wait()
+        if not self.event["acquisition"].wait(timeout=timeout):
+            print(f"[WARN] Camera {self.name} start() timed out after {timeout}s "
+                  f"waiting for acquisition to begin.")
+            return
         print(f"[INFO] Camera {self.name} acquisition started.")
 
     def error_reset(self):

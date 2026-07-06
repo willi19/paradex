@@ -51,15 +51,16 @@ Method-level details for each component are in the {doc}`API reference <camera_s
 | **Sink** | A frame's destination. `stream`→SHM, `video`→`.avi`, `image`→one still, `full`→SHM+`.avi`. |
 | **Acquisition** | One capture thread per camera grabbing frames continuously. A separate axis from the sink. |
 | **Hardware sync** | Each trigger pulse increments every camera's `frame_id` at once. Same instant = same id. |
-| **Controller lock** | One controller per daemon. Acquired via `register`; auto-released after 15 s without a heartbeat. |
+| **Controller lock** | One controller per daemon. Acquired via `register`; auto-released after the idle timeout (~5 s, configurable) without a heartbeat — the dead-man switch for a crashed controller. |
 
 ---
 
 ## 3. Command Flow
 
 The controller holds a single-controller lock on each daemon, starts a mode, then
-keeps sending heartbeats. If it goes silent for 15 s the daemon releases the lock and
-stops the cameras.
+keeps sending heartbeats. If it goes silent for the idle timeout (~5 s, configurable
+via `PARADEX_CAMERA_IDLE_TIMEOUT_S`) the daemon releases the lock and stops the
+cameras — the dead-man switch that recovers from a crashed controller.
 
 ```{mermaid}
 sequenceDiagram
@@ -70,7 +71,7 @@ sequenceDiagram
     D->>D: CameraLoader.start → per-camera acquisition
     loop every ~0.1 s
       M->>D: heartbeat
-      D-->>M: ok / camera errors
+      D-->>M: ok/error + running + counts + states + frame_ids
     end
     M->>D: stop
     M->>D: end (release lock)
@@ -215,6 +216,13 @@ leaked SHM.
 
 **Recovery**: if wedged at the hardware level, run `python src/camera/reset_cameras.py`
 from the main PC (`pkill -9` + relaunch the daemons). **Validation**: §9.
+
+**Start vs heartbeat.** `start` is responsible for proving that every local
+camera armed successfully; the daemon checks per-camera errors before returning
+`ok`. Heartbeat is the ongoing monitor after that: it carries `running`,
+`expected_camera_count`, `detected_camera_count`, per-camera `states`, and
+`frame_ids` so the main-PC controller can detect later stalls without treating
+heartbeat as a substitute for command success.
 
 ---
 

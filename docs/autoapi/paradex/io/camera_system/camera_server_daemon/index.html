@@ -376,7 +376,7 @@
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_server_daemon.camera_server_daemon">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.camera_server_daemon.</span></span><span class="sig-name descname"><span class="pre">camera_server_daemon</span></span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_server_daemon.html#camera_server_daemon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.camera_server_daemon.</span></span><span class="sig-name descname"><span class="pre">camera_server_daemon</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">idle_timeout_s</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_server_daemon.html#camera_server_daemon"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon" title="Link to this definition">¶</a></dt>
 <dd><dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_server_daemon.camera_server_daemon.camera_loader">
 <span class="sig-name descname"><span class="pre">camera_loader</span></span><a class="headerlink" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.camera_loader" title="Link to this definition">¶</a></dt>
@@ -395,6 +395,16 @@
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_server_daemon.camera_server_daemon.command_port">
 <span class="sig-name descname"><span class="pre">command_port</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">5482</span></em><a class="headerlink" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.command_port" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.camera_server_daemon.camera_server_daemon.idle_timeout_s">
+<span class="sig-name descname"><span class="pre">idle_timeout_s</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.idle_timeout_s" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.camera_server_daemon.camera_server_daemon.idle_timeout_ms">
+<span class="sig-name descname"><span class="pre">idle_timeout_ms</span></span><a class="headerlink" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.idle_timeout_ms" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -514,6 +524,8 @@ SIGKILL (-9) cannot be caught (next daemon start cleans up leaked SHM).</p>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.ping_port"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.ping_port</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.monitor_port"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.monitor_port</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.command_port"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.command_port</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.idle_timeout_s"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.idle_timeout_s</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.idle_timeout_ms"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.idle_timeout_ms</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.ctx"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.ctx</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.current_controller"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.current_controller</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.last_action"><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.last_action</span></code></a></li>

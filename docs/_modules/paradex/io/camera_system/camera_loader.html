@@ -401,6 +401,7 @@
     <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">types</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;pyspin&quot;</span><span class="p">]):</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cameralist</span> <span class="o">=</span> <span class="p">[]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">camera_names</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">expected_camera_count</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">get_camera_list</span><span class="p">())</span>
         <span class="c1"># Per-serial gain/exposure baseline (system/current/camera.json).</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">cam_config</span> <span class="o">=</span> <span class="n">get_camera_config</span><span class="p">()</span>
 
@@ -430,7 +431,7 @@
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="kn">from</span><span class="w"> </span><span class="nn">paradex.io.camera_system.pyspin</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_serial_list</span><span class="p">,</span> <span class="n">autoforce_ip</span>
         
-        <span class="n">expected</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">get_camera_list</span><span class="p">())</span>
+        <span class="n">expected</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected_camera_count</span>
         <span class="n">autoforce_ip</span><span class="p">()</span>
 
         <span class="k">if</span> <span class="n">serial_list</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -454,7 +455,10 @@
                 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Warning] Still </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">serial_list</span><span class="p">)</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">expected</span><span class="si">}</span><span class="s2"> cameras after &quot;</span>
                       <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">RETRY_COUNT</span><span class="si">}</span><span class="s2"> retries; proceeding with detected cameras.&quot;</span><span class="p">)</span>
                 
-        <span class="bp">self</span><span class="o">.</span><span class="n">cameralist</span> <span class="o">=</span> <span class="p">[</span><span class="n">Camera</span><span class="p">(</span><span class="s2">&quot;pyspin&quot;</span><span class="p">,</span> <span class="n">serial</span><span class="p">)</span> <span class="k">for</span> <span class="n">serial</span> <span class="ow">in</span> <span class="n">serial_list</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">cameralist</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">Camera</span><span class="p">(</span><span class="s2">&quot;pyspin&quot;</span><span class="p">,</span> <span class="n">serial</span><span class="p">,</span> <span class="n">cfg</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">cam_config</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">serial</span><span class="p">,</span> <span class="p">{}))</span>
+            <span class="k">for</span> <span class="n">serial</span> <span class="ow">in</span> <span class="n">serial_list</span>
+        <span class="p">]</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">camera_names</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">camera_names</span> <span class="o">+</span> <span class="n">serial_list</span></div>
 
     
@@ -523,7 +527,11 @@
         
         <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">threads</span><span class="p">:</span>
             <span class="n">t</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;all cameras started.&quot;</span><span class="p">)</span></div>
+        <span class="n">errors</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_all_errors</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">errors</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Warning] camera start completed with errors: </span><span class="si">{</span><span class="n">errors</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;all cameras started.&quot;</span><span class="p">)</span></div>
 
     
     <span class="k">def</span><span class="w"> </span><span class="nf">_broadcast</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method_name</span><span class="p">):</span>
@@ -572,6 +580,21 @@
         <span class="k">for</span> <span class="n">camera</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">cameralist</span><span class="p">:</span>
             <span class="n">status_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">camera</span><span class="o">.</span><span class="n">get_status</span><span class="p">())</span>
         <span class="k">return</span> <span class="n">status_list</span></div>
+
+
+<div class="viewcode-block" id="CameraLoader.get_summary">
+<a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.CameraLoader.get_summary">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_summary</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return compact group-level camera state for daemon responses.&quot;&quot;&quot;</span>
+        <span class="n">status_list</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_status_list</span><span class="p">()</span>
+        <span class="k">return</span> <span class="p">{</span>
+            <span class="s2">&quot;expected_camera_count&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">expected_camera_count</span><span class="p">,</span>
+            <span class="s2">&quot;detected_camera_count&quot;</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cameralist</span><span class="p">),</span>
+            <span class="s2">&quot;camera_names&quot;</span><span class="p">:</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">camera_names</span><span class="p">),</span>
+            <span class="s2">&quot;frame_ids&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">s</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]:</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;frame_id&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">status_list</span><span class="p">},</span>
+            <span class="s2">&quot;states&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">s</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]:</span> <span class="n">s</span><span class="p">[</span><span class="s2">&quot;state&quot;</span><span class="p">]</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">status_list</span><span class="p">},</span>
+            <span class="s2">&quot;errors&quot;</span><span class="p">:</span> <span class="p">{</span><span class="n">s</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">]:</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">)</span> <span class="k">for</span> <span class="n">s</span> <span class="ow">in</span> <span class="n">status_list</span> <span class="k">if</span> <span class="n">s</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;error&quot;</span><span class="p">)},</span>
+        <span class="p">}</span></div>
 
     
 <div class="viewcode-block" id="CameraLoader.get_all_errors">

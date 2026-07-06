@@ -53,6 +53,9 @@ Module Contents
 
 
 
+   .. py:attribute:: expected_camera_count
+
+
    .. py:attribute:: cam_config
 
 
@@ -126,6 +129,12 @@ Module Contents
       :returns: One :meth:`Camera.get_status` dict per camera, in ``cameralist``
                 order.
       :rtype: list of dict
+
+
+
+   .. py:method:: get_summary()
+
+      Return compact group-level camera state for daemon responses.
 
 
 

@@ -412,6 +412,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">stop_event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">error_event</span> <span class="o">=</span> <span class="n">Event</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span> <span class="o">=</span> <span class="kc">None</span>
 
         <span class="c1"># ── health tracking ──────────────────────────────────────────────</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">auto_reload</span> <span class="o">=</span> <span class="n">auto_reload</span>          <span class="c1"># auto-reload cameras on stall/error</span>
@@ -421,6 +422,7 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">cam_progress</span> <span class="o">=</span> <span class="p">{}</span>                  <span class="c1"># cam -&gt; (last_frame_id, last_change_time)</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stalled</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>                    <span class="c1"># cameras whose frame_id stopped advancing</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">pc_status</span> <span class="o">=</span> <span class="p">{}</span>                     <span class="c1"># pc -&gt; {&#39;status&#39;, &#39;msg&#39;} (last heartbeat)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">last_response</span> <span class="o">=</span> <span class="p">{}</span>                 <span class="c1"># last raw per-PC command/heartbeat response</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">status_lock</span> <span class="o">=</span> <span class="n">Lock</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_stalled_print</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">_last_reload_ts</span> <span class="o">=</span> <span class="mf">0.0</span>
@@ -601,10 +603,15 @@
         <span class="bp">self</span><span class="o">.</span><span class="n">exposure_time</span> <span class="o">=</span> <span class="n">exposure_time</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">gain</span> <span class="o">=</span> <span class="n">gain</span>
 
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">start_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 
-        <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span></div>
 
 
 <div class="viewcode-block" id="remote_camera_controller.stop">
@@ -615,9 +622,14 @@
 <span class="sd">        Signals :meth:`run` via ``stop_event`` and waits on ``sending_event``</span>
 <span class="sd">        for the loop to dispatch the ``stop`` command to every daemon.</span>
 <span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span>
+
         <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">clear</span><span class="p">()</span>
         <span class="bp">self</span><span class="o">.</span><span class="n">stop_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span></div>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">wait</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span></div>
 
 
 <div class="viewcode-block" id="remote_camera_controller.end">
@@ -660,7 +672,18 @@
 <div class="viewcode-block" id="remote_camera_controller.run">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.run">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">run</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">initialize</span><span class="p">()</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">init_error</span> <span class="o">=</span> <span class="n">e</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">error_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+            <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_lock</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pc_status</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="n">pc</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="s1">&#39;error&#39;</span><span class="p">,</span> <span class="s1">&#39;msg&#39;</span><span class="p">:</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)}</span>
+                    <span class="k">for</span> <span class="n">pc</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_list</span>
+                <span class="p">}</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
+            <span class="k">return</span>
 
         <span class="k">while</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">exit_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">():</span>
             <span class="n">cmd</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;heartbeat&#39;</span><span class="p">}</span>
@@ -683,18 +706,23 @@
 
             <span class="n">response</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">(</span><span class="n">cmd</span><span class="p">)</span>
 
-            <span class="c1"># Track whether we should be seeing a continuous frame stream.</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_update_health</span><span class="p">(</span><span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">],</span> <span class="n">response</span><span class="p">)</span>
+
+            <span class="c1"># Track whether we should be seeing a continuous frame stream only</span>
+            <span class="c1"># after the command response says every daemon accepted the start.</span>
             <span class="k">if</span> <span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;start&#39;</span><span class="p">:</span>
+                <span class="n">ok</span> <span class="o">=</span> <span class="nb">all</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;ok&#39;</span> <span class="k">for</span> <span class="n">resp</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">values</span><span class="p">())</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">continuous</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">mode</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;video&#39;</span><span class="p">,</span> <span class="s1">&#39;stream&#39;</span><span class="p">,</span> <span class="s1">&#39;full&#39;</span><span class="p">)</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">capturing</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">continuous</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">capturing</span> <span class="o">=</span> <span class="n">ok</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">continuous</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">cam_progress</span> <span class="o">=</span> <span class="p">{}</span>
             <span class="k">elif</span> <span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;stop&#39;</span><span class="p">:</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">capturing</span> <span class="o">=</span> <span class="kc">False</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cam_progress</span> <span class="o">=</span> <span class="p">{}</span>
+                <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_lock</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">stalled</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
             <span class="k">if</span> <span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">]</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;start&#39;</span><span class="p">,</span> <span class="s1">&#39;stop&#39;</span><span class="p">):</span>
                 <span class="bp">self</span><span class="o">.</span><span class="n">sending_event</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
-
-            <span class="bp">self</span><span class="o">.</span><span class="n">_update_health</span><span class="p">(</span><span class="n">cmd</span><span class="p">[</span><span class="s1">&#39;action&#39;</span><span class="p">],</span> <span class="n">response</span><span class="p">)</span>
             <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
 
         <span class="bp">self</span><span class="o">.</span><span class="n">send_command</span><span class="p">({</span><span class="s1">&#39;action&#39;</span><span class="p">:</span> <span class="s1">&#39;end&#39;</span><span class="p">})</span>
@@ -714,8 +742,17 @@
         <span class="n">stalled</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
 
         <span class="k">with</span> <span class="bp">self</span><span class="o">.</span><span class="n">status_lock</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">last_response</span> <span class="o">=</span> <span class="p">{</span><span class="n">pc</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">resp</span><span class="p">)</span> <span class="k">for</span> <span class="n">pc</span><span class="p">,</span> <span class="n">resp</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
             <span class="k">for</span> <span class="n">pc</span><span class="p">,</span> <span class="n">resp</span> <span class="ow">in</span> <span class="n">response</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="bp">self</span><span class="o">.</span><span class="n">pc_status</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">),</span> <span class="s1">&#39;msg&#39;</span><span class="p">:</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;msg&#39;</span><span class="p">)}</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">pc_status</span><span class="p">[</span><span class="n">pc</span><span class="p">]</span> <span class="o">=</span> <span class="p">{</span>
+                    <span class="s1">&#39;status&#39;</span><span class="p">:</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">),</span>
+                    <span class="s1">&#39;msg&#39;</span><span class="p">:</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;msg&#39;</span><span class="p">),</span>
+                    <span class="s1">&#39;states&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;states&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}),</span>
+                    <span class="s1">&#39;frame_ids&#39;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;frame_ids&#39;</span><span class="p">)</span> <span class="ow">or</span> <span class="p">{}),</span>
+                    <span class="s1">&#39;running&#39;</span><span class="p">:</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;running&#39;</span><span class="p">),</span>
+                    <span class="s1">&#39;expected_camera_count&#39;</span><span class="p">:</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;expected_camera_count&#39;</span><span class="p">),</span>
+                    <span class="s1">&#39;detected_camera_count&#39;</span><span class="p">:</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;detected_camera_count&#39;</span><span class="p">),</span>
+                <span class="p">}</span>
 
                 <span class="k">if</span> <span class="n">resp</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;status&#39;</span><span class="p">)</span> <span class="o">==</span> <span class="s1">&#39;error&#39;</span><span class="p">:</span>
                     <span class="n">any_bad</span> <span class="o">=</span> <span class="kc">True</span>
@@ -782,6 +819,7 @@
                 <span class="s1">&#39;error&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">error_event</span><span class="o">.</span><span class="n">is_set</span><span class="p">(),</span>
                 <span class="s1">&#39;stalled&#39;</span><span class="p">:</span> <span class="nb">sorted</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">stalled</span><span class="p">),</span>
                 <span class="s1">&#39;pc&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">pc</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">s</span><span class="p">)</span> <span class="k">for</span> <span class="n">pc</span><span class="p">,</span> <span class="n">s</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_status</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
+                <span class="s1">&#39;last_response&#39;</span><span class="p">:</span> <span class="p">{</span><span class="n">pc</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">resp</span><span class="p">)</span> <span class="k">for</span> <span class="n">pc</span><span class="p">,</span> <span class="n">resp</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">last_response</span><span class="o">.</span><span class="n">items</span><span class="p">()},</span>
             <span class="p">}</span></div>
 </div>
 

@@ -9,7 +9,7 @@ paradex.io.camera_system.camera_server_daemon
 Module Contents
 ---------------
 
-.. py:class:: camera_server_daemon
+.. py:class:: camera_server_daemon(idle_timeout_s=None)
 
    .. py:attribute:: camera_loader
 
@@ -27,6 +27,14 @@ Module Contents
    .. py:attribute:: command_port
       :value: 5482
 
+
+
+   .. py:attribute:: idle_timeout_s
+      :value: None
+
+
+
+   .. py:attribute:: idle_timeout_ms
 
 
    .. py:attribute:: ctx

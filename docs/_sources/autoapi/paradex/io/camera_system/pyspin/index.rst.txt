@@ -32,16 +32,18 @@ Module Contents
    :rtype: list of str
 
 
-.. py:function:: load_camera(serialnum)
+.. py:function:: load_camera(serialnum, cfg=None)
 
    Open a camera by serial number and wrap it in a :class:`PyspinCamera`.
 
-   Gain and exposure are taken from the camera config (``cam_info``) when the
-   serial is present there, otherwise fixed defaults (gain 3.0, exposure
-   2500.0) are used.
+   Gain/exposure and optional hardware tuning keys are taken from ``cfg`` when
+   provided; direct callers fall back to this module's camera.json snapshot.
+   Missing gain/exposure values use fixed defaults (gain 3.0, exposure 2500.0).
 
    :param serialnum: Serial number of the camera to open.
    :type serialnum: str
+   :param cfg: Per-serial ``camera.json`` entry supplied by ``CameraLoader``.
+   :type cfg: dict, optional
 
    :returns: Initialized and configured camera wrapper.
    :rtype: PyspinCamera
@@ -49,17 +51,18 @@ Module Contents
    :raises ValueError: If no camera with the given serial number is found.
 
 
-.. py:function:: load_timestamp_monitor(serialnum)
+.. py:function:: load_timestamp_monitor(serialnum, cfg=None)
 
    Open a camera by serial number as a :class:`PyspinTimestampMonitor`.
 
    Like :func:`load_camera` but returns a lightweight monitor that only reads
-   frame timestamps/IDs (used for sync diagnostics). Gain and exposure come
-   from the camera config when available, otherwise defaults (gain 3.0,
-   exposure 2500.0).
+   frame timestamps/IDs (used for sync diagnostics). Gain/exposure and hardware
+   tuning keys come from ``cfg`` when available, otherwise defaults are used.
 
    :param serialnum: Serial number of the camera to open.
    :type serialnum: str
+   :param cfg: Per-serial ``camera.json`` entry supplied by the caller.
+   :type cfg: dict, optional
 
    :returns: Initialized timestamp monitor for the camera.
    :rtype: PyspinTimestampMonitor

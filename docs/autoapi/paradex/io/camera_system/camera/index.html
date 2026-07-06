@@ -376,7 +376,7 @@
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.camera.</span></span><span class="sig-name descname"><span class="pre">Camera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cam_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1536,</span> <span class="pre">2048,</span> <span class="pre">3)</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.camera.</span></span><span class="sig-name descname"><span class="pre">Camera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cam_type</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame_shape</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">(1536,</span> <span class="pre">2048,</span> <span class="pre">3)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera.html#Camera"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera.Camera" title="Link to this definition">¶</a></dt>
 <dd><p>One FLIR camera plus its dedicated capture thread.</p>
 <p>A <code class="docutils literal notranslate"><span class="pre">Camera</span></code> owns a single hardware camera (via <code class="xref py py-class docutils literal notranslate"><span class="pre">PyspinCamera</span></code>) and a
 background <strong>capture thread</strong> (<a class="reference internal" href="#paradex.io.camera_system.camera.Camera.run" title="paradex.io.camera_system.camera.Camera.run"><code class="xref py py-meth docutils literal notranslate"><span class="pre">run()</span></code></a>). The thread and the calling thread
@@ -395,6 +395,7 @@ coordinate through a set of <code class="xref py py-class docutils literal notra
 <li><p><strong>cam_type</strong> (<em>str</em>) – Backend, currently only <code class="docutils literal notranslate"><span class="pre">&quot;pyspin&quot;</span></code>.</p></li>
 <li><p><strong>name</strong> (<em>str</em>) – Camera serial number (used as the SHM key and file stem).</p></li>
 <li><p><strong>frame_shape</strong> (<em>tuple</em><em> of </em><em>int</em><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">(height,</span> <span class="pre">width,</span> <span class="pre">channels)</span></code> of a frame, by default <code class="docutils literal notranslate"><span class="pre">(1536,</span> <span class="pre">2048,</span> <span class="pre">3)</span></code>.</p></li>
+<li><p><strong>cfg</strong> (<em>dict</em><em>, </em><em>optional</em>) – Per-serial <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> entry passed through to the PySpin backend.</p></li>
 </ul>
 </dd>
 </dl>
@@ -411,6 +412,11 @@ coordinate through a set of <code class="xref py py-class docutils literal notra
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.name">
 <span class="sig-name descname"><span class="pre">name</span></span><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.name" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.camera.Camera.cfg">
+<span class="sig-name descname"><span class="pre">cfg</span></span><a class="headerlink" href="#paradex.io.camera_system.camera.Camera.cfg" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -667,6 +673,7 @@ dispatches to <a class="reference internal" href="#paradex.io.camera_system.came
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.event"><code class="docutils literal notranslate"><span class="pre">Camera.event</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.type"><code class="docutils literal notranslate"><span class="pre">Camera.type</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.name"><code class="docutils literal notranslate"><span class="pre">Camera.name</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.cfg"><code class="docutils literal notranslate"><span class="pre">Camera.cfg</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.frame_shape"><code class="docutils literal notranslate"><span class="pre">Camera.frame_shape</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.last_frame_id"><code class="docutils literal notranslate"><span class="pre">Camera.last_frame_id</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera.Camera.last_error"><code class="docutils literal notranslate"><span class="pre">Camera.last_error</span></code></a></li>

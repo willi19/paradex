@@ -9,7 +9,7 @@ paradex.io.camera_system.camera
 Module Contents
 ---------------
 
-.. py:class:: Camera(cam_type, name, frame_shape=(1536, 2048, 3))
+.. py:class:: Camera(cam_type, name, frame_shape=(1536, 2048, 3), cfg=None)
 
    One FLIR camera plus its dedicated capture thread.
 
@@ -31,6 +31,8 @@ Module Contents
    :type name: str
    :param frame_shape: ``(height, width, channels)`` of a frame, by default ``(1536, 2048, 3)``.
    :type frame_shape: tuple of int, optional
+   :param cfg: Per-serial ``camera.json`` entry passed through to the PySpin backend.
+   :type cfg: dict, optional
 
 
    .. py:attribute:: event
@@ -40,6 +42,9 @@ Module Contents
 
 
    .. py:attribute:: name
+
+
+   .. py:attribute:: cfg
 
 
    .. py:attribute:: frame_shape

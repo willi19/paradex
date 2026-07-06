@@ -476,6 +476,13 @@
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.monitor_daemon.CameraMonitor.restart_server">
+<span class="sig-name descname"><span class="pre">restart_server</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pc</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.restart_server" title="Link to this definition">¶</a></dt>
+<dd><p>Force-kill the daemon on <cite>pc</cite> and relaunch it (easy cleanup).</p>
+<p><cite>-9</cite> because a thread wedged in a native GetNextImage ignores SIGTERM.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.monitor_daemon.CameraMonitor.setup_monitor_sockets">
 <span class="sig-name descname"><span class="pre">setup_monitor_sockets</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.setup_monitor_sockets" title="Link to this definition">¶</a></dt>
 <dd><p>5481 SUB 소켓 구독</p>
@@ -559,6 +566,7 @@
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.initialize"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.initialize()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.ping_server"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.ping_server()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.start_server"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.start_server()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.restart_server"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.restart_server()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.setup_monitor_sockets"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.setup_monitor_sockets()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.ping_loop"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.ping_loop()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.monitor_daemon.CameraMonitor.monitor_loop"><code class="docutils literal notranslate"><span class="pre">CameraMonitor.monitor_loop()</span></code></a></li>

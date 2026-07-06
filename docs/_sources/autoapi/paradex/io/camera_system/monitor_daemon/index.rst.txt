@@ -90,6 +90,14 @@ Module Contents
 
 
 
+   .. py:method:: restart_server(pc)
+
+      Force-kill the daemon on `pc` and relaunch it (easy cleanup).
+
+      `-9` because a thread wedged in a native GetNextImage ignores SIGTERM.
+
+
+
    .. py:method:: setup_monitor_sockets()
 
       5481 SUB 소켓 구독

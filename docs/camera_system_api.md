@@ -31,13 +31,14 @@ Drives every capture PC over ZMQ. `start()`/`stop()` set events; the background
 
 | Method | Input | Output | Description |
 |--------|-------|--------|-------------|
-| `remote_camera_controller(name, pc_list=None)` | `name: str`, `pc_list: list[str]=None` | instance | Construct; spawns the `run()` thread. `pc_list=None` → all capture PCs. |
-| `.start(...)` | see [start() params](#common-start-parameters) | `None` | Begin capture on all PCs (returns once sent). |
-| `.stop()` | — | `None` | Stop capture on all PCs. |
+| `remote_camera_controller(name, pc_list=None, auto_reload=False, stall_timeout=3.0)` | `name: str`, `pc_list: list[str]=None`, `auto_reload: bool`, `stall_timeout: float` | instance | Construct; spawns the `run()` thread. `pc_list=None` → all capture PCs. |
+| `.start(...)` | see [start() params](#common-start-parameters) | `None` | Begin capture on all PCs (returns once the command response has updated health; raises the initialization error if daemon connection failed). |
+| `.stop()` | — | `None` | Stop capture on all PCs (also raises the initialization error if the controller never connected). |
 | `.end()` | — | `None` | Release the lock, join the loop thread. |
 | `.reload_cameras()` | — | `None` | Ask every daemon to re-init its cameras. |
 | `.force_takeover()` | — | `dict` per PC | Grab the lock even if another controller holds it. |
 | `.is_error()` | — | `bool` | `True` if any camera reported an error. |
+| `.get_status()` | — | `dict` | Live health snapshot: error flag, stalled serials, per-PC status, and the last raw daemon responses. |
 
 ---
 
@@ -52,6 +53,7 @@ Owns the local cameras and drives them together.
 | `.stop()` | — | `None` | Stop all cameras. |
 | `.end()` | — | `None` | Stop + release all cameras (DeInit + free SHM). |
 | `.get_status_list()` | — | `list[dict]` | Per-camera status dict (see `Camera.get_status`). |
+| `.get_summary()` | — | `dict` | Compact daemon payload: expected/detected counts, serials, per-camera states/frame ids/errors. |
 | `.get_all_errors()` | — | `dict[str, tuple]` | `{serial: (msg, traceback)}` for cameras in error. |
 
 **Attributes**: `.camera_names` (`list[str]` serials), `.cameralist` (`list[Camera]`).
@@ -64,7 +66,7 @@ One camera + its capture thread. See the {doc}`state machine <camera_system>` (�
 
 | Method | Input | Output | Description |
 |--------|-------|--------|-------------|
-| `Camera(cam_type, name, frame_shape=(1536,2048,3))` | `cam_type: str`, `name: str` (serial), `frame_shape: tuple` | instance | Open the camera, allocate SHM, spawn the capture thread. |
+| `Camera(cam_type, name, frame_shape=(1536,2048,3), cfg=None)` | `cam_type: str`, `name: str` (serial), `frame_shape: tuple`, `cfg: dict=None` | instance | Open the camera, allocate SHM, spawn the capture thread. `cfg` is the per-serial `camera.json` entry passed down to `PyspinCamera`. |
 | `.start(...)` | see [start() params](#common-start-parameters) | `None` | Begin capture in `mode`; blocks until acquiring. |
 | `.stop(timeout=5.0)` | `timeout: float` | `None` | Stop capture; finite wait (warns and returns on timeout). |
 | `.end(timeout=5.0)` | `timeout: float` | `None` | Stop + release (DeInit + free SHM); finite wait. |
@@ -81,13 +83,15 @@ Thin wrapper over the PySpin SDK. `Camera` holds one as `self.camera`.
 
 | Method | Input | Output | Description |
 |--------|-------|--------|-------------|
-| `.get_image()` | — | `(ndarray, dict)` or `(None, None)` | Grab one frame. `(None, None)` on a grab timeout (`GRAB_TIMEOUT_MS`) or incomplete frame. `dict = {pc_time, frameID}`. |
+| `.get_image()` | — | `(ndarray, dict)`, `(None, dict)`, or `(None, None)` | Grab one frame. `(None, None)` on a grab timeout (`GRAB_TIMEOUT_MS`); `(None, frame_data)` on an incomplete/zero-size frame. `dict = {pc_time, frameID}`. |
 | `.start(mode, syncMode, frame_rate=None, gain=None, exposure_time=None)` | `mode: "single"\|"continuous"`, ... | `None` | Re-apply changed config + `BeginAcquisition`. |
 | `.stop()` | — | `None` | `EndAcquisition` (camera stays connected). |
 | `.release()` | — | `None` | `DeInit` (disconnect). |
 
 Module-level: `get_serial_list()` → `list[str]`, `autoforce_ip()`,
-`load_camera(serial)` → `PyspinCamera`, constant `GRAB_TIMEOUT_MS = 1000`.
+`load_camera(serial, cfg=None)` → `PyspinCamera`,
+`load_timestamp_monitor(serial, cfg=None)` → `PyspinTimestampMonitor`, constant
+`GRAB_TIMEOUT_MS = 1000`.
 
 ---
 

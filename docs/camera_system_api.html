@@ -440,20 +440,20 @@ per class. For the architecture and how these fit together, see the
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller(name,</span> <span class="pre">pc_list=None)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">pc_list:</span> <span class="pre">list[str]=None</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller(name,</span> <span class="pre">pc_list=None,</span> <span class="pre">auto_reload=False,</span> <span class="pre">stall_timeout=3.0)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">pc_list:</span> <span class="pre">list[str]=None</span></code>, <code class="docutils literal notranslate"><span class="pre">auto_reload:</span> <span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">stall_timeout:</span> <span class="pre">float</span></code></p></td>
 <td><p>instance</p></td>
 <td><p>Construct; spawns the <code class="docutils literal notranslate"><span class="pre">run()</span></code> thread. <code class="docutils literal notranslate"><span class="pre">pc_list=None</span></code> → all capture PCs.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(...)</span></code></p></td>
 <td><p>see <a class="reference internal" href="#common-start-parameters"><span class="xref myst">start() params</span></a></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Begin capture on all PCs (returns once sent).</p></td>
+<td><p>Begin capture on all PCs (returns once the command response has updated health; raises the initialization error if daemon connection failed).</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
 <td><p>—</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Stop capture on all PCs.</p></td>
+<td><p>Stop capture on all PCs (also raises the initialization error if the controller never connected).</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
 <td><p>—</p></td>
@@ -474,6 +474,11 @@ per class. For the architecture and how these fit together, see the
 <td><p>—</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if any camera reported an error.</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_status()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p>Live health snapshot: error flag, stalled serials, per-PC status, and the last raw daemon responses.</p></td>
 </tr>
 </tbody>
 </table>
@@ -518,7 +523,12 @@ per class. For the architecture and how these fit together, see the
 <td><p><code class="docutils literal notranslate"><span class="pre">list[dict]</span></code></p></td>
 <td><p>Per-camera status dict (see <code class="docutils literal notranslate"><span class="pre">Camera.get_status</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_all_errors()</span></code></p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_summary()</span></code></p></td>
+<td><p>—</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p>Compact daemon payload: expected/detected counts, serials, per-camera states/frame ids/errors.</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_all_errors()</span></code></p></td>
 <td><p>—</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">tuple]</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">(msg,</span> <span class="pre">traceback)}</span></code> for cameras in error.</p></td>
@@ -542,10 +552,10 @@ per class. For the architecture and how these fit together, see the
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Camera(cam_type,</span> <span class="pre">name,</span> <span class="pre">frame_shape=(1536,2048,3))</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">cam_type:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code> (serial), <code class="docutils literal notranslate"><span class="pre">frame_shape:</span> <span class="pre">tuple</span></code></p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Camera(cam_type,</span> <span class="pre">name,</span> <span class="pre">frame_shape=(1536,2048,3),</span> <span class="pre">cfg=None)</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">cam_type:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code> (serial), <code class="docutils literal notranslate"><span class="pre">frame_shape:</span> <span class="pre">tuple</span></code>, <code class="docutils literal notranslate"><span class="pre">cfg:</span> <span class="pre">dict=None</span></code></p></td>
 <td><p>instance</p></td>
-<td><p>Open the camera, allocate SHM, spawn the capture thread.</p></td>
+<td><p>Open the camera, allocate SHM, spawn the capture thread. <code class="docutils literal notranslate"><span class="pre">cfg</span></code> is the per-serial <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> entry passed down to <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(...)</span></code></p></td>
 <td><p>see <a class="reference internal" href="#common-start-parameters"><span class="xref myst">start() params</span></a></p></td>
@@ -602,8 +612,8 @@ per class. For the architecture and how these fit together, see the
 <tbody>
 <tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_image()</span></code></p></td>
 <td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(ndarray,</span> <span class="pre">dict)</span></code> or <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code></p></td>
-<td><p>Grab one frame. <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code> on a grab timeout (<code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span></code>) or incomplete frame. <code class="docutils literal notranslate"><span class="pre">dict</span> <span class="pre">=</span> <span class="pre">{pc_time,</span> <span class="pre">frameID}</span></code>.</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">(ndarray,</span> <span class="pre">dict)</span></code>, <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">dict)</span></code>, or <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code></p></td>
+<td><p>Grab one frame. <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code> on a grab timeout (<code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span></code>); <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">frame_data)</span></code> on an incomplete/zero-size frame. <code class="docutils literal notranslate"><span class="pre">dict</span> <span class="pre">=</span> <span class="pre">{pc_time,</span> <span class="pre">frameID}</span></code>.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">frame_rate=None,</span> <span class="pre">gain=None,</span> <span class="pre">exposure_time=None)</span></code></p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">mode:</span> <span class="pre">&quot;single&quot;|&quot;continuous&quot;</span></code>, …</p></td>
@@ -624,7 +634,9 @@ per class. For the architecture and how these fit together, see the
 </table>
 </div>
 <p>Module-level: <code class="docutils literal notranslate"><span class="pre">get_serial_list()</span></code> → <code class="docutils literal notranslate"><span class="pre">list[str]</span></code>, <code class="docutils literal notranslate"><span class="pre">autoforce_ip()</span></code>,
-<code class="docutils literal notranslate"><span class="pre">load_camera(serial)</span></code> → <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code>, constant <code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span> <span class="pre">=</span> <span class="pre">1000</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">load_camera(serial,</span> <span class="pre">cfg=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code>,
+<code class="docutils literal notranslate"><span class="pre">load_timestamp_monitor(serial,</span> <span class="pre">cfg=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor</span></code>, constant
+<code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span> <span class="pre">=</span> <span class="pre">1000</span></code>.</p>
 </section>
 <hr class="docutils" />
 <section id="implementation-notes">

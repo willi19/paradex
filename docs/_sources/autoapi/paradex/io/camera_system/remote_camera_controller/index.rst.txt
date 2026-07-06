@@ -65,6 +65,11 @@ Module Contents
    .. py:attribute:: error_event
 
 
+   .. py:attribute:: init_error
+      :value: None
+
+
+
    .. py:attribute:: auto_reload
       :value: False
 
@@ -92,6 +97,9 @@ Module Contents
 
 
    .. py:attribute:: pc_status
+
+
+   .. py:attribute:: last_response
 
 
    .. py:attribute:: status_lock

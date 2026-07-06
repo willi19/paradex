@@ -406,14 +406,17 @@ system instance.</p>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.load_camera">
-<span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">load_camera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">serialnum</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.load_camera" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">load_camera</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">serialnum</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.load_camera" title="Link to this definition">¶</a></dt>
 <dd><p>Open a camera by serial number and wrap it in a <a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinCamera" title="paradex.io.camera_system.pyspin.PyspinCamera"><code class="xref py py-class docutils literal notranslate"><span class="pre">PyspinCamera</span></code></a>.</p>
-<p>Gain and exposure are taken from the camera config (<code class="docutils literal notranslate"><span class="pre">cam_info</span></code>) when the
-serial is present there, otherwise fixed defaults (gain 3.0, exposure
-2500.0) are used.</p>
+<p>Gain/exposure and optional hardware tuning keys are taken from <code class="docutils literal notranslate"><span class="pre">cfg</span></code> when
+provided; direct callers fall back to this module’s camera.json snapshot.
+Missing gain/exposure values use fixed defaults (gain 3.0, exposure 2500.0).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>serialnum</strong> (<em>str</em>) – Serial number of the camera to open.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>serialnum</strong> (<em>str</em>) – Serial number of the camera to open.</p></li>
+<li><p><strong>cfg</strong> (<em>dict</em><em>, </em><em>optional</em>) – Per-serial <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> entry supplied by <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code>.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Initialized and configured camera wrapper.</p>
@@ -429,15 +432,17 @@ serial is present there, otherwise fixed defaults (gain 3.0, exposure
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.io.camera_system.pyspin.load_timestamp_monitor">
-<span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">load_timestamp_monitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">serialnum</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.load_timestamp_monitor" title="Link to this definition">¶</a></dt>
+<span class="sig-prename descclassname"><span class="pre">paradex.io.camera_system.pyspin.</span></span><span class="sig-name descname"><span class="pre">load_timestamp_monitor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">serialnum</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cfg</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.io.camera_system.pyspin.load_timestamp_monitor" title="Link to this definition">¶</a></dt>
 <dd><p>Open a camera by serial number as a <a class="reference internal" href="#paradex.io.camera_system.pyspin.PyspinTimestampMonitor" title="paradex.io.camera_system.pyspin.PyspinTimestampMonitor"><code class="xref py py-class docutils literal notranslate"><span class="pre">PyspinTimestampMonitor</span></code></a>.</p>
 <p>Like <a class="reference internal" href="#paradex.io.camera_system.pyspin.load_camera" title="paradex.io.camera_system.pyspin.load_camera"><code class="xref py py-func docutils literal notranslate"><span class="pre">load_camera()</span></code></a> but returns a lightweight monitor that only reads
-frame timestamps/IDs (used for sync diagnostics). Gain and exposure come
-from the camera config when available, otherwise defaults (gain 3.0,
-exposure 2500.0).</p>
+frame timestamps/IDs (used for sync diagnostics). Gain/exposure and hardware
+tuning keys come from <code class="docutils literal notranslate"><span class="pre">cfg</span></code> when available, otherwise defaults are used.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>serialnum</strong> (<em>str</em>) – Serial number of the camera to open.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>serialnum</strong> (<em>str</em>) – Serial number of the camera to open.</p></li>
+<li><p><strong>cfg</strong> (<em>dict</em><em>, </em><em>optional</em>) – Per-serial <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> entry supplied by the caller.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>Initialized timestamp monitor for the camera.</p>

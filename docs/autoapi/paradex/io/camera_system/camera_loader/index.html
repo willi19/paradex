@@ -421,6 +421,11 @@ is currently supported; each listed backend triggers its loader
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.expected_camera_count">
+<span class="sig-name descname"><span class="pre">expected_camera_count</span></span><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.expected_camera_count" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.cam_config">
 <span class="sig-name descname"><span class="pre">cam_config</span></span><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.cam_config" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -503,6 +508,12 @@ order.</p>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.get_summary">
+<span class="sig-name descname"><span class="pre">get_summary</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader.get_summary"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.get_summary" title="Link to this definition">¶</a></dt>
+<dd><p>Return compact group-level camera state for daemon responses.</p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.camera_system.camera_loader.CameraLoader.get_all_errors">
 <span class="sig-name descname"><span class="pre">get_all_errors</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/camera_system/camera_loader.html#CameraLoader.get_all_errors"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.camera_system.camera_loader.CameraLoader.get_all_errors" title="Link to this definition">¶</a></dt>
 <dd><p>Return error information for every camera currently in an error state.</p>
@@ -569,12 +580,14 @@ an active error. Empty when no camera is in error.</p>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader"><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code></a><ul>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.cameralist"><code class="docutils literal notranslate"><span class="pre">CameraLoader.cameralist</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.camera_names"><code class="docutils literal notranslate"><span class="pre">CameraLoader.camera_names</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.expected_camera_count"><code class="docutils literal notranslate"><span class="pre">CameraLoader.expected_camera_count</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.cam_config"><code class="docutils literal notranslate"><span class="pre">CameraLoader.cam_config</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.load_pyspin_camera"><code class="docutils literal notranslate"><span class="pre">CameraLoader.load_pyspin_camera()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.start"><code class="docutils literal notranslate"><span class="pre">CameraLoader.start()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.stop"><code class="docutils literal notranslate"><span class="pre">CameraLoader.stop()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.end"><code class="docutils literal notranslate"><span class="pre">CameraLoader.end()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.get_status_list"><code class="docutils literal notranslate"><span class="pre">CameraLoader.get_status_list()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.get_summary"><code class="docutils literal notranslate"><span class="pre">CameraLoader.get_summary()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.camera_system.camera_loader.CameraLoader.get_all_errors"><code class="docutils literal notranslate"><span class="pre">CameraLoader.get_all_errors()</span></code></a></li>
 </ul>
 </li>

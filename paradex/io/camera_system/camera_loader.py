@@ -33,6 +33,7 @@ class CameraLoader:
     def __init__(self, types=["pyspin"]):
         self.cameralist = []
         self.camera_names = []
+        self.expected_camera_count = len(get_camera_list())
         # Per-serial gain/exposure baseline (system/current/camera.json).
         self.cam_config = get_camera_config()
 
@@ -60,7 +61,7 @@ class CameraLoader:
         """
         from paradex.io.camera_system.pyspin import get_serial_list, autoforce_ip
         
-        expected = len(get_camera_list())
+        expected = self.expected_camera_count
         autoforce_ip()
 
         if serial_list is None:
@@ -84,7 +85,10 @@ class CameraLoader:
                 print(f"[Warning] Still {len(serial_list)}/{expected} cameras after "
                       f"{RETRY_COUNT} retries; proceeding with detected cameras.")
                 
-        self.cameralist = [Camera("pyspin", serial) for serial in serial_list]
+        self.cameralist = [
+            Camera("pyspin", serial, cfg=self.cam_config.get(serial, {}))
+            for serial in serial_list
+        ]
         self.camera_names = self.camera_names + serial_list
     
     def start(self, mode, syncMode, save_path=None, fps=30, exposure_time=None, gain=None):
@@ -150,7 +154,11 @@ class CameraLoader:
         
         for t in threads:
             t.join()
-        print("all cameras started.")
+        errors = self.get_all_errors()
+        if errors:
+            print(f"[Warning] camera start completed with errors: {errors}")
+        else:
+            print("all cameras started.")
     
     def _broadcast(self, method_name):
         """Call ``method_name`` on every camera in parallel and wait for all.
@@ -190,6 +198,18 @@ class CameraLoader:
         for camera in self.cameralist:
             status_list.append(camera.get_status())
         return status_list
+
+    def get_summary(self):
+        """Return compact group-level camera state for daemon responses."""
+        status_list = self.get_status_list()
+        return {
+            "expected_camera_count": self.expected_camera_count,
+            "detected_camera_count": len(self.cameralist),
+            "camera_names": list(self.camera_names),
+            "frame_ids": {s["name"]: s["frame_id"] for s in status_list},
+            "states": {s["name"]: s["state"] for s in status_list},
+            "errors": {s["name"]: s.get("error") for s in status_list if s.get("error")},
+        }
     
     def get_all_errors(self):
         """Return error information for every camera currently in an error state.

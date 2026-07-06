@@ -1,7 +1,7 @@
-# camera_system/docs — agent orientation
+# agent_docs/camera_system — agent orientation
 
-Docs for **AI agents working on the camera system**, kept next to the code so you find
-them when you open the module. Read **one** file for your task; don't scan everything.
+Docs for **AI agents working on the camera system** (routed here from the repo-root
+`AGENTS.md`). Read **one** file for your task; don't scan everything.
 
 | Your task | Read |
 |-----------|------|

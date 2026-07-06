@@ -44,6 +44,7 @@ class remote_camera_controller:
         self.stop_event = Event()
         self.sending_event = Event()
         self.error_event = Event()
+        self.init_error = None
 
         # ── health tracking ──────────────────────────────────────────────
         self.auto_reload = auto_reload          # auto-reload cameras on stall/error
@@ -53,6 +54,7 @@ class remote_camera_controller:
         self.cam_progress = {}                  # cam -> (last_frame_id, last_change_time)
         self.stalled = set()                    # cameras whose frame_id stopped advancing
         self.pc_status = {}                     # pc -> {'status', 'msg'} (last heartbeat)
+        self.last_response = {}                 # last raw per-PC command/heartbeat response
         self.status_lock = Lock()
         self._last_stalled_print = set()
         self._last_reload_ts = 0.0
@@ -219,10 +221,15 @@ class remote_camera_controller:
         self.exposure_time = exposure_time
         self.gain = gain
 
+        if self.init_error is not None:
+            raise self.init_error
+
         self.sending_event.clear()
         self.start_event.set()
 
         self.sending_event.wait()
+        if self.init_error is not None:
+            raise self.init_error
 
     def stop(self):
         """Stop the current capture; blocks until the stop command is sent.
@@ -230,9 +237,14 @@ class remote_camera_controller:
         Signals :meth:`run` via ``stop_event`` and waits on ``sending_event``
         for the loop to dispatch the ``stop`` command to every daemon.
         """
+        if self.init_error is not None:
+            raise self.init_error
+
         self.sending_event.clear()
         self.stop_event.set()
         self.sending_event.wait()
+        if self.init_error is not None:
+            raise self.init_error
 
     def end(self):
         """Shut down the controller and join the background thread.
@@ -263,7 +275,18 @@ class remote_camera_controller:
         return self.send_command(cmd)
 
     def run(self):
-        self.initialize()
+        try:
+            self.initialize()
+        except Exception as e:
+            self.init_error = e
+            self.error_event.set()
+            with self.status_lock:
+                self.pc_status = {
+                    pc: {'status': 'error', 'msg': str(e)}
+                    for pc in self.pc_list
+                }
+            self.sending_event.set()
+            return
 
         while not self.exit_event.is_set():
             cmd = {'action': 'heartbeat'}
@@ -286,18 +309,23 @@ class remote_camera_controller:
 
             response = self.send_command(cmd)
 
-            # Track whether we should be seeing a continuous frame stream.
+            self._update_health(cmd['action'], response)
+
+            # Track whether we should be seeing a continuous frame stream only
+            # after the command response says every daemon accepted the start.
             if cmd['action'] == 'start':
+                ok = all(resp.get('status') == 'ok' for resp in response.values())
                 self.continuous = self.mode in ('video', 'stream', 'full')
-                self.capturing = self.continuous
+                self.capturing = ok and self.continuous
                 self.cam_progress = {}
             elif cmd['action'] == 'stop':
                 self.capturing = False
+                self.cam_progress = {}
+                with self.status_lock:
+                    self.stalled = set()
 
             if cmd['action'] in ('start', 'stop'):
                 self.sending_event.set()
-
-            self._update_health(cmd['action'], response)
             time.sleep(0.1)
 
         self.send_command({'action': 'end'})
@@ -316,8 +344,17 @@ class remote_camera_controller:
         stalled = set()
 
         with self.status_lock:
+            self.last_response = {pc: dict(resp) for pc, resp in response.items()}
             for pc, resp in response.items():
-                self.pc_status[pc] = {'status': resp.get('status'), 'msg': resp.get('msg')}
+                self.pc_status[pc] = {
+                    'status': resp.get('status'),
+                    'msg': resp.get('msg'),
+                    'states': dict(resp.get('states') or {}),
+                    'frame_ids': dict(resp.get('frame_ids') or {}),
+                    'running': resp.get('running'),
+                    'expected_camera_count': resp.get('expected_camera_count'),
+                    'detected_camera_count': resp.get('detected_camera_count'),
+                }
 
                 if resp.get('status') == 'error':
                     any_bad = True
@@ -379,4 +416,5 @@ class remote_camera_controller:
                 'error': self.error_event.is_set(),
                 'stalled': sorted(self.stalled),
                 'pc': {pc: dict(s) for pc, s in self.pc_status.items()},
+                'last_response': {pc: dict(resp) for pc, resp in self.last_response.items()},
             }

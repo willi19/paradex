@@ -33,11 +33,11 @@ main PC, you're in the wrong layer (that's what the daemon is for).
 
 | Layer | File | Owns | Key methods |
 |-------|------|------|-------------|
-| Controller | [`remote_camera_controller.py`](../remote_camera_controller.py) | network, lock, health polling | `start/stop/end`, `run` (bg loop), `get_status`, `_update_health` |
-| Daemon | [`camera_server_daemon.py`](../camera_server_daemon.py) | ZMQ server, lock, idle timeout | `execute_command`, `command_thread`, `monitor_thread`, `pingpong_thread`, `shutdown` |
-| Group | [`camera_loader.py`](../camera_loader.py) | per-camera config, fan-out | `load_pyspin_camera`, `start/stop/end`, `get_summary`, `get_all_errors` |
-| One camera | [`camera.py`](../camera.py) | capture thread, events, sink | `start/stop/end`, `run`, `continuous_acquire`, `single_acquire`, `get_status` |
-| Driver | [`pyspin.py`](../pyspin.py) | Spinnaker calls | `load_camera`, `PyspinCamera.start/get_image/stop`, `autoforce_ip` |
+| Controller | [`remote_camera_controller.py`](../../paradex/io/camera_system/remote_camera_controller.py) | network, lock, health polling | `start/stop/end`, `run` (bg loop), `get_status`, `_update_health` |
+| Daemon | [`camera_server_daemon.py`](../../paradex/io/camera_system/camera_server_daemon.py) | ZMQ server, lock, idle timeout | `execute_command`, `command_thread`, `monitor_thread`, `pingpong_thread`, `shutdown` |
+| Group | [`camera_loader.py`](../../paradex/io/camera_system/camera_loader.py) | per-camera config, fan-out | `load_pyspin_camera`, `start/stop/end`, `get_summary`, `get_all_errors` |
+| One camera | [`camera.py`](../../paradex/io/camera_system/camera.py) | capture thread, events, sink | `start/stop/end`, `run`, `continuous_acquire`, `single_acquire`, `get_status` |
+| Driver | [`pyspin.py`](../../paradex/io/camera_system/pyspin.py) | Spinnaker calls | `load_camera`, `PyspinCamera.start/get_image/stop`, `autoforce_ip` |
 
 ---
 
@@ -159,6 +159,6 @@ for a driver-level grab timeout) is the usual way this module accretes cruft.
 - If you add/rename a health field, thread it all the way up (§2 step 7) or the main PC
   never sees it.
 - Roadmap / known limitations / the acquisition–sink decoupling redesign live in
-  [`design/camera-recording-redesign.md`](../../../../design/camera-recording-redesign.md)
+  [`design/camera-recording-redesign.md`](../../design/camera-recording-redesign.md)
   (repo root `design/`) — intentionally **not** here; this file is orientation, that one
   is the plan.

@@ -30,9 +30,11 @@ class Camera():
         Camera serial number (used as the SHM key and file stem).
     frame_shape : tuple of int, optional
         ``(height, width, channels)`` of a frame, by default ``(1536, 2048, 3)``.
+    cfg : dict, optional
+        Per-serial ``camera.json`` entry passed through to the PySpin backend.
     """
 
-    def __init__(self, cam_type, name, frame_shape=(1536, 2048, 3)):
+    def __init__(self, cam_type, name, frame_shape=(1536, 2048, 3), cfg=None):
         self.event = {
             "start": Event(),
             "exit": Event(),
@@ -46,9 +48,11 @@ class Camera():
         }
 
         self.event["error_reset"].set()
+        self.event["stop"].set()
 
         self.type = cam_type
         self.name = name
+        self.cfg = cfg or {}
 
         self.frame_shape = frame_shape
 
@@ -227,6 +231,7 @@ class Camera():
 
         if self.event["error"].is_set():
             print(f"[WARNING] Camera {self.name} is in ERROR state. Resetting error state.")
+            self.event["stop"].set()
             return
 
         self.mode = mode
@@ -263,6 +268,7 @@ class Camera():
             self.last_traceback = ""
             self.event["error"].set()
             self.event["error_reset"].clear()
+            self.event["stop"].set()
             return
         print(f"[INFO] Camera {self.name} acquisition started.")
 
@@ -300,9 +306,10 @@ class Camera():
         timeout : float, optional
             Max seconds to wait for the thread to acknowledge, by default 5.0.
         """
+        was_active = self.event["start"].is_set() or self.event["acquisition"].is_set()
         self.event["start"].clear()
 
-        if self.event["error"].is_set():
+        if self.event["error"].is_set() and was_active:
             self.error_reset()
 
         if not self.event["stop"].wait(timeout=timeout):
@@ -507,12 +514,25 @@ class Camera():
         else:
             raise NotImplementedError(f"Camera type {self.type} is not implemented.")
 
-        self.camera = load_camera(self.name)
-        self.event["connection"].set()
+        try:
+            self.camera = load_camera(self.name, cfg=self.cfg)
+        except Exception as e:
+            self.last_error = str(e)
+            self.last_traceback = traceback.format_exc()
+            self.event["error"].set()
+            self.event["error_reset"].clear()
+            print(f"[ERROR] Camera {self.name} connection failed: {e}")
+            print(self.last_traceback)
+        finally:
+            self.event["connection"].set()
 
     def release(self):
         """Disconnect the camera (``DeInit``) and free its shared memory."""
-        self.camera.release()
+        if hasattr(self, "camera"):
+            try:
+                self.camera.release()
+            except Exception as e:
+                print(f"[WARN] Camera {self.name} release() failed: {e}")
         self.release_shared_memory()
         print(f"[INFO] Camera {self.name} shared memory released.")
         self.event["release"].set()

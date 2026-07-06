@@ -42,17 +42,31 @@ def get_serial_list():
     cam_list.Clear()
     return serial_list 
 
-def load_camera(serialnum):
+def _cfg_for_serial(serialnum, cfg=None):
+    """Return the effective per-camera config for ``serialnum``.
+
+    ``CameraLoader`` passes the already-read camera.json entry so reloads and
+    tests use one source of truth. Direct callers keep backwards compatibility by
+    falling back to this module's camera.json snapshot.
+    """
+    if cfg is not None:
+        return cfg
+    return cam_info.get(serialnum, {})
+
+
+def load_camera(serialnum, cfg=None):
     """Open a camera by serial number and wrap it in a :class:`PyspinCamera`.
 
-    Gain and exposure are taken from the camera config (``cam_info``) when the
-    serial is present there, otherwise fixed defaults (gain 3.0, exposure
-    2500.0) are used.
+    Gain/exposure and optional hardware tuning keys are taken from ``cfg`` when
+    provided; direct callers fall back to this module's camera.json snapshot.
+    Missing gain/exposure values use fixed defaults (gain 3.0, exposure 2500.0).
 
     Parameters
     ----------
     serialnum : str
         Serial number of the camera to open.
+    cfg : dict, optional
+        Per-serial ``camera.json`` entry supplied by ``CameraLoader``.
 
     Returns
     -------
@@ -71,32 +85,31 @@ def load_camera(serialnum):
     except:
         raise ValueError(f"Camera with serial number {serialnum} not found.")
     
-    if serialnum in cam_info:
-        gain = cam_info[serialnum]["gain"]
-        exposure = cam_info[serialnum]["exposure"]
+    cfg = _cfg_for_serial(serialnum, cfg)
+    gain = cfg.get("gain", 3.0)
+    exposure = cfg.get("exposure", 2500.0)
+    if cfg:
         print(f"serial_num Gain :{gain}, exposure {exposure}")
-    else:
-        gain = 3.0
-        exposure = 2500.0
     
-    cam = PyspinCamera(camPtr, gain, exposure, cfg=cam_info.get(serialnum, {}))
+    cam = PyspinCamera(camPtr, gain, exposure, cfg=cfg)
 
     cam_list.Clear()
         
     return cam
 
-def load_timestamp_monitor(serialnum):
+def load_timestamp_monitor(serialnum, cfg=None):
     """Open a camera by serial number as a :class:`PyspinTimestampMonitor`.
 
     Like :func:`load_camera` but returns a lightweight monitor that only reads
-    frame timestamps/IDs (used for sync diagnostics). Gain and exposure come
-    from the camera config when available, otherwise defaults (gain 3.0,
-    exposure 2500.0).
+    frame timestamps/IDs (used for sync diagnostics). Gain/exposure and hardware
+    tuning keys come from ``cfg`` when available, otherwise defaults are used.
 
     Parameters
     ----------
     serialnum : str
         Serial number of the camera to open.
+    cfg : dict, optional
+        Per-serial ``camera.json`` entry supplied by the caller.
 
     Returns
     -------
@@ -115,15 +128,11 @@ def load_timestamp_monitor(serialnum):
     except:
         raise ValueError(f"Camera with serial number {serialnum} not found.")
     
-    if serialnum in cam_info:
-        gain = cam_info[serialnum]["gain"]
-        exposure = cam_info[serialnum]["exposure"]  # camera.json key is "exposure"
+    cfg = _cfg_for_serial(serialnum, cfg)
+    gain = cfg.get("gain", 3.0)
+    exposure = cfg.get("exposure", 2500.0)  # camera.json key is "exposure"
 
-    else:
-        gain = 3.0
-        exposure = 2500.0
-
-    cam = PyspinTimestampMonitor(camPtr, gain, exposure, cfg=cam_info.get(serialnum, {}))
+    cam = PyspinTimestampMonitor(camPtr, gain, exposure, cfg=cfg)
 
     cam_list.Clear()
         

@@ -1,3 +1,4 @@
+import os
 import threading
 import zmq
 import time
@@ -6,12 +7,21 @@ import traceback
 from paradex.io.camera_system.camera_loader import CameraLoader
 
 class camera_server_daemon:
-    def __init__(self):
+    def __init__(self, idle_timeout_s=None):
         self.camera_loader = CameraLoader()
-        
+
         self.ping_port = 5480
         self.monitor_port = 5481
         self.command_port = 5482
+
+        # Dead-man switch: if the controller sends no command (heartbeat) within
+        # this window the daemon releases the lock and stops the cameras — the only
+        # app-independent recovery when a controller crashes. Resolve:
+        # arg > env PARADEX_CAMERA_IDLE_TIMEOUT_S > default 5s.
+        if idle_timeout_s is None:
+            idle_timeout_s = float(os.environ.get("PARADEX_CAMERA_IDLE_TIMEOUT_S", 5.0))
+        self.idle_timeout_s = idle_timeout_s
+        self.idle_timeout_ms = int(idle_timeout_s * 1000)
 
         self.ctx = zmq.Context()
 
@@ -111,23 +121,30 @@ class camera_server_daemon:
                             cmd.get('exposure_time'),
                             cmd.get('gain')
                         )
-                self.cameras_running = True
                 dt = time.time() - t0
                 # A camera can fail to arm without camera_loader.start() raising
                 # (e.g. a per-camera start() timeout or BeginAcquisition error).
                 # Check the error state before reporting success.
                 errs = self.camera_loader.get_all_errors()
+                payload = self.camera_loader.get_summary()
+                payload["running"] = False
                 if errs:
                     detail = {name: msg for name, (msg, tb) in errs.items()}
                     print(f"[Warning] start: {len(errs)} camera(s) failed to arm: {detail}")
-                    return {"status": "error", "msg": f"start: camera errors: {detail}"}
+                    payload.update({"status": "error", "msg": f"start: camera errors: {detail}"})
+                    return payload
+                self.cameras_running = cmd.get('mode') in ("video", "stream", "full")
+                payload["running"] = self.cameras_running
                 print(f"[Info] start completed in {dt:.2f}s mode={cmd.get('mode')} sync={cmd.get('syncMode')} fps={cmd.get('fps',30)} exposure_time={cmd.get('exposure_time')} gain={cmd.get('gain')}")
-                return {"status":"ok", "msg":"started"}
+                payload.update({"status":"ok", "msg":"started"})
+                return payload
 
             except Exception as e:
                 dt = time.time() - t0
                 traceback.print_exc()
-                return {"status":"error", "msg":f"start failed after {dt:.2f}s: {type(e).__name__}:{e}"}
+                payload = self.camera_loader.get_summary()
+                payload.update({"status":"error", "msg":f"start failed after {dt:.2f}s: {type(e).__name__}:{e}", "running": False})
+                return payload
 
         if action == "stop":
             t0 = time.time()
@@ -136,32 +153,41 @@ class camera_server_daemon:
                 self.cameras_running = False
                 dt = time.time() - t0
                 print(f"[Info] stop completed in {dt:.2f}s")
-                return {"status":"ok", "msg":"stopped"}
+                payload = self.camera_loader.get_summary()
+                payload.update({"status":"ok", "msg":"stopped", "running": False})
+                return payload
             except Exception as e:
                 dt = time.time() - t0
                 traceback.print_exc()
-                return {"status":"error", "msg":f"stop failed after {dt:.2f}s: {type(e).__name__}:{e}"}
+                payload = self.camera_loader.get_summary()
+                payload.update({"status":"error", "msg":f"stop failed after {dt:.2f}s: {type(e).__name__}:{e}", "running": self.cameras_running})
+                return payload
 
         if action == "end":
             try:
+                if self.cameras_running:
+                    self.camera_loader.stop()
+                    self.cameras_running = False
                 self.current_controller = None
                 self.last_mode = None
-                return {"status":"ok", "msg":"ended"}
+                payload = self.camera_loader.get_summary()
+                payload.update({"status":"ok", "msg":"ended", "running": False})
+                return payload
             except Exception:
-                return {"status":"error", "msg":"end failed"}
+                payload = self.camera_loader.get_summary()
+                payload.update({"status":"error", "msg":"end failed", "running": self.cameras_running})
+                return payload
 
         if action == "heartbeat":
             t0 = time.time()
             errs = self.camera_loader.get_all_errors()
             # Per-camera frame ids so the controller can detect stalls (frames that
             # stop arriving without raising an error).
-            status_list = self.camera_loader.get_status_list()
-            frame_ids = {s['name']: s['frame_id'] for s in status_list}
-            states = {s['name']: s['state'] for s in status_list}
+            resp = self.camera_loader.get_summary()
+            resp["running"] = self.cameras_running
             dt = time.time() - t0
             if dt > 0.5:
                 print(f"[Warning] heartbeat get_all_errors took {dt*1000:.0f}ms (>500ms)")
-            resp = {"frame_ids": frame_ids, "states": states}
             if len(errs) == 0:
                 resp.update({"status": "ok", "msg": "heartbeat received"})
             else:
@@ -180,7 +206,7 @@ class camera_server_daemon:
 
     def command_thread(self):
         self.command_socket = self.ctx.socket(zmq.REP)
-        self.command_socket.setsockopt(zmq.RCVTIMEO, 15000)  # 15 second timeout
+        self.command_socket.setsockopt(zmq.RCVTIMEO, self.idle_timeout_ms)  # dead-man timeout
         self.command_socket.bind(f"tcp://*:{self.command_port}")
         
         while True:
@@ -203,7 +229,7 @@ class camera_server_daemon:
                     self.current_controller = None
                     self.last_mode = None
                     print(
-                        f"[Info] Idle timeout (>15s, actual={idle:.1f}s): "
+                        f"[Info] Idle timeout (>{self.idle_timeout_s}s, actual={idle:.1f}s): "
                         f"released controller='{released}' last_action='{last_act}' "
                         f"mode='{mode}' cameras_were_running={running}. "
                         f"Cause: controller did not send heartbeat/end within 15s."

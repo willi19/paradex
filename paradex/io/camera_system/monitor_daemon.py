@@ -194,15 +194,22 @@ class CameraMonitor:
         """5481에서 카메라 상태 받기"""
         while True:
             for pc, socket in self.monitor_sockets.items():
-                try:
-                    status = socket.recv_json(flags=zmq.NOBLOCK)
-                    self.camera_states[pc] = status.get('cameras', [])  # [] 로 수정
-                    self.controller_states[pc] = status.get('controller', 'None')
-                    self.camera_summary[pc] = status.get('summary', {})
-                    self.pc_running[pc] = status.get('running', False)
-                except zmq.Again:
-                    pass
-                except Exception as e:
-                    logger.info(f"{pc}: Monitor error - {e}")
-            
+                # Drain to the freshest message. The daemon PUBs full snapshots at
+                # ~10 Hz; reading only one per tick lets a FIFO backlog build (esp.
+                # right after connect) so the dashboard shows ever-staler state.
+                latest = None
+                while True:
+                    try:
+                        latest = socket.recv_json(flags=zmq.NOBLOCK)
+                    except zmq.Again:
+                        break
+                    except Exception as e:
+                        logger.info(f"{pc}: Monitor error - {e}")
+                        break
+                if latest is not None:
+                    self.camera_states[pc] = latest.get('cameras', [])
+                    self.controller_states[pc] = latest.get('controller', 'None')
+                    self.camera_summary[pc] = latest.get('summary', {})
+                    self.pc_running[pc] = latest.get('running', False)
+
             time.sleep(0.1)

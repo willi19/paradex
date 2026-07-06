@@ -123,7 +123,12 @@ class camera_server_daemon:
             if prev is not None and prev != controller_name and not force:
                 logger.warning(f"register from '{controller_name}' refused: locked by '{prev}'")
                 return {"status": "error", "msg": f"locked by {prev}; use force_takeover"}
-            if self.cameras_running:
+            # Only clear a running capture on an actual takeover (a *different*
+            # controller claiming the lock). A same-controller re-register — the
+            # recovery path when one PC's daemon restarted — must NOT stop capture
+            # on the healthy PCs that also receive the broadcast register.
+            takeover = prev is not None and prev != controller_name
+            if self.cameras_running and takeover:
                 try:
                     self.camera_loader.stop()
                 except Exception as e:

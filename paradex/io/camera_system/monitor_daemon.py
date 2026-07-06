@@ -6,6 +6,9 @@ from threading import Thread
 
 from paradex.utils.system import get_pc_list, get_pc_ip
 from paradex.io.capture_pc.ssh import run_script, ssh_port
+from paradex.utils.log import get_logger
+
+logger = get_logger("monitor")
 
 class pc_state:
     DISCONNECTED = 0
@@ -24,6 +27,8 @@ class CameraMonitor:
         self.pc_state = {pc: pc_state.DISCONNECTED for pc in self.pc_list}
         self.camera_states = {pc: {} for pc in self.pc_list}
         self.controller_states = {pc: 'None' for pc in self.pc_list}  # 추가
+        self.camera_summary = {pc: {} for pc in self.pc_list}  # detected/expected/errors
+        self.pc_running = {pc: False for pc in self.pc_list}
         
         self.ctx = zmq.Context()
         self.monitor_sockets = {}
@@ -41,7 +46,7 @@ class CameraMonitor:
         Thread(target=self.monitor_loop, daemon=True).start()
         
         # 웹 서버 시작
-        print(f"Starting web dashboard at http://localhost:{self.web_port}")
+        logger.info(f"Starting web dashboard at http://localhost:{self.web_port}")
         self.app.run(host='0.0.0.0', port=self.web_port, debug=False)
     
     def setup_routes(self):
@@ -55,7 +60,9 @@ class CameraMonitor:
                 'timestamp': time.time(),
                 'pc_states': {pc: state for pc, state in self.pc_state.items()},
                 'camera_states': self.camera_states,
-                'controller_states': self.controller_states  # 추가
+                'controller_states': self.controller_states,  # 추가
+                'camera_summary': self.camera_summary,        # detected/expected/errors
+                'pc_running': self.pc_running,
             })
 
         @self.app.route('/api/restart/<pc>', methods=['POST'])
@@ -84,9 +91,9 @@ class CameraMonitor:
         for pc in self.pc_list:
             if self.ping_server(pc):
                 self.pc_state[pc] = pc_state.RUNNING
-                print(f"{pc}: Server already running")
+                logger.info(f"{pc}: Server already running")
             else:
-                print(f"{pc}: Starting server...")
+                logger.info(f"{pc}: Starting server...")
                 if self.start_server(pc):
                     self.pc_state[pc] = pc_state.RUNNING
                 else:
@@ -116,7 +123,7 @@ class CameraMonitor:
             time.sleep(2)
             return self.ping_server(pc)
         except Exception as e:
-            print(f"{pc}: Failed to start - {e}")
+            logger.info(f"{pc}: Failed to start - {e}")
             return False
 
     def restart_server(self, pc):
@@ -124,7 +131,7 @@ class CameraMonitor:
 
         `-9` because a thread wedged in a native GetNextImage ignores SIGTERM.
         """
-        print(f"{pc}: restarting camera server...")
+        logger.info(f"{pc}: restarting camera server...")
         ip = get_pc_ip(pc)
         try:
             subprocess.run(
@@ -133,13 +140,13 @@ class CameraMonitor:
                 shell=True,
             )
         except Exception as e:
-            print(f"{pc}: kill failed - {e}")
+            logger.info(f"{pc}: kill failed - {e}")
         self.pc_state[pc] = pc_state.DISCONNECTED
         return self.start_server(pc)
 
     def stop_server(self, pc):
         """Kill the daemon on `pc` WITHOUT relaunching (stop-only cleanup)."""
-        print(f"{pc}: stopping camera server...")
+        logger.info(f"{pc}: stopping camera server...")
         ip = get_pc_ip(pc)
         try:
             subprocess.run(
@@ -148,7 +155,7 @@ class CameraMonitor:
                 shell=True,
             )
         except Exception as e:
-            print(f"{pc}: stop failed - {e}")
+            logger.info(f"{pc}: stop failed - {e}")
             return False
         self.pc_state[pc] = pc_state.DISCONNECTED
         return True
@@ -162,9 +169,9 @@ class CameraMonitor:
                 socket.setsockopt_string(zmq.SUBSCRIBE, '')
                 socket.setsockopt(zmq.RCVTIMEO, 100)  # 100ms timeout
                 self.monitor_sockets[pc] = socket
-                print(f"{pc}: Monitor socket connected")
+                logger.info(f"{pc}: Monitor socket connected")
             except Exception as e:
-                print(f"{pc}: Failed to setup monitor - {e}")
+                logger.info(f"{pc}: Failed to setup monitor - {e}")
     
     def ping_loop(self):
         """주기적으로 ping 확인"""
@@ -174,11 +181,11 @@ class CameraMonitor:
                 
                 if alive:
                     if self.pc_state[pc] != pc_state.RUNNING:
-                        print(f"{pc}: Server back online")
+                        logger.info(f"{pc}: Server back online")
                     self.pc_state[pc] = pc_state.RUNNING
                 else:
                     if self.pc_state[pc] == pc_state.RUNNING:
-                        print(f"{pc}: Server not responding")
+                        logger.info(f"{pc}: Server not responding")
                     self.pc_state[pc] = pc_state.DISCONNECTED
             
             time.sleep(self.ping_interval)
@@ -191,9 +198,11 @@ class CameraMonitor:
                     status = socket.recv_json(flags=zmq.NOBLOCK)
                     self.camera_states[pc] = status.get('cameras', [])  # [] 로 수정
                     self.controller_states[pc] = status.get('controller', 'None')
+                    self.camera_summary[pc] = status.get('summary', {})
+                    self.pc_running[pc] = status.get('running', False)
                 except zmq.Again:
                     pass
                 except Exception as e:
-                    print(f"{pc}: Monitor error - {e}", flush=True)
+                    logger.info(f"{pc}: Monitor error - {e}")
             
             time.sleep(0.1)

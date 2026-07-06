@@ -61,12 +61,31 @@
     .no-cam { color: #6b7280; padding: 10px; text-align: center; font-size: 0.85em; }
     .foot { text-align: center; color: #6b7280; margin-top: 16px; font-size: 0.82em; }
     .pulse { animation: p 1.4s infinite; } @keyframes p { 0%,100%{opacity:1} 50%{opacity:.55} }
+
+    /* error banner (top, loud) */
+    .banner { display: none; background: #2c1418; border: 1px solid #7a2731; border-left: 5px solid #ff5c5c;
+              border-radius: 10px; padding: 12px 16px; margin-bottom: 18px; }
+    .banner-title { color: #ff7a7a; font-weight: 700; font-size: 1.0em; margin-bottom: 6px; }
+    .banner-item { color: #ffb0b0; font-size: 0.85em; font-family: monospace; word-break: break-word; padding: 2px 0; }
+    .banner-item b { color: #ff8a8a; }
+
+    /* lock / controller (who holds the PC) */
+    .stat.lock .n { color: #c58bff; }
+    .lockrow { margin-bottom: 10px; }
+    .lock { font-size: 0.82em; font-weight: 700; padding: 4px 11px; border-radius: 999px; }
+    .lock.held { background: #2a1c3d; color: #c58bff; border: 1px solid #4a2f6e; }
+    .lock.free { background: #1c2027; color: #6b7280; border: 1px solid #2b2f37; }
+    .count { font-size: 0.78em; font-weight: 700; padding: 3px 9px; border-radius: 5px; background: #1c2530; color: #7cb8ff; }
+    .count.bad { background: #3a1418; color: #ff7a7a; }
+    .pc-header .count { margin-left: 4px; }
+    .cam-sinks { font-size: 0.72em; color: #46d17a; font-weight: 700; }
   </style>
 </head>
 <body>
   <div class="container">
     <h1>🎥 Camera Monitor</h1>
     <div class="summary" id="summary"></div>
+    <div class="banner" id="banner"></div>
     <div class="pc-grid" id="grid"></div>
     <div class="foot" id="foot">Loading…</div>
   </div>
@@ -130,7 +149,8 @@
       try { data = await (await fetch('/api/status')).json(); }
       catch (e) { document.getElementById('foot').textContent = 'connection lost'; return; }
 
-      let running = 0, camTotal = 0, errN = 0, stallN = 0;
+      let running = 0, camTotal = 0, errN = 0, stallN = 0, lockedN = 0;
+      const problems = [];               // {pc, cam, msg} for the top banner
       const grid = document.getElementById('grid');
       grid.innerHTML = '';
 
@@ -139,6 +159,11 @@
         if (up) running++;
         const cams = data.camera_states[pc] || [];
         const controller = data.controller_states[pc] || 'None';
+        const summary = (data.camera_summary || {})[pc] || {};
+        const held = controller && controller !== 'None';
+        if (held) lockedN++;
+
+        if (!up) problems.push({ pc, cam: '—', msg: 'daemon DOWN (not responding to ping)' });
 
         let rows = '';
         if (!cams.length) {
@@ -147,17 +172,20 @@
           cams.forEach(cam => {
             camTotal++;
             const st = effState(pc, cam);
-            if (st === 'ERROR') errN++;
-            if (st === 'STALLED') stallN++;
+            if (st === 'ERROR') { errN++; problems.push({ pc, cam: cam.name, msg: cam.error || 'ERROR' }); }
+            if (st === 'STALLED') { stallN++; problems.push({ pc, cam: cam.name, msg: 'no new frames (stalled)' }); }
             const pulse = st === 'CAPTURING' ? ' pulse' : '';
+            const sk = cam.sinks || {};
+            const sinks = [sk.video ? '▶rec' : '', sk.stream ? '◉shm' : ''].filter(Boolean).join(' ');
             const errLine = (st === 'ERROR' && cam.error)
-              ? `<div class="cam-err">${(cam.error + '').slice(0, 200)}</div>` : '';
+              ? `<div class="cam-err">${(cam.error + '').slice(0, 240)}</div>` : '';
             rows += `
               <div class="cam s-${st}">
                 <div class="cam-row">
                   <div class="cam-line">
                     <span class="cam-name">${cam.name}</span>
                     <span class="cam-meta">#${cam.frame_id} · ${cam.mode || '-'} · ${cam.fps || '-'}fps</span>
+                    ${sinks ? `<span class="cam-sinks">${sinks}</span>` : ''}
                     <span class="cam-state st-${st}${pulse}">${st}</span>
                   </div>
                   ${errLine}
@@ -166,19 +194,42 @@
           });
         }
 
+        // detected vs expected camera count (from the daemon summary)
+        const exp = summary.expected_camera_count, det = summary.detected_camera_count;
+        const countBad = (exp != null && det != null && det < exp);
+        if (countBad) problems.push({ pc, cam: '—', msg: `only ${det}/${exp} cameras detected` });
+        const countStr = (exp != null) ? `${det != null ? det : cams.length}/${exp} cams` : `${cams.length} cams`;
+
+        const lockBadge = held
+          ? `<span class="lock held" title="holds the lock">🔒 ${controller}</span>`
+          : `<span class="lock free">🔓 free</span>`;
+
         const card = document.createElement('div');
         card.className = 'pc-card' + (up ? '' : ' down');
         card.innerHTML = `
           <div class="pc-header">
             <span class="pc-name">${pc}</span>
             <span class="badge ${up ? 'b-run' : 'b-down'}">${up ? 'UP' : 'DOWN'}</span>
+            <span class="count ${countBad ? 'bad' : ''}">${countStr}</span>
             <button class="btn btn-restart" onclick="restart('${pc}', this)">↻ restart</button>
             <button class="btn btn-stop" onclick="stop('${pc}', this)">■ stop</button>
           </div>
-          <div class="controller">controller: <b>${controller}</b></div>
+          <div class="lockrow">${lockBadge}</div>
           ${rows}`;
         grid.appendChild(card);
       });
+
+      // top banner: surface every problem loudly
+      const banner = document.getElementById('banner');
+      if (problems.length) {
+        banner.style.display = 'block';
+        banner.innerHTML = `<div class="banner-title">⚠ ${problems.length} problem(s)</div>` +
+          problems.slice(0, 16).map(p =>
+            `<div class="banner-item"><b>${p.pc}</b> · ${p.cam}: ${(p.msg + '').slice(0, 180)}</div>`).join('');
+      } else {
+        banner.style.display = 'none';
+        banner.innerHTML = '';
+      }
 
       const pcN = Object.keys(data.pc_states).length;
       document.getElementById('summary').innerHTML = `
@@ -186,6 +237,7 @@
         <div class="stat"><div class="n">${camTotal}</div><div class="l">cameras</div></div>
         <div class="stat err"><div class="n">${errN}</div><div class="l">errors</div></div>
         <div class="stat stall"><div class="n">${stallN}</div><div class="l">stalled</div></div>
+        <div class="stat lock"><div class="n">${lockedN}</div><div class="l">locked</div></div>
         <button class="btn btn-all" onclick="restartAll(this)">↻ restart all</button>
         <button class="btn btn-stopall" onclick="stopAll(this)">■ stop all</button>`;
 

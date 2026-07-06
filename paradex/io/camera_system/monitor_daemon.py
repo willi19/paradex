@@ -119,7 +119,7 @@ class CameraMonitor:
         try:
             subprocess.run(
                 f"ssh -p {ssh_port} {pc}@{ip} "
-                f"'pkill -9 -f \"src/camera/server_daemon.py\"; sleep 0.5'",
+                f"'pkill -9 -f \"python.*src/camera/server_daemon.py\"; sleep 0.5'",
                 shell=True,
             )
         except Exception as e:

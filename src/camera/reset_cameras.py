@@ -29,7 +29,9 @@ def kill_daemons(pc_list):
     thread wedged in a native GetNextImage)."""
     for pc_name in pc_list:
         ip = get_pc_ip(pc_name)
-        remote_cmd = f"pkill -9 -f '{DAEMON}'; pkill -9 -f '{MONITOR}'; sleep 0.5"
+        # Anchor on `python` so `-f` (whole-cmdline match) can't hit an editor/tail
+        # that merely has the file open.
+        remote_cmd = f"pkill -9 -f 'python.*{DAEMON}'; pkill -9 -f 'python.*{MONITOR}'; sleep 0.5"
         ssh_cmd = f"ssh -p {ssh_port} {pc_name}@{ip} \"{remote_cmd}\""
         r = subprocess.run(ssh_cmd, shell=True)
         # pkill returns 1 when nothing matched — not an error for us.

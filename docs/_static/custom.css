@@ -47,11 +47,21 @@ article table.docutils tbody tr:hover td {
   background: var(--color-background-hover);
 }
 
-/* keep inline code in cells from wrapping mid-token, but let long cells scroll */
+/* Let long signatures wrap inside cells instead of forcing a horizontal
+   scrollbar. Wrapping happens at the spaces after commas; break-word is the
+   fallback for the rare long token. */
 article table.docutils td code,
-article table.docutils th code { white-space: nowrap; }
+article table.docutils th code {
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
 
-/* wide tables scroll horizontally instead of blowing out the page */
+/* First column (signatures) is the wide one — give the summary room and let the
+   signature column wrap rather than overflow. */
+article table.docutils td:first-child { overflow-wrap: break-word; }
+
+/* Safety net: if a table still can't fit, scroll it rather than the whole page. */
 .table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 
 /* ============================================================

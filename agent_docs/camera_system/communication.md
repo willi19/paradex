@@ -78,6 +78,35 @@ path breaks this.
 - Liveness is judged from **PUB silence** (main side) and **command silence** (daemon
   side) — not from a single missed message.
 
+## Failure detection & recovery (each side watches the other)
+
+A process can't detect its own death, so "both sides know" means **each detects the
+other's**. The guarantees, and the invariants behind them:
+
+- **daemon dies → controller knows** via PUB silence (`pub_timeout`, ~2 s) *and*
+  command timeout (`_send_one` RCVTIMEO → error dict, never a hang). If a capture was
+  running, a **sticky `capture_interrupted`** latches and survives the daemon's recovery
+  — so an interrupted recording never silently reads healthy again.
+- **controller (app) dies → daemon knows** via the dead-man (`recv` RCVTIMEO, ~5 s):
+  it stops the cameras and frees the lock. This is the only owner-independent release.
+- **daemon restarted mid-session → controller re-registers automatically** but only when
+  the daemon's PUB shows the lock *empty* — never when another named controller holds it
+  (don't fight a real takeover). Re-register does **not** auto-resume capture; that's the
+  caller's call, surfaced through `capture_interrupted`.
+
+Invariants:
+
+- **register only stops a running capture on a real takeover** (different controller),
+  never on a same-controller re-register — otherwise one PC's restart would halt the
+  healthy PCs that also receive the broadcast register.
+- **the detection loops must not be able to die.** `_health_loop`, `run`,
+  `monitor_thread`, `pingpong_thread` wrap each iteration in try/except — a transient
+  error logs and continues. A dead detection thread = silent blindness, which defeats the
+  whole scheme. Never remove those guards.
+- **the lock is a real lock now**: register refuses a different live controller unless
+  `force`. Optional `PARADEX_CAMERA_TOKEN` (see `protocol.py`) authenticates commands;
+  `PROTOCOL_VERSION` on register warns on a controller/daemon git-drift.
+
 ## Deliberately *not* done (and why)
 
 - **No ROS2.** rclpy is already a dependency and ROS2 gives topics/services/actions

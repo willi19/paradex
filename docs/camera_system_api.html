@@ -373,114 +373,66 @@
         <article role="main" id="furo-main-content">
           <section id="camera-system-api">
 <h1>Camera System — API<a class="headerlink" href="#camera-system-api" title="Link to this heading">¶</a></h1>
-<p>Method reference for the camera stack: parameters (input) and return values (output)
-per class. For the architecture and how these fit together, see the
-<a class="reference internal" href="camera_system.html"><span class="doc">overview</span></a>.</p>
-<p>Signatures are verified against the code; internal/private methods are omitted.
-Each class is collapsed below — click to expand.</p>
+<p>Method reference for the camera stack. For the architecture and how these fit
+together, see the <a class="reference internal" href="camera_system.html"><span class="doc">overview</span></a>. Signatures are verified against
+the code; internal/private methods are omitted. Click a class to expand.</p>
 <details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3" open="open">
 <summary class="sd-summary-title sd-card-header">
-<span class="sd-summary-text">Common: <code class="docutils literal notranslate"><span class="pre">start()</span></code> parameters</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
-<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">start(...)</span></code> has the same signature on <code class="docutils literal notranslate"><span class="pre">Camera</span></code>, <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code>.</p>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p class="sd-card-text">Parameter</p></th>
-<th class="head"><p class="sd-card-text">Type</p></th>
-<th class="head"><p class="sd-card-text">Default</p></th>
-<th class="head"><p class="sd-card-text">Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">mode</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">syncMode</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text">use the hardware trigger (wait for pulses)</p></td>
-</tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text">relative output dir (video/image); <code class="docutils literal notranslate"><span class="pre">None</span></code> for stream</p></td>
-</tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">fps</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">30</span></code></p></td>
-<td><p class="sd-card-text">frame rate</p></td>
-</tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">exposure_time</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text">microseconds; <code class="docutils literal notranslate"><span class="pre">None</span></code> → camera.json value</p></td>
-</tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">gain</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text">dB; <code class="docutils literal notranslate"><span class="pre">None</span></code> → camera.json value</p></td>
-</tr>
-</tbody>
-</table>
-</div>
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">start()</span></code> — parameters</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">save_path=None,</span> <span class="pre">fps=30,</span> <span class="pre">exposure_time=None,</span> <span class="pre">gain=None)</span></code></p>
+<p class="sd-card-text">Same signature on <code class="docutils literal notranslate"><span class="pre">Camera</span></code>, <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code>, and <code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code>.</p>
+<p class="sd-card-text"><strong>Parameters</strong></p>
+<dl class="simple myst">
+<dt><code class="docutils literal notranslate"><span class="pre">mode</span></code> : str</dt><dd><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">syncMode</span></code> : bool</dt><dd><p class="sd-card-text">Use the hardware trigger (wait for pulses) instead of free-running.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">save_path</span></code> : str, optional</dt><dd><p class="sd-card-text">Relative output dir for <code class="docutils literal notranslate"><span class="pre">image</span></code>/<code class="docutils literal notranslate"><span class="pre">video</span></code>; <code class="docutils literal notranslate"><span class="pre">None</span></code> for <code class="docutils literal notranslate"><span class="pre">stream</span></code>.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">fps</span></code> : int, default <code class="docutils literal notranslate"><span class="pre">30</span></code></dt><dd><p class="sd-card-text">Frame rate when free-running.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">exposure_time</span></code> : float, optional</dt><dd><p class="sd-card-text">Microseconds. <code class="docutils literal notranslate"><span class="pre">None</span></code> → the per-camera <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> value.</p>
+</dd>
+<dt><code class="docutils literal notranslate"><span class="pre">gain</span></code> : float, optional</dt><dd><p class="sd-card-text">dB. <code class="docutils literal notranslate"><span class="pre">None</span></code> → the per-camera <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> value.</p>
+</dd>
+</dl>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
 <summary class="sd-summary-title sd-card-header">
-<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> (main PC)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> — main PC</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Drives every capture PC over ZMQ. <code class="docutils literal notranslate"><span class="pre">start()</span></code>/<code class="docutils literal notranslate"><span class="pre">stop()</span></code> set events; the background
 <code class="docutils literal notranslate"><span class="pre">run()</span></code> loop does the actual send.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
-<th class="head"><p class="sd-card-text">Input</p></th>
-<th class="head"><p class="sd-card-text">Output</p></th>
-<th class="head"><p class="sd-card-text">Description</p></th>
+<th class="head"><p class="sd-card-text">Summary</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller(name,</span> <span class="pre">pc_list=None,</span> <span class="pre">auto_reload=False,</span> <span class="pre">stall_timeout=3.0)</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">pc_list:</span> <span class="pre">list[str]=None</span></code>, <code class="docutils literal notranslate"><span class="pre">auto_reload:</span> <span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">stall_timeout:</span> <span class="pre">float</span></code></p></td>
-<td><p class="sd-card-text">instance</p></td>
-<td><p class="sd-card-text">Construct; spawns the <code class="docutils literal notranslate"><span class="pre">run()</span></code> thread. <code class="docutils literal notranslate"><span class="pre">pc_list=None</span></code> → all capture PCs.</p></td>
+<td><p class="sd-card-text">Construct; spawn the <code class="docutils literal notranslate"><span class="pre">run()</span></code> thread. <code class="docutils literal notranslate"><span class="pre">pc_list=None</span></code> → all capture PCs.</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(...)</span></code></p></td>
-<td><p class="sd-card-text">see <a class="reference internal" href="#common-start-parameters"><span class="xref myst">start() params</span></a></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text">Begin capture on all PCs (returns once the command response has updated health; raises the initialization error if daemon connection failed).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">save_path=None,</span> <span class="pre">fps=30,</span> <span class="pre">exposure_time=None,</span> <span class="pre">gain=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Begin capture on all PCs. Raises the init error if the daemon connection failed.</p></td>
 </tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text">Stop capture on all PCs (also raises the initialization error if the controller never connected).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">stop()</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Stop capture on all PCs.</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">end()</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p class="sd-card-text">Release the lock, join the loop thread.</p></td>
 </tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.reload_cameras()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">reload_cameras()</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p class="sd-card-text">Ask every daemon to re-init its cameras.</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.force_takeover()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code> per PC</p></td>
-<td><p class="sd-card-text">Grab the lock even if another controller holds it.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">force_takeover()</span></code> → <code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text">Grab the lock even if another controller holds it (per-PC result).</p></td>
 </tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.is_error()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">is_error()</span></code> → <code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
 <td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">True</span></code> if any camera reported an error.</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_status()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p class="sd-card-text">Live health snapshot: error flag, stalled serials, per-PC status, and the last raw daemon responses.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_status()</span></code> → <code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text">Live health: error flag, stalled serials, per-PC status, last raw responses.</p></td>
 </tr>
 </tbody>
 </table>
@@ -488,110 +440,76 @@ Each class is collapsed below — click to expand.</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
 <summary class="sd-summary-title sd-card-header">
-<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> (capture PC)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> — capture PC</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Owns the local cameras and drives them together.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
-<th class="head"><p class="sd-card-text">Input</p></th>
-<th class="head"><p class="sd-card-text">Output</p></th>
-<th class="head"><p class="sd-card-text">Description</p></th>
+<th class="head"><p class="sd-card-text">Summary</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">CameraLoader(types=[&quot;pyspin&quot;])</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">types:</span> <span class="pre">list[str]</span></code></p></td>
-<td><p class="sd-card-text">instance</p></td>
 <td><p class="sd-card-text">Detect and open every local camera.</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(...)</span></code></p></td>
-<td><p class="sd-card-text">see <a class="reference internal" href="#common-start-parameters"><span class="xref myst">start() params</span></a></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">save_path=None,</span> <span class="pre">fps=30,</span> <span class="pre">exposure_time=None,</span> <span class="pre">gain=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p class="sd-card-text">Start all cameras concurrently (blocks until all started).</p></td>
 </tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">stop()</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p class="sd-card-text">Stop all cameras.</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">end()</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p class="sd-card-text">Stop + release all cameras (DeInit + free SHM).</p></td>
 </tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_status_list()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">list[dict]</span></code></p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_status_list()</span></code> → <code class="docutils literal notranslate"><span class="pre">list[dict]</span></code></p></td>
 <td><p class="sd-card-text">Per-camera status dict (see <code class="docutils literal notranslate"><span class="pre">Camera.get_status</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_summary()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p class="sd-card-text">Compact daemon payload: expected/detected counts, serials, per-camera states/frame ids/errors.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_summary()</span></code> → <code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text">Compact daemon payload: counts, serials, per-camera states/frame ids/errors.</p></td>
 </tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_all_errors()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">tuple]</span></code></p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_all_errors()</span></code> → <code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">tuple]</span></code></p></td>
 <td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">(msg,</span> <span class="pre">traceback)}</span></code> for cameras in error.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p class="sd-card-text"><strong>Attributes</strong>: <code class="docutils literal notranslate"><span class="pre">.camera_names</span></code> (<code class="docutils literal notranslate"><span class="pre">list[str]</span></code> serials), <code class="docutils literal notranslate"><span class="pre">.cameralist</span></code> (<code class="docutils literal notranslate"><span class="pre">list[Camera]</span></code>).</p>
+<p class="sd-card-text"><strong>Attributes</strong> — <code class="docutils literal notranslate"><span class="pre">camera_names</span></code> (<code class="docutils literal notranslate"><span class="pre">list[str]</span></code> serials), <code class="docutils literal notranslate"><span class="pre">cameralist</span></code> (<code class="docutils literal notranslate"><span class="pre">list[Camera]</span></code>).</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
 <summary class="sd-summary-title sd-card-header">
-<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">Camera</span></code> (capture PC)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">Camera</span></code> — capture PC</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">One camera + its capture thread. See the <a class="reference internal" href="camera_system.html"><span class="doc">lifecycle contract</span></a>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
-<th class="head"><p class="sd-card-text">Input</p></th>
-<th class="head"><p class="sd-card-text">Output</p></th>
-<th class="head"><p class="sd-card-text">Description</p></th>
+<th class="head"><p class="sd-card-text">Summary</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">Camera(cam_type,</span> <span class="pre">name,</span> <span class="pre">frame_shape=(1536,2048,3),</span> <span class="pre">cfg=None)</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">cam_type:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code> (serial), <code class="docutils literal notranslate"><span class="pre">frame_shape:</span> <span class="pre">tuple</span></code>, <code class="docutils literal notranslate"><span class="pre">cfg:</span> <span class="pre">dict=None</span></code></p></td>
-<td><p class="sd-card-text">instance</p></td>
-<td><p class="sd-card-text">Open the camera, allocate SHM, spawn the capture thread. <code class="docutils literal notranslate"><span class="pre">cfg</span></code> is the per-serial <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> entry passed down to <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code>.</p></td>
+<td><p class="sd-card-text">Open the camera, allocate SHM, spawn the capture thread. <code class="docutils literal notranslate"><span class="pre">cfg</span></code> = the per-serial <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> entry.</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(...)</span></code></p></td>
-<td><p class="sd-card-text">see <a class="reference internal" href="#common-start-parameters"><span class="xref myst">start() params</span></a></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">save_path=None,</span> <span class="pre">fps=30,</span> <span class="pre">exposure_time=None,</span> <span class="pre">gain=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p class="sd-card-text">Begin capture in <code class="docutils literal notranslate"><span class="pre">mode</span></code>; blocks until acquiring.</p></td>
 </tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop(timeout=5.0)</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">timeout:</span> <span class="pre">float</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">stop(timeout=5.0)</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p class="sd-card-text">Stop capture; finite wait (warns and returns on timeout).</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.end(timeout=5.0)</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">timeout:</span> <span class="pre">float</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">end(timeout=5.0)</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p class="sd-card-text">Stop + release (DeInit + free SHM); finite wait.</p></td>
 </tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_status()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_status()</span></code> → <code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
 <td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{state,</span> <span class="pre">frame_id,</span> <span class="pre">name,</span> <span class="pre">mode,</span> <span class="pre">fps,</span> <span class="pre">syncMode,</span> <span class="pre">save_path,</span> <span class="pre">time}</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_state()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_state()</span></code> → <code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
 <td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">CONNECTING</span></code>/<code class="docutils literal notranslate"><span class="pre">READY</span></code>/<code class="docutils literal notranslate"><span class="pre">STARTING</span></code>/<code class="docutils literal notranslate"><span class="pre">CAPTURING</span></code>/<code class="docutils literal notranslate"><span class="pre">ERROR</span></code>/<code class="docutils literal notranslate"><span class="pre">STOPPED</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_frame_id()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_frame_id()</span></code> → <code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
 <td><p class="sd-card-text">Last processed frame id.</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_error()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(bool,</span> <span class="pre">(str,</span> <span class="pre">str))</span></code></p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_error()</span></code> → <code class="docutils literal notranslate"><span class="pre">(bool,</span> <span class="pre">(str,</span> <span class="pre">str))</span></code></p></td>
 <td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(has_error,</span> <span class="pre">(message,</span> <span class="pre">traceback))</span></code>.</p></td>
 </tr>
 </tbody>
@@ -600,44 +518,34 @@ Each class is collapsed below — click to expand.</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
 <summary class="sd-summary-title sd-card-header">
-<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> (driver)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> — driver</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <p class="sd-card-text">Thin wrapper over the PySpin SDK. <code class="docutils literal notranslate"><span class="pre">Camera</span></code> holds one as <code class="docutils literal notranslate"><span class="pre">self.camera</span></code>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
-<th class="head"><p class="sd-card-text">Input</p></th>
-<th class="head"><p class="sd-card-text">Output</p></th>
-<th class="head"><p class="sd-card-text">Description</p></th>
+<th class="head"><p class="sd-card-text">Summary</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_image()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(ndarray,</span> <span class="pre">dict)</span></code>, <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">dict)</span></code>, or <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code></p></td>
-<td><p class="sd-card-text">Grab one frame. <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code> on a grab timeout (<code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span></code>); <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">frame_data)</span></code> on an incomplete/zero-size frame. <code class="docutils literal notranslate"><span class="pre">dict</span> <span class="pre">=</span> <span class="pre">{pc_time,</span> <span class="pre">frameID}</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_image()</span></code> → <code class="docutils literal notranslate"><span class="pre">(ndarray,</span> <span class="pre">dict)</span></code> | <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">dict)</span></code> | <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code></p></td>
+<td><p class="sd-card-text">Grab one frame. <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">None)</span></code> on grab timeout (<code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span></code>); <code class="docutils literal notranslate"><span class="pre">(None,</span> <span class="pre">frame_data)</span></code> on incomplete/zero-size. <code class="docutils literal notranslate"><span class="pre">dict</span> <span class="pre">=</span> <span class="pre">{pc_time,</span> <span class="pre">frameID}</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">frame_rate=None,</span> <span class="pre">gain=None,</span> <span class="pre">exposure_time=None)</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">mode:</span> <span class="pre">&quot;single&quot;|&quot;continuous&quot;</span></code>, …</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text">Re-apply changed config + <code class="docutils literal notranslate"><span class="pre">BeginAcquisition</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">syncMode,</span> <span class="pre">frame_rate=None,</span> <span class="pre">gain=None,</span> <span class="pre">exposure_time=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Re-apply changed config + <code class="docutils literal notranslate"><span class="pre">BeginAcquisition</span></code>. <code class="docutils literal notranslate"><span class="pre">mode</span></code> = <code class="docutils literal notranslate"><span class="pre">&quot;single&quot;</span></code> | <code class="docutils literal notranslate"><span class="pre">&quot;continuous&quot;</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">stop()</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">EndAcquisition</span></code> (camera stays connected).</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.release()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">release()</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
 <td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">DeInit</span></code> (disconnect).</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p class="sd-card-text">Module-level: <code class="docutils literal notranslate"><span class="pre">get_serial_list()</span></code> → <code class="docutils literal notranslate"><span class="pre">list[str]</span></code>, <code class="docutils literal notranslate"><span class="pre">autoforce_ip()</span></code>,
+<p class="sd-card-text"><strong>Module-level</strong> — <code class="docutils literal notranslate"><span class="pre">get_serial_list()</span></code> → <code class="docutils literal notranslate"><span class="pre">list[str]</span></code>, <code class="docutils literal notranslate"><span class="pre">autoforce_ip()</span></code>,
 <code class="docutils literal notranslate"><span class="pre">load_camera(serial,</span> <span class="pre">cfg=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code>,
-<code class="docutils literal notranslate"><span class="pre">load_timestamp_monitor(serial,</span> <span class="pre">cfg=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor</span></code>, constant
+<code class="docutils literal notranslate"><span class="pre">load_timestamp_monitor(serial,</span> <span class="pre">cfg=None)</span></code> → <code class="docutils literal notranslate"><span class="pre">PyspinTimestampMonitor</span></code>; constant
 <code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span> <span class="pre">=</span> <span class="pre">1000</span></code>.</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
@@ -666,10 +574,10 @@ through an <strong>Event handshake</strong>, not plain flags.</p>
 <span class="bp">self</span><span class="o">.</span><span class="n">camera</span><span class="o">.</span><span class="n">stop</span><span class="p">();</span> <span class="bp">self</span><span class="o">.</span><span class="n">event</span><span class="p">[</span><span class="s2">&quot;stop&quot;</span><span class="p">]</span><span class="o">.</span><span class="n">set</span><span class="p">()</span>
 </pre></div>
 </div>
-<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">stop()</span></code> clears <code class="docutils literal notranslate"><span class="pre">event[&quot;start&quot;]</span></code> and waits on <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code>; the loop above exits
-on its next iteration and sets <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code>. The P4 hang lived exactly here — a
-blocking <code class="docutils literal notranslate"><span class="pre">get_image()</span></code> meant the loop never iterated, so <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code> was never
-set and <code class="docutils literal notranslate"><span class="pre">stop()</span></code> never returned.</p>
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">stop()</span></code> clears <code class="docutils literal notranslate"><span class="pre">event[&quot;start&quot;]</span></code> and waits on <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code>; the loop exits on its
+next iteration and sets <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code>. The P4 hang lived exactly here — a blocking
+<code class="docutils literal notranslate"><span class="pre">get_image()</span></code> meant the loop never iterated, so <code class="docutils literal notranslate"><span class="pre">event[&quot;stop&quot;]</span></code> was never set and
+<code class="docutils literal notranslate"><span class="pre">stop()</span></code> never returned.</p>
 </div>
 </details></section>
 

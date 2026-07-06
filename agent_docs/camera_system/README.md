@@ -7,6 +7,7 @@ Docs for **AI agents working on the camera system** (routed here from the repo-r
 |-----------|------|
 | Capture images/video from *another* program (use `rcc`) | [`usage.md`](usage.md) |
 | Change camera **internals** (daemon / acquisition / pyspin / lifecycle) | [`internals.md`](internals.md) |
+| Change how main PC ↔ capture PCs **talk** (channels / heartbeat / dead-man) | [`communication.md`](communication.md) — the *why*, invariants you must not break |
 | Understand a specific function | its NumPy-style docstring in the `.py` (start from `internals.md` §5 to find which one) |
 | Design / roadmap / known limits (redesign) | `design/camera-recording-redesign.md` (repo root — deliberately not here) |
 

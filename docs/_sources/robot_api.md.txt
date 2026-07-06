@@ -6,9 +6,10 @@ per class. For the architecture and how these fit together, see the
 
 Signatures are verified against the code; internal/private helpers are omitted.
 
----
+Each entry is collapsed below — click to expand.
 
-## Factory: `get_arm` / `get_hand`
+:::{dropdown} Factory: `get_arm` / `get_hand`
+:open:
 
 `paradex/io/robot_controller/__init__.py`. Resolves a device name to a concrete
 controller, spreading connection params from `network_info`
@@ -18,10 +19,9 @@ controller, spreading connection params from `network_info`
 |----------|-------|--------|-------------|
 | `get_arm(arm_name)` | `arm_name: str` | `XArmController` \| `None` | `"xarm"` → `XArmController(ip=...)`. `franka` branch is commented out; other names return `None`. |
 | `get_hand(hand_name, tactile=False, ip=True)` | `hand_name: str`, `tactile: bool`, `ip: bool` | hand controller | `"inspire"`/`"inspire_left"` → `InspireControllerIP` (`ip=True`) or `InspireController` USB (`ip=False`); `"allegro"` → `AllegroController`. |
+:::
 
----
-
-## `XArmController` (arm)
+:::{dropdown} `XArmController` (arm)
 
 `paradex/io/robot_controller/xarm_controller.py`. Wraps `XArmAPI`; a 100 Hz loop
 thread streams the latest target. Action is a `(6,)` joint vector (radians) **or**
@@ -44,10 +44,9 @@ a `(4,4)` homogeneous pose.
 
 **Module helpers**: `homo2cart(h)`, `cart2homo(cart)`, `homo2aa(h)` convert between
 `(4,4)` matrices and XArm's mm+rpy / mm+axis-angle cartesian vectors.
+:::
 
----
-
-## `AllegroController` (hand, ROS2)
+:::{dropdown} `AllegroController` (hand, ROS2)
 
 `paradex/io/robot_controller/allegro_controller.py`. Subclass of
 `rclpy.node.Node`. 16-DoF, radians. Publishes `Float64MultiArray` on
@@ -64,10 +63,9 @@ a `(4,4)` homogeneous pose.
 
 **Constants**: `action_dof = 16`, `MAX_ANGLE = 2.1`, `JS_TO_CMD` (joint-state →
 command index map).
+:::
 
----
-
-## `InspireControllerIP` (hand, Modbus TCP)
+:::{dropdown} `InspireControllerIP` (hand, Modbus TCP)
 
 `paradex/io/robot_controller/inspire_controller_ip.py`. 6-DoF, motor units
 0–1000 (0 = closed, 1000 = open). `move_hand` loop writes `angleSet`, reads
@@ -94,10 +92,9 @@ command index map).
 **Register I/O**: `write6(reg_name, val)` / `read6(reg_name)` for
 `angleSet/forceSet/speedSet/angleAct/forceAct`; `regdict` / `TACTILE_LAYOUT` map
 names → Modbus addresses.
+:::
 
----
-
-## `InspireController` (hand, USB serial)
+:::{dropdown} `InspireController` (hand, USB serial)
 
 `paradex/io/robot_controller/inspire_controller.py`. Same 6-DoF contract over a
 serial link (`pyserial`), speaking the Inspire byte-frame protocol.
@@ -114,10 +111,9 @@ serial link (`pyserial`), speaking the Inspire byte-frame protocol.
 | `.is_error()` | — | `bool` | Always `False`. |
 
 **Layout constant**: `SENSOR_LAYOUT` (per-pad `addr/rows/cols`).
+:::
 
----
-
-## `RobotWrapper` (kinematics, Pinocchio)
+:::{dropdown} `RobotWrapper` (kinematics, Pinocchio)
 
 `paradex/robot/robot_wrapper.py`. FK / IK / Jacobian on a URDF model. No hardware.
 
@@ -137,10 +133,9 @@ serial link (`pyserial`), speaking the Inspire byte-frame protocol.
 
 **Properties**: `.joint_names`, `.dof_joint_names`, `.dof` (`nq`), `.link_names`,
 `.joint_limits` (`(dof,2)` lower/upper).
+:::
 
----
-
-## `CuroboPlanner` (motion planning, CuRobo)
+:::{dropdown} `CuroboPlanner` (motion planning, CuRobo)
 
 `paradex/robot/curobo.py`. GPU planner over a world of cuboids + object meshes.
 Heavyweight — construct once (it warms up CUDA graphs) and reuse.
@@ -156,13 +151,13 @@ Heavyweight — construct once (it warms up CUDA graphs) and reuse.
 
 **Module helpers**: `to_quat(obj_pose)` → `(7,)` position + **wxyz** quaternion;
 `load_world_config(obstacle_dict, obj_dict)` → CuRobo world dict.
+:::
 
----
-
-## URDF helpers
+:::{dropdown} URDF helpers
 
 | Function | Input | Output | Description |
 |----------|-------|--------|-------------|
 | `generate_urdf(xacro_path, output_path, args_dict)` | `xacro_path: str`, `output_path: str`, `args_dict: dict` | `None` | Run `xacro` with `key:=value` args, write URDF to `output_path`. (`paradex/robot/urdf.py`) |
 | `get_robot_urdf_path(arm_name=None, hand_name=None)` | `arm_name: str=None`, `hand_name: str=None` | `str` | Resolve URDF path: hand-only → `<hand>_float.urdf`, arm-only → `<arm>.urdf`, both → `<arm>_<hand>.urdf`. (`paradex/robot/utils.py`) |
 | `parse_inspire(inspire_traj, joint_order=...)` | `inspire_traj: ndarray (T,6)`, `joint_order: list[str]` | `ndarray (T, len(joint_order))` | Motor units (0–1000) → URDF joint radians via `limit`, filling mimic joints. (`paradex/robot/mimic_joint.py`) |
+:::

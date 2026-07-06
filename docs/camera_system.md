@@ -1,251 +1,247 @@
 # Camera System
 
-Overview of Paradex's camera subsystem — the architecture and how the pieces fit.
-Read this to build the mental model; for method signatures, parameters, and return
-values see the {doc}`API reference <camera_system_api>`.
-
-- Redesign proposal: [design/camera-recording-redesign.md](https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md)
-- Generated per-symbol API: {doc}`API Reference <autoapi/index>`
+This is the canonical camera-system guide. Read this first when you need to know
+where camera code runs, which API owns a lifecycle step, or how to recover a rig.
+For method signatures, see {doc}`Camera System API <camera_system_api>`. For the
+future acquisition/recording redesign, see
+`design/camera-recording-redesign.md`; that file is a proposal, not the current
+runtime contract.
 
 ---
 
-## 1. Architecture
+## 1. Quick Mental Model
 
-Cameras are spread across **6 capture PCs** (one GigE camera nearly saturates a NIC,
-so they can't all hang off one host). The **main PC** never touches a camera
-directly — it sends commands to a daemon on each capture PC. Every camera fires on
-one shared **hardware trigger (UTGE900)** for synchronized capture.
+The main PC never opens FLIR cameras. It sends ZMQ commands to long-running
+daemons on the capture PCs. The daemons own the hardware.
 
-The stack has five layers; commands flow top to bottom.
-
-```{mermaid}
-flowchart TB
-    subgraph Main["Main PC"]
-      ORCH["capture / inference"] --> RCC["remote_camera_controller"]
-    end
-    subgraph Cap["Capture PC (×6)"]
-      D["server_daemon"] --> CL["CameraLoader"] --> CAM["Camera × k<br/>→ PyspinCamera"]
-    end
-    GEN["UTGE900<br/>trigger"]
-    RCC -- "ZMQ<br/>register / start /<br/>stop / heartbeat" --> D
-    GEN -. "hardware<br/>trigger" .-> CAM
+```text
+Main PC app / pipeline
+  -> remote_camera_controller
+    -> ZMQ register/start/stop/heartbeat/end
+      -> capture PC server_daemon
+        -> CameraLoader
+          -> Camera
+            -> PyspinCamera
+              -> FLIR hardware
 ```
 
-| Layer | Component | Location | Responsibility |
-|-------|-----------|----------|----------------|
-| Control | `remote_camera_controller` | Main PC | Fan out commands, keep heartbeat |
-| Service | `camera_server_daemon` | Capture PC | Receive/dispatch commands, controller lock |
-| Group | `CameraLoader` | Capture PC | Drive N cameras together, resolve parameters |
-| Device | `Camera` | Capture PC | Capture-thread state machine, sink routing |
-| Driver | `PyspinCamera` | Capture PC | PySpin SDK calls |
+Normal distributed capture therefore has two deployment surfaces:
 
-Method-level details for each component are in the {doc}`API reference <camera_system_api>`.
+| Surface | Runs where | Owns |
+|---------|------------|------|
+| `remote_camera_controller` | main PC | command fan-out, heartbeat, stall detection |
+| `server_daemon.py` | every capture PC | camera lock, `CameraLoader`, hardware lifecycle |
 
----
-
-## 2. Core Concepts
-
-| Term | Meaning |
-|------|---------|
-| **Mode** | `image` / `video` / `stream` / `full`. Selects the capture method *and* where frames go. |
-| **Sink** | A frame's destination. `stream`→SHM, `video`→`.avi`, `image`→one still, `full`→SHM+`.avi`. |
-| **Acquisition** | One capture thread per camera grabbing frames continuously. A separate axis from the sink. |
-| **Hardware sync** | Each trigger pulse increments every camera's `frame_id` at once. Same instant = same id. |
-| **Controller lock** | One controller per daemon. Acquired via `register`; auto-released after the idle timeout (~5 s, configurable) without a heartbeat — the dead-man switch for a crashed controller. |
+Local/single-PC validation scripts can instantiate `CameraLoader` or `Camera`
+directly, but production capture goes through the daemon.
 
 ---
 
-## 3. Command Flow
+## 2. Which File Runs Where
 
-The controller holds a single-controller lock on each daemon, starts a mode, then
-keeps sending heartbeats. If it goes silent for the idle timeout (~5 s, configurable
-via `PARADEX_CAMERA_IDLE_TIMEOUT_S`) the daemon releases the lock and stops the
-cameras — the dead-man switch that recovers from a crashed controller.
+Use this table before opening code.
+
+| Situation | Entry point | Location | What it touches |
+|-----------|-------------|----------|-----------------|
+| Capture images/video from the rig | `src/capture/camera/*_remote.py` or `CaptureSession` users | main PC | `remote_camera_controller` only |
+| Keep capture PCs ready | `src/camera/server_daemon.py` | capture PC | `CameraLoader -> Camera -> PyspinCamera` |
+| Preview camera health | `src/camera/monitor_daemon.py` | capture PC | status only |
+| Reset wedged capture PCs | `src/camera/reset_cameras.py` | main PC | SSH kill/relaunch of daemons |
+| Single-PC camera validation | `src/validate/camera_system/*` | local/capture PC | direct `Camera` / `CameraLoader` |
+| Live tuning | `src/util/camera_tuning/live_tuner.py` | local/capture PC | direct `PyspinCamera` |
+
+Core implementation files:
+
+| Layer | File | Responsibility |
+|-------|------|----------------|
+| Main-PC control | `paradex/io/camera_system/remote_camera_controller.py` | command thread, heartbeat, stall/error state |
+| Capture-PC service | `paradex/io/camera_system/camera_server_daemon.py` | ZMQ server, controller lock, dead-man timeout |
+| Camera group | `paradex/io/camera_system/camera_loader.py` | enumerate cameras, per-serial config, fan-out lifecycle |
+| Camera thread | `paradex/io/camera_system/camera.py` | state machine, start/stop/end, image/video/SHM sinks |
+| PySpin wrapper | `paradex/io/camera_system/pyspin.py` | SDK node config, grab timeout, hardware stop/release |
+
+---
+
+## 3. Lifecycle Contract
+
+The lifecycle is split deliberately. Do not use heartbeat as a substitute for
+command success.
+
+| Step | Owner | Contract |
+|------|-------|----------|
+| `register` | daemon | acquire the single-controller lock; stop prior running cameras on takeover |
+| `start` | daemon + `CameraLoader` | arm every detected camera or return `status="error"` with per-camera detail |
+| `heartbeat` | controller loop + daemon | report ongoing `running`, camera counts, states, frame ids, and errors |
+| `stop` | daemon + `Camera` | bounded stop; do not wedge the daemon if a camera is slow |
+| `end` | controller + daemon | stop running cameras if needed, release the controller lock |
+| idle timeout | daemon | if no command/heartbeat arrives within `PARADEX_CAMERA_IDLE_TIMEOUT_S` (default 5s), stop cameras and release lock |
+
+Current command flow:
 
 ```{mermaid}
 sequenceDiagram
-    participant M as Main PC (controller)
-    participant D as Capture PC (daemon)
-    M->>D: register (acquire lock)
-    M->>D: start(mode, sync, save_path, fps, exposure, gain)
-    D->>D: CameraLoader.start → per-camera acquisition
-    loop every ~0.1 s
-      M->>D: heartbeat
-      D-->>M: ok/error + running + counts + states + frame_ids
+    participant App as Main PC app
+    participant RCC as remote_camera_controller
+    participant D as capture-PC daemon
+    participant CL as CameraLoader
+    participant C as Camera/PyspinCamera
+
+    App->>RCC: start(mode, sync, save_path, fps, exposure, gain)
+    RCC->>D: register
+    RCC->>D: start(...)
+    D->>CL: start(...)
+    CL->>C: per-camera start(...)
+    D-->>RCC: ok/error + counts + states + frame_ids
+    loop every ~0.1s
+      RCC->>D: heartbeat
+      D-->>RCC: running + errors + frame_ids
     end
-    M->>D: stop
-    M->>D: end (release lock)
+    App->>RCC: stop()
+    RCC->>D: stop
+    App->>RCC: end()
+    RCC->>D: end
 ```
+
+Important details:
+
+- `remote_camera_controller.start()` returns after the command response updates
+  health. If daemon initialization failed, it raises that initialization error.
+- `camera_server_daemon.start` returns `ok` only after checking
+  `CameraLoader.get_all_errors()`.
+- `remote_camera_controller` only marks `capturing=True` when every daemon reports
+  `status="ok"` for the `start` command.
+- Heartbeat stalls are detected from per-camera `frame_ids`, not from wall-clock
+  guessing alone.
 
 ---
 
-## 4. Data Path: Acquisition → Sinks
+## 4. Data Path
 
-One capture thread per camera grabs frames and routes them to sinks by mode.
-"Producing a frame" and "where it goes" are separate axes, but today `mode` couples
-them (the [redesign](https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md)
-splits them so recording can toggle without restarting acquisition).
+`mode` currently chooses both acquisition behavior and frame sinks.
+
+| Mode | Acquisition | Sink |
+|------|-------------|------|
+| `image` | one-shot `single_acquire()` | one `.png` |
+| `video` | continuous | `.avi` |
+| `stream` | continuous | shared memory double buffer |
+| `full` | continuous | `.avi` + shared memory |
 
 ```{mermaid}
 flowchart TD
-    T["continuous_acquire()"] --> G["get_image()"]
-    G -->|frame| SHM["SHM double-buffer<br/>stream / full"]
-    G -->|frame| VID["VideoWriter .avi<br/>video / full"]
-    G -.->|"no frame"| T
-    SHM --> R["MultiCameraReader<br/>consumers"]
+    START["Camera.start(mode, ...)"] --> RUN["Camera.run thread"]
+    RUN --> ONE["single_acquire<br/>image"]
+    RUN --> CONT["continuous_acquire<br/>video / stream / full"]
+    CONT --> GRAB["PyspinCamera.get_image(timeout)"]
+    GRAB --> SHM["SHM double buffer<br/>stream/full"]
+    GRAB --> AVI["VideoWriter .avi<br/>video/full"]
+    GRAB -. "timeout -> (None, None)" .-> CONT
 ```
+
+This coupling is why the redesign proposal wants to split acquisition from sinks
+(`go_live`, `start_recording`, `grab_still`). That is not the current API.
 
 ---
 
-## 5. Camera State Machine
+## 5. Config Contract
 
-A `Camera` runs one capture thread and coordinates with the caller through Events.
-`get_state()` reports where it is:
+Per-camera baseline config lives in `system/current/camera.json` and is read on
+each capture PC. The main PC sends only runtime overrides in the ZMQ `start`
+command.
 
-```{mermaid}
-stateDiagram-v2
-    [*] --> CONNECTING
-    CONNECTING --> READY: connect_camera()
-    READY --> STARTING: start()
-    STARTING --> CAPTURING: acquisition set
-    CAPTURING --> READY: stop()
-    CAPTURING --> ERROR: exception
-    ERROR --> READY: error_reset()
-    READY --> STOPPED: end()
-    STOPPED --> [*]
+Parameter resolution:
+
+```text
+explicit start arg > camera.json[serial] > default
 ```
+
+Supported per-serial keys:
+
+| Key | Applies to | Default |
+|-----|------------|---------|
+| `gain` | PySpin `Gain` | `3.0` |
+| `exposure` | PySpin `ExposureTime` | `2500.0` |
+| `pixel_format` | PySpin `PixelFormat` | `BayerRG8` |
+| `packet_size` | PySpin `GevSCPSPacketSize` | `9000` |
+| `buffer_count` | PySpin `StreamBufferCountManual` | `10` |
+| `buffer_mode` | PySpin `StreamBufferHandlingMode` | `OldestFirst` |
+
+Example:
+
+```json
+{
+  "25305466": {
+    "gain": 15.0,
+    "exposure": 2500.0,
+    "packet_size": 9000,
+    "buffer_count": 10
+  }
+}
+```
+
+`CameraLoader` passes this per-serial config to `Camera`, which passes it to
+`load_camera(..., cfg=...)`, which constructs `PyspinCamera(..., cfg=...)`.
 
 ---
 
-## 6. Hardware Sync
+## 6. Health And Failure Modes
 
-Each trigger pulse increments every camera's `frame_id` at once, so at any instant
-the cameras should hold the same id. `sync_check.py` verifies this via the
-`frame_id` spread (max−min) across cameras: 0–1 is in sync; a persistent/growing
-spread means frame drops or a camera not receiving the trigger.
+Use this section when a run fails.
 
-```{mermaid}
-flowchart LR
-    GEN["trigger #N"] --> C1["cam A #N"]
-    GEN --> C2["cam B #N"]
-    GEN --> C3["cam C #N"]
-    C1 & C2 & C3 --> CHK["spread = max-min<br/>0-1 = OK"]
-```
+| Symptom | Likely layer | What to check |
+|---------|--------------|---------------|
+| main app says capture PC unreachable | daemon/ping | is `src/camera/server_daemon.py` running on that PC? |
+| `start` returns `error` | daemon/camera | `msg`, `errors`, per-camera `states` in controller `get_status()` |
+| frame ids stop changing | acquisition/trigger/LAN | controller `stalled`, heartbeat `frame_ids`, trigger generator |
+| `stop` used to hang | `get_image()` / PySpin | finite `GRAB_TIMEOUT_MS` should let loops re-check stop/exit |
+| next run cannot start cameras | capture-PC daemon/hardware | run `src/camera/reset_cameras.py` from the main PC |
+| camera count mismatch | config/enumeration | `expected_camera_count` vs `detected_camera_count` in heartbeat |
 
----
+Start vs heartbeat:
 
-## 7. Configuration — Gain / Exposure
-
-Per-camera baselines live in `system/current/camera.json`. Resolution is always
-`explicit arg > camera.json[serial] > default`, so a one-off override (e.g. an
-exposure sweep) never leaks into the next capture. Tune live with
-`src/util/camera_tuning/live_tuner.py`.
-
-```{mermaid}
-flowchart LR
-    A["start(exposure=None, gain=None)"] --> B{"explicit arg?"}
-    B -->|yes| U["use it"]
-    B -->|no| C["camera.json[serial]"]
-    C -->|missing| D["default 2500us / 3dB"]
-```
-
-**How config reaches the hardware.** Two channels. The per-camera baseline is read
-**locally on each capture PC** from `camera.json` (never sent over the network); the
-runtime parameters travel from the main PC as a **JSON command over ZMQ**, and the
-capture-PC `CameraLoader` resolves the two together before applying them to the PySpin
-nodes.
-
-**Per-camera hardware settings.** A `camera.json` entry may override these keys per
-serial; any absent key falls back to the `PyspinCameraConfig` default:
-
-| key | PySpin node | default |
-|-----|-------------|---------|
-| `gain` | `Gain` | 3.0 dB |
-| `exposure` | `ExposureTime` | 2500 µs |
-| `pixel_format` | `PixelFormat` | `BayerRG8` |
-| `packet_size` | `GevSCPSPacketSize` | 9000 |
-| `buffer_count` | `StreamBufferCountManual` | 10 |
-| `buffer_mode` | `StreamBufferHandlingMode` | `OldestFirst` |
-
-```jsonc
-{ "25305466": { "gain": 15.0, "exposure": 2500.0, "pixel_format": "Mono8" } }
-```
-
-Trigger wiring, chunk (timestamp) data, and auto-gain/exposure-off stay fixed in code —
-they are rig-wide policy, not per-camera.
-
-```{mermaid}
-flowchart TB
-    subgraph MainPC["Main PC"]
-      ST["start(mode, sync, fps,<br/>exposure, gain)"]
-    end
-    subgraph CapPC["Capture PC"]
-      CJ["camera.json<br/>gain / exposure baseline"]
-      CLR["CameraLoader.start<br/>resolve per camera"]
-      PS["PyspinCamera<br/>_configureGain / _configureExposure"]
-    end
-    ST -- "ZMQ JSON command" --> CLR
-    CJ -. "baseline when arg is None" .-> CLR
-    CLR --> PS
-```
+- `start` proves the initial arm succeeded.
+- `heartbeat` proves the running capture remains healthy.
+- daemon idle timeout handles a crashed controller.
 
 ---
 
-## 8. Error Handling & Recovery
+## 7. Validation And Recovery
 
-**Frame-loss hang (P4).** On a LAN drop / stopped trigger, the old `get_image()`
-blocked forever; the capture thread stalled and never re-checked its stop condition,
-so `stop()` never returned and the whole daemon wedged (cameras couldn't restart even
-after `pkill`). The fix gives `get_image()` a finite timeout so the loop stays
-responsive.
+No-hardware validation:
 
-```{mermaid}
-flowchart TB
-    subgraph Before["Before"]
-      B1["GetNextImage()<br/>blocks forever"] --> B2["stop() never returns<br/>→ daemon wedged"]
-    end
-    subgraph After["After (P4)"]
-      A1["GetNextImage(1000ms)<br/>→ (None,None)"] --> A2["loop re-checks<br/>→ stop()/end() return"]
-    end
+```bash
+python src/validate/camera_system/hang_recovery_mock.py
 ```
 
-**Clean shutdown.** On a normal kill (`SIGTERM`) or `Ctrl-C` (`SIGINT`), the daemon
-releases every camera (`DeInit` + free SHM) via a signal handler, so the hardware
-comes back clean. `SIGKILL` (`-9`) can't be caught — the next daemon start clears any
-leaked SHM.
+Hardware validation:
 
-**Recovery**: if wedged at the hardware level, run `python src/camera/reset_cameras.py`
-from the main PC (`pkill -9` + relaunch the daemons). **Validation**: §9.
+```bash
+python src/validate/camera_system/hang_recovery.py
+python src/validate/camera_system/sync_check.py
+```
 
-**Start vs heartbeat.** `start` is responsible for proving that every local
-camera armed successfully; the daemon checks per-camera errors before returning
-`ok`. Heartbeat is the ongoing monitor after that: it carries `running`,
-`expected_camera_count`, `detected_camera_count`, per-camera `states`, and
-`frame_ids` so the main-PC controller can detect later stalls without treating
-heartbeat as a substitute for command success.
+Recovery from the main PC:
 
----
+```bash
+python src/camera/reset_cameras.py
+python src/camera/reset_cameras.py --pc_list capture1 capture2
+python src/camera/reset_cameras.py --no_restart
+```
 
-## 9. Validation
-
-| Script | Verifies | Hardware |
-|--------|----------|----------|
-| `src/validate/camera_system/hang_recovery.py` | stop/end don't hang on frame loss (watchdog flags a hang as FAIL) | required |
-| `src/validate/camera_system/hang_recovery_mock.py` | `get_image` uses a finite timeout and returns `(None,None)` | not required |
-| `src/validate/camera_system/sync_check.py` | `frame_id` alignment across cameras | required |
+After camera-daemon code changes, every capture PC needs the updated code and a
+daemon restart. Updating only the main PC does not update `Camera`, `CameraLoader`,
+or `PyspinCamera`.
 
 ---
 
-## 10. File Reference
+## 8. Where Future Design Lives
 
-| Target | File |
-|--------|------|
-| Main-PC control | `paradex/io/camera_system/remote_camera_controller.py` |
-| Capture-PC daemon | `paradex/io/camera_system/camera_server_daemon.py` |
-| Group control / parameter resolution | `paradex/io/camera_system/camera_loader.py` |
-| Capture thread / sinks | `paradex/io/camera_system/camera.py` (`continuous_acquire`) |
-| PySpin driver | `paradex/io/camera_system/pyspin.py` |
-| Live tuner | `src/util/camera_tuning/live_tuner.py` |
-| Recover wedged cameras | `src/camera/reset_cameras.py` |
+Current runtime docs are this page plus {doc}`Camera System API <camera_system_api>`.
+Future design work belongs in `design/camera-recording-redesign.md`.
 
-Method-by-method API (parameters / returns): {doc}`Camera System — API <camera_system_api>`.
+Keep these separate:
+
+- Current API: `start(mode, ...)`, `heartbeat`, `stop`, `end`.
+- Future proposal: `go_live`, `start_recording`, `stop_recording`, `grab_still`.
+
+Do not document proposal APIs as available runtime behavior until the callers and
+daemon protocol have been migrated.

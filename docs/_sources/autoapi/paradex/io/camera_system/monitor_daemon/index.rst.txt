@@ -98,6 +98,12 @@ Module Contents
 
 
 
+   .. py:method:: stop_server(pc)
+
+      Kill the daemon on `pc` WITHOUT relaunching (stop-only cleanup).
+
+
+
    .. py:method:: setup_monitor_sockets()
 
       5481 SUB 소켓 구독

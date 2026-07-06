@@ -7,11 +7,12 @@
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>paradex 0.0.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=302659d7" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b00e8357" />
     
     
 
@@ -381,16 +382,14 @@ the <code class="docutils literal notranslate"><span class="pre">paradex</span><
 <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="camera_system.html">Camera System</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#architecture">1. Architecture</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#core-concepts">2. Core Concepts</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#command-flow">3. Command Flow</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#data-path-acquisition-sinks">4. Data Path: Acquisition → Sinks</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#camera-state-machine">5. Camera State Machine</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#hardware-sync">6. Hardware Sync</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#configuration-gain-exposure">7. Configuration — Gain / Exposure</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#error-handling-recovery">8. Error Handling &amp; Recovery</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#validation">9. Validation</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system.html#file-reference">10. File Reference</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#quick-mental-model">1. Quick Mental Model</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#which-file-runs-where">2. Which File Runs Where</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#lifecycle-contract">3. Lifecycle Contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#data-path">4. Data Path</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#config-contract">5. Config Contract</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#health-and-failure-modes">6. Health And Failure Modes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#validation-and-recovery">7. Validation And Recovery</a></li>
+<li class="toctree-l2"><a class="reference internal" href="camera_system.html#where-future-design-lives">8. Where Future Design Lives</a></li>
 </ul>
 </li>
 <li class="toctree-l1"><a class="reference internal" href="robot.html">Robot Control</a><ul>
@@ -435,44 +434,10 @@ the <code class="docutils literal notranslate"><span class="pre">paradex</span><
 <div class="toctree-wrapper compound">
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="camera_system_api.html">Camera System — API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="camera_system_api.html#common-start-parameters">Common: <code class="docutils literal notranslate"><span class="pre">start()</span></code> parameters</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system_api.html#remote-camera-controller-main-pc"><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> (main PC)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system_api.html#cameraloader-capture-pc"><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> (capture PC)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system_api.html#camera-capture-pc"><code class="docutils literal notranslate"><span class="pre">Camera</span></code> (capture PC)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system_api.html#pyspincamera-driver"><code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code> (driver)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="camera_system_api.html#implementation-notes">Implementation notes</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="robot_api.html">Robot Control — API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="robot_api.html#factory-get-arm-get-hand">Factory: <code class="docutils literal notranslate"><span class="pre">get_arm</span></code> / <code class="docutils literal notranslate"><span class="pre">get_hand</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="robot_api.html#xarmcontroller-arm"><code class="docutils literal notranslate"><span class="pre">XArmController</span></code> (arm)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="robot_api.html#allegrocontroller-hand-ros2"><code class="docutils literal notranslate"><span class="pre">AllegroController</span></code> (hand, ROS2)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="robot_api.html#inspirecontrollerip-hand-modbus-tcp"><code class="docutils literal notranslate"><span class="pre">InspireControllerIP</span></code> (hand, Modbus TCP)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="robot_api.html#inspirecontroller-hand-usb-serial"><code class="docutils literal notranslate"><span class="pre">InspireController</span></code> (hand, USB serial)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="robot_api.html#robotwrapper-kinematics-pinocchio"><code class="docutils literal notranslate"><span class="pre">RobotWrapper</span></code> (kinematics, Pinocchio)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="robot_api.html#curoboplanner-motion-planning-curobo"><code class="docutils literal notranslate"><span class="pre">CuroboPlanner</span></code> (motion planning, CuRobo)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="robot_api.html#urdf-helpers">URDF helpers</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="capture_api.html">Capture Session — API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="capture_api.html#capturesession"><code class="docutils literal notranslate"><span class="pre">CaptureSession</span></code></a></li>
-<li class="toctree-l2"><a class="reference internal" href="capture_api.html#utge900-hardware-sync-generator"><code class="docutils literal notranslate"><span class="pre">UTGE900</span></code> (hardware sync generator)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="capture_api.html#timestampmonitor-frame-id-logger"><code class="docutils literal notranslate"><span class="pre">TimestampMonitor</span></code> (frame-id logger)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="capture_api.html#match-sync-post-hoc-alignment-helpers"><code class="docutils literal notranslate"><span class="pre">match_sync</span></code> (post-hoc alignment helpers)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="capture_api.html#device-controllers-constructed-by-the-session">Device controllers (constructed by the session)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="capture_api.html#teleop-helpers">Teleop helpers</a></li>
-</ul>
-</li>
-<li class="toctree-l1"><a class="reference internal" href="process_api.html">Video Processing — API</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="process_api.html#rawvideoprocessor-paradex-video-raw-video-processor-py"><code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/video/raw_video_processor.py</span></code>)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="process_api.html#module-functions-paradex-video-raw-video-processor-py">Module functions (<code class="docutils literal notranslate"><span class="pre">paradex/video/raw_video_processor.py</span></code>)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="process_api.html#util-py-converters-paradex-video-util-py"><code class="docutils literal notranslate"><span class="pre">util.py</span></code> converters (<code class="docutils literal notranslate"><span class="pre">paradex/video/util.py</span></code>)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="process_api.html#videoprogresspublisher-src-util-upload-video-client-py-capture-pc"><code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/client.py</span></code>, capture PC)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="process_api.html#videoprogressmonitor-src-util-upload-video-process-py-main-pc"><code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/process.py</span></code>, main PC)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="process_api.html#transport-dependency-data-sender-paradex-io-capture-pc-data-sender-py">Transport dependency — <code class="docutils literal notranslate"><span class="pre">data_sender</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/io/capture_pc/data_sender.py</span></code>)</a></li>
-</ul>
-</li>
+<li class="toctree-l1"><a class="reference internal" href="camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="robot_api.html">Robot Control — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="process_api.html">Video Processing — API</a></li>
 </ul>
 </div>
 <div class="toctree-wrapper compound">
@@ -556,5 +521,6 @@ the <code class="docutils literal notranslate"><span class="pre">paradex</span><
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
     </body>
 </html>

@@ -13,6 +13,17 @@ extensions = [
     'sphinx.ext.viewcode',
     'myst_parser',              # Markdown pages (docs/*.md)
     'sphinxcontrib.mermaid',    # diagrams
+    'sphinx_design',            # dropdowns/toggles, cards, tabs, grids
+]
+
+# MyST features used in the Markdown guides.
+# colon_fence enables the ::: {dropdown} / ::: {note} block syntax.
+myst_enable_extensions = [
+    'colon_fence',
+    'deflist',
+    'attrs_inline',
+    'substitution',
+    'tasklist',
 ]
 
 # Pin mermaid so the rendered diagrams are stable on the static site.

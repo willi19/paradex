@@ -7,11 +7,12 @@
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>Robot Control — API - paradex 0.0.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=302659d7" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b00e8357" />
     
     
 
@@ -180,7 +181,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -364,7 +365,7 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
@@ -376,474 +377,475 @@
 per class. For the architecture and how these fit together, see the
 <a class="reference internal" href="robot.html"><span class="doc">overview</span></a>.</p>
 <p>Signatures are verified against the code; internal/private helpers are omitted.</p>
-<hr class="docutils" />
-<section id="factory-get-arm-get-hand">
-<h2>Factory: <code class="docutils literal notranslate"><span class="pre">get_arm</span></code> / <code class="docutils literal notranslate"><span class="pre">get_hand</span></code><a class="headerlink" href="#factory-get-arm-get-hand" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/__init__.py</span></code>. Resolves a device name to a concrete
+<p>Each entry is collapsed below — click to expand.</p>
+<details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3" open="open">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text">Factory: <code class="docutils literal notranslate"><span class="pre">get_arm</span></code> / <code class="docutils literal notranslate"><span class="pre">get_hand</span></code></span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/__init__.py</span></code>. Resolves a device name to a concrete
 controller, spreading connection params from <code class="docutils literal notranslate"><span class="pre">network_info</span></code>
 (<code class="docutils literal notranslate"><span class="pre">system/current/network.json</span></code>).</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Function</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Function</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">get_arm(arm_name)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">arm_name:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">XArmController</span></code> | <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&quot;xarm&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">XArmController(ip=...)</span></code>. <code class="docutils literal notranslate"><span class="pre">franka</span></code> branch is commented out; other names return <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_arm(arm_name)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">arm_name:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">XArmController</span></code> | <code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">&quot;xarm&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">XArmController(ip=...)</span></code>. <code class="docutils literal notranslate"><span class="pre">franka</span></code> branch is commented out; other names return <code class="docutils literal notranslate"><span class="pre">None</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">get_hand(hand_name,</span> <span class="pre">tactile=False,</span> <span class="pre">ip=True)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">hand_name:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">tactile:</span> <span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">ip:</span> <span class="pre">bool</span></code></p></td>
-<td><p>hand controller</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&quot;inspire&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;inspire_left&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">InspireControllerIP</span></code> (<code class="docutils literal notranslate"><span class="pre">ip=True</span></code>) or <code class="docutils literal notranslate"><span class="pre">InspireController</span></code> USB (<code class="docutils literal notranslate"><span class="pre">ip=False</span></code>); <code class="docutils literal notranslate"><span class="pre">&quot;allegro&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">AllegroController</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_hand(hand_name,</span> <span class="pre">tactile=False,</span> <span class="pre">ip=True)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">hand_name:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">tactile:</span> <span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">ip:</span> <span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text">hand controller</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">&quot;inspire&quot;</span></code>/<code class="docutils literal notranslate"><span class="pre">&quot;inspire_left&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">InspireControllerIP</span></code> (<code class="docutils literal notranslate"><span class="pre">ip=True</span></code>) or <code class="docutils literal notranslate"><span class="pre">InspireController</span></code> USB (<code class="docutils literal notranslate"><span class="pre">ip=False</span></code>); <code class="docutils literal notranslate"><span class="pre">&quot;allegro&quot;</span></code> → <code class="docutils literal notranslate"><span class="pre">AllegroController</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-</section>
-<hr class="docutils" />
-<section id="xarmcontroller-arm">
-<h2><code class="docutils literal notranslate"><span class="pre">XArmController</span></code> (arm)<a class="headerlink" href="#xarmcontroller-arm" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/xarm_controller.py</span></code>. Wraps <code class="docutils literal notranslate"><span class="pre">XArmAPI</span></code>; a 100 Hz loop
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">XArmController</span></code> (arm)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/xarm_controller.py</span></code>. Wraps <code class="docutils literal notranslate"><span class="pre">XArmAPI</span></code>; a 100 Hz loop
 thread streams the latest target. Action is a <code class="docutils literal notranslate"><span class="pre">(6,)</span></code> joint vector (radians) <strong>or</strong>
 a <code class="docutils literal notranslate"><span class="pre">(4,4)</span></code> homogeneous pose.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">XArmController(ip)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ip:</span> <span class="pre">str</span></code></p></td>
-<td><p>instance</p></td>
-<td><p>Connect, enable servo mode, spawn control loop.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">XArmController(ip)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ip:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Connect, enable servo mode, spawn control loop.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.move(action,</span> <span class="pre">is_servo=True,</span> <span class="pre">speed=None)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">action:</span> <span class="pre">ndarray</span> <span class="pre">(6,)</span> <span class="pre">|</span> <span class="pre">(4,4)</span></code>, <code class="docutils literal notranslate"><span class="pre">is_servo:</span> <span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">speed:</span> <span class="pre">float=None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Set target. <code class="docutils literal notranslate"><span class="pre">is_servo=True</span></code> streams (non-blocking); <code class="docutils literal notranslate"><span class="pre">is_servo=False</span></code> does a blocking position move and waits for arrival. Joint action clipped to ±2π.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.move(action,</span> <span class="pre">is_servo=True,</span> <span class="pre">speed=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">action:</span> <span class="pre">ndarray</span> <span class="pre">(6,)</span> <span class="pre">|</span> <span class="pre">(4,4)</span></code>, <code class="docutils literal notranslate"><span class="pre">is_servo:</span> <span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">speed:</span> <span class="pre">float=None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Set target. <code class="docutils literal notranslate"><span class="pre">is_servo=True</span></code> streams (non-blocking); <code class="docutils literal notranslate"><span class="pre">is_servo=False</span></code> does a blocking position move and waits for arrival. Joint action clipped to ±2π.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.start(save_path)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Begin logging; makes dir, arms save event.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(save_path)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Begin logging; makes dir, arms save event.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Stop logging; write <code class="docutils literal notranslate"><span class="pre">time/position/velocity/torque/action/action_qpos</span></code> <code class="docutils literal notranslate"><span class="pre">.npy</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Stop logging; write <code class="docutils literal notranslate"><span class="pre">time/position/velocity/torque/action/action_qpos</span></code> <code class="docutils literal notranslate"><span class="pre">.npy</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.end(set_break=False)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">set_break:</span> <span class="pre">bool</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Exit loop, join thread, disconnect (<code class="docutils literal notranslate"><span class="pre">motion_enable(False)</span></code> if <code class="docutils literal notranslate"><span class="pre">set_break</span></code>).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.end(set_break=False)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">set_break:</span> <span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Exit loop, join thread, disconnect (<code class="docutils literal notranslate"><span class="pre">motion_enable(False)</span></code> if <code class="docutils literal notranslate"><span class="pre">set_break</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_data()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">{qpos:</span> <span class="pre">(6,),</span> <span class="pre">position:</span> <span class="pre">(4,4)</span> <span class="pre">homo,</span> <span class="pre">time}</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_data()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{qpos:</span> <span class="pre">(6,),</span> <span class="pre">position:</span> <span class="pre">(4,4)</span> <span class="pre">homo,</span> <span class="pre">time}</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.clear_error()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Clear err/warn, re-enable servo mode (no reconnect).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.clear_error()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Clear err/warn, re-enable servo mode (no reconnect).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.reset()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>(Re)connect <code class="docutils literal notranslate"><span class="pre">XArmAPI</span></code>, enable motion, enter servo mode.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.reset()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">(Re)connect <code class="docutils literal notranslate"><span class="pre">XArmAPI</span></code>, enable motion, enter servo mode.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.is_error()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the arm reported an error/warning.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.is_error()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">True</span></code> if the arm reported an error/warning.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong>Attributes / events</strong>: <code class="docutils literal notranslate"><span class="pre">.connect_event</span></code>, <code class="docutils literal notranslate"><span class="pre">.error_event</span></code>, <code class="docutils literal notranslate"><span class="pre">.position_control_event</span></code>,
+<p class="sd-card-text"><strong>Attributes / events</strong>: <code class="docutils literal notranslate"><span class="pre">.connect_event</span></code>, <code class="docutils literal notranslate"><span class="pre">.error_event</span></code>, <code class="docutils literal notranslate"><span class="pre">.position_control_event</span></code>,
 <code class="docutils literal notranslate"><span class="pre">.save_event</span></code> (<code class="docutils literal notranslate"><span class="pre">threading.Event</span></code>); <code class="docutils literal notranslate"><span class="pre">.fps</span> <span class="pre">=</span> <span class="pre">100</span></code>.</p>
-<p><strong>Module helpers</strong>: <code class="docutils literal notranslate"><span class="pre">homo2cart(h)</span></code>, <code class="docutils literal notranslate"><span class="pre">cart2homo(cart)</span></code>, <code class="docutils literal notranslate"><span class="pre">homo2aa(h)</span></code> convert between
+<p class="sd-card-text"><strong>Module helpers</strong>: <code class="docutils literal notranslate"><span class="pre">homo2cart(h)</span></code>, <code class="docutils literal notranslate"><span class="pre">cart2homo(cart)</span></code>, <code class="docutils literal notranslate"><span class="pre">homo2aa(h)</span></code> convert between
 <code class="docutils literal notranslate"><span class="pre">(4,4)</span></code> matrices and XArm’s mm+rpy / mm+axis-angle cartesian vectors.</p>
-</section>
-<hr class="docutils" />
-<section id="allegrocontroller-hand-ros2">
-<h2><code class="docutils literal notranslate"><span class="pre">AllegroController</span></code> (hand, ROS2)<a class="headerlink" href="#allegrocontroller-hand-ros2" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/allegro_controller.py</span></code>. Subclass of
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">AllegroController</span></code> (hand, ROS2)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/allegro_controller.py</span></code>. Subclass of
 <code class="docutils literal notranslate"><span class="pre">rclpy.node.Node</span></code>. 16-DoF, radians. Publishes <code class="docutils literal notranslate"><span class="pre">Float64MultiArray</span></code> on
 <code class="docutils literal notranslate"><span class="pre">/allegro_hand_position_controller/commands</span></code>; subscribes <code class="docutils literal notranslate"><span class="pre">/joint_states</span></code>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">AllegroController()</span></code></p></td>
-<td><p>—</p></td>
-<td><p>instance</p></td>
-<td><p>Create node, spawn spin + control (100 Hz) threads. Blocks internally until first <code class="docutils literal notranslate"><span class="pre">/joint_states</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">AllegroController()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Create node, spawn spin + control (100 Hz) threads. Blocks internally until first <code class="docutils literal notranslate"><span class="pre">/joint_states</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.move(action)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">action:</span> <span class="pre">array-like</span> <span class="pre">(16,)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Set target joint positions (asserts DoF 16; clipped to <code class="docutils literal notranslate"><span class="pre">MAX_ANGLE=2.1</span></code>).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.move(action)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">action:</span> <span class="pre">array-like</span> <span class="pre">(16,)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Set target joint positions (asserts DoF 16; clipped to <code class="docutils literal notranslate"><span class="pre">MAX_ANGLE=2.1</span></code>).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.start(save_path)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Begin logging (<code class="docutils literal notranslate"><span class="pre">action/time/position</span></code>).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(save_path)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Begin logging (<code class="docutils literal notranslate"><span class="pre">action/time/position</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Stop logging; write <code class="docutils literal notranslate"><span class="pre">.npy</span></code> per key.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Stop logging; write <code class="docutils literal notranslate"><span class="pre">.npy</span></code> per key.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Exit loop, join threads, shut down executor.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Exit loop, join threads, shut down executor.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_data()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">{qpos:</span> <span class="pre">(16,)</span> <span class="pre">reordered</span> <span class="pre">via</span> <span class="pre">JS_TO_CMD,</span> <span class="pre">action:</span> <span class="pre">(16,),</span> <span class="pre">time}</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_data()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{qpos:</span> <span class="pre">(16,)</span> <span class="pre">reordered</span> <span class="pre">via</span> <span class="pre">JS_TO_CMD,</span> <span class="pre">action:</span> <span class="pre">(16,),</span> <span class="pre">time}</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong>Constants</strong>: <code class="docutils literal notranslate"><span class="pre">action_dof</span> <span class="pre">=</span> <span class="pre">16</span></code>, <code class="docutils literal notranslate"><span class="pre">MAX_ANGLE</span> <span class="pre">=</span> <span class="pre">2.1</span></code>, <code class="docutils literal notranslate"><span class="pre">JS_TO_CMD</span></code> (joint-state →
+<p class="sd-card-text"><strong>Constants</strong>: <code class="docutils literal notranslate"><span class="pre">action_dof</span> <span class="pre">=</span> <span class="pre">16</span></code>, <code class="docutils literal notranslate"><span class="pre">MAX_ANGLE</span> <span class="pre">=</span> <span class="pre">2.1</span></code>, <code class="docutils literal notranslate"><span class="pre">JS_TO_CMD</span></code> (joint-state →
 command index map).</p>
-</section>
-<hr class="docutils" />
-<section id="inspirecontrollerip-hand-modbus-tcp">
-<h2><code class="docutils literal notranslate"><span class="pre">InspireControllerIP</span></code> (hand, Modbus TCP)<a class="headerlink" href="#inspirecontrollerip-hand-modbus-tcp" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/inspire_controller_ip.py</span></code>. 6-DoF, motor units
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">InspireControllerIP</span></code> (hand, Modbus TCP)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/inspire_controller_ip.py</span></code>. 6-DoF, motor units
 0–1000 (0 = closed, 1000 = open). <code class="docutils literal notranslate"><span class="pre">move_hand</span></code> loop writes <code class="docutils literal notranslate"><span class="pre">angleSet</span></code>, reads
 <code class="docutils literal notranslate"><span class="pre">angleAct</span></code> + <code class="docutils literal notranslate"><span class="pre">forceAct</span></code> (+ tactile when <code class="docutils literal notranslate"><span class="pre">tactile=True</span></code>).</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">InspireControllerIP(ip,</span> <span class="pre">port,</span> <span class="pre">tactile=False)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ip:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">port:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">tactile:</span> <span class="pre">bool</span></code></p></td>
-<td><p>instance</p></td>
-<td><p>Open Modbus TCP client, preset speed/force/angle, spawn 100 Hz loop.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">InspireControllerIP(ip,</span> <span class="pre">port,</span> <span class="pre">tactile=False)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ip:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">port:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">tactile:</span> <span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Open Modbus TCP client, preset speed/force/angle, spawn 100 Hz loop.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.move(action)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">action:</span> <span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Set target angles (0–1000).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.move(action)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">action:</span> <span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Set target angles (0–1000).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.start(save_path=None)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str=None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Begin logging (<code class="docutils literal notranslate"><span class="pre">time/position/action/force/tactile</span></code>).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(save_path=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str=None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Begin logging (<code class="docutils literal notranslate"><span class="pre">time/position/action/force/tactile</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Clear save event and <code class="docutils literal notranslate"><span class="pre">save()</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Clear save event and <code class="docutils literal notranslate"><span class="pre">save()</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.save()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Flush logged buffers to <code class="docutils literal notranslate"><span class="pre">.npy</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.save()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Flush logged buffers to <code class="docutils literal notranslate"><span class="pre">.npy</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Exit loop, join thread; <code class="docutils literal notranslate"><span class="pre">stop()</span></code> if still saving.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Exit loop, join thread; <code class="docutils literal notranslate"><span class="pre">stop()</span></code> if still saving.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_qpos()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
-<td><p>Read <code class="docutils literal notranslate"><span class="pre">angleAct</span></code> register block.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_qpos()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
+<td><p class="sd-card-text">Read <code class="docutils literal notranslate"><span class="pre">angleAct</span></code> register block.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_data()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">{qpos:</span> <span class="pre">(6,),</span> <span class="pre">action:</span> <span class="pre">(6,),</span> <span class="pre">time}</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_data()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{qpos:</span> <span class="pre">(6,),</span> <span class="pre">action:</span> <span class="pre">(6,),</span> <span class="pre">time}</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_force()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
-<td><p>Read <code class="docutils literal notranslate"><span class="pre">forceAct</span></code> (signed).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_force()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
+<td><p class="sd-card-text">Read <code class="docutils literal notranslate"><span class="pre">forceAct</span></code> (signed).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_tactile()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p>Per-pad arrays (requires <code class="docutils literal notranslate"><span class="pre">tactile=True</span></code>, else raises).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_tactile()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text">Per-pad arrays (requires <code class="docutils literal notranslate"><span class="pre">tactile=True</span></code>, else raises).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.read_tactile(name)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(rows,cols)</span></code></p></td>
-<td><p>One pad from <code class="docutils literal notranslate"><span class="pre">TACTILE_LAYOUT</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.read_tactile(name)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(rows,cols)</span></code></p></td>
+<td><p class="sd-card-text">One pad from <code class="docutils literal notranslate"><span class="pre">TACTILE_LAYOUT</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.read_all_tactile()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">ndarray]</span></code></p></td>
-<td><p>Every pad.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.read_all_tactile()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">ndarray]</span></code></p></td>
+<td><p class="sd-card-text">Every pad.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.home_robot(home_pose=None)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">home_pose:</span> <span class="pre">ndarray</span> <span class="pre">(6,)=None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Command the stored (or given) home pose.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.home_robot(home_pose=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">home_pose:</span> <span class="pre">ndarray</span> <span class="pre">(6,)=None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Command the stored (or given) home pose.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.set_homepose(home_pose)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">home_pose:</span> <span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Replace the home pose.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.set_homepose(home_pose)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">home_pose:</span> <span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Replace the home pose.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.calibrate_force(timeout=10.0,</span> <span class="pre">poll_interval=0.2)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">timeout:</span> <span class="pre">float</span></code>, <code class="docutils literal notranslate"><span class="pre">poll_interval:</span> <span class="pre">float</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
-<td><p>Trigger firmware force calibration, poll until done (raises on timeout). Hand must be open/untouched.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.calibrate_force(timeout=10.0,</span> <span class="pre">poll_interval=0.2)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">timeout:</span> <span class="pre">float</span></code>, <code class="docutils literal notranslate"><span class="pre">poll_interval:</span> <span class="pre">float</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text">Trigger firmware force calibration, poll until done (raises on timeout). Hand must be open/untouched.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong>Register I/O</strong>: <code class="docutils literal notranslate"><span class="pre">write6(reg_name,</span> <span class="pre">val)</span></code> / <code class="docutils literal notranslate"><span class="pre">read6(reg_name)</span></code> for
+<p class="sd-card-text"><strong>Register I/O</strong>: <code class="docutils literal notranslate"><span class="pre">write6(reg_name,</span> <span class="pre">val)</span></code> / <code class="docutils literal notranslate"><span class="pre">read6(reg_name)</span></code> for
 <code class="docutils literal notranslate"><span class="pre">angleSet/forceSet/speedSet/angleAct/forceAct</span></code>; <code class="docutils literal notranslate"><span class="pre">regdict</span></code> / <code class="docutils literal notranslate"><span class="pre">TACTILE_LAYOUT</span></code> map
 names → Modbus addresses.</p>
-</section>
-<hr class="docutils" />
-<section id="inspirecontroller-hand-usb-serial">
-<h2><code class="docutils literal notranslate"><span class="pre">InspireController</span></code> (hand, USB serial)<a class="headerlink" href="#inspirecontroller-hand-usb-serial" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/inspire_controller.py</span></code>. Same 6-DoF contract over a
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">InspireController</span></code> (hand, USB serial)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/inspire_controller.py</span></code>. Same 6-DoF contract over a
 serial link (<code class="docutils literal notranslate"><span class="pre">pyserial</span></code>), speaking the Inspire byte-frame protocol.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">InspireController(addr)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">addr:</span> <span class="pre">str</span></code> (serial device)</p></td>
-<td><p>instance</p></td>
-<td><p>Open serial, preset speed/power/angle, spawn 100 Hz loop; blocks until connected.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">InspireController(addr)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">addr:</span> <span class="pre">str</span></code> (serial device)</p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Open serial, preset speed/power/angle, spawn 100 Hz loop; blocks until connected.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.move(action)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">action:</span> <span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Set target angles (0–1000).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.move(action)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">action:</span> <span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Set target angles (0–1000).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.start(save_path)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Begin logging (<code class="docutils literal notranslate"><span class="pre">time/position/action/force</span></code>).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(save_path)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Begin logging (<code class="docutils literal notranslate"><span class="pre">time/position/action/force</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Stop logging; write <code class="docutils literal notranslate"><span class="pre">.npy</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Stop logging; write <code class="docutils literal notranslate"><span class="pre">.npy</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Exit loop, join thread; <code class="docutils literal notranslate"><span class="pre">stop()</span></code> if saving.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Exit loop, join thread; <code class="docutils literal notranslate"><span class="pre">stop()</span></code> if saving.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_data()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">{action:</span> <span class="pre">(6,),</span> <span class="pre">joint_value:</span> <span class="pre">(6,),</span> <span class="pre">time}</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_data()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{action:</span> <span class="pre">(6,),</span> <span class="pre">joint_value:</span> <span class="pre">(6,),</span> <span class="pre">time}</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_force()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
-<td><p>Read <code class="docutils literal notranslate"><span class="pre">getactforce</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_force()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(6,)</span></code></p></td>
+<td><p class="sd-card-text">Read <code class="docutils literal notranslate"><span class="pre">getactforce</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.is_error()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p>Always <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.is_error()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text">Always <code class="docutils literal notranslate"><span class="pre">False</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong>Layout constant</strong>: <code class="docutils literal notranslate"><span class="pre">SENSOR_LAYOUT</span></code> (per-pad <code class="docutils literal notranslate"><span class="pre">addr/rows/cols</span></code>).</p>
-</section>
-<hr class="docutils" />
-<section id="robotwrapper-kinematics-pinocchio">
-<h2><code class="docutils literal notranslate"><span class="pre">RobotWrapper</span></code> (kinematics, Pinocchio)<a class="headerlink" href="#robotwrapper-kinematics-pinocchio" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/robot/robot_wrapper.py</span></code>. FK / IK / Jacobian on a URDF model. No hardware.</p>
+<p class="sd-card-text"><strong>Layout constant</strong>: <code class="docutils literal notranslate"><span class="pre">SENSOR_LAYOUT</span></code> (per-pad <code class="docutils literal notranslate"><span class="pre">addr/rows/cols</span></code>).</p>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">RobotWrapper</span></code> (kinematics, Pinocchio)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/robot/robot_wrapper.py</span></code>. FK / IK / Jacobian on a URDF model. No hardware.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RobotWrapper(urdf_path)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">urdf_path:</span> <span class="pre">str</span></code></p></td>
-<td><p>instance</p></td>
-<td><p>Build Pinocchio model + data from URDF.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">RobotWrapper(urdf_path)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">urdf_path:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Build Pinocchio model + data from URDF.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.compute_forward_kinematics(qpos,</span> <span class="pre">link_list=[])</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">qpos:</span> <span class="pre">ndarray</span> <span class="pre">(dof,)</span></code>, <code class="docutils literal notranslate"><span class="pre">link_list:</span> <span class="pre">list[str]</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">ndarray</span> <span class="pre">(4,4)]</span></code></p></td>
-<td><p>FK; returns homogeneous pose per requested link.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.compute_forward_kinematics(qpos,</span> <span class="pre">link_list=[])</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">qpos:</span> <span class="pre">ndarray</span> <span class="pre">(dof,)</span></code>, <code class="docutils literal notranslate"><span class="pre">link_list:</span> <span class="pre">list[str]</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">ndarray</span> <span class="pre">(4,4)]</span></code></p></td>
+<td><p class="sd-card-text">FK; returns homogeneous pose per requested link.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.solve_ik(target_pose,</span> <span class="pre">end_effector_name,</span> <span class="pre">q_init=None,</span> <span class="pre">max_iter=1000,</span> <span class="pre">tol=1e-8,</span> <span class="pre">alpha=5e-2,</span> <span class="pre">try_num=30)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">target_pose:</span> <span class="pre">ndarray</span> <span class="pre">(4,4)</span></code>, <code class="docutils literal notranslate"><span class="pre">end_effector_name:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">q_init:</span> <span class="pre">ndarray=None</span></code>, …</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(ndarray</span> <span class="pre">(dof,),</span> <span class="pre">bool)</span></code></p></td>
-<td><p>Damped least-squares IK with random restarts; returns <code class="docutils literal notranslate"><span class="pre">(qpos,</span> <span class="pre">success)</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.solve_ik(target_pose,</span> <span class="pre">end_effector_name,</span> <span class="pre">q_init=None,</span> <span class="pre">max_iter=1000,</span> <span class="pre">tol=1e-8,</span> <span class="pre">alpha=5e-2,</span> <span class="pre">try_num=30)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">target_pose:</span> <span class="pre">ndarray</span> <span class="pre">(4,4)</span></code>, <code class="docutils literal notranslate"><span class="pre">end_effector_name:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">q_init:</span> <span class="pre">ndarray=None</span></code>, …</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(ndarray</span> <span class="pre">(dof,),</span> <span class="pre">bool)</span></code></p></td>
+<td><p class="sd-card-text">Damped least-squares IK with random restarts; returns <code class="docutils literal notranslate"><span class="pre">(qpos,</span> <span class="pre">success)</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_link_pose(link_id)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">link_id:</span> <span class="pre">int</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(4,4)</span></code></p></td>
-<td><p>Frame placement as homogeneous matrix.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_link_pose(link_id)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">link_id:</span> <span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(4,4)</span></code></p></td>
+<td><p class="sd-card-text">Frame placement as homogeneous matrix.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_all_link_poses()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">ndarray</span> <span class="pre">(4,4)]</span></code></p></td>
-<td><p>Pose of every frame.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_all_link_poses()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict[str,</span> <span class="pre">ndarray</span> <span class="pre">(4,4)]</span></code></p></td>
+<td><p class="sd-card-text">Pose of every frame.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.compute_single_link_local_jacobian(qpos,</span> <span class="pre">link_id)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">qpos:</span> <span class="pre">ndarray</span></code>, <code class="docutils literal notranslate"><span class="pre">link_id:</span> <span class="pre">int</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(6,</span> <span class="pre">dof)</span></code></p></td>
-<td><p>Frame Jacobian.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.compute_single_link_local_jacobian(qpos,</span> <span class="pre">link_id)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">qpos:</span> <span class="pre">ndarray</span></code>, <code class="docutils literal notranslate"><span class="pre">link_id:</span> <span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(6,</span> <span class="pre">dof)</span></code></p></td>
+<td><p class="sd-card-text">Frame Jacobian.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_link_index(name)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
-<td><p>Frame id for a BODY link.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_link_index(name)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text">Frame id for a BODY link.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_joint_index(name)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
-<td><p>Index within <code class="docutils literal notranslate"><span class="pre">dof_joint_names</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_joint_index(name)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text">Index within <code class="docutils literal notranslate"><span class="pre">dof_joint_names</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.integrate(q,</span> <span class="pre">v,</span> <span class="pre">dt)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">q,</span> <span class="pre">v:</span> <span class="pre">ndarray</span></code>, <code class="docutils literal notranslate"><span class="pre">dt:</span> <span class="pre">float</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ndarray</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pin.integrate</span></code> (config-space step).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.integrate(q,</span> <span class="pre">v,</span> <span class="pre">dt)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">q,</span> <span class="pre">v:</span> <span class="pre">ndarray</span></code>, <code class="docutils literal notranslate"><span class="pre">dt:</span> <span class="pre">float</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ndarray</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">pin.integrate</span></code> (config-space step).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_end_links()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">list[str]</span></code></p></td>
-<td><p>Leaf links (never a joint parent).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_end_links()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">list[str]</span></code></p></td>
+<td><p class="sd-card-text">Leaf links (never a joint parent).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_root_link()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
-<td><p>Single root link (raises if ambiguous).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_root_link()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text">Single root link (raises if ambiguous).</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong>Properties</strong>: <code class="docutils literal notranslate"><span class="pre">.joint_names</span></code>, <code class="docutils literal notranslate"><span class="pre">.dof_joint_names</span></code>, <code class="docutils literal notranslate"><span class="pre">.dof</span></code> (<code class="docutils literal notranslate"><span class="pre">nq</span></code>), <code class="docutils literal notranslate"><span class="pre">.link_names</span></code>,
+<p class="sd-card-text"><strong>Properties</strong>: <code class="docutils literal notranslate"><span class="pre">.joint_names</span></code>, <code class="docutils literal notranslate"><span class="pre">.dof_joint_names</span></code>, <code class="docutils literal notranslate"><span class="pre">.dof</span></code> (<code class="docutils literal notranslate"><span class="pre">nq</span></code>), <code class="docutils literal notranslate"><span class="pre">.link_names</span></code>,
 <code class="docutils literal notranslate"><span class="pre">.joint_limits</span></code> (<code class="docutils literal notranslate"><span class="pre">(dof,2)</span></code> lower/upper).</p>
-</section>
-<hr class="docutils" />
-<section id="curoboplanner-motion-planning-curobo">
-<h2><code class="docutils literal notranslate"><span class="pre">CuroboPlanner</span></code> (motion planning, CuRobo)<a class="headerlink" href="#curoboplanner-motion-planning-curobo" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/robot/curobo.py</span></code>. GPU planner over a world of cuboids + object meshes.
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">CuroboPlanner</span></code> (motion planning, CuRobo)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/robot/curobo.py</span></code>. GPU planner over a world of cuboids + object meshes.
 Heavyweight — construct once (it warms up CUDA graphs) and reuse.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CuroboPlanner(obstacle_dict,</span> <span class="pre">obj_dict,</span> <span class="pre">robot_cfg,</span> <span class="pre">tensor_args)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">obstacle_dict:</span> <span class="pre">dict</span></code>, <code class="docutils literal notranslate"><span class="pre">obj_dict:</span> <span class="pre">dict</span></code>, <code class="docutils literal notranslate"><span class="pre">robot_cfg</span></code>, <code class="docutils literal notranslate"><span class="pre">tensor_args</span></code></p></td>
-<td><p>instance</p></td>
-<td><p>Build world, load <code class="docutils literal notranslate"><span class="pre">MotionGen</span></code> + <code class="docutils literal notranslate"><span class="pre">IKSolver</span></code>, warm up.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">CuroboPlanner(obstacle_dict,</span> <span class="pre">obj_dict,</span> <span class="pre">robot_cfg,</span> <span class="pre">tensor_args)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">obstacle_dict:</span> <span class="pre">dict</span></code>, <code class="docutils literal notranslate"><span class="pre">obj_dict:</span> <span class="pre">dict</span></code>, <code class="docutils literal notranslate"><span class="pre">robot_cfg</span></code>, <code class="docutils literal notranslate"><span class="pre">tensor_args</span></code></p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Build world, load <code class="docutils literal notranslate"><span class="pre">MotionGen</span></code> + <code class="docutils literal notranslate"><span class="pre">IKSolver</span></code>, warm up.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.plan_goalset(init_state,</span> <span class="pre">goal_pose)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">init_state:</span> <span class="pre">array</span> <span class="pre">(dof,)</span></code>, <code class="docutils literal notranslate"><span class="pre">goal_pose:</span> <span class="pre">ndarray</span> <span class="pre">(N,4,4)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(goalset_index,</span> <span class="pre">trajectory</span> <span class="pre">ndarray)</span></code></p></td>
-<td><p>Plan to reach any of N candidate poses.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.plan_goalset(init_state,</span> <span class="pre">goal_pose)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">init_state:</span> <span class="pre">array</span> <span class="pre">(dof,)</span></code>, <code class="docutils literal notranslate"><span class="pre">goal_pose:</span> <span class="pre">ndarray</span> <span class="pre">(N,4,4)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(goalset_index,</span> <span class="pre">trajectory</span> <span class="pre">ndarray)</span></code></p></td>
+<td><p class="sd-card-text">Plan to reach any of N candidate poses.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.plan_to_joint_target(init_state,</span> <span class="pre">goal_joint_state)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">init_state</span></code>, <code class="docutils literal notranslate"><span class="pre">goal_joint_state:</span> <span class="pre">array</span> <span class="pre">(dof,)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(success:</span> <span class="pre">bool,</span> <span class="pre">trajectory</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></td>
-<td><p>Joint-space plan via <code class="docutils literal notranslate"><span class="pre">plan_single_js</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.plan_to_joint_target(init_state,</span> <span class="pre">goal_joint_state)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">init_state</span></code>, <code class="docutils literal notranslate"><span class="pre">goal_joint_state:</span> <span class="pre">array</span> <span class="pre">(dof,)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(success:</span> <span class="pre">bool,</span> <span class="pre">trajectory</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></td>
+<td><p class="sd-card-text">Joint-space plan via <code class="docutils literal notranslate"><span class="pre">plan_single_js</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.plan_full_step(current_state,</span> <span class="pre">target_positions,</span> <span class="pre">target_quats,</span> <span class="pre">num_grasp)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">current_state:</span> <span class="pre">JointState</span></code>, <code class="docutils literal notranslate"><span class="pre">target_positions</span></code>, <code class="docutils literal notranslate"><span class="pre">target_quats:</span> <span class="pre">Tensor</span></code>, <code class="docutils literal notranslate"><span class="pre">num_grasp:</span> <span class="pre">int</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(success:</span> <span class="pre">bool,</span> <span class="pre">tensor_ids</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></td>
-<td><p>Batch-plan grasp candidates, pick best per place. (References unset attrs — incomplete; see overview §11.)</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.plan_full_step(current_state,</span> <span class="pre">target_positions,</span> <span class="pre">target_quats,</span> <span class="pre">num_grasp)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">current_state:</span> <span class="pre">JointState</span></code>, <code class="docutils literal notranslate"><span class="pre">target_positions</span></code>, <code class="docutils literal notranslate"><span class="pre">target_quats:</span> <span class="pre">Tensor</span></code>, <code class="docutils literal notranslate"><span class="pre">num_grasp:</span> <span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(success:</span> <span class="pre">bool,</span> <span class="pre">tensor_ids</span> <span class="pre">|</span> <span class="pre">None)</span></code></p></td>
+<td><p class="sd-card-text">Batch-plan grasp candidates, pick best per place. (References unset attrs — incomplete; see overview §11.)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.update_world(obj_dict)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">obj_dict:</span> <span class="pre">dict</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Rebuild + swap collision world.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.update_world(obj_dict)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">obj_dict:</span> <span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Rebuild + swap collision world.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_robot_mesh(joint_state)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">joint_state:</span> <span class="pre">array</span> <span class="pre">(dof,)</span></code></p></td>
-<td><p>visual meshes</p></td>
-<td><p>Kinematics visual meshes at a config.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_robot_mesh(joint_state)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">joint_state:</span> <span class="pre">array</span> <span class="pre">(dof,)</span></code></p></td>
+<td><p class="sd-card-text">visual meshes</p></td>
+<td><p class="sd-card-text">Kinematics visual meshes at a config.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong>Module helpers</strong>: <code class="docutils literal notranslate"><span class="pre">to_quat(obj_pose)</span></code> → <code class="docutils literal notranslate"><span class="pre">(7,)</span></code> position + <strong>wxyz</strong> quaternion;
+<p class="sd-card-text"><strong>Module helpers</strong>: <code class="docutils literal notranslate"><span class="pre">to_quat(obj_pose)</span></code> → <code class="docutils literal notranslate"><span class="pre">(7,)</span></code> position + <strong>wxyz</strong> quaternion;
 <code class="docutils literal notranslate"><span class="pre">load_world_config(obstacle_dict,</span> <span class="pre">obj_dict)</span></code> → CuRobo world dict.</p>
-</section>
-<hr class="docutils" />
-<section id="urdf-helpers">
-<h2>URDF helpers<a class="headerlink" href="#urdf-helpers" title="Link to this heading">¶</a></h2>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text">URDF helpers</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Function</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Function</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">generate_urdf(xacro_path,</span> <span class="pre">output_path,</span> <span class="pre">args_dict)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">xacro_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">output_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">args_dict:</span> <span class="pre">dict</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Run <code class="docutils literal notranslate"><span class="pre">xacro</span></code> with <code class="docutils literal notranslate"><span class="pre">key:=value</span></code> args, write URDF to <code class="docutils literal notranslate"><span class="pre">output_path</span></code>. (<code class="docutils literal notranslate"><span class="pre">paradex/robot/urdf.py</span></code>)</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">generate_urdf(xacro_path,</span> <span class="pre">output_path,</span> <span class="pre">args_dict)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">xacro_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">output_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">args_dict:</span> <span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Run <code class="docutils literal notranslate"><span class="pre">xacro</span></code> with <code class="docutils literal notranslate"><span class="pre">key:=value</span></code> args, write URDF to <code class="docutils literal notranslate"><span class="pre">output_path</span></code>. (<code class="docutils literal notranslate"><span class="pre">paradex/robot/urdf.py</span></code>)</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">get_robot_urdf_path(arm_name=None,</span> <span class="pre">hand_name=None)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">arm_name:</span> <span class="pre">str=None</span></code>, <code class="docutils literal notranslate"><span class="pre">hand_name:</span> <span class="pre">str=None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
-<td><p>Resolve URDF path: hand-only → <code class="docutils literal notranslate"><span class="pre">&lt;hand&gt;_float.urdf</span></code>, arm-only → <code class="docutils literal notranslate"><span class="pre">&lt;arm&gt;.urdf</span></code>, both → <code class="docutils literal notranslate"><span class="pre">&lt;arm&gt;_&lt;hand&gt;.urdf</span></code>. (<code class="docutils literal notranslate"><span class="pre">paradex/robot/utils.py</span></code>)</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_robot_urdf_path(arm_name=None,</span> <span class="pre">hand_name=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">arm_name:</span> <span class="pre">str=None</span></code>, <code class="docutils literal notranslate"><span class="pre">hand_name:</span> <span class="pre">str=None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text">Resolve URDF path: hand-only → <code class="docutils literal notranslate"><span class="pre">&lt;hand&gt;_float.urdf</span></code>, arm-only → <code class="docutils literal notranslate"><span class="pre">&lt;arm&gt;.urdf</span></code>, both → <code class="docutils literal notranslate"><span class="pre">&lt;arm&gt;_&lt;hand&gt;.urdf</span></code>. (<code class="docutils literal notranslate"><span class="pre">paradex/robot/utils.py</span></code>)</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">parse_inspire(inspire_traj,</span> <span class="pre">joint_order=...)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">inspire_traj:</span> <span class="pre">ndarray</span> <span class="pre">(T,6)</span></code>, <code class="docutils literal notranslate"><span class="pre">joint_order:</span> <span class="pre">list[str]</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(T,</span> <span class="pre">len(joint_order))</span></code></p></td>
-<td><p>Motor units (0–1000) → URDF joint radians via <code class="docutils literal notranslate"><span class="pre">limit</span></code>, filling mimic joints. (<code class="docutils literal notranslate"><span class="pre">paradex/robot/mimic_joint.py</span></code>)</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">parse_inspire(inspire_traj,</span> <span class="pre">joint_order=...)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">inspire_traj:</span> <span class="pre">ndarray</span> <span class="pre">(T,6)</span></code>, <code class="docutils literal notranslate"><span class="pre">joint_order:</span> <span class="pre">list[str]</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ndarray</span> <span class="pre">(T,</span> <span class="pre">len(joint_order))</span></code></p></td>
+<td><p class="sd-card-text">Motor units (0–1000) → URDF joint radians via <code class="docutils literal notranslate"><span class="pre">limit</span></code>, filling mimic joints. (<code class="docutils literal notranslate"><span class="pre">paradex/robot/mimic_joint.py</span></code>)</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-</section>
-</section>
+</div>
+</details></section>
 
         </article>
       </div>
@@ -888,34 +890,8 @@ Heavyweight — construct once (it warms up CUDA graphs) and reuse.</p>
         
       </footer>
     </div>
-    <aside class="toc-drawer">
+    <aside class="toc-drawer no-toc">
       
-      
-      <div class="toc-sticky toc-scroll">
-        <div class="toc-title-container">
-          <span class="toc-title">
-            On this page
-          </span>
-        </div>
-        <div class="toc-tree-container">
-          <div class="toc-tree">
-            <ul>
-<li><a class="reference internal" href="#">Robot Control — API</a><ul>
-<li><a class="reference internal" href="#factory-get-arm-get-hand">Factory: <code class="docutils literal notranslate"><span class="pre">get_arm</span></code> / <code class="docutils literal notranslate"><span class="pre">get_hand</span></code></a></li>
-<li><a class="reference internal" href="#xarmcontroller-arm"><code class="docutils literal notranslate"><span class="pre">XArmController</span></code> (arm)</a></li>
-<li><a class="reference internal" href="#allegrocontroller-hand-ros2"><code class="docutils literal notranslate"><span class="pre">AllegroController</span></code> (hand, ROS2)</a></li>
-<li><a class="reference internal" href="#inspirecontrollerip-hand-modbus-tcp"><code class="docutils literal notranslate"><span class="pre">InspireControllerIP</span></code> (hand, Modbus TCP)</a></li>
-<li><a class="reference internal" href="#inspirecontroller-hand-usb-serial"><code class="docutils literal notranslate"><span class="pre">InspireController</span></code> (hand, USB serial)</a></li>
-<li><a class="reference internal" href="#robotwrapper-kinematics-pinocchio"><code class="docutils literal notranslate"><span class="pre">RobotWrapper</span></code> (kinematics, Pinocchio)</a></li>
-<li><a class="reference internal" href="#curoboplanner-motion-planning-curobo"><code class="docutils literal notranslate"><span class="pre">CuroboPlanner</span></code> (motion planning, CuRobo)</a></li>
-<li><a class="reference internal" href="#urdf-helpers">URDF helpers</a></li>
-</ul>
-</li>
-</ul>
-
-          </div>
-        </div>
-      </div>
       
       
     </aside>
@@ -924,5 +900,6 @@ Heavyweight — construct once (it warms up CUDA graphs) and reuse.</p>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
     </body>
 </html>

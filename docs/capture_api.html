@@ -7,11 +7,12 @@
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>Capture Session — API - paradex 0.0.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=302659d7" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b00e8357" />
     
     
 
@@ -180,7 +181,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -364,7 +365,7 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
@@ -378,338 +379,339 @@ values (output) per class. For the architecture and how these fit together, see 
 <p>Signatures are verified against the code; internal/private methods are omitted. All
 <code class="docutils literal notranslate"><span class="pre">save_path</span></code> arguments to <code class="docutils literal notranslate"><span class="pre">CaptureSession</span></code> are <strong>relative</strong> to <code class="docutils literal notranslate"><span class="pre">shared_dir</span></code>
 (<code class="docutils literal notranslate"><span class="pre">~/shared_data</span></code>); the session prepends it.</p>
-<hr class="docutils" />
-<section id="capturesession">
-<h2><code class="docutils literal notranslate"><span class="pre">CaptureSession</span></code><a class="headerlink" href="#capturesession" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/dataset_acqusition/capture.py</span></code>. The single entry point a dataset pipeline
+<p>Each entry is collapsed below — click to expand.</p>
+<details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3" open="open">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">CaptureSession</span></code></span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/dataset_acqusition/capture.py</span></code>. The single entry point a dataset pipeline
 uses. The constructor selects and connects the device set; <code class="docutils literal notranslate"><span class="pre">start</span></code>/<code class="docutils literal notranslate"><span class="pre">stop</span></code> toggle one
 recording; <code class="docutils literal notranslate"><span class="pre">end</span></code> releases everything.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">CaptureSession(camera=False,</span> <span class="pre">arm=None,</span> <span class="pre">hand=None,</span> <span class="pre">teleop=None,</span> <span class="pre">hand_ip=False)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">camera:</span> <span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">arm:</span> <span class="pre">str|None</span></code>, <code class="docutils literal notranslate"><span class="pre">hand:</span> <span class="pre">str|None</span></code>, <code class="docutils literal notranslate"><span class="pre">teleop:</span> <span class="pre">str|None</span></code>, <code class="docutils literal notranslate"><span class="pre">hand_ip:</span> <span class="pre">bool</span></code></p></td>
-<td><p>instance</p></td>
-<td><p>Build + connect the enabled devices. <code class="docutils literal notranslate"><span class="pre">camera=True</span></code> adds a <code class="docutils literal notranslate"><span class="pre">UTGE900</span></code> sync generator; with an <code class="docutils literal notranslate"><span class="pre">arm</span></code>/<code class="docutils literal notranslate"><span class="pre">hand</span></code> it also adds a <code class="docutils literal notranslate"><span class="pre">TimestampMonitor</span></code>. Raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> if <code class="docutils literal notranslate"><span class="pre">teleop</span></code> is set with no <code class="docutils literal notranslate"><span class="pre">arm</span></code> or <code class="docutils literal notranslate"><span class="pre">hand</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">CaptureSession(camera=False,</span> <span class="pre">arm=None,</span> <span class="pre">hand=None,</span> <span class="pre">teleop=None,</span> <span class="pre">hand_ip=False)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">camera:</span> <span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">arm:</span> <span class="pre">str|None</span></code>, <code class="docutils literal notranslate"><span class="pre">hand:</span> <span class="pre">str|None</span></code>, <code class="docutils literal notranslate"><span class="pre">teleop:</span> <span class="pre">str|None</span></code>, <code class="docutils literal notranslate"><span class="pre">hand_ip:</span> <span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Build + connect the enabled devices. <code class="docutils literal notranslate"><span class="pre">camera=True</span></code> adds a <code class="docutils literal notranslate"><span class="pre">UTGE900</span></code> sync generator; with an <code class="docutils literal notranslate"><span class="pre">arm</span></code>/<code class="docutils literal notranslate"><span class="pre">hand</span></code> it also adds a <code class="docutils literal notranslate"><span class="pre">TimestampMonitor</span></code>. Raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> if <code class="docutils literal notranslate"><span class="pre">teleop</span></code> is set with no <code class="docutils literal notranslate"><span class="pre">arm</span></code> or <code class="docutils literal notranslate"><span class="pre">hand</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(save_path,</span> <span class="pre">mode=&quot;video&quot;,</span> <span class="pre">fps=30,</span> <span class="pre">exposure_time=None,</span> <span class="pre">gain=None,</span> <span class="pre">stage=None)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code> (rel), <code class="docutils literal notranslate"><span class="pre">mode:</span> <span class="pre">&quot;video&quot;|&quot;image&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">fps:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">exposure_time:</span> <span class="pre">float|None</span></code> (µs), <code class="docutils literal notranslate"><span class="pre">gain:</span> <span class="pre">float|None</span></code> (dB), <code class="docutils literal notranslate"><span class="pre">stage:</span> <span class="pre">str|None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Create <code class="docutils literal notranslate"><span class="pre">raw[/stage]/</span></code>, then <code class="docutils literal notranslate"><span class="pre">start()</span></code> every enabled device. Camera is always started with <code class="docutils literal notranslate"><span class="pre">syncMode=True</span></code>; the sync generator fires at <code class="docutils literal notranslate"><span class="pre">fps</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(save_path,</span> <span class="pre">mode=&quot;video&quot;,</span> <span class="pre">fps=30,</span> <span class="pre">exposure_time=None,</span> <span class="pre">gain=None,</span> <span class="pre">stage=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code> (rel), <code class="docutils literal notranslate"><span class="pre">mode:</span> <span class="pre">&quot;video&quot;|&quot;image&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">fps:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">exposure_time:</span> <span class="pre">float|None</span></code> (µs), <code class="docutils literal notranslate"><span class="pre">gain:</span> <span class="pre">float|None</span></code> (dB), <code class="docutils literal notranslate"><span class="pre">stage:</span> <span class="pre">str|None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Create <code class="docutils literal notranslate"><span class="pre">raw[/stage]/</span></code>, then <code class="docutils literal notranslate"><span class="pre">start()</span></code> every enabled device. Camera is always started with <code class="docutils literal notranslate"><span class="pre">syncMode=True</span></code>; the sync generator fires at <code class="docutils literal notranslate"><span class="pre">fps</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Stop every device. Dumps teleop <code class="docutils literal notranslate"><span class="pre">state/</span></code> arrays; on camera sessions saves <code class="docutils literal notranslate"><span class="pre">cam_param</span></code> + <code class="docutils literal notranslate"><span class="pre">C2R</span></code> at the <code class="docutils literal notranslate"><span class="pre">save_path</span></code> root. Clears <code class="docutils literal notranslate"><span class="pre">save_path</span></code>/<code class="docutils literal notranslate"><span class="pre">stage</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Stop every device. Dumps teleop <code class="docutils literal notranslate"><span class="pre">state/</span></code> arrays; on camera sessions saves <code class="docutils literal notranslate"><span class="pre">cam_param</span></code> + <code class="docutils literal notranslate"><span class="pre">C2R</span></code> at the <code class="docutils literal notranslate"><span class="pre">save_path</span></code> root. Clears <code class="docutils literal notranslate"><span class="pre">save_path</span></code>/<code class="docutils literal notranslate"><span class="pre">stage</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Release every device connection (arm/hand/teleop/camera/timestamp/sync).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Release every device connection (arm/hand/teleop/camera/timestamp/sync).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.teleop()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">&quot;stop&quot;</span></code> | <code class="docutils literal notranslate"><span class="pre">&quot;exit&quot;</span></code></p></td>
-<td><p>Run the XSens retarget loop (see <a class="reference internal" href="capture.html"><span class="doc">overview §6</span></a>). Raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> if no teleop device. Records per-tick state to <code class="docutils literal notranslate"><span class="pre">state_hist</span></code>/<code class="docutils literal notranslate"><span class="pre">state_time</span></code> while a <code class="docutils literal notranslate"><span class="pre">save_path</span></code> is active.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.teleop()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">&quot;stop&quot;</span></code> | <code class="docutils literal notranslate"><span class="pre">&quot;exit&quot;</span></code></p></td>
+<td><p class="sd-card-text">Run the XSens retarget loop (see <a class="reference internal" href="capture.html"><span class="doc">overview §6</span></a>). Raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> if no teleop device. Records per-tick state to <code class="docutils literal notranslate"><span class="pre">state_hist</span></code>/<code class="docutils literal notranslate"><span class="pre">state_time</span></code> while a <code class="docutils literal notranslate"><span class="pre">save_path</span></code> is active.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.move(action_dict)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">action_dict:</span> <span class="pre">dict</span></code> with optional <code class="docutils literal notranslate"><span class="pre">&quot;arm&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;hand&quot;</span></code> keys</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Forward a manual command to the arm and/or hand (no teleop).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.move(action_dict)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">action_dict:</span> <span class="pre">dict</span></code> with optional <code class="docutils literal notranslate"><span class="pre">&quot;arm&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">&quot;hand&quot;</span></code> keys</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Forward a manual command to the arm and/or hand (no teleop).</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong>Constructed attributes</strong> (present only when the matching flag is set): <code class="docutils literal notranslate"><span class="pre">.camera</span></code>
+<p class="sd-card-text"><strong>Constructed attributes</strong> (present only when the matching flag is set): <code class="docutils literal notranslate"><span class="pre">.camera</span></code>
 (<code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code>), <code class="docutils literal notranslate"><span class="pre">.sync_generator</span></code> (<code class="docutils literal notranslate"><span class="pre">UTGE900</span></code>), <code class="docutils literal notranslate"><span class="pre">.timestamp_monitor</span></code>
 (<code class="docutils literal notranslate"><span class="pre">TimestampMonitor</span></code>), <code class="docutils literal notranslate"><span class="pre">.arm</span></code>, <code class="docutils literal notranslate"><span class="pre">.hand</span></code>, <code class="docutils literal notranslate"><span class="pre">.teleop_device</span></code> (<code class="docutils literal notranslate"><span class="pre">XSensReceiver</span></code>),
 <code class="docutils literal notranslate"><span class="pre">.retargetor</span></code> (<code class="docutils literal notranslate"><span class="pre">Retargetor</span></code>), <code class="docutils literal notranslate"><span class="pre">.state_extractor</span></code> (<code class="docutils literal notranslate"><span class="pre">HandStateExtractor</span></code>). Unset
 devices are <code class="docutils literal notranslate"><span class="pre">None</span></code>. <code class="docutils literal notranslate"><span class="pre">.save_path</span></code> / <code class="docutils literal notranslate"><span class="pre">.stage</span></code> hold the active recording (both <code class="docutils literal notranslate"><span class="pre">None</span></code>
 between recordings).</p>
-</section>
-<hr class="docutils" />
-<section id="utge900-hardware-sync-generator">
-<h2><code class="docutils literal notranslate"><span class="pre">UTGE900</span></code> (hardware sync generator)<a class="headerlink" href="#utge900-hardware-sync-generator" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/signal_generator.py</span></code>. Unit-T UTG900 driven over USBTMC;
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">UTGE900</span></code> (hardware sync generator)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/signal_generator.py</span></code>. Unit-T UTG900 driven over USBTMC;
 emits the square wave that hardware-triggers all cameras. Built from
 <code class="docutils literal notranslate"><span class="pre">network_info[&quot;signal_generator&quot;][&quot;param&quot;]</span></code>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">UTGE900(addr)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">addr:</span> <span class="pre">str</span></code> (device path)</p></td>
-<td><p>instance</p></td>
-<td><p>Open the device. Raises <code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code> / <code class="docutils literal notranslate"><span class="pre">PermissionError</span></code> if the path is missing or not R/W.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">UTGE900(addr)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">addr:</span> <span class="pre">str</span></code> (device path)</p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Open the device. Raises <code class="docutils literal notranslate"><span class="pre">FileNotFoundError</span></code> / <code class="docutils literal notranslate"><span class="pre">PermissionError</span></code> if the path is missing or not R/W.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(fps,</span> <span class="pre">ch=1)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">fps:</span> <span class="pre">int</span></code> (Hz), <code class="docutils literal notranslate"><span class="pre">ch:</span> <span class="pre">int</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Output a <code class="docutils literal notranslate"><span class="pre">square</span></code> wave at <code class="docutils literal notranslate"><span class="pre">fps</span></code> on channel <code class="docutils literal notranslate"><span class="pre">ch</span></code>. No-op if the channel is already on.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(fps,</span> <span class="pre">ch=1)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">fps:</span> <span class="pre">int</span></code> (Hz), <code class="docutils literal notranslate"><span class="pre">ch:</span> <span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Output a <code class="docutils literal notranslate"><span class="pre">square</span></code> wave at <code class="docutils literal notranslate"><span class="pre">fps</span></code> on channel <code class="docutils literal notranslate"><span class="pre">ch</span></code>. No-op if the channel is already on.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.stop(ch=1)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ch:</span> <span class="pre">int</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Turn channel <code class="docutils literal notranslate"><span class="pre">ch</span></code> off. No-op if already off.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop(ch=1)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ch:</span> <span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Turn channel <code class="docutils literal notranslate"><span class="pre">ch</span></code> off. No-op if already off.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.generate(ch=1,</span> <span class="pre">wave=&quot;square&quot;,</span> <span class="pre">freq=30,</span> <span class="pre">amp=10)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ch:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">wave:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">freq:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">amp:</span> <span class="pre">int</span></code> (Vpp)</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Configure and enable a waveform on <code class="docutils literal notranslate"><span class="pre">ch</span></code> (used by <code class="docutils literal notranslate"><span class="pre">start</span></code>).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.generate(ch=1,</span> <span class="pre">wave=&quot;square&quot;,</span> <span class="pre">freq=30,</span> <span class="pre">amp=10)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">ch:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">wave:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">freq:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">amp:</span> <span class="pre">int</span></code> (Vpp)</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Configure and enable a waveform on <code class="docutils literal notranslate"><span class="pre">ch</span></code> (used by <code class="docutils literal notranslate"><span class="pre">start</span></code>).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Release the front-panel lock (<code class="docutils literal notranslate"><span class="pre">System:LOCK</span> <span class="pre">off</span></code>).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Release the front-panel lock (<code class="docutils literal notranslate"><span class="pre">System:LOCK</span> <span class="pre">off</span></code>).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.getName()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
-<td><p>Device <code class="docutils literal notranslate"><span class="pre">*IDN?</span></code> identity string.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.getName()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text">Device <code class="docutils literal notranslate"><span class="pre">*IDN?</span></code> identity string.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-</section>
-<hr class="docutils" />
-<section id="timestampmonitor-frame-id-logger">
-<h2><code class="docutils literal notranslate"><span class="pre">TimestampMonitor</span></code> (frame-id logger)<a class="headerlink" href="#timestampmonitor-frame-id-logger" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/timestamp_monitor.py</span></code>. A dedicated camera that logs only
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">TimestampMonitor</span></code> (frame-id logger)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/timestamp_monitor.py</span></code>. A dedicated camera that logs only
 <code class="docutils literal notranslate"><span class="pre">(frame_id,</span> <span class="pre">pc_time)</span></code> so robot streams can be aligned to camera frames. Added
 automatically when a camera session also has an arm or hand. Built from
 <code class="docutils literal notranslate"><span class="pre">network_info[&quot;timestamp&quot;][&quot;param&quot;]</span></code>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">TimestampMonitor(cam_type,</span> <span class="pre">name)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">cam_type:</span> <span class="pre">str</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;pyspin&quot;</span></code>), <code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code> (serial)</p></td>
-<td><p>instance</p></td>
-<td><p>Connect the monitor camera and spawn its capture thread (blocks until connected).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">TimestampMonitor(cam_type,</span> <span class="pre">name)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">cam_type:</span> <span class="pre">str</span></code> (e.g. <code class="docutils literal notranslate"><span class="pre">&quot;pyspin&quot;</span></code>), <code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str</span></code> (serial)</p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Connect the monitor camera and spawn its capture thread (blocks until connected).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(save_path=None)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str|None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Begin logging; when <code class="docutils literal notranslate"><span class="pre">save_path</span></code> is given, accumulate <code class="docutils literal notranslate"><span class="pre">frame_id</span></code>/<code class="docutils literal notranslate"><span class="pre">timestamp</span></code> for dumping. Blocks until acquisition begins.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(save_path=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str|None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Begin logging; when <code class="docutils literal notranslate"><span class="pre">save_path</span></code> is given, accumulate <code class="docutils literal notranslate"><span class="pre">frame_id</span></code>/<code class="docutils literal notranslate"><span class="pre">timestamp</span></code> for dumping. Blocks until acquisition begins.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Stop logging; on stop, writes <code class="docutils literal notranslate"><span class="pre">frame_id.npy</span></code> + <code class="docutils literal notranslate"><span class="pre">timestamp.npy</span></code> into <code class="docutils literal notranslate"><span class="pre">save_path</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Stop logging; on stop, writes <code class="docutils literal notranslate"><span class="pre">frame_id.npy</span></code> + <code class="docutils literal notranslate"><span class="pre">timestamp.npy</span></code> into <code class="docutils literal notranslate"><span class="pre">save_path</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Stop (if running) and release the camera.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Stop (if running) and release the camera.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_data()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">{frame_id,</span> <span class="pre">time}</span></code> — the last logged frame id and pc time.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_data()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">{frame_id,</span> <span class="pre">time}</span></code> — the last logged frame id and pc time.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.is_signal_active(fps)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">fps:</span> <span class="pre">int</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if a trigger frame arrives within <code class="docutils literal notranslate"><span class="pre">1.5</span> <span class="pre">/</span> <span class="pre">fps</span></code> s.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.is_signal_active(fps)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">fps:</span> <span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">True</span></code> if a trigger frame arrives within <code class="docutils literal notranslate"><span class="pre">1.5</span> <span class="pre">/</span> <span class="pre">fps</span></code> s.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.wait_signal_inactive(fps)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">fps:</span> <span class="pre">int</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Block until the trigger stops (no frame within <code class="docutils literal notranslate"><span class="pre">1.5</span> <span class="pre">/</span> <span class="pre">fps</span></code> s).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.wait_signal_inactive(fps)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">fps:</span> <span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Block until the trigger stops (no frame within <code class="docutils literal notranslate"><span class="pre">1.5</span> <span class="pre">/</span> <span class="pre">fps</span></code> s).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.is_error()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code> if the monitor is in an error state.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.is_error()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">True</span></code> if the monitor is in an error state.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.error_reset()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Clear the error state.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.error_reset()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Clear the error state.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-</section>
-<hr class="docutils" />
-<section id="match-sync-post-hoc-alignment-helpers">
-<h2><code class="docutils literal notranslate"><span class="pre">match_sync</span></code> (post-hoc alignment helpers)<a class="headerlink" href="#match-sync-post-hoc-alignment-helpers" title="Link to this heading">¶</a></h2>
-<p><code class="docutils literal notranslate"><span class="pre">paradex/dataset_acqusition/match_sync.py</span></code>. Module-level functions (not a class) used
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">match_sync</span></code> (post-hoc alignment helpers)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">paradex/dataset_acqusition/match_sync.py</span></code>. Module-level functions (not a class) used
 in post-processing to align robot streams to logged camera frames.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Function</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Function</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fill_framedrop(frame_id,</span> <span class="pre">pc_time)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">frame_id:</span> <span class="pre">array</span></code>, <code class="docutils literal notranslate"><span class="pre">pc_time:</span> <span class="pre">array</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(pc_time_nodrop,</span> <span class="pre">frame_id_nodrop)</span></code></p></td>
-<td><p>Reconstruct a drop-free frame-id axis and its pc-time by fitting a constant per-frame delta; skips the first 10 frames.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">fill_framedrop(frame_id,</span> <span class="pre">pc_time)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">frame_id:</span> <span class="pre">array</span></code>, <code class="docutils literal notranslate"><span class="pre">pc_time:</span> <span class="pre">array</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(pc_time_nodrop,</span> <span class="pre">frame_id_nodrop)</span></code></p></td>
+<td><p class="sd-card-text">Reconstruct a drop-free frame-id axis and its pc-time by fitting a constant per-frame delta; skips the first 10 frames.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">get_synced_data(pc_times,</span> <span class="pre">data,</span> <span class="pre">data_times)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pc_times:</span> <span class="pre">array</span></code>, <code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">array</span></code>, <code class="docutils literal notranslate"><span class="pre">data_times:</span> <span class="pre">array</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code></p></td>
-<td><p>Nearest-timestamp two-pointer match of <code class="docutils literal notranslate"><span class="pre">data</span></code> onto <code class="docutils literal notranslate"><span class="pre">pc_times</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_synced_data(pc_times,</span> <span class="pre">data,</span> <span class="pre">data_times)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">pc_times:</span> <span class="pre">array</span></code>, <code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">array</span></code>, <code class="docutils literal notranslate"><span class="pre">data_times:</span> <span class="pre">array</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">np.ndarray</span></code></p></td>
+<td><p class="sd-card-text">Nearest-timestamp two-pointer match of <code class="docutils literal notranslate"><span class="pre">data</span></code> onto <code class="docutils literal notranslate"><span class="pre">pc_times</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-</section>
-<hr class="docutils" />
-<section id="device-controllers-constructed-by-the-session">
-<h2>Device controllers (constructed by the session)<a class="headerlink" href="#device-controllers-constructed-by-the-session" title="Link to this heading">¶</a></h2>
-<p>The session drives its arm/hand/teleop through a shared <code class="docutils literal notranslate"><span class="pre">start/stop/end</span></code> contract.
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text">Device controllers (constructed by the session)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">The session drives its arm/hand/teleop through a shared <code class="docutils literal notranslate"><span class="pre">start/stop/end</span></code> contract.
 Built via <code class="docutils literal notranslate"><span class="pre">get_arm(arm)</span></code> / <code class="docutils literal notranslate"><span class="pre">get_hand(hand,</span> <span class="pre">ip=hand_ip)</span></code>
 (<code class="docutils literal notranslate"><span class="pre">paradex/io/robot_controller/__init__.py</span></code>) and the teleop receiver. Full per-device
 APIs live with their own modules; the subset the session calls:</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Called in</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Called in</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">arm.start(save_path)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">start()</span></code></p></td>
-<td><p>Begin logging arm state to <code class="docutils literal notranslate"><span class="pre">raw[/stage]/arm</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">arm.start(save_path)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">start()</span></code></p></td>
+<td><p class="sd-card-text">Begin logging arm state to <code class="docutils literal notranslate"><span class="pre">raw[/stage]/arm</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">arm.stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">arm.end()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">end()</span></code></p></td>
-<td><p>Stop logging / release the arm.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">arm.stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">arm.end()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">end()</span></code></p></td>
+<td><p class="sd-card-text">Stop logging / release the arm.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">arm.move(action,</span> <span class="pre">is_servo=True,</span> <span class="pre">speed=None)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">action</span></code>, <code class="docutils literal notranslate"><span class="pre">is_servo:</span> <span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">speed</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">teleop()</span></code> / <code class="docutils literal notranslate"><span class="pre">move()</span></code></p></td>
-<td><p>Command a pose (servo or blocking).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">arm.move(action,</span> <span class="pre">is_servo=True,</span> <span class="pre">speed=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">action</span></code>, <code class="docutils literal notranslate"><span class="pre">is_servo:</span> <span class="pre">bool</span></code>, <code class="docutils literal notranslate"><span class="pre">speed</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">teleop()</span></code> / <code class="docutils literal notranslate"><span class="pre">move()</span></code></p></td>
+<td><p class="sd-card-text">Command a pose (servo or blocking).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">arm.get_data()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">teleop()</span></code></p></td>
-<td><p>Read current state (<code class="docutils literal notranslate"><span class="pre">teleop()</span></code> reads <code class="docutils literal notranslate"><span class="pre">[&quot;position&quot;]</span></code> as home).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">arm.get_data()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">teleop()</span></code></p></td>
+<td><p class="sd-card-text">Read current state (<code class="docutils literal notranslate"><span class="pre">teleop()</span></code> reads <code class="docutils literal notranslate"><span class="pre">[&quot;position&quot;]</span></code> as home).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">hand.start(save_path)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">start()</span></code></p></td>
-<td><p>Begin logging hand state to <code class="docutils literal notranslate"><span class="pre">raw[/stage]/hand</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">hand.start(save_path)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">start()</span></code></p></td>
+<td><p class="sd-card-text">Begin logging hand state to <code class="docutils literal notranslate"><span class="pre">raw[/stage]/hand</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">hand.stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">hand.end()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">end()</span></code></p></td>
-<td><p>Stop logging / release the hand.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">hand.stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">hand.end()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">end()</span></code></p></td>
+<td><p class="sd-card-text">Stop logging / release the hand.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">hand.move(action)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">action</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">teleop()</span></code> / <code class="docutils literal notranslate"><span class="pre">move()</span></code></p></td>
-<td><p>Command a hand pose.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">hand.move(action)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">action</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">teleop()</span></code> / <code class="docutils literal notranslate"><span class="pre">move()</span></code></p></td>
+<td><p class="sd-card-text">Command a hand pose.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">teleop_device.start(save_path)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">start()</span></code></p></td>
-<td><p>Begin logging teleop stream to <code class="docutils literal notranslate"><span class="pre">raw[/stage]/teleop</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">teleop_device.start(save_path)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">save_path:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">start()</span></code></p></td>
+<td><p class="sd-card-text">Begin logging teleop stream to <code class="docutils literal notranslate"><span class="pre">raw[/stage]/teleop</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">teleop_device.stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">end()</span></code></p></td>
-<td><p>Stop logging / release.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">teleop_device.stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">.end()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">stop()</span></code> / <code class="docutils literal notranslate"><span class="pre">end()</span></code></p></td>
+<td><p class="sd-card-text">Stop logging / release.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">teleop_device.get_data()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">teleop()</span></code></p></td>
-<td><p>Latest XSens frame (<code class="docutils literal notranslate"><span class="pre">Left</span></code>/<code class="docutils literal notranslate"><span class="pre">Right</span></code> segment poses).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">teleop_device.get_data()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">teleop()</span></code></p></td>
+<td><p class="sd-card-text">Latest XSens frame (<code class="docutils literal notranslate"><span class="pre">Left</span></code>/<code class="docutils literal notranslate"><span class="pre">Right</span></code> segment poses).</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-</section>
-<hr class="docutils" />
-<section id="teleop-helpers">
-<h2>Teleop helpers<a class="headerlink" href="#teleop-helpers" title="Link to this heading">¶</a></h2>
-<p>Used only inside <code class="docutils literal notranslate"><span class="pre">CaptureSession.teleop()</span></code>.</p>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text">Teleop helpers</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">Used only inside <code class="docutils literal notranslate"><span class="pre">CaptureSession.teleop()</span></code>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">Retargetor(arm_name,</span> <span class="pre">hand_name)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">arm_name:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">hand_name:</span> <span class="pre">str</span></code></p></td>
-<td><p>instance</p></td>
-<td><p>Human→robot retargeter for the session’s arm/hand.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">Retargetor(arm_name,</span> <span class="pre">hand_name)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">arm_name:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">hand_name:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Human→robot retargeter for the session’s arm/hand.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start(home_pose)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">home_pose:</span> <span class="pre">ndarray</span></code> (4×4)</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Anchor retargeting to the arm’s current pose.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start(home_pose)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">home_pose:</span> <span class="pre">ndarray</span></code> (4×4)</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Anchor retargeting to the arm’s current pose.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_action(data)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">dict</span></code> (XSens frame)</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">(wrist_pose,</span> <span class="pre">hand_action)</span></code></p></td>
-<td><p>Retargeted arm pose + hand command.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_action(data)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">dict</span></code> (XSens frame)</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">(wrist_pose,</span> <span class="pre">hand_action)</span></code></p></td>
+<td><p class="sd-card-text">Retargeted arm pose + hand command.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Pause retargeting (state 1/2).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Pause retargeting (state 1/2).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">HandStateExtractor()</span></code></p></td>
-<td><p>—</p></td>
-<td><p>instance</p></td>
-<td><p>Discrete-state classifier for the left hand.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">HandStateExtractor()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Discrete-state classifier for the left hand.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_state(pose_data)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pose_data</span></code> (left-hand pose)</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">0</span></code> move / <code class="docutils literal notranslate"><span class="pre">1</span></code> pause / <code class="docutils literal notranslate"><span class="pre">2</span></code> stop / <code class="docutils literal notranslate"><span class="pre">3</span></code> exit.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_state(pose_data)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">pose_data</span></code> (left-hand pose)</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">0</span></code> move / <code class="docutils literal notranslate"><span class="pre">1</span></code> pause / <code class="docutils literal notranslate"><span class="pre">2</span></code> stop / <code class="docutils literal notranslate"><span class="pre">3</span></code> exit.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-</section>
-</section>
+</div>
+</details></section>
 
         </article>
       </div>
@@ -754,32 +756,8 @@ APIs live with their own modules; the subset the session calls:</p>
         
       </footer>
     </div>
-    <aside class="toc-drawer">
+    <aside class="toc-drawer no-toc">
       
-      
-      <div class="toc-sticky toc-scroll">
-        <div class="toc-title-container">
-          <span class="toc-title">
-            On this page
-          </span>
-        </div>
-        <div class="toc-tree-container">
-          <div class="toc-tree">
-            <ul>
-<li><a class="reference internal" href="#">Capture Session — API</a><ul>
-<li><a class="reference internal" href="#capturesession"><code class="docutils literal notranslate"><span class="pre">CaptureSession</span></code></a></li>
-<li><a class="reference internal" href="#utge900-hardware-sync-generator"><code class="docutils literal notranslate"><span class="pre">UTGE900</span></code> (hardware sync generator)</a></li>
-<li><a class="reference internal" href="#timestampmonitor-frame-id-logger"><code class="docutils literal notranslate"><span class="pre">TimestampMonitor</span></code> (frame-id logger)</a></li>
-<li><a class="reference internal" href="#match-sync-post-hoc-alignment-helpers"><code class="docutils literal notranslate"><span class="pre">match_sync</span></code> (post-hoc alignment helpers)</a></li>
-<li><a class="reference internal" href="#device-controllers-constructed-by-the-session">Device controllers (constructed by the session)</a></li>
-<li><a class="reference internal" href="#teleop-helpers">Teleop helpers</a></li>
-</ul>
-</li>
-</ul>
-
-          </div>
-        </div>
-      </div>
       
       
     </aside>
@@ -788,5 +766,6 @@ APIs live with their own modules; the subset the session calls:</p>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
     </body>
 </html>

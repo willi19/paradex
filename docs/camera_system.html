@@ -7,11 +7,12 @@
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>Camera System - paradex 0.0.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=302659d7" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b00e8357" />
     
     
 
@@ -372,337 +373,394 @@
         <article role="main" id="furo-main-content">
           <section id="camera-system">
 <h1>Camera System<a class="headerlink" href="#camera-system" title="Link to this heading">¶</a></h1>
-<p>Overview of Paradex’s camera subsystem — the architecture and how the pieces fit.
-Read this to build the mental model; for method signatures, parameters, and return
-values see the <a class="reference internal" href="camera_system_api.html"><span class="doc">API reference</span></a>.</p>
-<ul class="simple">
-<li><p>Redesign proposal: <a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md">design/camera-recording-redesign.md</a></p></li>
-<li><p>Generated per-symbol API: <a class="reference internal" href="autoapi/index.html"><span class="doc">API Reference</span></a></p></li>
-</ul>
+<p>This is the canonical camera-system guide. Read this first when you need to know
+where camera code runs, which API owns a lifecycle step, or how to recover a rig.
+For method signatures, see <a class="reference internal" href="camera_system_api.html"><span class="doc">Camera System API</span></a>. For the
+future acquisition/recording redesign, see
+<code class="docutils literal notranslate"><span class="pre">design/camera-recording-redesign.md</span></code>; that file is a proposal, not the current
+runtime contract.</p>
 <hr class="docutils" />
-<section id="architecture">
-<h2>1. Architecture<a class="headerlink" href="#architecture" title="Link to this heading">¶</a></h2>
-<p>Cameras are spread across <strong>6 capture PCs</strong> (one GigE camera nearly saturates a NIC,
-so they can’t all hang off one host). The <strong>main PC</strong> never touches a camera
-directly — it sends commands to a daemon on each capture PC. Every camera fires on
-one shared <strong>hardware trigger (UTGE900)</strong> for synchronized capture.</p>
-<p>The stack has five layers; commands flow top to bottom.</p>
-<pre  class="mermaid">
-        flowchart TB
-    subgraph Main[&quot;Main PC&quot;]
-      ORCH[&quot;capture / inference&quot;] --&gt; RCC[&quot;remote_camera_controller&quot;]
-    end
-    subgraph Cap[&quot;Capture PC (×6)&quot;]
-      D[&quot;server_daemon&quot;] --&gt; CL[&quot;CameraLoader&quot;] --&gt; CAM[&quot;Camera × k&lt;br/&gt;→ PyspinCamera&quot;]
-    end
-    GEN[&quot;UTGE900&lt;br/&gt;trigger&quot;]
-    RCC -- &quot;ZMQ&lt;br/&gt;register / start /&lt;br/&gt;stop / heartbeat&quot; --&gt; D
-    GEN -. &quot;hardware&lt;br/&gt;trigger&quot; .-&gt; CAM
-    </pre><div class="table-wrapper colwidths-auto docutils container">
+<section id="quick-mental-model">
+<h2>1. Quick Mental Model<a class="headerlink" href="#quick-mental-model" title="Link to this heading">¶</a></h2>
+<p>The main PC never opens FLIR cameras. It sends ZMQ commands to long-running
+daemons on the capture PCs. The daemons own the hardware.</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>Main PC app / pipeline
+  -&gt; remote_camera_controller
+    -&gt; ZMQ register/start/stop/heartbeat/end
+      -&gt; capture PC server_daemon
+        -&gt; CameraLoader
+          -&gt; Camera
+            -&gt; PyspinCamera
+              -&gt; FLIR hardware
+</pre></div>
+</div>
+<p>Normal distributed capture therefore has two deployment surfaces:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Surface</p></th>
+<th class="head"><p>Runs where</p></th>
+<th class="head"><p>Owns</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code></p></td>
+<td><p>main PC</p></td>
+<td><p>command fan-out, heartbeat, stall detection</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">server_daemon.py</span></code></p></td>
+<td><p>every capture PC</p></td>
+<td><p>camera lock, <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code>, hardware lifecycle</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Local/single-PC validation scripts can instantiate <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> or <code class="docutils literal notranslate"><span class="pre">Camera</span></code>
+directly, but production capture goes through the daemon.</p>
+</section>
+<hr class="docutils" />
+<section id="which-file-runs-where">
+<h2>2. Which File Runs Where<a class="headerlink" href="#which-file-runs-where" title="Link to this heading">¶</a></h2>
+<p>Use this table before opening code.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Situation</p></th>
+<th class="head"><p>Entry point</p></th>
+<th class="head"><p>Location</p></th>
+<th class="head"><p>What it touches</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Capture images/video from the rig</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/capture/camera/*_remote.py</span></code> or <code class="docutils literal notranslate"><span class="pre">CaptureSession</span></code> users</p></td>
+<td><p>main PC</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> only</p></td>
+</tr>
+<tr class="row-odd"><td><p>Keep capture PCs ready</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/camera/server_daemon.py</span></code></p></td>
+<td><p>capture PC</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">CameraLoader</span> <span class="pre">-&gt;</span> <span class="pre">Camera</span> <span class="pre">-&gt;</span> <span class="pre">PyspinCamera</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>Preview camera health</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/camera/monitor_daemon.py</span></code></p></td>
+<td><p>capture PC</p></td>
+<td><p>status only</p></td>
+</tr>
+<tr class="row-odd"><td><p>Reset wedged capture PCs</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/camera/reset_cameras.py</span></code></p></td>
+<td><p>main PC</p></td>
+<td><p>SSH kill/relaunch of daemons</p></td>
+</tr>
+<tr class="row-even"><td><p>Single-PC camera validation</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/*</span></code></p></td>
+<td><p>local/capture PC</p></td>
+<td><p>direct <code class="docutils literal notranslate"><span class="pre">Camera</span></code> / <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Live tuning</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code></p></td>
+<td><p>local/capture PC</p></td>
+<td><p>direct <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Core implementation files:</p>
+<div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
 <tr class="row-odd"><th class="head"><p>Layer</p></th>
-<th class="head"><p>Component</p></th>
-<th class="head"><p>Location</p></th>
-<th class="head"><p>Responsibility</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>Control</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code></p></td>
-<td><p>Main PC</p></td>
-<td><p>Fan out commands, keep heartbeat</p></td>
-</tr>
-<tr class="row-odd"><td><p>Service</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">camera_server_daemon</span></code></p></td>
-<td><p>Capture PC</p></td>
-<td><p>Receive/dispatch commands, controller lock</p></td>
-</tr>
-<tr class="row-even"><td><p>Group</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code></p></td>
-<td><p>Capture PC</p></td>
-<td><p>Drive N cameras together, resolve parameters</p></td>
-</tr>
-<tr class="row-odd"><td><p>Device</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Camera</span></code></p></td>
-<td><p>Capture PC</p></td>
-<td><p>Capture-thread state machine, sink routing</p></td>
-</tr>
-<tr class="row-even"><td><p>Driver</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code></p></td>
-<td><p>Capture PC</p></td>
-<td><p>PySpin SDK calls</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<p>Method-level details for each component are in the <a class="reference internal" href="camera_system_api.html"><span class="doc">API reference</span></a>.</p>
-</section>
-<hr class="docutils" />
-<section id="core-concepts">
-<h2>2. Core Concepts<a class="headerlink" href="#core-concepts" title="Link to this heading">¶</a></h2>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Term</p></th>
-<th class="head"><p>Meaning</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><strong>Mode</strong></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">image</span></code> / <code class="docutils literal notranslate"><span class="pre">video</span></code> / <code class="docutils literal notranslate"><span class="pre">stream</span></code> / <code class="docutils literal notranslate"><span class="pre">full</span></code>. Selects the capture method <em>and</em> where frames go.</p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>Sink</strong></p></td>
-<td><p>A frame’s destination. <code class="docutils literal notranslate"><span class="pre">stream</span></code>→SHM, <code class="docutils literal notranslate"><span class="pre">video</span></code>→<code class="docutils literal notranslate"><span class="pre">.avi</span></code>, <code class="docutils literal notranslate"><span class="pre">image</span></code>→one still, <code class="docutils literal notranslate"><span class="pre">full</span></code>→SHM+<code class="docutils literal notranslate"><span class="pre">.avi</span></code>.</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>Acquisition</strong></p></td>
-<td><p>One capture thread per camera grabbing frames continuously. A separate axis from the sink.</p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>Hardware sync</strong></p></td>
-<td><p>Each trigger pulse increments every camera’s <code class="docutils literal notranslate"><span class="pre">frame_id</span></code> at once. Same instant = same id.</p></td>
-</tr>
-<tr class="row-even"><td><p><strong>Controller lock</strong></p></td>
-<td><p>One controller per daemon. Acquired via <code class="docutils literal notranslate"><span class="pre">register</span></code>; auto-released after the idle timeout (~5 s, configurable) without a heartbeat — the dead-man switch for a crashed controller.</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</section>
-<hr class="docutils" />
-<section id="command-flow">
-<h2>3. Command Flow<a class="headerlink" href="#command-flow" title="Link to this heading">¶</a></h2>
-<p>The controller holds a single-controller lock on each daemon, starts a mode, then
-keeps sending heartbeats. If it goes silent for the idle timeout (~5 s, configurable
-via <code class="docutils literal notranslate"><span class="pre">PARADEX_CAMERA_IDLE_TIMEOUT_S</span></code>) the daemon releases the lock and stops the
-cameras — the dead-man switch that recovers from a crashed controller.</p>
-<pre  class="mermaid">
-        sequenceDiagram
-    participant M as Main PC (controller)
-    participant D as Capture PC (daemon)
-    M-&gt;&gt;D: register (acquire lock)
-    M-&gt;&gt;D: start(mode, sync, save_path, fps, exposure, gain)
-    D-&gt;&gt;D: CameraLoader.start → per-camera acquisition
-    loop every ~0.1 s
-      M-&gt;&gt;D: heartbeat
-      D--&gt;&gt;M: ok/error + running + counts + states + frame_ids
-    end
-    M-&gt;&gt;D: stop
-    M-&gt;&gt;D: end (release lock)
-    </pre></section>
-<hr class="docutils" />
-<section id="data-path-acquisition-sinks">
-<h2>4. Data Path: Acquisition → Sinks<a class="headerlink" href="#data-path-acquisition-sinks" title="Link to this heading">¶</a></h2>
-<p>One capture thread per camera grabs frames and routes them to sinks by mode.
-“Producing a frame” and “where it goes” are separate axes, but today <code class="docutils literal notranslate"><span class="pre">mode</span></code> couples
-them (the <a class="reference external" href="https://github.com/willi19/paradex/blob/main/design/camera-recording-redesign.md">redesign</a>
-splits them so recording can toggle without restarting acquisition).</p>
-<pre  class="mermaid">
-        flowchart TD
-    T[&quot;continuous_acquire()&quot;] --&gt; G[&quot;get_image()&quot;]
-    G --&gt;|frame| SHM[&quot;SHM double-buffer&lt;br/&gt;stream / full&quot;]
-    G --&gt;|frame| VID[&quot;VideoWriter .avi&lt;br/&gt;video / full&quot;]
-    G -.-&gt;|&quot;no frame&quot;| T
-    SHM --&gt; R[&quot;MultiCameraReader&lt;br/&gt;consumers&quot;]
-    </pre></section>
-<hr class="docutils" />
-<section id="camera-state-machine">
-<h2>5. Camera State Machine<a class="headerlink" href="#camera-state-machine" title="Link to this heading">¶</a></h2>
-<p>A <code class="docutils literal notranslate"><span class="pre">Camera</span></code> runs one capture thread and coordinates with the caller through Events.
-<code class="docutils literal notranslate"><span class="pre">get_state()</span></code> reports where it is:</p>
-<pre  class="mermaid">
-        stateDiagram-v2
-    [*] --&gt; CONNECTING
-    CONNECTING --&gt; READY: connect_camera()
-    READY --&gt; STARTING: start()
-    STARTING --&gt; CAPTURING: acquisition set
-    CAPTURING --&gt; READY: stop()
-    CAPTURING --&gt; ERROR: exception
-    ERROR --&gt; READY: error_reset()
-    READY --&gt; STOPPED: end()
-    STOPPED --&gt; [*]
-    </pre></section>
-<hr class="docutils" />
-<section id="hardware-sync">
-<h2>6. Hardware Sync<a class="headerlink" href="#hardware-sync" title="Link to this heading">¶</a></h2>
-<p>Each trigger pulse increments every camera’s <code class="docutils literal notranslate"><span class="pre">frame_id</span></code> at once, so at any instant
-the cameras should hold the same id. <code class="docutils literal notranslate"><span class="pre">sync_check.py</span></code> verifies this via the
-<code class="docutils literal notranslate"><span class="pre">frame_id</span></code> spread (max−min) across cameras: 0–1 is in sync; a persistent/growing
-spread means frame drops or a camera not receiving the trigger.</p>
-<pre  class="mermaid">
-        flowchart LR
-    GEN[&quot;trigger #N&quot;] --&gt; C1[&quot;cam A #N&quot;]
-    GEN --&gt; C2[&quot;cam B #N&quot;]
-    GEN --&gt; C3[&quot;cam C #N&quot;]
-    C1 &amp; C2 &amp; C3 --&gt; CHK[&quot;spread = max-min&lt;br/&gt;0-1 = OK&quot;]
-    </pre></section>
-<hr class="docutils" />
-<section id="configuration-gain-exposure">
-<h2>7. Configuration — Gain / Exposure<a class="headerlink" href="#configuration-gain-exposure" title="Link to this heading">¶</a></h2>
-<p>Per-camera baselines live in <code class="docutils literal notranslate"><span class="pre">system/current/camera.json</span></code>. Resolution is always
-<code class="docutils literal notranslate"><span class="pre">explicit</span> <span class="pre">arg</span> <span class="pre">&gt;</span> <span class="pre">camera.json[serial]</span> <span class="pre">&gt;</span> <span class="pre">default</span></code>, so a one-off override (e.g. an
-exposure sweep) never leaks into the next capture. Tune live with
-<code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code>.</p>
-<pre  class="mermaid">
-        flowchart LR
-    A[&quot;start(exposure=None, gain=None)&quot;] --&gt; B{&quot;explicit arg?&quot;}
-    B --&gt;|yes| U[&quot;use it&quot;]
-    B --&gt;|no| C[&quot;camera.json[serial]&quot;]
-    C --&gt;|missing| D[&quot;default 2500us / 3dB&quot;]
-    </pre><p><strong>How config reaches the hardware.</strong> Two channels. The per-camera baseline is read
-<strong>locally on each capture PC</strong> from <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> (never sent over the network); the
-runtime parameters travel from the main PC as a <strong>JSON command over ZMQ</strong>, and the
-capture-PC <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> resolves the two together before applying them to the PySpin
-nodes.</p>
-<p><strong>Per-camera hardware settings.</strong> A <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> entry may override these keys per
-serial; any absent key falls back to the <code class="docutils literal notranslate"><span class="pre">PyspinCameraConfig</span></code> default:</p>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>key</p></th>
-<th class="head"><p>PySpin node</p></th>
-<th class="head"><p>default</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gain</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">Gain</span></code></p></td>
-<td><p>3.0 dB</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">exposure</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">ExposureTime</span></code></p></td>
-<td><p>2500 µs</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pixel_format</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">PixelFormat</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">BayerRG8</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">packet_size</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">GevSCPSPacketSize</span></code></p></td>
-<td><p>9000</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">buffer_count</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">StreamBufferCountManual</span></code></p></td>
-<td><p>10</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">buffer_mode</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">StreamBufferHandlingMode</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">OldestFirst</span></code></p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<div class="highlight-jsonc notranslate"><div class="highlight"><pre><span></span>{ &quot;25305466&quot;: { &quot;gain&quot;: 15.0, &quot;exposure&quot;: 2500.0, &quot;pixel_format&quot;: &quot;Mono8&quot; } }
-</pre></div>
-</div>
-<p>Trigger wiring, chunk (timestamp) data, and auto-gain/exposure-off stay fixed in code —
-they are rig-wide policy, not per-camera.</p>
-<pre  class="mermaid">
-        flowchart TB
-    subgraph MainPC[&quot;Main PC&quot;]
-      ST[&quot;start(mode, sync, fps,&lt;br/&gt;exposure, gain)&quot;]
-    end
-    subgraph CapPC[&quot;Capture PC&quot;]
-      CJ[&quot;camera.json&lt;br/&gt;gain / exposure baseline&quot;]
-      CLR[&quot;CameraLoader.start&lt;br/&gt;resolve per camera&quot;]
-      PS[&quot;PyspinCamera&lt;br/&gt;_configureGain / _configureExposure&quot;]
-    end
-    ST -- &quot;ZMQ JSON command&quot; --&gt; CLR
-    CJ -. &quot;baseline when arg is None&quot; .-&gt; CLR
-    CLR --&gt; PS
-    </pre></section>
-<hr class="docutils" />
-<section id="error-handling-recovery">
-<h2>8. Error Handling &amp; Recovery<a class="headerlink" href="#error-handling-recovery" title="Link to this heading">¶</a></h2>
-<p><strong>Frame-loss hang (P4).</strong> On a LAN drop / stopped trigger, the old <code class="docutils literal notranslate"><span class="pre">get_image()</span></code>
-blocked forever; the capture thread stalled and never re-checked its stop condition,
-so <code class="docutils literal notranslate"><span class="pre">stop()</span></code> never returned and the whole daemon wedged (cameras couldn’t restart even
-after <code class="docutils literal notranslate"><span class="pre">pkill</span></code>). The fix gives <code class="docutils literal notranslate"><span class="pre">get_image()</span></code> a finite timeout so the loop stays
-responsive.</p>
-<pre  class="mermaid">
-        flowchart TB
-    subgraph Before[&quot;Before&quot;]
-      B1[&quot;GetNextImage()&lt;br/&gt;blocks forever&quot;] --&gt; B2[&quot;stop() never returns&lt;br/&gt;→ daemon wedged&quot;]
-    end
-    subgraph After[&quot;After (P4)&quot;]
-      A1[&quot;GetNextImage(1000ms)&lt;br/&gt;→ (None,None)&quot;] --&gt; A2[&quot;loop re-checks&lt;br/&gt;→ stop()/end() return&quot;]
-    end
-    </pre><p><strong>Clean shutdown.</strong> On a normal kill (<code class="docutils literal notranslate"><span class="pre">SIGTERM</span></code>) or <code class="docutils literal notranslate"><span class="pre">Ctrl-C</span></code> (<code class="docutils literal notranslate"><span class="pre">SIGINT</span></code>), the daemon
-releases every camera (<code class="docutils literal notranslate"><span class="pre">DeInit</span></code> + free SHM) via a signal handler, so the hardware
-comes back clean. <code class="docutils literal notranslate"><span class="pre">SIGKILL</span></code> (<code class="docutils literal notranslate"><span class="pre">-9</span></code>) can’t be caught — the next daemon start clears any
-leaked SHM.</p>
-<p><strong>Recovery</strong>: if wedged at the hardware level, run <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">src/camera/reset_cameras.py</span></code>
-from the main PC (<code class="docutils literal notranslate"><span class="pre">pkill</span> <span class="pre">-9</span></code> + relaunch the daemons). <strong>Validation</strong>: §9.</p>
-<p><strong>Start vs heartbeat.</strong> <code class="docutils literal notranslate"><span class="pre">start</span></code> is responsible for proving that every local
-camera armed successfully; the daemon checks per-camera errors before returning
-<code class="docutils literal notranslate"><span class="pre">ok</span></code>. Heartbeat is the ongoing monitor after that: it carries <code class="docutils literal notranslate"><span class="pre">running</span></code>,
-<code class="docutils literal notranslate"><span class="pre">expected_camera_count</span></code>, <code class="docutils literal notranslate"><span class="pre">detected_camera_count</span></code>, per-camera <code class="docutils literal notranslate"><span class="pre">states</span></code>, and
-<code class="docutils literal notranslate"><span class="pre">frame_ids</span></code> so the main-PC controller can detect later stalls without treating
-heartbeat as a substitute for command success.</p>
-</section>
-<hr class="docutils" />
-<section id="validation">
-<h2>9. Validation<a class="headerlink" href="#validation" title="Link to this heading">¶</a></h2>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Script</p></th>
-<th class="head"><p>Verifies</p></th>
-<th class="head"><p>Hardware</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/hang_recovery.py</span></code></p></td>
-<td><p>stop/end don’t hang on frame loss (watchdog flags a hang as FAIL)</p></td>
-<td><p>required</p></td>
-</tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/hang_recovery_mock.py</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">get_image</span></code> uses a finite timeout and returns <code class="docutils literal notranslate"><span class="pre">(None,None)</span></code></p></td>
-<td><p>not required</p></td>
-</tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">src/validate/camera_system/sync_check.py</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">frame_id</span></code> alignment across cameras</p></td>
-<td><p>required</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-</section>
-<hr class="docutils" />
-<section id="file-reference">
-<h2>10. File Reference<a class="headerlink" href="#file-reference" title="Link to this heading">¶</a></h2>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p>Target</p></th>
 <th class="head"><p>File</p></th>
+<th class="head"><p>Responsibility</p></th>
 </tr>
 </thead>
 <tbody>
 <tr class="row-even"><td><p>Main-PC control</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/remote_camera_controller.py</span></code></p></td>
+<td><p>command thread, heartbeat, stall/error state</p></td>
 </tr>
-<tr class="row-odd"><td><p>Capture-PC daemon</p></td>
+<tr class="row-odd"><td><p>Capture-PC service</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera_server_daemon.py</span></code></p></td>
+<td><p>ZMQ server, controller lock, dead-man timeout</p></td>
 </tr>
-<tr class="row-even"><td><p>Group control / parameter resolution</p></td>
+<tr class="row-even"><td><p>Camera group</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera_loader.py</span></code></p></td>
+<td><p>enumerate cameras, per-serial config, fan-out lifecycle</p></td>
 </tr>
-<tr class="row-odd"><td><p>Capture thread / sinks</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera.py</span></code> (<code class="docutils literal notranslate"><span class="pre">continuous_acquire</span></code>)</p></td>
+<tr class="row-odd"><td><p>Camera thread</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/camera.py</span></code></p></td>
+<td><p>state machine, start/stop/end, image/video/SHM sinks</p></td>
 </tr>
-<tr class="row-even"><td><p>PySpin driver</p></td>
+<tr class="row-even"><td><p>PySpin wrapper</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/camera_system/pyspin.py</span></code></p></td>
-</tr>
-<tr class="row-odd"><td><p>Live tuner</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">src/util/camera_tuning/live_tuner.py</span></code></p></td>
-</tr>
-<tr class="row-even"><td><p>Recover wedged cameras</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">src/camera/reset_cameras.py</span></code></p></td>
+<td><p>SDK node config, grab timeout, hardware stop/release</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>Method-by-method API (parameters / returns): <a class="reference internal" href="camera_system_api.html"><span class="doc">Camera System — API</span></a>.</p>
+</section>
+<hr class="docutils" />
+<section id="lifecycle-contract">
+<h2>3. Lifecycle Contract<a class="headerlink" href="#lifecycle-contract" title="Link to this heading">¶</a></h2>
+<p>The lifecycle is split deliberately. Do not use heartbeat as a substitute for
+command success.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Step</p></th>
+<th class="head"><p>Owner</p></th>
+<th class="head"><p>Contract</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">register</span></code></p></td>
+<td><p>daemon</p></td>
+<td><p>acquire the single-controller lock; stop prior running cameras on takeover</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">start</span></code></p></td>
+<td><p>daemon + <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code></p></td>
+<td><p>arm every detected camera or return <code class="docutils literal notranslate"><span class="pre">status=&quot;error&quot;</span></code> with per-camera detail</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">heartbeat</span></code></p></td>
+<td><p>controller loop + daemon</p></td>
+<td><p>report ongoing <code class="docutils literal notranslate"><span class="pre">running</span></code>, camera counts, states, frame ids, and errors</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">stop</span></code></p></td>
+<td><p>daemon + <code class="docutils literal notranslate"><span class="pre">Camera</span></code></p></td>
+<td><p>bounded stop; do not wedge the daemon if a camera is slow</p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">end</span></code></p></td>
+<td><p>controller + daemon</p></td>
+<td><p>stop running cameras if needed, release the controller lock</p></td>
+</tr>
+<tr class="row-odd"><td><p>idle timeout</p></td>
+<td><p>daemon</p></td>
+<td><p>if no command/heartbeat arrives within <code class="docutils literal notranslate"><span class="pre">PARADEX_CAMERA_IDLE_TIMEOUT_S</span></code> (default 5s), stop cameras and release lock</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Current command flow:</p>
+<pre  class="mermaid">
+        sequenceDiagram
+    participant App as Main PC app
+    participant RCC as remote_camera_controller
+    participant D as capture-PC daemon
+    participant CL as CameraLoader
+    participant C as Camera/PyspinCamera
+
+    App-&gt;&gt;RCC: start(mode, sync, save_path, fps, exposure, gain)
+    RCC-&gt;&gt;D: register
+    RCC-&gt;&gt;D: start(...)
+    D-&gt;&gt;CL: start(...)
+    CL-&gt;&gt;C: per-camera start(...)
+    D--&gt;&gt;RCC: ok/error + counts + states + frame_ids
+    loop every ~0.1s
+      RCC-&gt;&gt;D: heartbeat
+      D--&gt;&gt;RCC: running + errors + frame_ids
+    end
+    App-&gt;&gt;RCC: stop()
+    RCC-&gt;&gt;D: stop
+    App-&gt;&gt;RCC: end()
+    RCC-&gt;&gt;D: end
+    </pre><p>Important details:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller.start()</span></code> returns after the command response updates
+health. If daemon initialization failed, it raises that initialization error.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">camera_server_daemon.start</span></code> returns <code class="docutils literal notranslate"><span class="pre">ok</span></code> only after checking
+<code class="docutils literal notranslate"><span class="pre">CameraLoader.get_all_errors()</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">remote_camera_controller</span></code> only marks <code class="docutils literal notranslate"><span class="pre">capturing=True</span></code> when every daemon reports
+<code class="docutils literal notranslate"><span class="pre">status=&quot;ok&quot;</span></code> for the <code class="docutils literal notranslate"><span class="pre">start</span></code> command.</p></li>
+<li><p>Heartbeat stalls are detected from per-camera <code class="docutils literal notranslate"><span class="pre">frame_ids</span></code>, not from wall-clock
+guessing alone.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="data-path">
+<h2>4. Data Path<a class="headerlink" href="#data-path" title="Link to this heading">¶</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">mode</span></code> currently chooses both acquisition behavior and frame sinks.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Mode</p></th>
+<th class="head"><p>Acquisition</p></th>
+<th class="head"><p>Sink</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">image</span></code></p></td>
+<td><p>one-shot <code class="docutils literal notranslate"><span class="pre">single_acquire()</span></code></p></td>
+<td><p>one <code class="docutils literal notranslate"><span class="pre">.png</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">video</span></code></p></td>
+<td><p>continuous</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.avi</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">stream</span></code></p></td>
+<td><p>continuous</p></td>
+<td><p>shared memory double buffer</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">full</span></code></p></td>
+<td><p>continuous</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">.avi</span></code> + shared memory</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<pre  class="mermaid">
+        flowchart TD
+    START[&quot;Camera.start(mode, ...)&quot;] --&gt; RUN[&quot;Camera.run thread&quot;]
+    RUN --&gt; ONE[&quot;single_acquire&lt;br/&gt;image&quot;]
+    RUN --&gt; CONT[&quot;continuous_acquire&lt;br/&gt;video / stream / full&quot;]
+    CONT --&gt; GRAB[&quot;PyspinCamera.get_image(timeout)&quot;]
+    GRAB --&gt; SHM[&quot;SHM double buffer&lt;br/&gt;stream/full&quot;]
+    GRAB --&gt; AVI[&quot;VideoWriter .avi&lt;br/&gt;video/full&quot;]
+    GRAB -. &quot;timeout -&gt; (None, None)&quot; .-&gt; CONT
+    </pre><p>This coupling is why the redesign proposal wants to split acquisition from sinks
+(<code class="docutils literal notranslate"><span class="pre">go_live</span></code>, <code class="docutils literal notranslate"><span class="pre">start_recording</span></code>, <code class="docutils literal notranslate"><span class="pre">grab_still</span></code>). That is not the current API.</p>
+</section>
+<hr class="docutils" />
+<section id="config-contract">
+<h2>5. Config Contract<a class="headerlink" href="#config-contract" title="Link to this heading">¶</a></h2>
+<p>Per-camera baseline config lives in <code class="docutils literal notranslate"><span class="pre">system/current/camera.json</span></code> and is read on
+each capture PC. The main PC sends only runtime overrides in the ZMQ <code class="docutils literal notranslate"><span class="pre">start</span></code>
+command.</p>
+<p>Parameter resolution:</p>
+<div class="highlight-text notranslate"><div class="highlight"><pre><span></span>explicit start arg &gt; camera.json[serial] &gt; default
+</pre></div>
+</div>
+<p>Supported per-serial keys:</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Key</p></th>
+<th class="head"><p>Applies to</p></th>
+<th class="head"><p>Default</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">gain</span></code></p></td>
+<td><p>PySpin <code class="docutils literal notranslate"><span class="pre">Gain</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">3.0</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">exposure</span></code></p></td>
+<td><p>PySpin <code class="docutils literal notranslate"><span class="pre">ExposureTime</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2500.0</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">pixel_format</span></code></p></td>
+<td><p>PySpin <code class="docutils literal notranslate"><span class="pre">PixelFormat</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">BayerRG8</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">packet_size</span></code></p></td>
+<td><p>PySpin <code class="docutils literal notranslate"><span class="pre">GevSCPSPacketSize</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">9000</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">buffer_count</span></code></p></td>
+<td><p>PySpin <code class="docutils literal notranslate"><span class="pre">StreamBufferCountManual</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">10</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">buffer_mode</span></code></p></td>
+<td><p>PySpin <code class="docutils literal notranslate"><span class="pre">StreamBufferHandlingMode</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">OldestFirst</span></code></p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Example:</p>
+<div class="highlight-json notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+<span class="w">  </span><span class="nt">&quot;25305466&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">&quot;gain&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">15.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;exposure&quot;</span><span class="p">:</span><span class="w"> </span><span class="mf">2500.0</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;packet_size&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">9000</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">&quot;buffer_count&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">10</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p><code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code> passes this per-serial config to <code class="docutils literal notranslate"><span class="pre">Camera</span></code>, which passes it to
+<code class="docutils literal notranslate"><span class="pre">load_camera(...,</span> <span class="pre">cfg=...)</span></code>, which constructs <code class="docutils literal notranslate"><span class="pre">PyspinCamera(...,</span> <span class="pre">cfg=...)</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="health-and-failure-modes">
+<h2>6. Health And Failure Modes<a class="headerlink" href="#health-and-failure-modes" title="Link to this heading">¶</a></h2>
+<p>Use this section when a run fails.</p>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>Symptom</p></th>
+<th class="head"><p>Likely layer</p></th>
+<th class="head"><p>What to check</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>main app says capture PC unreachable</p></td>
+<td><p>daemon/ping</p></td>
+<td><p>is <code class="docutils literal notranslate"><span class="pre">src/camera/server_daemon.py</span></code> running on that PC?</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">start</span></code> returns <code class="docutils literal notranslate"><span class="pre">error</span></code></p></td>
+<td><p>daemon/camera</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">msg</span></code>, <code class="docutils literal notranslate"><span class="pre">errors</span></code>, per-camera <code class="docutils literal notranslate"><span class="pre">states</span></code> in controller <code class="docutils literal notranslate"><span class="pre">get_status()</span></code></p></td>
+</tr>
+<tr class="row-even"><td><p>frame ids stop changing</p></td>
+<td><p>acquisition/trigger/LAN</p></td>
+<td><p>controller <code class="docutils literal notranslate"><span class="pre">stalled</span></code>, heartbeat <code class="docutils literal notranslate"><span class="pre">frame_ids</span></code>, trigger generator</p></td>
+</tr>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">stop</span></code> used to hang</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">get_image()</span></code> / PySpin</p></td>
+<td><p>finite <code class="docutils literal notranslate"><span class="pre">GRAB_TIMEOUT_MS</span></code> should let loops re-check stop/exit</p></td>
+</tr>
+<tr class="row-even"><td><p>next run cannot start cameras</p></td>
+<td><p>capture-PC daemon/hardware</p></td>
+<td><p>run <code class="docutils literal notranslate"><span class="pre">src/camera/reset_cameras.py</span></code> from the main PC</p></td>
+</tr>
+<tr class="row-odd"><td><p>camera count mismatch</p></td>
+<td><p>config/enumeration</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">expected_camera_count</span></code> vs <code class="docutils literal notranslate"><span class="pre">detected_camera_count</span></code> in heartbeat</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Start vs heartbeat:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">start</span></code> proves the initial arm succeeded.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">heartbeat</span></code> proves the running capture remains healthy.</p></li>
+<li><p>daemon idle timeout handles a crashed controller.</p></li>
+</ul>
+</section>
+<hr class="docutils" />
+<section id="validation-and-recovery">
+<h2>7. Validation And Recovery<a class="headerlink" href="#validation-and-recovery" title="Link to this heading">¶</a></h2>
+<p>No-hardware validation:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>src/validate/camera_system/hang_recovery_mock.py
+</pre></div>
+</div>
+<p>Hardware validation:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>src/validate/camera_system/hang_recovery.py
+python<span class="w"> </span>src/validate/camera_system/sync_check.py
+</pre></div>
+</div>
+<p>Recovery from the main PC:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>src/camera/reset_cameras.py
+python<span class="w"> </span>src/camera/reset_cameras.py<span class="w"> </span>--pc_list<span class="w"> </span>capture1<span class="w"> </span>capture2
+python<span class="w"> </span>src/camera/reset_cameras.py<span class="w"> </span>--no_restart
+</pre></div>
+</div>
+<p>After camera-daemon code changes, every capture PC needs the updated code and a
+daemon restart. Updating only the main PC does not update <code class="docutils literal notranslate"><span class="pre">Camera</span></code>, <code class="docutils literal notranslate"><span class="pre">CameraLoader</span></code>,
+or <code class="docutils literal notranslate"><span class="pre">PyspinCamera</span></code>.</p>
+</section>
+<hr class="docutils" />
+<section id="where-future-design-lives">
+<h2>8. Where Future Design Lives<a class="headerlink" href="#where-future-design-lives" title="Link to this heading">¶</a></h2>
+<p>Current runtime docs are this page plus <a class="reference internal" href="camera_system_api.html"><span class="doc">Camera System API</span></a>.
+Future design work belongs in <code class="docutils literal notranslate"><span class="pre">design/camera-recording-redesign.md</span></code>.</p>
+<p>Keep these separate:</p>
+<ul class="simple">
+<li><p>Current API: <code class="docutils literal notranslate"><span class="pre">start(mode,</span> <span class="pre">...)</span></code>, <code class="docutils literal notranslate"><span class="pre">heartbeat</span></code>, <code class="docutils literal notranslate"><span class="pre">stop</span></code>, <code class="docutils literal notranslate"><span class="pre">end</span></code>.</p></li>
+<li><p>Future proposal: <code class="docutils literal notranslate"><span class="pre">go_live</span></code>, <code class="docutils literal notranslate"><span class="pre">start_recording</span></code>, <code class="docutils literal notranslate"><span class="pre">stop_recording</span></code>, <code class="docutils literal notranslate"><span class="pre">grab_still</span></code>.</p></li>
+</ul>
+<p>Do not document proposal APIs as available runtime behavior until the callers and
+daemon protocol have been migrated.</p>
 </section>
 </section>
 
@@ -762,16 +820,14 @@ heartbeat as a substitute for command success.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Camera System</a><ul>
-<li><a class="reference internal" href="#architecture">1. Architecture</a></li>
-<li><a class="reference internal" href="#core-concepts">2. Core Concepts</a></li>
-<li><a class="reference internal" href="#command-flow">3. Command Flow</a></li>
-<li><a class="reference internal" href="#data-path-acquisition-sinks">4. Data Path: Acquisition → Sinks</a></li>
-<li><a class="reference internal" href="#camera-state-machine">5. Camera State Machine</a></li>
-<li><a class="reference internal" href="#hardware-sync">6. Hardware Sync</a></li>
-<li><a class="reference internal" href="#configuration-gain-exposure">7. Configuration — Gain / Exposure</a></li>
-<li><a class="reference internal" href="#error-handling-recovery">8. Error Handling &amp; Recovery</a></li>
-<li><a class="reference internal" href="#validation">9. Validation</a></li>
-<li><a class="reference internal" href="#file-reference">10. File Reference</a></li>
+<li><a class="reference internal" href="#quick-mental-model">1. Quick Mental Model</a></li>
+<li><a class="reference internal" href="#which-file-runs-where">2. Which File Runs Where</a></li>
+<li><a class="reference internal" href="#lifecycle-contract">3. Lifecycle Contract</a></li>
+<li><a class="reference internal" href="#data-path">4. Data Path</a></li>
+<li><a class="reference internal" href="#config-contract">5. Config Contract</a></li>
+<li><a class="reference internal" href="#health-and-failure-modes">6. Health And Failure Modes</a></li>
+<li><a class="reference internal" href="#validation-and-recovery">7. Validation And Recovery</a></li>
+<li><a class="reference internal" href="#where-future-design-lives">8. Where Future Design Lives</a></li>
 </ul>
 </li>
 </ul>
@@ -787,6 +843,7 @@ heartbeat as a substitute for command success.</p>
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
     <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
 

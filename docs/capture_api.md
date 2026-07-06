@@ -8,9 +8,10 @@ Signatures are verified against the code; internal/private methods are omitted. 
 `save_path` arguments to `CaptureSession` are **relative** to `shared_dir`
 (`~/shared_data`); the session prepends it.
 
----
+Each entry is collapsed below — click to expand.
 
-## `CaptureSession`
+:::{dropdown} `CaptureSession`
+:open:
 
 `paradex/dataset_acqusition/capture.py`. The single entry point a dataset pipeline
 uses. The constructor selects and connects the device set; `start`/`stop` toggle one
@@ -31,10 +32,9 @@ recording; `end` releases everything.
 `.retargetor` (`Retargetor`), `.state_extractor` (`HandStateExtractor`). Unset
 devices are `None`. `.save_path` / `.stage` hold the active recording (both `None`
 between recordings).
+:::
 
----
-
-## `UTGE900` (hardware sync generator)
+:::{dropdown} `UTGE900` (hardware sync generator)
 
 `paradex/io/camera_system/signal_generator.py`. Unit-T UTG900 driven over USBTMC;
 emits the square wave that hardware-triggers all cameras. Built from
@@ -48,10 +48,9 @@ emits the square wave that hardware-triggers all cameras. Built from
 | `.generate(ch=1, wave="square", freq=30, amp=10)` | `ch: int`, `wave: str`, `freq: int`, `amp: int` (Vpp) | `None` | Configure and enable a waveform on `ch` (used by `start`). |
 | `.end()` | — | `None` | Release the front-panel lock (`System:LOCK off`). |
 | `.getName()` | — | `str` | Device `*IDN?` identity string. |
+:::
 
----
-
-## `TimestampMonitor` (frame-id logger)
+:::{dropdown} `TimestampMonitor` (frame-id logger)
 
 `paradex/io/camera_system/timestamp_monitor.py`. A dedicated camera that logs only
 `(frame_id, pc_time)` so robot streams can be aligned to camera frames. Added
@@ -69,10 +68,9 @@ automatically when a camera session also has an arm or hand. Built from
 | `.wait_signal_inactive(fps)` | `fps: int` | `None` | Block until the trigger stops (no frame within `1.5 / fps` s). |
 | `.is_error()` | — | `bool` | `True` if the monitor is in an error state. |
 | `.error_reset()` | — | `None` | Clear the error state. |
+:::
 
----
-
-## `match_sync` (post-hoc alignment helpers)
+:::{dropdown} `match_sync` (post-hoc alignment helpers)
 
 `paradex/dataset_acqusition/match_sync.py`. Module-level functions (not a class) used
 in post-processing to align robot streams to logged camera frames.
@@ -81,10 +79,9 @@ in post-processing to align robot streams to logged camera frames.
 |----------|-------|--------|-------------|
 | `fill_framedrop(frame_id, pc_time)` | `frame_id: array`, `pc_time: array` | `(pc_time_nodrop, frame_id_nodrop)` | Reconstruct a drop-free frame-id axis and its pc-time by fitting a constant per-frame delta; skips the first 10 frames. |
 | `get_synced_data(pc_times, data, data_times)` | `pc_times: array`, `data: array`, `data_times: array` | `np.ndarray` | Nearest-timestamp two-pointer match of `data` onto `pc_times`. |
+:::
 
----
-
-## Device controllers (constructed by the session)
+:::{dropdown} Device controllers (constructed by the session)
 
 The session drives its arm/hand/teleop through a shared `start/stop/end` contract.
 Built via `get_arm(arm)` / `get_hand(hand, ip=hand_ip)`
@@ -103,10 +100,9 @@ APIs live with their own modules; the subset the session calls:
 | `teleop_device.start(save_path)` | `save_path: str` | `None` | `start()` | Begin logging teleop stream to `raw[/stage]/teleop`. |
 | `teleop_device.stop()` / `.end()` | — | `None` | `stop()` / `end()` | Stop logging / release. |
 | `teleop_device.get_data()` | — | `dict` | `teleop()` | Latest XSens frame (`Left`/`Right` segment poses). |
+:::
 
----
-
-## Teleop helpers
+:::{dropdown} Teleop helpers
 
 Used only inside `CaptureSession.teleop()`.
 
@@ -118,3 +114,4 @@ Used only inside `CaptureSession.teleop()`.
 | `.stop()` | — | `None` | Pause retargeting (state 1/2). |
 | `HandStateExtractor()` | — | instance | Discrete-state classifier for the left hand. |
 | `.get_state(pose_data)` | `pose_data` (left-hand pose) | `int` | `0` move / `1` pause / `2` stop / `3` exit. |
+:::

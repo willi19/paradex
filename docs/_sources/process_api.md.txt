@@ -7,9 +7,10 @@ values (output). For the architecture and how these fit together, see the
 Signatures are verified against the code. The subsystem lives in
 `paradex/video/`; the distributed driver classes live in `src/util/upload_video/`.
 
----
+Each entry is collapsed below — click to expand.
 
-## `RawVideoProcessor` (`paradex/video/raw_video_processor.py`)
+:::{dropdown} `RawVideoProcessor` (`paradex/video/raw_video_processor.py`)
+:open:
 
 Discovers every raw video on the host and processes them through a
 `multiprocessing.Pool` of `undistort_raw_video` workers, aggregating live progress
@@ -32,10 +33,9 @@ through a `Manager().dict()`.
 **Attributes**: `.videopath_list` (`list[str]`), `.num_workers` (`int`),
 `.progress_dict` (`Manager.dict`), `.log` (`Manager.list`), `.pool`,
 `.process_list` (`list[AsyncResult]`).
+:::
 
----
-
-## Module functions (`paradex/video/raw_video_processor.py`)
+:::{dropdown} Module functions (`paradex/video/raw_video_processor.py`)
 
 | Function | Input | Output | Description |
 |----------|-------|--------|-------------|
@@ -54,10 +54,9 @@ through a `Manager().dict()`.
 | `fps` / `eta` | `float` | Live processing rate and seconds remaining. |
 | `avg_read_ms` / `avg_undistort_ms` / `avg_write_ms` | `float` | Per-stage timing over the last 30 frames. |
 | `message` | `str` | Human-readable status line. |
+:::
 
----
-
-## `util.py` converters (`paradex/video/util.py`)
+:::{dropdown} `util.py` converters (`paradex/video/util.py`)
 
 Standalone CPU (`libx264`) encode/convert helpers. **Not** on the
 `RawVideoProcessor` path; used by other scripts that assemble or transcode video.
@@ -68,10 +67,9 @@ Standalone CPU (`libx264`) encode/convert helpers. **Not** on the
 | `images_to_video(image_files, output_video_path, frame_rate)` | `image_files: list[str]`, `output_video_path: str`, `frame_rate: int` | `None` | Write sorted images to an `mp4v` temp via `cv2.VideoWriter`, then re-encode to `libx264 -crf 23` and delete the temp. No-op if `image_files` is empty. |
 | `convert_avi_to_mp4(input_path, output_path)` | `input_path: str`, `output_path: str` | `None` | `libx264 -preset fast -crf 23` + `aac` audio. |
 | `convert_avi_to_compressed_avi(input_path, output_path)` | `input_path: str`, `output_path: str` | `None` | `libx264 -preset fast -crf 23 -an` (audio dropped). |
+:::
 
----
-
-## `VideoProgressPublisher` (`src/util/upload_video/client.py`, capture PC)
+:::{dropdown} `VideoProgressPublisher` (`src/util/upload_video/client.py`, capture PC)
 
 Runs a `RawVideoProcessor` and streams its progress to the main PC over ZMQ.
 
@@ -82,10 +80,9 @@ Runs a `RawVideoProcessor` and streams its progress to the main PC over ZMQ.
 
 Per-video metadata sent: `name` (= `video_id`), `status`, `progress`,
 `current_frame`, `total_frames`, `fps`, `eta`, `message`, `video_path`.
+:::
 
----
-
-## `VideoProgressMonitor` (`src/util/upload_video/process.py`, main PC)
+:::{dropdown} `VideoProgressMonitor` (`src/util/upload_video/process.py`, main PC)
 
 Aggregates progress from all capture PCs and serves a Flask + SocketIO dashboard.
 
@@ -102,10 +99,9 @@ Module-level: `kill_remote_clients()` → `None` — SSH each `get_pc_list()` PC
 
 > **Port note:** `__main__` instantiates `VideoProgressMonitor(web_port=8081, ...)`,
 > so the live dashboard is on **8081** despite the `8080` constructor default.
+:::
 
----
-
-## Transport dependency — `data_sender` (`paradex/io/capture_pc/data_sender.py`)
+:::{dropdown} Transport dependency — `data_sender` (`paradex/io/capture_pc/data_sender.py`)
 
 Referenced above; documented here for signature completeness.
 
@@ -117,3 +113,4 @@ Referenced above; documented here for signature completeness.
 | `DataCollector(...)` | see module | instance | Main-PC SUB endpoint aggregating all publishers. |
 | `DataCollector.start()` | — | `None` | Begin the receive loop. |
 | `DataCollector.get_data(pc_name=None)` | `pc_name: str=None` | `dict` | Latest merged `{video_id: info}` (optionally one PC). |
+:::

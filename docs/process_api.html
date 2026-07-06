@@ -7,11 +7,12 @@
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>Video Processing — API - paradex 0.0.0 documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=8f2a1f02" />
+      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=302659d7" />
-    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css?v=b00e8357" />
     
     
 
@@ -180,7 +181,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -364,7 +365,7 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
@@ -377,324 +378,325 @@ values (output). For the architecture and how these fit together, see the
 <a class="reference internal" href="process.html"><span class="doc">overview</span></a>.</p>
 <p>Signatures are verified against the code. The subsystem lives in
 <code class="docutils literal notranslate"><span class="pre">paradex/video/</span></code>; the distributed driver classes live in <code class="docutils literal notranslate"><span class="pre">src/util/upload_video/</span></code>.</p>
-<hr class="docutils" />
-<section id="rawvideoprocessor-paradex-video-raw-video-processor-py">
-<h2><code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/video/raw_video_processor.py</span></code>)<a class="headerlink" href="#rawvideoprocessor-paradex-video-raw-video-processor-py" title="Link to this heading">¶</a></h2>
-<p>Discovers every raw video on the host and processes them through a
+<p>Each entry is collapsed below — click to expand.</p>
+<details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3" open="open">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/video/raw_video_processor.py</span></code>)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">Discovers every raw video on the host and processes them through a
 <code class="docutils literal notranslate"><span class="pre">multiprocessing.Pool</span></code> of <code class="docutils literal notranslate"><span class="pre">undistort_raw_video</span></code> workers, aggregating live progress
 through a <code class="docutils literal notranslate"><span class="pre">Manager().dict()</span></code>.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">RawVideoProcessor()</span></code></p></td>
-<td><p>—</p></td>
-<td><p>instance</p></td>
-<td><p>Glob raw videos (<code class="docutils literal notranslate"><span class="pre">get_raw_videopath_list()</span></code>), set <code class="docutils literal notranslate"><span class="pre">num_workers</span> <span class="pre">=</span> <span class="pre">min(4,</span> <span class="pre">cpu_count())</span></code>, allocate the shared <code class="docutils literal notranslate"><span class="pre">progress_dict</span></code> + <code class="docutils literal notranslate"><span class="pre">log</span></code>. Does <strong>not</strong> start work.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">RawVideoProcessor()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Glob raw videos (<code class="docutils literal notranslate"><span class="pre">get_raw_videopath_list()</span></code>), set <code class="docutils literal notranslate"><span class="pre">num_workers</span> <span class="pre">=</span> <span class="pre">min(4,</span> <span class="pre">cpu_count())</span></code>, allocate the shared <code class="docutils literal notranslate"><span class="pre">progress_dict</span></code> + <code class="docutils literal notranslate"><span class="pre">log</span></code>. Does <strong>not</strong> start work.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.process()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Open the pool and <code class="docutils literal notranslate"><span class="pre">apply_async</span></code> one <code class="docutils literal notranslate"><span class="pre">undistort_raw_video</span></code> per video (seeds each entry as <code class="docutils literal notranslate"><span class="pre">pending</span></code>), then <code class="docutils literal notranslate"><span class="pre">pool.close()</span></code> and print one progress snapshot. Non-blocking.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.process()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Open the pool and <code class="docutils literal notranslate"><span class="pre">apply_async</span></code> one <code class="docutils literal notranslate"><span class="pre">undistort_raw_video</span></code> per video (seeds each entry as <code class="docutils literal notranslate"><span class="pre">pending</span></code>), then <code class="docutils literal notranslate"><span class="pre">pool.close()</span></code> and print one progress snapshot. Non-blocking.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.finished()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">True</span></code> once every async result <code class="docutils literal notranslate"><span class="pre">.ready()</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.finished()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">bool</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">True</span></code> once every async result <code class="docutils literal notranslate"><span class="pre">.ready()</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_progress()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p>Snapshot copy of the whole <code class="docutils literal notranslate"><span class="pre">progress_dict</span></code> (<code class="docutils literal notranslate"><span class="pre">{video_id:</span> <span class="pre">info}</span></code>).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_progress()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text">Snapshot copy of the whole <code class="docutils literal notranslate"><span class="pre">progress_dict</span></code> (<code class="docutils literal notranslate"><span class="pre">{video_id:</span> <span class="pre">info}</span></code>).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.get_overall_progress()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
-<td><p>Mean of every entry’s <code class="docutils literal notranslate"><span class="pre">progress</span></code> (0–100); <code class="docutils literal notranslate"><span class="pre">0.0</span></code> if empty.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_overall_progress()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+<td><p class="sd-card-text">Mean of every entry’s <code class="docutils literal notranslate"><span class="pre">progress</span></code> (0–100); <code class="docutils literal notranslate"><span class="pre">0.0</span></code> if empty.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.get_status_summary()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p>Count per status (<code class="docutils literal notranslate"><span class="pre">pending</span></code>/<code class="docutils literal notranslate"><span class="pre">starting</span></code>/<code class="docutils literal notranslate"><span class="pre">loading_params</span></code>/<code class="docutils literal notranslate"><span class="pre">processing</span></code>/<code class="docutils literal notranslate"><span class="pre">uploading</span></code>/<code class="docutils literal notranslate"><span class="pre">completed</span></code>/<code class="docutils literal notranslate"><span class="pre">failed</span></code>).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.get_status_summary()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text">Count per status (<code class="docutils literal notranslate"><span class="pre">pending</span></code>/<code class="docutils literal notranslate"><span class="pre">starting</span></code>/<code class="docutils literal notranslate"><span class="pre">loading_params</span></code>/<code class="docutils literal notranslate"><span class="pre">processing</span></code>/<code class="docutils literal notranslate"><span class="pre">uploading</span></code>/<code class="docutils literal notranslate"><span class="pre">completed</span></code>/<code class="docutils literal notranslate"><span class="pre">failed</span></code>).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.print_progress()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Print overall %, status summary, and a per-video line to stdout.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.print_progress()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Print overall %, status summary, and a per-video line to stdout.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.wait_and_monitor(update_interval=2.0)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">update_interval:</span> <span class="pre">float</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Block until <code class="docutils literal notranslate"><span class="pre">finished()</span></code>, printing progress every <code class="docutils literal notranslate"><span class="pre">update_interval</span></code> seconds; then print the final <code class="docutils literal notranslate"><span class="pre">log</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.wait_and_monitor(update_interval=2.0)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">update_interval:</span> <span class="pre">float</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Block until <code class="docutils literal notranslate"><span class="pre">finished()</span></code>, printing progress every <code class="docutils literal notranslate"><span class="pre">update_interval</span></code> seconds; then print the final <code class="docutils literal notranslate"><span class="pre">log</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pool.terminate()</span></code> + <code class="docutils literal notranslate"><span class="pre">join()</span></code> (abort in-flight workers).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.stop()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">pool.terminate()</span></code> + <code class="docutils literal notranslate"><span class="pre">join()</span></code> (abort in-flight workers).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.async_callback(result)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">result:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Pool success callback; appends the worker’s return string to <code class="docutils literal notranslate"><span class="pre">log</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.async_callback(result)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">result:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Pool success callback; appends the worker’s return string to <code class="docutils literal notranslate"><span class="pre">log</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.error_callback(e)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">e:</span> <span class="pre">Exception</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Pool error callback; appends <code class="docutils literal notranslate"><span class="pre">&quot;ERROR</span> <span class="pre">in</span> <span class="pre">process:</span> <span class="pre">{e}&quot;</span></code> to <code class="docutils literal notranslate"><span class="pre">log</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.error_callback(e)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">e:</span> <span class="pre">Exception</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Pool error callback; appends <code class="docutils literal notranslate"><span class="pre">&quot;ERROR</span> <span class="pre">in</span> <span class="pre">process:</span> <span class="pre">{e}&quot;</span></code> to <code class="docutils literal notranslate"><span class="pre">log</span></code>.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong>Attributes</strong>: <code class="docutils literal notranslate"><span class="pre">.videopath_list</span></code> (<code class="docutils literal notranslate"><span class="pre">list[str]</span></code>), <code class="docutils literal notranslate"><span class="pre">.num_workers</span></code> (<code class="docutils literal notranslate"><span class="pre">int</span></code>),
+<p class="sd-card-text"><strong>Attributes</strong>: <code class="docutils literal notranslate"><span class="pre">.videopath_list</span></code> (<code class="docutils literal notranslate"><span class="pre">list[str]</span></code>), <code class="docutils literal notranslate"><span class="pre">.num_workers</span></code> (<code class="docutils literal notranslate"><span class="pre">int</span></code>),
 <code class="docutils literal notranslate"><span class="pre">.progress_dict</span></code> (<code class="docutils literal notranslate"><span class="pre">Manager.dict</span></code>), <code class="docutils literal notranslate"><span class="pre">.log</span></code> (<code class="docutils literal notranslate"><span class="pre">Manager.list</span></code>), <code class="docutils literal notranslate"><span class="pre">.pool</span></code>,
 <code class="docutils literal notranslate"><span class="pre">.process_list</span></code> (<code class="docutils literal notranslate"><span class="pre">list[AsyncResult]</span></code>).</p>
-</section>
-<hr class="docutils" />
-<section id="module-functions-paradex-video-raw-video-processor-py">
-<h2>Module functions (<code class="docutils literal notranslate"><span class="pre">paradex/video/raw_video_processor.py</span></code>)<a class="headerlink" href="#module-functions-paradex-video-raw-video-processor-py" title="Link to this heading">¶</a></h2>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text">Module functions (<code class="docutils literal notranslate"><span class="pre">paradex/video/raw_video_processor.py</span></code>)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Function</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Function</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">undistort_raw_video(video_path,</span> <span class="pre">progress_dict,</span> <span class="pre">video_id)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">video_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">progress_dict:</span> <span class="pre">Manager.dict</span></code>, <code class="docutils literal notranslate"><span class="pre">video_id:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
-<td><p>The per-video worker (§3 of the overview). Undistort + drop-correct + encode (ffmpeg NVENC) + <code class="docutils literal notranslate"><span class="pre">rsync</span></code> to NAS + delete locals. Returns a status string (<code class="docutils literal notranslate"><span class="pre">&quot;...</span> <span class="pre">:</span> <span class="pre">success&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;...</span> <span class="pre">:</span> <span class="pre">already</span> <span class="pre">processed&quot;</span></code> / a failure message). Never raises to the pool on ffmpeg/param failure — it records <code class="docutils literal notranslate"><span class="pre">status='failed'</span></code> and returns the reason.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">undistort_raw_video(video_path,</span> <span class="pre">progress_dict,</span> <span class="pre">video_id)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">video_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">progress_dict:</span> <span class="pre">Manager.dict</span></code>, <code class="docutils literal notranslate"><span class="pre">video_id:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text">The per-video worker (§3 of the overview). Undistort + drop-correct + encode (ffmpeg NVENC) + <code class="docutils literal notranslate"><span class="pre">rsync</span></code> to NAS + delete locals. Returns a status string (<code class="docutils literal notranslate"><span class="pre">&quot;...</span> <span class="pre">:</span> <span class="pre">success&quot;</span></code> / <code class="docutils literal notranslate"><span class="pre">&quot;...</span> <span class="pre">:</span> <span class="pre">already</span> <span class="pre">processed&quot;</span></code> / a failure message). Never raises to the pool on ffmpeg/param failure — it records <code class="docutils literal notranslate"><span class="pre">status='failed'</span></code> and returns the reason.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">get_raw_videopath_list()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">list[str]</span></code></p></td>
-<td><p>Glob every <code class="docutils literal notranslate"><span class="pre">capture_path_list</span></code> root for <code class="docutils literal notranslate"><span class="pre">**/raw/*/videos/*.avi</span></code> (new, staged) and <code class="docutils literal notranslate"><span class="pre">**/raw/videos/*.avi</span></code> (old, stage-less).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">get_raw_videopath_list()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">list[str]</span></code></p></td>
+<td><p class="sd-card-text">Glob every <code class="docutils literal notranslate"><span class="pre">capture_path_list</span></code> root for <code class="docutils literal notranslate"><span class="pre">**/raw/*/videos/*.avi</span></code> (new, staged) and <code class="docutils literal notranslate"><span class="pre">**/raw/videos/*.avi</span></code> (old, stage-less).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">update_progress(progress_dict,</span> <span class="pre">video_id,</span> <span class="pre">updates)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">progress_dict:</span> <span class="pre">Manager.dict</span></code>, <code class="docutils literal notranslate"><span class="pre">video_id:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">updates:</span> <span class="pre">dict</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Safe read-modify-write of one <code class="docutils literal notranslate"><span class="pre">Manager.dict</span></code> entry (copy → update → reassign, since nested-dict mutation doesn’t propagate through a <code class="docutils literal notranslate"><span class="pre">Manager</span></code>).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">update_progress(progress_dict,</span> <span class="pre">video_id,</span> <span class="pre">updates)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">progress_dict:</span> <span class="pre">Manager.dict</span></code>, <code class="docutils literal notranslate"><span class="pre">video_id:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">updates:</span> <span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Safe read-modify-write of one <code class="docutils literal notranslate"><span class="pre">Manager.dict</span></code> entry (copy → update → reassign, since nested-dict mutation doesn’t propagate through a <code class="docutils literal notranslate"><span class="pre">Manager</span></code>).</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p><strong><code class="docutils literal notranslate"><span class="pre">progress_dict[video_id]</span></code> shape</strong> (keys written by the worker):</p>
+<p class="sd-card-text"><strong><code class="docutils literal notranslate"><span class="pre">progress_dict[video_id]</span></code> shape</strong> (keys written by the worker):</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Key</p></th>
-<th class="head"><p>Type</p></th>
-<th class="head"><p>Meaning</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Key</p></th>
+<th class="head"><p class="sd-card-text">Type</p></th>
+<th class="head"><p class="sd-card-text">Meaning</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">status</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pending</span></code> → <code class="docutils literal notranslate"><span class="pre">starting</span></code> → <code class="docutils literal notranslate"><span class="pre">loading_params</span></code> → <code class="docutils literal notranslate"><span class="pre">processing</span></code> → <code class="docutils literal notranslate"><span class="pre">uploading</span></code> → <code class="docutils literal notranslate"><span class="pre">completed</span></code> / <code class="docutils literal notranslate"><span class="pre">failed</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">status</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">pending</span></code> → <code class="docutils literal notranslate"><span class="pre">starting</span></code> → <code class="docutils literal notranslate"><span class="pre">loading_params</span></code> → <code class="docutils literal notranslate"><span class="pre">processing</span></code> → <code class="docutils literal notranslate"><span class="pre">uploading</span></code> → <code class="docutils literal notranslate"><span class="pre">completed</span></code> / <code class="docutils literal notranslate"><span class="pre">failed</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">video_path</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
-<td><p>Absolute raw input path.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">video_path</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text">Absolute raw input path.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">current_frame</span></code> / <code class="docutils literal notranslate"><span class="pre">total_frames</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
-<td><p>Frames written so far / total in the raw clip.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">current_frame</span></code> / <code class="docutils literal notranslate"><span class="pre">total_frames</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text">Frames written so far / total in the raw clip.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">progress</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">current_frame</span> <span class="pre">/</span> <span class="pre">total_frames</span> <span class="pre">*</span> <span class="pre">100</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">progress</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">current_frame</span> <span class="pre">/</span> <span class="pre">total_frames</span> <span class="pre">*</span> <span class="pre">100</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">fps</span></code> / <code class="docutils literal notranslate"><span class="pre">eta</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
-<td><p>Live processing rate and seconds remaining.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">fps</span></code> / <code class="docutils literal notranslate"><span class="pre">eta</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+<td><p class="sd-card-text">Live processing rate and seconds remaining.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">avg_read_ms</span></code> / <code class="docutils literal notranslate"><span class="pre">avg_undistort_ms</span></code> / <code class="docutils literal notranslate"><span class="pre">avg_write_ms</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
-<td><p>Per-stage timing over the last 30 frames.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">avg_read_ms</span></code> / <code class="docutils literal notranslate"><span class="pre">avg_undistort_ms</span></code> / <code class="docutils literal notranslate"><span class="pre">avg_write_ms</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">float</span></code></p></td>
+<td><p class="sd-card-text">Per-stage timing over the last 30 frames.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">message</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
-<td><p>Human-readable status line.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">message</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text">Human-readable status line.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-</section>
-<hr class="docutils" />
-<section id="util-py-converters-paradex-video-util-py">
-<h2><code class="docutils literal notranslate"><span class="pre">util.py</span></code> converters (<code class="docutils literal notranslate"><span class="pre">paradex/video/util.py</span></code>)<a class="headerlink" href="#util-py-converters-paradex-video-util-py" title="Link to this heading">¶</a></h2>
-<p>Standalone CPU (<code class="docutils literal notranslate"><span class="pre">libx264</span></code>) encode/convert helpers. <strong>Not</strong> on the
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">util.py</span></code> converters (<code class="docutils literal notranslate"><span class="pre">paradex/video/util.py</span></code>)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">Standalone CPU (<code class="docutils literal notranslate"><span class="pre">libx264</span></code>) encode/convert helpers. <strong>Not</strong> on the
 <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> path; used by other scripts that assemble or transcode video.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Function</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Function</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">change_to_h264(temp_video_path,</span> <span class="pre">output_video_path)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">temp_video_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">output_video_path:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Re-encode to H.264 <code class="docutils literal notranslate"><span class="pre">libx264</span> <span class="pre">-preset</span> <span class="pre">slow</span> <span class="pre">-crf</span> <span class="pre">17</span> <span class="pre">-pix_fmt</span> <span class="pre">yuv420p</span></code>. Prints on failure (does not raise).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">change_to_h264(temp_video_path,</span> <span class="pre">output_video_path)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">temp_video_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">output_video_path:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Re-encode to H.264 <code class="docutils literal notranslate"><span class="pre">libx264</span> <span class="pre">-preset</span> <span class="pre">slow</span> <span class="pre">-crf</span> <span class="pre">17</span> <span class="pre">-pix_fmt</span> <span class="pre">yuv420p</span></code>. Prints on failure (does not raise).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">images_to_video(image_files,</span> <span class="pre">output_video_path,</span> <span class="pre">frame_rate)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">image_files:</span> <span class="pre">list[str]</span></code>, <code class="docutils literal notranslate"><span class="pre">output_video_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">frame_rate:</span> <span class="pre">int</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Write sorted images to an <code class="docutils literal notranslate"><span class="pre">mp4v</span></code> temp via <code class="docutils literal notranslate"><span class="pre">cv2.VideoWriter</span></code>, then re-encode to <code class="docutils literal notranslate"><span class="pre">libx264</span> <span class="pre">-crf</span> <span class="pre">23</span></code> and delete the temp. No-op if <code class="docutils literal notranslate"><span class="pre">image_files</span></code> is empty.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">images_to_video(image_files,</span> <span class="pre">output_video_path,</span> <span class="pre">frame_rate)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">image_files:</span> <span class="pre">list[str]</span></code>, <code class="docutils literal notranslate"><span class="pre">output_video_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">frame_rate:</span> <span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Write sorted images to an <code class="docutils literal notranslate"><span class="pre">mp4v</span></code> temp via <code class="docutils literal notranslate"><span class="pre">cv2.VideoWriter</span></code>, then re-encode to <code class="docutils literal notranslate"><span class="pre">libx264</span> <span class="pre">-crf</span> <span class="pre">23</span></code> and delete the temp. No-op if <code class="docutils literal notranslate"><span class="pre">image_files</span></code> is empty.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">convert_avi_to_mp4(input_path,</span> <span class="pre">output_path)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">input_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">output_path:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">libx264</span> <span class="pre">-preset</span> <span class="pre">fast</span> <span class="pre">-crf</span> <span class="pre">23</span></code> + <code class="docutils literal notranslate"><span class="pre">aac</span></code> audio.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">convert_avi_to_mp4(input_path,</span> <span class="pre">output_path)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">input_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">output_path:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">libx264</span> <span class="pre">-preset</span> <span class="pre">fast</span> <span class="pre">-crf</span> <span class="pre">23</span></code> + <code class="docutils literal notranslate"><span class="pre">aac</span></code> audio.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">convert_avi_to_compressed_avi(input_path,</span> <span class="pre">output_path)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">input_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">output_path:</span> <span class="pre">str</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">libx264</span> <span class="pre">-preset</span> <span class="pre">fast</span> <span class="pre">-crf</span> <span class="pre">23</span> <span class="pre">-an</span></code> (audio dropped).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">convert_avi_to_compressed_avi(input_path,</span> <span class="pre">output_path)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">input_path:</span> <span class="pre">str</span></code>, <code class="docutils literal notranslate"><span class="pre">output_path:</span> <span class="pre">str</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">libx264</span> <span class="pre">-preset</span> <span class="pre">fast</span> <span class="pre">-crf</span> <span class="pre">23</span> <span class="pre">-an</span></code> (audio dropped).</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-</section>
-<hr class="docutils" />
-<section id="videoprogresspublisher-src-util-upload-video-client-py-capture-pc">
-<h2><code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/client.py</span></code>, capture PC)<a class="headerlink" href="#videoprogresspublisher-src-util-upload-video-client-py-capture-pc" title="Link to this heading">¶</a></h2>
-<p>Runs a <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> and streams its progress to the main PC over ZMQ.</p>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/client.py</span></code>, capture PC)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">Runs a <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> and streams its progress to the main PC over ZMQ.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher(port=1234)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">port:</span> <span class="pre">int</span></code></p></td>
-<td><p>instance</p></td>
-<td><p>Build a <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor()</span></code> and a <code class="docutils literal notranslate"><span class="pre">DataPublisher(port,</span> <span class="pre">name=&quot;video_processor&quot;)</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher(port=1234)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">port:</span> <span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Build a <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor()</span></code> and a <code class="docutils literal notranslate"><span class="pre">DataPublisher(port,</span> <span class="pre">name=&quot;video_processor&quot;)</span></code>.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.start_processing(update_interval=1.0)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">update_interval:</span> <span class="pre">float</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">processor.process()</span></code>, then loop while <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">processor.finished()</span></code> sending <code class="docutils literal notranslate"><span class="pre">publisher.send_data(metadata=[per-video</span> <span class="pre">dicts],</span> <span class="pre">data=[])</span></code> every <code class="docutils literal notranslate"><span class="pre">update_interval</span></code> s; send a final snapshot, print <code class="docutils literal notranslate"><span class="pre">processor.log</span></code>, close the publisher.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start_processing(update_interval=1.0)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">update_interval:</span> <span class="pre">float</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">processor.process()</span></code>, then loop while <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">processor.finished()</span></code> sending <code class="docutils literal notranslate"><span class="pre">publisher.send_data(metadata=[per-video</span> <span class="pre">dicts],</span> <span class="pre">data=[])</span></code> every <code class="docutils literal notranslate"><span class="pre">update_interval</span></code> s; send a final snapshot, print <code class="docutils literal notranslate"><span class="pre">processor.log</span></code>, close the publisher.</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>Per-video metadata sent: <code class="docutils literal notranslate"><span class="pre">name</span></code> (= <code class="docutils literal notranslate"><span class="pre">video_id</span></code>), <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">progress</span></code>,
+<p class="sd-card-text">Per-video metadata sent: <code class="docutils literal notranslate"><span class="pre">name</span></code> (= <code class="docutils literal notranslate"><span class="pre">video_id</span></code>), <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">progress</span></code>,
 <code class="docutils literal notranslate"><span class="pre">current_frame</span></code>, <code class="docutils literal notranslate"><span class="pre">total_frames</span></code>, <code class="docutils literal notranslate"><span class="pre">fps</span></code>, <code class="docutils literal notranslate"><span class="pre">eta</span></code>, <code class="docutils literal notranslate"><span class="pre">message</span></code>, <code class="docutils literal notranslate"><span class="pre">video_path</span></code>.</p>
-</section>
-<hr class="docutils" />
-<section id="videoprogressmonitor-src-util-upload-video-process-py-main-pc">
-<h2><code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/process.py</span></code>, main PC)<a class="headerlink" href="#videoprogressmonitor-src-util-upload-video-process-py-main-pc" title="Link to this heading">¶</a></h2>
-<p>Aggregates progress from all capture PCs and serves a Flask + SocketIO dashboard.</p>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/process.py</span></code>, main PC)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">Aggregates progress from all capture PCs and serves a Flask + SocketIO dashboard.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor(web_port=8080,</span> <span class="pre">zmq_port=1234)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">web_port:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">zmq_port:</span> <span class="pre">int</span></code></p></td>
-<td><p>instance</p></td>
-<td><p>Build the Flask app, <code class="docutils literal notranslate"><span class="pre">flask_socketio.SocketIO(async_mode='threading')</span></code>, and a <code class="docutils literal notranslate"><span class="pre">DataCollector(port=zmq_port)</span></code>; wire routes + socket events.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor(web_port=8080,</span> <span class="pre">zmq_port=1234)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">web_port:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">zmq_port:</span> <span class="pre">int</span></code></p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Build the Flask app, <code class="docutils literal notranslate"><span class="pre">flask_socketio.SocketIO(async_mode='threading')</span></code>, and a <code class="docutils literal notranslate"><span class="pre">DataCollector(port=zmq_port)</span></code>; wire routes + socket events.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.setup_routes()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Register <code class="docutils literal notranslate"><span class="pre">/</span></code> → <code class="docutils literal notranslate"><span class="pre">video_monitor.html</span></code> and <code class="docutils literal notranslate"><span class="pre">/api/progress</span></code> → JSON <code class="docutils literal notranslate"><span class="pre">{videos,</span> <span class="pre">summary}</span></code>.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.setup_routes()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Register <code class="docutils literal notranslate"><span class="pre">/</span></code> → <code class="docutils literal notranslate"><span class="pre">video_monitor.html</span></code> and <code class="docutils literal notranslate"><span class="pre">/api/progress</span></code> → JSON <code class="docutils literal notranslate"><span class="pre">{videos,</span> <span class="pre">summary}</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.setup_socketio()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Register <code class="docutils literal notranslate"><span class="pre">connect</span></code> (emit <code class="docutils literal notranslate"><span class="pre">initial_data</span></code>) / <code class="docutils literal notranslate"><span class="pre">disconnect</span></code> handlers.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.setup_socketio()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Register <code class="docutils literal notranslate"><span class="pre">connect</span></code> (emit <code class="docutils literal notranslate"><span class="pre">initial_data</span></code>) / <code class="docutils literal notranslate"><span class="pre">disconnect</span></code> handlers.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">.update_loop()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Daemon-thread loop: every 1 s diff <code class="docutils literal notranslate"><span class="pre">collector.get_data()</span></code> and emit <code class="docutils literal notranslate"><span class="pre">progress_update</span></code> with changed videos + summary.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.update_loop()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Daemon-thread loop: every 1 s diff <code class="docutils literal notranslate"><span class="pre">collector.get_data()</span></code> and emit <code class="docutils literal notranslate"><span class="pre">progress_update</span></code> with changed videos + summary.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">.start()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Start the <code class="docutils literal notranslate"><span class="pre">DataCollector</span></code>, spawn <code class="docutils literal notranslate"><span class="pre">update_loop</span></code> thread, run the SocketIO server (<code class="docutils literal notranslate"><span class="pre">host=0.0.0.0</span></code>, <code class="docutils literal notranslate"><span class="pre">allow_unsafe_werkzeug=True</span></code>).</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Start the <code class="docutils literal notranslate"><span class="pre">DataCollector</span></code>, spawn <code class="docutils literal notranslate"><span class="pre">update_loop</span></code> thread, run the SocketIO server (<code class="docutils literal notranslate"><span class="pre">host=0.0.0.0</span></code>, <code class="docutils literal notranslate"><span class="pre">allow_unsafe_werkzeug=True</span></code>).</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p>Module-level: <code class="docutils literal notranslate"><span class="pre">kill_remote_clients()</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code> — SSH each <code class="docutils literal notranslate"><span class="pre">get_pc_list()</span></code> PC and
+<p class="sd-card-text">Module-level: <code class="docutils literal notranslate"><span class="pre">kill_remote_clients()</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code> — SSH each <code class="docutils literal notranslate"><span class="pre">get_pc_list()</span></code> PC and
 <code class="docutils literal notranslate"><span class="pre">pkill</span> <span class="pre">-f</span> <span class="pre">&quot;src/util/upload_video/client.py&quot;</span></code> to release ZMQ port <code class="docutils literal notranslate"><span class="pre">1234</span></code>.</p>
 <blockquote>
-<div><p><strong>Port note:</strong> <code class="docutils literal notranslate"><span class="pre">__main__</span></code> instantiates <code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor(web_port=8081,</span> <span class="pre">...)</span></code>,
+<div><p class="sd-card-text"><strong>Port note:</strong> <code class="docutils literal notranslate"><span class="pre">__main__</span></code> instantiates <code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor(web_port=8081,</span> <span class="pre">...)</span></code>,
 so the live dashboard is on <strong>8081</strong> despite the <code class="docutils literal notranslate"><span class="pre">8080</span></code> constructor default.</p>
 </div></blockquote>
-</section>
-<hr class="docutils" />
-<section id="transport-dependency-data-sender-paradex-io-capture-pc-data-sender-py">
-<h2>Transport dependency — <code class="docutils literal notranslate"><span class="pre">data_sender</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/io/capture_pc/data_sender.py</span></code>)<a class="headerlink" href="#transport-dependency-data-sender-paradex-io-capture-pc-data-sender-py" title="Link to this heading">¶</a></h2>
-<p>Referenced above; documented here for signature completeness.</p>
+</div>
+</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
+<summary class="sd-summary-title sd-card-header">
+<span class="sd-summary-text">Transport dependency — <code class="docutils literal notranslate"><span class="pre">data_sender</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/io/capture_pc/data_sender.py</span></code>)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">Referenced above; documented here for signature completeness.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p>Method</p></th>
-<th class="head"><p>Input</p></th>
-<th class="head"><p>Output</p></th>
-<th class="head"><p>Description</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
+<th class="head"><p class="sd-card-text">Input</p></th>
+<th class="head"><p class="sd-card-text">Output</p></th>
+<th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DataPublisher(port=1234,</span> <span class="pre">name=None)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">port:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str=None</span></code></p></td>
-<td><p>instance</p></td>
-<td><p>Capture-PC ZMQ PUB endpoint.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">DataPublisher(port=1234,</span> <span class="pre">name=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">port:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">name:</span> <span class="pre">str=None</span></code></p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Capture-PC ZMQ PUB endpoint.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DataPublisher.send_data(metadata,</span> <span class="pre">data)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">metadata:</span> <span class="pre">list[dict]</span></code>, <code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">list[bytes]</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Publish one message; video progress passes <code class="docutils literal notranslate"><span class="pre">data=[]</span></code> (metadata only).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">DataPublisher.send_data(metadata,</span> <span class="pre">data)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">metadata:</span> <span class="pre">list[dict]</span></code>, <code class="docutils literal notranslate"><span class="pre">data:</span> <span class="pre">list[bytes]</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Publish one message; video progress passes <code class="docutils literal notranslate"><span class="pre">data=[]</span></code> (metadata only).</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DataPublisher.close()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Close the socket.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">DataPublisher.close()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Close the socket.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DataCollector(...)</span></code></p></td>
-<td><p>see module</p></td>
-<td><p>instance</p></td>
-<td><p>Main-PC SUB endpoint aggregating all publishers.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">DataCollector(...)</span></code></p></td>
+<td><p class="sd-card-text">see module</p></td>
+<td><p class="sd-card-text">instance</p></td>
+<td><p class="sd-card-text">Main-PC SUB endpoint aggregating all publishers.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">DataCollector.start()</span></code></p></td>
-<td><p>—</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p>Begin the receive loop.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">DataCollector.start()</span></code></p></td>
+<td><p class="sd-card-text">—</p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
+<td><p class="sd-card-text">Begin the receive loop.</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">DataCollector.get_data(pc_name=None)</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">pc_name:</span> <span class="pre">str=None</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
-<td><p>Latest merged <code class="docutils literal notranslate"><span class="pre">{video_id:</span> <span class="pre">info}</span></code> (optionally one PC).</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">DataCollector.get_data(pc_name=None)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">pc_name:</span> <span class="pre">str=None</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">dict</span></code></p></td>
+<td><p class="sd-card-text">Latest merged <code class="docutils literal notranslate"><span class="pre">{video_id:</span> <span class="pre">info}</span></code> (optionally one PC).</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-</section>
-</section>
+</div>
+</details></section>
 
         </article>
       </div>
@@ -739,32 +741,8 @@ so the live dashboard is on <strong>8081</strong> despite the <code class="docut
         
       </footer>
     </div>
-    <aside class="toc-drawer">
+    <aside class="toc-drawer no-toc">
       
-      
-      <div class="toc-sticky toc-scroll">
-        <div class="toc-title-container">
-          <span class="toc-title">
-            On this page
-          </span>
-        </div>
-        <div class="toc-tree-container">
-          <div class="toc-tree">
-            <ul>
-<li><a class="reference internal" href="#">Video Processing — API</a><ul>
-<li><a class="reference internal" href="#rawvideoprocessor-paradex-video-raw-video-processor-py"><code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/video/raw_video_processor.py</span></code>)</a></li>
-<li><a class="reference internal" href="#module-functions-paradex-video-raw-video-processor-py">Module functions (<code class="docutils literal notranslate"><span class="pre">paradex/video/raw_video_processor.py</span></code>)</a></li>
-<li><a class="reference internal" href="#util-py-converters-paradex-video-util-py"><code class="docutils literal notranslate"><span class="pre">util.py</span></code> converters (<code class="docutils literal notranslate"><span class="pre">paradex/video/util.py</span></code>)</a></li>
-<li><a class="reference internal" href="#videoprogresspublisher-src-util-upload-video-client-py-capture-pc"><code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/client.py</span></code>, capture PC)</a></li>
-<li><a class="reference internal" href="#videoprogressmonitor-src-util-upload-video-process-py-main-pc"><code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/process.py</span></code>, main PC)</a></li>
-<li><a class="reference internal" href="#transport-dependency-data-sender-paradex-io-capture-pc-data-sender-py">Transport dependency — <code class="docutils literal notranslate"><span class="pre">data_sender</span></code> (<code class="docutils literal notranslate"><span class="pre">paradex/io/capture_pc/data_sender.py</span></code>)</a></li>
-</ul>
-</li>
-</ul>
-
-          </div>
-        </div>
-      </div>
       
       
     </aside>
@@ -773,5 +751,6 @@ so the live dashboard is on <strong>8081</strong> despite the <code class="docut
     <script src="_static/doctools.js?v=9bcbadda"></script>
     <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="_static/design-tabs.js?v=f930bc37"></script>
     </body>
 </html>

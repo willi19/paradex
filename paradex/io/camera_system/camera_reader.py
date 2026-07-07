@@ -7,6 +7,9 @@ import re
 
 from paradex.utils.system import get_camera_list
 from paradex.utils.path import pc_name
+from paradex.utils.log import get_logger
+
+logger = get_logger("camera")
 
 class CameraReader:
     """Shared memory에서 카메라 이미지를 읽어오는 클래스"""
@@ -74,7 +77,7 @@ class CameraReader:
                 (1,), dtype=np.uint8, buffer=self.write_flag_shm.buf
             )
             
-            print(f"Successfully connected to shared memory for camera: {self.name}")
+            logger.info(f"Successfully connected to shared memory for camera: {self.name}")
             return
         
         raise RuntimeError(
@@ -160,7 +163,7 @@ class CameraReader:
         self.fid_shm_b.close()
         self.write_flag_shm.close()
         
-        print(f"Closed shared memory connection for camera: {self.name}")
+        logger.info(f"Closed shared memory connection for camera: {self.name}")
 
 class MultiCameraReader:
     """여러 카메라의 shared memory를 동시에 읽는 클래스"""

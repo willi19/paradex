@@ -9,6 +9,10 @@ import os
 
 from xarm.wrapper import XArmAPI
 
+from paradex.utils.log import get_logger
+
+logger = get_logger("xarm")
+
 action_dof = 6
 
 def homo2cart(h):
@@ -48,7 +52,7 @@ class XArmController:
         self.connect_event = Event()
         self.position_control_event = Event()
         
-        self.thread = Thread(target=self.control_loop)
+        self.thread = Thread(target=self.control_loop, daemon=True)
         self.thread.start()
         
         self.connect_event.set()
@@ -65,74 +69,103 @@ class XArmController:
             # print("asdfasdf")
             start_time = time.perf_counter()
             if self.arm.has_err_warn:
+                # Arm faulted (e.g. kinematics/overspeed error). Stop hammering
+                # servo commands at a dead arm, and wake any move(is_servo=False)
+                # waiter so it does not block forever. Recovery is left to the
+                # caller (clear_error()/reset()) — auto-clearing could re-drive
+                # straight back into the same singularity.
+                if not self.error_event.is_set():
+                    logger.error(
+                        "xArm fault: error_code=%s warn_code=%s state=%s. "
+                        "Halting servo output; call clear_error()/reset() to recover.",
+                        self.arm.error_code, self.arm.warn_code, self.arm.state,
+                    )
                 self.error_event.set()
-                
-            with self.lock:
-                action = self.action.copy()
-                is_servo = self.is_servo
-                move_speed = self._move_speed
-
-            is_joint_value = (action.shape == (6,))
-
-            if not is_servo and not self.finished:
-                self.arm.set_mode(0)  # 0: position control, 1: servo control
-                self.arm.set_state(state=0)
-
-                if is_joint_value:
-                    kwargs = dict(angle=action.tolist(), is_radian=True, wait=True)
-                    if move_speed is not None:
-                        kwargs['speed'] = move_speed
-                    self.arm.set_servo_angle(**kwargs)
-                else:
-                    cart = homo2cart(action)
-                    self.arm.set_position(x = cart[0],
-                                            y = cart[1],
-                                            z = cart[2],
-                                            roll = cart[3],
-                                            pitch = cart[4],
-                                            yaw = cart[5],
-                                            speed=100,
-                                            is_radian=True,
-                                            wait=True) # motion_type=1 if necessary to go home but this is too dangerous
-
-                self.arm.set_mode(1)
-                self.arm.set_state(state=0)
-                self.finished = True
                 self.position_control_event.set()
+                time.sleep(0.05)
+                continue
 
+            try:
+                self._control_step()
+            except Exception as e:
+                # An IO/SDK call raised. Do not let it silently kill this thread —
+                # that would leave move()'s waiters blocked forever (the classic
+                # "device errored and the whole program hangs, even Ctrl-C"). Flag
+                # the error, wake any waiter, and keep the loop alive so the caller
+                # can recover (clear_error()/reset()) or exit cleanly.
+                logger.exception("xArm control loop IO error: %s", e)
+                self.error_event.set()
+                self.position_control_event.set()
+                time.sleep(0.05)
+                continue
 
-            else:
-                if is_joint_value:
-                    self.arm.set_servo_angle_j(angles=action.tolist(), is_radian=True)
-                else:
-                    aa = homo2aa(action)
-                    self.arm.set_servo_cartesian_aa(aa, is_radian=True)
-            
-            if self.save_event.is_set():
-                if is_joint_value:
-                    cart = self.arm.get_forward_kinematics(action.tolist(), input_is_radian=True, return_is_radian=True)[1]
-                    qpos = action.copy()
-                else:
-                    cart = homo2cart(action)
-                    success, qpos = self.arm.get_inverse_kinematics(cart)
-                    qpos = np.array(qpos)
-                    if success != 0:
-                        print("ik not success")
-                        qpos = - np.ones(6)
-                    
-                _, state = self.arm.get_joint_states(is_radian=True)
-                self.data["position"].append(np.array(state[0])[:6])
-                self.data["velocity"].append(np.array(state[1])[:6])
-                self.data["torque"].append(np.array(state[2])[:6])
-                self.data["time"].append(time.time())
-                self.data["action"].append(cart)
-                
-                self.data["action_qpos"].append(qpos[:6])
-                    
             elapsed = time.perf_counter() - start_time
             time.sleep(max(0, (1 / self.fps) - elapsed))
             
-        print("Control loop exited.")
+        logger.info("Control loop exited.")
+
+    def _control_step(self):
+        with self.lock:
+            action = self.action.copy()
+            is_servo = self.is_servo
+            move_speed = self._move_speed
+
+        is_joint_value = (action.shape == (6,))
+
+        if not is_servo and not self.finished:
+            self.arm.set_mode(0)  # 0: position control, 1: servo control
+            self.arm.set_state(state=0)
+
+            if is_joint_value:
+                kwargs = dict(angle=action.tolist(), is_radian=True, wait=True)
+                if move_speed is not None:
+                    kwargs['speed'] = move_speed
+                self.arm.set_servo_angle(**kwargs)
+            else:
+                cart = homo2cart(action)
+                self.arm.set_position(x = cart[0],
+                                        y = cart[1],
+                                        z = cart[2],
+                                        roll = cart[3],
+                                        pitch = cart[4],
+                                        yaw = cart[5],
+                                        speed=100,
+                                        is_radian=True,
+                                        wait=True) # motion_type=1 if necessary to go home but this is too dangerous
+
+            self.arm.set_mode(1)
+            self.arm.set_state(state=0)
+            self.finished = True
+            self.position_control_event.set()
+
+
+        else:
+            if is_joint_value:
+                self.arm.set_servo_angle_j(angles=action.tolist(), is_radian=True)
+            else:
+                aa = homo2aa(action)
+                self.arm.set_servo_cartesian_aa(aa, is_radian=True)
+
+        if self.save_event.is_set():
+            if is_joint_value:
+                cart = self.arm.get_forward_kinematics(action.tolist(), input_is_radian=True, return_is_radian=True)[1]
+                qpos = action.copy()
+            else:
+                cart = homo2cart(action)
+                success, qpos = self.arm.get_inverse_kinematics(cart)
+                qpos = np.array(qpos)
+                if success != 0:
+                    logger.warning("inverse kinematics failed (code=%s) for cart=%s", success, cart)
+                    qpos = - np.ones(6)
+
+            _, state = self.arm.get_joint_states(is_radian=True)
+            self.data["position"].append(np.array(state[0])[:6])
+            self.data["velocity"].append(np.array(state[1])[:6])
+            self.data["torque"].append(np.array(state[2])[:6])
+            self.data["time"].append(time.time())
+            self.data["action"].append(cart)
+
+            self.data["action_qpos"].append(qpos[:6])
 
     def start(self, save_path):            
         self.save_path = save_path
@@ -160,7 +193,7 @@ class XArmController:
         
     def end(self, set_break=False):
         self.exit_event.set()
-        self.thread.join()
+        self.thread.join(timeout=2.0)
         
         if set_break:
             self.arm.motion_enable(enable=False)
@@ -183,7 +216,12 @@ class XArmController:
         if not is_servo:
             self.finished = False
             self.position_control_event.clear()
-            self.position_control_event.wait()
+            # Poll with a timeout so KeyboardInterrupt (Ctrl-C) is not swallowed
+            # by an uninterruptible no-timeout wait, and so a fault/exit releases
+            # us instead of blocking forever.
+            while not self.position_control_event.wait(timeout=0.2):
+                if self.exit_event.is_set() or self.error_event.is_set():
+                    break
         
     def clear_error(self):
         """Clear errors/warnings and re-enable servo mode without reconnecting."""

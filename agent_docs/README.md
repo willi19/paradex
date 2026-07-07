@@ -14,6 +14,8 @@ so agents stop rediscovering subsystem structure from scratch every session.
 | Calibration (params & pipeline) | [`calibration/README.md`](calibration/README.md) |
 | Dataset acquisition (`CaptureSession`, `match_sync`) | [`dataset_acquisition/README.md`](dataset_acquisition/README.md) |
 | Image layer (`ImageDict`, aruco, undistort, render) | [`image/README.md`](image/README.md) |
+| Robot controllers (arms/hands IO — `get_arm`/`get_hand`, control loop, fault handling) | [`robot_controller/README.md`](robot_controller/README.md) |
+| Robot kinematics/planning (`RobotWrapper`, `CuroboPlanner`, URDF) | [`robot/README.md`](robot/README.md) |
 | Video post-processing (raw→undistort→H.264→NAS upload) | [`video/README.md`](video/README.md) |
 | Visualization (`ViserScene`/`Open3DScene` — 3D viewer + figure/video render) | [`visualization/README.md`](visualization/README.md) |
 

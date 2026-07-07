@@ -121,6 +121,7 @@ Every `src/<app>/` leaf dir has a `CLAUDE.md` (orientation for you) + `README.md
 
 | If the task is... | Start here | Notes |
 |-------------------|-----------|-------|
+| Calibrate camera intrinsics (K + distortion) | [`src/calibration/intrinsic/`](src/calibration/intrinsic/CLAUDE.md) | Charuco, distributed, **auto-capture (no save button)**. `capture.py` (main PC) → `calculate.py`. Run first. |
 | Calibrate cameras (extrinsic) | [`src/calibration/extrinsic/`](src/calibration/extrinsic/CLAUDE.md) | Charuco + COLMAP; needs intrinsic first. `capture.py` (main PC) → `calculate.py`. |
 | Calibrate camera→robot (hand-eye) | [`src/calibration/handeye/`](src/calibration/handeye/CLAUDE.md) | Tsai-Lenz AX=XB; needs extrinsic first. Produces `C2R.npy`. |
 | Calibrate xArm kinematics | [`src/calibration/`](src/calibration/CLAUDE.md) | `xarm_kinematic_calibration.py` patches URDFs from live arm. |

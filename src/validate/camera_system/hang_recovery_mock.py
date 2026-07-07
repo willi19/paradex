@@ -14,6 +14,9 @@ Run anywhere (no cameras, no PySpin):
 """
 import sys
 import types
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
 
 # --- fake the hardware deps so pyspin.py can be imported ------------------------
 if "PySpin" not in sys.modules:

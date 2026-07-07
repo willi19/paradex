@@ -8,6 +8,9 @@ from threading import Thread, Event, Lock
 import os
 import json
 from paradex.utils.system import config_dir
+from paradex.utils.log import get_logger
+
+logger = get_logger("inspire")
 
 action_dof = 6
 regdict = {
@@ -262,34 +265,14 @@ class InspireControllerIP:
         #     time.sleep(1)
                 
         while not self.exit_event.is_set():
-            start_time = time.time()
-            with self.lock:
-                action = self.target_action.copy().astype(np.int32)
-            
-            self.write6('angleSet', action)
-
-            current_hand_angles = np.asarray(self.read6('angleAct'))
-            current_force = np.asarray(self.read6('forceAct'))
-            if self.tactile:
-                current_tactile = np.asarray(self.read_all_tactile())
-            # current_action = np.asarray(self.read6('angleSet'))
-            with self.lock:
-                if self.capture_path is not None:
-                    self.data["time"].append(time.time())
-                    self.data["position"].append(current_hand_angles.copy())
-                    # self.data["time"].append(start_time)
-                    self.data["action"].append(action.copy())
-                    self.data["force"].append(current_force.copy())
-                    if self.tactile:
-                        self.data["tactile"].append(current_tactile.copy())
-
-                # if self.tactile:
-                #     self.latest_tactile = current_tactile
-                #     self.latest_tactile_time = time.time()
-            
-            end_time = time.time()
-            time.sleep(max(0, 1 / self.fps - (end_time - start_time)))
-            # print("current loop took: ", end_time - start_time, "sleep time: ", max(0, 1 / self.fps - (end_time - start_time)))
+            try:
+                self._hand_step()
+            except Exception as e:
+                # An IO/modbus call raised. Do not let it silently kill this
+                # thread — keep the hand loop alive and surface the error so the
+                # program stays responsive instead of hanging on a dead device.
+                logger.exception("inspire hand loop IO error: %s", e)
+                time.sleep(0.05)
 
     def move(self, action):
         with self.lock:
@@ -309,6 +292,36 @@ class InspireControllerIP:
             time.sleep(poll_interval)
         raise RuntimeError("Force calibration timed out")
     
+
+    def _hand_step(self):
+        start_time = time.time()
+        with self.lock:
+            action = self.target_action.copy().astype(np.int32)
+
+        self.write6('angleSet', action)
+
+        current_hand_angles = np.asarray(self.read6('angleAct'))
+        current_force = np.asarray(self.read6('forceAct'))
+        if self.tactile:
+            current_tactile = np.asarray(self.read_all_tactile())
+        # current_action = np.asarray(self.read6('angleSet'))
+        with self.lock:
+            if self.capture_path is not None:
+                self.data["time"].append(time.time())
+                self.data["position"].append(current_hand_angles.copy())
+                # self.data["time"].append(start_time)
+                self.data["action"].append(action.copy())
+                self.data["force"].append(current_force.copy())
+                if self.tactile:
+                    self.data["tactile"].append(current_tactile.copy())
+
+            # if self.tactile:
+            #     self.latest_tactile = current_tactile
+            #     self.latest_tactile_time = time.time()
+
+        end_time = time.time()
+        time.sleep(max(0, 1 / self.fps - (end_time - start_time)))
+
     def save(self):
         with self.lock:
             if self.capture_path is not None:       

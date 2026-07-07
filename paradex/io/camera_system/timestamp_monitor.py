@@ -4,6 +4,10 @@ import numpy as np
 import os
 import traceback
 
+from paradex.utils.log import get_logger
+
+logger = get_logger("camera")
+
 class TimestampMonitor():
     def __init__(self, cam_type, name):
         self.event = {
@@ -40,7 +44,7 @@ class TimestampMonitor():
             self.last_traceback = ""
             
         if self.event["error"].is_set():
-            print(f"[WARNING] Camera {self.name} is in ERROR state. Resetting error state.")
+            logger.warning(f"Camera {self.name} is in ERROR state. Resetting error state.")
             return
         
         self.last_frame_id = 0 # Start with 1
@@ -99,10 +103,10 @@ class TimestampMonitor():
             self.last_error = str(e)
             self.last_traceback = traceback.format_exc()
             
-            print(f"[ERROR] Camera {self.name} exception occurred:")
-            print(f"Exception Type: {type(e).__name__}")
-            print(f"Exception Message: {str(e)}")
-            print(self.last_traceback)
+            logger.error(f"Camera {self.name} exception occurred:\n"
+                         f"Exception Type: {type(e).__name__}\n"
+                         f"Exception Message: {str(e)}\n"
+                         f"{self.last_traceback}")
 
             self.event["acquisition"].set()  # To avoid deadlock
 
@@ -111,7 +115,7 @@ class TimestampMonitor():
             self.event["acquisition"].clear()
             self.event["stop"].set()
             
-            print(f"[INFO] Camera {self.name} acquisition aborted due to error during start.")
+            logger.info(f"Camera {self.name} acquisition aborted due to error during start.")
             return
 
         self.event["acquisition"].set()
@@ -133,10 +137,10 @@ class TimestampMonitor():
                 self.last_error = str(e)
                 self.last_traceback = traceback.format_exc()
                 
-                print(f"[ERROR] Camera {self.name} exception occurred during acquisition:")
-                print(f"Exception Type: {type(e).__name__}")
-                print(f"Exception Message: {str(e)}")
-                print(self.last_traceback)
+                logger.error(f"Camera {self.name} exception occurred during acquisition:\n"
+                             f"Exception Type: {type(e).__name__}\n"
+                             f"Exception Message: {str(e)}\n"
+                             f"{self.last_traceback}")
 
                 self.event["error_reset"].wait()
                 break

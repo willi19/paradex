@@ -64,7 +64,7 @@ def fixed_corner_array(detection, b_id, n_corners):
 
 n_corners = n_corners_of_board(BOARD)
 print(f"intrinsic client: board {BOARD} -> {n_corners} corners | "
-      f"accept if >= {MIN_CORNERS} detected and centroid > {NOVELTY_PX}px from kept")
+      f"accept full board only, mean corner shift >= {NOVELTY_PX}px from kept (max {MAX_FRAMES})")
 
 dp = DataPublisher(port=1234, name="camera_stream")
 

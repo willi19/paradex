@@ -17,6 +17,11 @@ Paradex = distributed multi-camera vision + robot framework. `paradex/` = librar
 | Record a session / align sensor logs (`CaptureSession`, `match_sync`) | `agent_docs/dataset_acquisition/README.md` |
 | Multi-cam image ops (`ImageDict`, aruco detect, undistort, mesh render) | `agent_docs/image/README.md` |
 | Robot kinematics/planning/URDF (`RobotWrapper`, `CuroboPlanner`) | `agent_docs/robot/README.md` |
+| Move a real arm/hand (`get_arm`/`get_hand`, control loop, faults) | `agent_docs/robot_controller/README.md` |
+| Orchestrate capture PCs (SSH/rsync, command & telemetry transport) | `agent_docs/capture_pc/README.md` |
+| Batch-process jobs across PCs (`Job`/`Processor`/`run_jobs`) | `agent_docs/process/README.md` |
+| Coordinate transforms/triangulation (`SOLVE_XA_B`, device frames) | `agent_docs/transforms/README.md` |
+| Config/paths/file-I/O helpers (`shared_dir`, `network_info`, loaders) | `agent_docs/utils/README.md` |
 | Post-capture video processing (raw→undistort→H.264→NAS upload) | `agent_docs/video/README.md` |
 | Camera design / roadmap / known limits | `design/camera-recording-redesign.md` |
 | Robot / capture / process subsystems | `docs/robot.md` · `docs/capture.md` · `docs/process.md` |

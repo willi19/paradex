@@ -127,3 +127,23 @@ raises). Module-level `logger = get_logger("xarm" | "inspire")`. **Do not** add
   (`np.save` truncated) — i.e. a crash/SIGKILL during shutdown, not a save bug.
 - **Allegro `get_data` reorders** raw joints through `JS_TO_CMD`; `qpos` is in
   command order, not `/joint_states` order.
+
+---
+
+## 7. Stale import paths / config keys (real breakage)
+
+These are genuine bugs found while tracing consumers — fix at the call site, don't
+"work around" them here:
+
+- **`gui_controller_prev` is gone.** Several `src/inference/*` scripts still do
+  `from paradex.io.robot_controller.gui_controller_prev import RobotGUIController`,
+  but `gui_controller_prev.py` now lives under `deprecated/` → those imports raise
+  `ImportError`. The live GUI is `gui_controller.py` (`RobotGUIController(robot, hand)`).
+- **`get_hand("inspire_left")` needs a `network_info["inspire_left"]` entry.** The
+  factory reads `network_info[hand_name]` directly for the IP path, but the shipped
+  `system/current/network.json` only defines `inspire` — so `inspire_left` (used by
+  `src/validate/robot/inspire_left_overlay.py`) `KeyError`s without adding that config key.
+- **Config schema is inconsistent between factory branches.** Inspire-IP reads
+  `network_info["inspire"]` **directly** (`ip`,`port`), while xArm / USB-Inspire /
+  Allegro read `network_info[name]["param"]`. Match whichever branch you copy when
+  adding a device.

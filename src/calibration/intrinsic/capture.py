@@ -13,7 +13,6 @@ No `--args`. Coupled to client.py by data types and ports (1234 publish,
 6890 command) — change both together.
 """
 
-import time
 import cv2
 import numpy as np
 

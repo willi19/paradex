@@ -11,3 +11,19 @@ Module Contents
 
 .. py:function:: overlay_mask(image, mask, color, alpha=0.7)
 
+   Alpha-blend a solid color over the masked region, in place.
+
+   :param image: ``(H, W, 3)`` image; **modified in place** (copy first to keep the original).
+   :type image: numpy.ndarray
+   :param mask: Boolean ``(H, W)`` mask matching the image size.
+   :type mask: numpy.ndarray
+   :param color: BGR color painted where ``mask`` is True.
+   :type color: sequence of int
+   :param alpha: Weight of the original image at masked pixels (``alpha`` image +
+                 ``1 - alpha`` color).
+   :type alpha: float
+
+   :returns: The same ``image`` array, for convenience.
+   :rtype: numpy.ndarray
+
+

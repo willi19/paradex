@@ -1,7 +1,29 @@
 import numpy as np
 
-td = 2 / 30
+td = 2 / 30  #: fixed ~66 ms trigger-to-exposure latency offset baked for 30 fps
 def fill_framedrop(frame_id, pc_time):
+    """Reconstruct a dense, drop-free frame timeline from logged frame ids/times.
+
+    Fits a linear ``frame_id -> time`` model (skipping the first 10 warmup frames)
+    and emits a gap-free ``frame_id`` array from 1 to ``last + 500`` with
+    reconstructed times, so downstream indexing stays aligned even where the camera
+    dropped frames. Robust to drops because the slope divides by the frame-id span,
+    not the frame count.
+
+    Parameters
+    ----------
+    frame_id : numpy.ndarray
+        Logged hardware frame ids (may skip values where frames dropped).
+    pc_time : array-like
+        PC wall-clock timestamp for each logged frame.
+
+    Returns
+    -------
+    tuple of numpy.ndarray
+        ``(pc_time_nodrop, frame_id_nodrop)`` — the dense reconstructed times and
+        their frame ids. ``pc_time_nodrop`` has the module-level ``td`` offset
+        subtracted.
+    """
     real_start = 10 # skip first 10 frames to avoid startup issues
     
     frame_id = frame_id[real_start:]
@@ -14,8 +36,24 @@ def fill_framedrop(frame_id, pc_time):
     return pc_time_nodrop, frame_id_nodrop
 
 def get_synced_data(pc_times, data, data_times):
-    """
-    2-pointer 방식으로 pc_times와 가장 가까운 data_times의 데이터를 매칭
+    """Nearest-time resample of a sensor stream onto the camera frame clock.
+
+    For each entry in ``pc_times`` returns the ``data`` row whose ``data_times`` is
+    closest, using a monotone two-pointer scan. Nearest-neighbor, not interpolation.
+
+    Parameters
+    ----------
+    pc_times : array-like
+        Target timeline (typically the dense frame times from :func:`fill_framedrop`).
+    data : numpy.ndarray
+        Sensor samples, one row per ``data_times`` entry.
+    data_times : array-like
+        Timestamp of each ``data`` row. Both time arrays must be sorted ascending.
+
+    Returns
+    -------
+    numpy.ndarray
+        One ``data`` row per ``pc_times`` entry (length ``len(pc_times)``).
     """
     synced_data = []
     n = len(pc_times)

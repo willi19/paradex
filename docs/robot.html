@@ -3,7 +3,7 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Capture Session" href="capture.html" /><link rel="prev" title="Camera System" href="camera_system.html" />
+<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Capture Session" href="capture.html" /><link rel="prev" title="Calibration" href="calibration.html" />
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>Robot Control - paradex 0.0.0 documentation</title>
@@ -204,6 +204,7 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="calibration.html">Calibration</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="capture.html">Capture Session</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dataset_acquisition.html">Dataset Acquisition</a></li>
@@ -213,6 +214,7 @@
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="capture_api.html">Capture Session — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
@@ -526,8 +528,14 @@ both representations: measured <code class="docutils literal notranslate"><span 
     P --&gt; D
     D --&gt;|&quot;True&quot;| SV[&quot;servo stream&lt;br/&gt;(non-blocking)&quot;]
     D --&gt;|&quot;False&quot;| PC[&quot;position move&lt;br/&gt;wait arrival&quot;]
-    </pre><p>Error state is surfaced via <code class="docutils literal notranslate"><span class="pre">is_error()</span></code> (set when the arm reports err/warn);
-<code class="docutils literal notranslate"><span class="pre">clear_error()</span></code> clears and re-enables servo mode without a reconnect.</p>
+    </pre><p><strong>Fault safety.</strong> Every tick the loop checks <code class="docutils literal notranslate"><span class="pre">arm.has_err_warn</span></code>; on a fault it
+logs the <code class="docutils literal notranslate"><span class="pre">error_code</span></code> / <code class="docutils literal notranslate"><span class="pre">warn_code</span></code> / <code class="docutils literal notranslate"><span class="pre">state</span></code>, <strong>stops streaming servo commands</strong>
+(never hammers a dead arm), and wakes any blocked <code class="docutils literal notranslate"><span class="pre">move()</span></code> — but does <strong>not</strong>
+auto-clear (that could re-drive straight into the same singularity). The entire
+per-tick body is wrapped in <code class="docutils literal notranslate"><span class="pre">try/except</span></code>, so an IO/SDK exception can never
+silently kill the loop thread and leave callers hung. Recover with <code class="docutils literal notranslate"><span class="pre">clear_error()</span></code>
+(clear + re-enable servo, no reconnect) or <code class="docutils literal notranslate"><span class="pre">reset()</span></code> (full reconnect); poll state
+with <code class="docutils literal notranslate"><span class="pre">is_error()</span></code>. Full rationale in §11.</p>
 </section>
 <hr class="docutils" />
 <section id="hands-allegro-ros2-and-inspire-modbus">
@@ -809,8 +817,86 @@ subprocess) to emit <code class="docutils literal notranslate"><span class="pre"
 <p>Method-by-method API (parameters / returns): <a class="reference internal" href="robot_api.html"><span class="doc">Robot Control — API</span></a>.</p>
 </section>
 <hr class="docutils" />
+<section id="fault-handling-logging-shutdown-safety">
+<h2>11. Fault Handling, Logging &amp; Shutdown Safety<a class="headerlink" href="#fault-handling-logging-shutdown-safety" title="Link to this heading">¶</a></h2>
+<p>Every controller drives a real device from a background loop thread. The failure
+mode this section prevents: <strong>a device errors, its loop thread dies or blocks, and
+the whole program hangs — unresponsive even to <code class="docutils literal notranslate"><span class="pre">Ctrl-C</span></code>.</strong> The fix is four small
+guarantees that together keep the process alive, killable, and diagnosable.</p>
+<section id="the-failure-chain-what-used-to-happen">
+<h3>The failure chain (what used to happen)<a class="headerlink" href="#the-failure-chain-what-used-to-happen" title="Link to this heading">¶</a></h3>
+<pre  class="mermaid">
+        flowchart TB
+    IO[&quot;IO/SDK call raises&lt;br/&gt;(socket drop, modbus, fault)&quot;] --&gt; DIE[&quot;loop thread dies&lt;br/&gt;(no try/except)&quot;]
+    DIE --&gt; WAIT[&quot;caller blocked in&lt;br/&gt;event.wait() / join() forever&quot;]
+    WAIT --&gt; SIG[&quot;no-timeout wait swallows&lt;br/&gt;SIGINT → Ctrl-C ignored&quot;]
+    SIG --&gt; HANG[&quot;whole process wedged&lt;br/&gt;only SIGKILL works&quot;]
+    </pre><p>A <code class="docutils literal notranslate"><span class="pre">threading.Event.wait()</span></code> / <code class="docutils literal notranslate"><span class="pre">Thread.join()</span></code> with <strong>no timeout</strong> blocks in C and
+defers <code class="docutils literal notranslate"><span class="pre">KeyboardInterrupt</span></code> until it returns — so if the thread that would wake it
+is dead, <code class="docutils literal notranslate"><span class="pre">Ctrl-C</span></code> never fires. That is why an IO error could make the entire
+program unkillable.</p>
+</section>
+<section id="the-four-guarantees">
+<h3>The four guarantees<a class="headerlink" href="#the-four-guarantees" title="Link to this heading">¶</a></h3>
+<div class="table-wrapper colwidths-auto docutils container">
+<table class="docutils align-default">
+<thead>
+<tr class="row-odd"><th class="head"><p>#</p></th>
+<th class="head"><p>Guarantee</p></th>
+<th class="head"><p>Mechanism</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>An IO error never kills the loop thread</p></td>
+<td><p>per-tick body wrapped in <code class="docutils literal notranslate"><span class="pre">try/except</span></code>; on exception → log traceback, flag error, wake waiters, keep looping</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>A device fault halts output, not the program</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">has_err_warn</span></code> check → stop servo writes, wake waiters, keep loop alive (no auto-clear)</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">Ctrl-C</span></code> is always deliverable</p></td>
+<td><p>every main-thread <code class="docutils literal notranslate"><span class="pre">wait()</span></code>/<code class="docutils literal notranslate"><span class="pre">join()</span></code> uses a <strong>timeout</strong> and re-checks <code class="docutils literal notranslate"><span class="pre">exit_event</span></code>/<code class="docutils literal notranslate"><span class="pre">error_event</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p>A stuck thread can’t block process exit</p></td>
+<td><p>loop threads are <code class="docutils literal notranslate"><span class="pre">daemon=True</span></code> (last-resort backstop; graceful <code class="docutils literal notranslate"><span class="pre">end()</span></code> is still the primary path)</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p>Guarantees 1–2 are the important ones (the user’s insight: <em>“the real bug is that
+the IO error gets swallowed — a <code class="docutils literal notranslate"><span class="pre">try/except</span></code> fixes it”</em>). xArm SDK reports most
+servo failures as <strong>return codes / <code class="docutils literal notranslate"><span class="pre">has_err_warn</span></code>, not exceptions</strong>, so both a
+<code class="docutils literal notranslate"><span class="pre">try/except</span></code> (for real exceptions) <strong>and</strong> the <code class="docutils literal notranslate"><span class="pre">has_err_warn</span></code> check (for coded
+failures) are needed — neither alone is complete.</p>
+<p>Applied in: <code class="docutils literal notranslate"><span class="pre">xarm_controller.control_loop</span></code> (→ <code class="docutils literal notranslate"><span class="pre">_control_step</span></code>) and
+<code class="docutils literal notranslate"><span class="pre">inspire_controller_ip.move_hand</span></code> (→ <code class="docutils literal notranslate"><span class="pre">_hand_step</span></code>). <code class="docutils literal notranslate"><span class="pre">camera.py</span></code> already self-guards
+(<code class="docutils literal notranslate"><span class="pre">acquire</span></code> / <code class="docutils literal notranslate"><span class="pre">single_acquire</span></code> / <code class="docutils literal notranslate"><span class="pre">connect_camera</span></code> each <code class="docutils literal notranslate"><span class="pre">try/except</span></code> → <code class="docutils literal notranslate"><span class="pre">event[&quot;error&quot;]</span></code>),
+so its <code class="docutils literal notranslate"><span class="pre">run()</span></code> loop needs no wrapper.</p>
+</section>
+<section id="logging-nas">
+<h3>Logging → NAS<a class="headerlink" href="#logging-nas" title="Link to this heading">¶</a></h3>
+<p>All controllers log through <code class="docutils literal notranslate"><span class="pre">paradex.utils.log.get_logger(name)</span></code>, which writes to
+<strong>console <em>and</em></strong> a per-PC, per-day file on the NAS:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="o">~/</span><span class="n">shared_data</span><span class="o">/</span><span class="n">log</span><span class="o">/&lt;</span><span class="n">pc_name</span><span class="o">&gt;/&lt;</span><span class="n">YYYYMMDD</span><span class="o">&gt;/&lt;</span><span class="n">name</span><span class="o">&gt;</span><span class="n">_</span><span class="o">&lt;</span><span class="n">HHMMSS</span><span class="o">&gt;.</span><span class="n">log</span>
+</pre></div>
+</div>
+<ul class="simple">
+<li><p>PC- and date-namespaced so the 6 capture PCs never clobber each other on shared storage.</p></li>
+<li><p>One process run = one file (created lazily on first <code class="docutils literal notranslate"><span class="pre">get_logger</span></code>).</p></li>
+<li><p>NAS unreachable → degrades to console-only (never crashes the caller).</p></li>
+<li><p>Logger names: <code class="docutils literal notranslate"><span class="pre">xarm</span></code>, <code class="docutils literal notranslate"><span class="pre">inspire</span></code>, <code class="docutils literal notranslate"><span class="pre">camera</span></code>, <code class="docutils literal notranslate"><span class="pre">rcc</span></code>, <code class="docutils literal notranslate"><span class="pre">monitor</span></code>.</p></li>
+</ul>
+<p>When a fault fires, the arm’s <code class="docutils literal notranslate"><span class="pre">error_code</span></code> / <code class="docutils literal notranslate"><span class="pre">warn_code</span></code> / <code class="docutils literal notranslate"><span class="pre">state</span></code> land here — <strong>this
+is the fastest way to identify a kinematic error’s real cause</strong> (joint-range vs.
+overspeed vs. singularity vs. collision) on the next run, instead of guessing.</p>
+</section>
+</section>
+<hr class="docutils" />
 <section id="notes-gotchas">
-<h2>11. Notes &amp; Gotchas<a class="headerlink" href="#notes-gotchas" title="Link to this heading">¶</a></h2>
+<h2>12. Notes &amp; Gotchas<a class="headerlink" href="#notes-gotchas" title="Link to this heading">¶</a></h2>
 <ul class="simple">
 <li><p><strong>Factory coupling to <code class="docutils literal notranslate"><span class="pre">network_info</span></code>.</strong> <code class="docutils literal notranslate"><span class="pre">get_arm</span></code>/<code class="docutils literal notranslate"><span class="pre">get_hand</span></code> spread connection
 params straight from <code class="docutils literal notranslate"><span class="pre">system/current/network.json</span></code>; a missing key raises at
@@ -827,6 +913,13 @@ and <code class="docutils literal notranslate"><span class="pre">self.tensor_arg
 <code class="docutils literal notranslate"><span class="pre">plan_goalset</span></code> / <code class="docutils literal notranslate"><span class="pre">plan_to_joint_target</span></code> are the supported entry points.</p></li>
 <li><p><strong><code class="docutils literal notranslate"><span class="pre">start()</span></code> before <code class="docutils literal notranslate"><span class="pre">stop()</span></code>.</strong> Logging buffers only fill between <code class="docutils literal notranslate"><span class="pre">start(save_path)</span></code>
 and <code class="docutils literal notranslate"><span class="pre">stop()</span></code>; <code class="docutils literal notranslate"><span class="pre">end()</span></code> calls <code class="docutils literal notranslate"><span class="pre">stop()</span></code> for you if a session is still open.</p></li>
+<li><p><strong>The <code class="docutils literal notranslate"><span class="pre">±2π</span></code> joint clamp is cosmetic, not a real limit.</strong> XArm’s servo <code class="docutils literal notranslate"><span class="pre">move</span></code>
+clips joint targets to <code class="docutils literal notranslate"><span class="pre">±2π</span></code>, but the actual XArm6 range (verified against the
+UFACTORY manual and <code class="docutils literal notranslate"><span class="pre">rsc/robot/xarm.urdf</span></code>) is tighter on J2 <code class="docutils literal notranslate"><span class="pre">[-2.06,</span> <span class="pre">2.09]</span></code>,
+J3 <code class="docutils literal notranslate"><span class="pre">[-3.93,</span> <span class="pre">0.19]</span></code>, J5 <code class="docutils literal notranslate"><span class="pre">[-1.69,</span> <span class="pre">π]</span></code>. A target inside <code class="docutils literal notranslate"><span class="pre">±2π</span></code> but outside the real
+range passes the clamp and is rejected by the arm’s own kinematics check. Real
+clamping should use the per-joint URDF limits — treat the current clamp as a
+no-op guard, not protection.</p></li>
 </ul>
 </section>
 </section>
@@ -845,14 +938,14 @@ and <code class="docutils literal notranslate"><span class="pre">stop()</span></
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="camera_system.html">
+          <a class="prev-page" href="calibration.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Camera System</div>
+                <div class="title">Calibration</div>
                 
               </div>
             </a>
@@ -897,7 +990,13 @@ and <code class="docutils literal notranslate"><span class="pre">stop()</span></
 <li><a class="reference internal" href="#combining-arm-hand">8. Combining Arm + Hand</a></li>
 <li><a class="reference internal" href="#component-reference">9. Component Reference</a></li>
 <li><a class="reference internal" href="#validation-usage">10. Validation &amp; Usage</a></li>
-<li><a class="reference internal" href="#notes-gotchas">11. Notes &amp; Gotchas</a></li>
+<li><a class="reference internal" href="#fault-handling-logging-shutdown-safety">11. Fault Handling, Logging &amp; Shutdown Safety</a><ul>
+<li><a class="reference internal" href="#the-failure-chain-what-used-to-happen">The failure chain (what used to happen)</a></li>
+<li><a class="reference internal" href="#the-four-guarantees">The four guarantees</a></li>
+<li><a class="reference internal" href="#logging-nas">Logging → NAS</a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#notes-gotchas">12. Notes &amp; Gotchas</a></li>
 </ul>
 </li>
 </ul>

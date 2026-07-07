@@ -9,8 +9,9 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=302659d7" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=b00e8357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=1fe19d68" />
     
     
 
@@ -202,15 +203,21 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../image.html">Image Layer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../process.html">Video Processing</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../image_api.html">Image Layer — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../process_api.html">Video Processing — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -310,6 +317,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/file_io/index.html">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/log/index.html">paradex.utils.log</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/path/index.html">paradex.utils.path</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/upload_file/index.html">paradex.utils.upload_file</a></li>
@@ -322,7 +330,12 @@
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/visualization/robot/index.html">paradex.visualization.robot</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -382,6 +395,26 @@
 <div class="viewcode-block" id="merge_image">
 <a class="viewcode-back" href="../../../autoapi/paradex/image/merge/index.html#paradex.image.merge.merge_image">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">merge_image</span><span class="p">(</span><span class="n">image_dict</span><span class="p">,</span> <span class="n">image_text</span><span class="o">=</span><span class="p">{},</span> <span class="n">put_text</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Tile a multi-camera image dict into one labeled near-square grid.</span>
+
+<span class="sd">    Cameras are laid out in sorted-serial order; each tile is captioned with its</span>
+<span class="sd">    serial (plus any extra text). Assumes ~2048x1536 source frames (the canvas size</span>
+<span class="sd">    is hardcoded); intended for live previews and sync checks, not archival output.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    image_dict : dict</span>
+<span class="sd">        ``{serial: image}``.</span>
+<span class="sd">    image_text : dict, optional</span>
+<span class="sd">        ``{serial: str}`` extra caption appended after the serial.</span>
+<span class="sd">    put_text : bool</span>
+<span class="sd">        Draw the serial/caption overlay when True.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        The composited grid image.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">name_list</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">image_dict</span><span class="o">.</span><span class="n">keys</span><span class="p">()))</span>
     <span class="n">num_images</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">name_list</span><span class="p">)</span>
     
@@ -471,6 +504,7 @@
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
     <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
 

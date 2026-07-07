@@ -9,8 +9,9 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=302659d7" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=b00e8357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=1fe19d68" />
     
     
 
@@ -202,15 +203,21 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../image.html">Image Layer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../process.html">Video Processing</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../image_api.html">Image Layer — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../process_api.html">Video Processing — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -310,6 +317,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/file_io/index.html">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/log/index.html">paradex.utils.log</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/path/index.html">paradex.utils.path</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/upload_file/index.html">paradex.utils.upload_file</a></li>
@@ -322,7 +330,12 @@
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/visualization/robot/index.html">paradex.visualization.robot</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -366,10 +379,32 @@
           <h1>Source code for paradex.dataset_acqusition.match_sync</h1><div class="highlight"><pre>
 <span></span><span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
 
-<span class="n">td</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">/</span> <span class="mi">30</span>
+<span class="n">td</span> <span class="o">=</span> <span class="mi">2</span> <span class="o">/</span> <span class="mi">30</span>  <span class="c1">#: fixed ~66 ms trigger-to-exposure latency offset baked for 30 fps</span>
 <div class="viewcode-block" id="fill_framedrop">
 <a class="viewcode-back" href="../../../autoapi/paradex/dataset_acqusition/match_sync/index.html#paradex.dataset_acqusition.match_sync.fill_framedrop">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">fill_framedrop</span><span class="p">(</span><span class="n">frame_id</span><span class="p">,</span> <span class="n">pc_time</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Reconstruct a dense, drop-free frame timeline from logged frame ids/times.</span>
+
+<span class="sd">    Fits a linear ``frame_id -&gt; time`` model (skipping the first 10 warmup frames)</span>
+<span class="sd">    and emits a gap-free ``frame_id`` array from 1 to ``last + 500`` with</span>
+<span class="sd">    reconstructed times, so downstream indexing stays aligned even where the camera</span>
+<span class="sd">    dropped frames. Robust to drops because the slope divides by the frame-id span,</span>
+<span class="sd">    not the frame count.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    frame_id : numpy.ndarray</span>
+<span class="sd">        Logged hardware frame ids (may skip values where frames dropped).</span>
+<span class="sd">    pc_time : array-like</span>
+<span class="sd">        PC wall-clock timestamp for each logged frame.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple of numpy.ndarray</span>
+<span class="sd">        ``(pc_time_nodrop, frame_id_nodrop)`` — the dense reconstructed times and</span>
+<span class="sd">        their frame ids. ``pc_time_nodrop`` has the module-level ``td`` offset</span>
+<span class="sd">        subtracted.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">real_start</span> <span class="o">=</span> <span class="mi">10</span> <span class="c1"># skip first 10 frames to avoid startup issues</span>
     
     <span class="n">frame_id</span> <span class="o">=</span> <span class="n">frame_id</span><span class="p">[</span><span class="n">real_start</span><span class="p">:]</span>
@@ -385,8 +420,24 @@
 <div class="viewcode-block" id="get_synced_data">
 <a class="viewcode-back" href="../../../autoapi/paradex/dataset_acqusition/match_sync/index.html#paradex.dataset_acqusition.match_sync.get_synced_data">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_synced_data</span><span class="p">(</span><span class="n">pc_times</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">data_times</span><span class="p">):</span>
-<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">    2-pointer 방식으로 pc_times와 가장 가까운 data_times의 데이터를 매칭</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Nearest-time resample of a sensor stream onto the camera frame clock.</span>
+
+<span class="sd">    For each entry in ``pc_times`` returns the ``data`` row whose ``data_times`` is</span>
+<span class="sd">    closest, using a monotone two-pointer scan. Nearest-neighbor, not interpolation.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    pc_times : array-like</span>
+<span class="sd">        Target timeline (typically the dense frame times from :func:`fill_framedrop`).</span>
+<span class="sd">    data : numpy.ndarray</span>
+<span class="sd">        Sensor samples, one row per ``data_times`` entry.</span>
+<span class="sd">    data_times : array-like</span>
+<span class="sd">        Timestamp of each ``data`` row. Both time arrays must be sorted ascending.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    numpy.ndarray</span>
+<span class="sd">        One ``data`` row per ``pc_times`` entry (length ``len(pc_times)``).</span>
 <span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">synced_data</span> <span class="o">=</span> <span class="p">[]</span>
     <span class="n">n</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">pc_times</span><span class="p">)</span>
@@ -440,6 +491,7 @@
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
     <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
 

@@ -204,6 +204,7 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture.html">Capture Session</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
@@ -213,6 +214,7 @@
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture_api.html">Capture Session — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
@@ -412,7 +414,24 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.aruco.detect_aruco">
 <span class="sig-prename descclassname"><span class="pre">paradex.image.aruco.</span></span><span class="sig-name descname"><span class="pre">detect_aruco</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dict_type</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'6X6_1000'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/paradex/image/aruco.html#detect_aruco"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.aruco.detect_aruco" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Detect ArUco markers in a single image.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>numpy.ndarray</em>) – Input image (BGR or grayscale).</p></li>
+<li><p><strong>dict_type</strong> (<em>str</em>) – Predefined dictionary key (e.g. <code class="docutils literal notranslate"><span class="pre">'6X6_1000'</span></code>); see <a class="reference internal" href="#paradex.image.aruco.aruco_dict" title="paradex.image.aruco.aruco_dict"><code class="xref py py-data docutils literal notranslate"><span class="pre">aruco_dict</span></code></a>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(corners,</span> <span class="pre">ids)</span></code>. <code class="docutils literal notranslate"><span class="pre">corners</span></code> is a list of <code class="docutils literal notranslate"><span class="pre">(1,</span> <span class="pre">4,</span> <span class="pre">2)</span></code> arrays and
+<code class="docutils literal notranslate"><span class="pre">ids</span></code> is an <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">1)</span></code> int array; returns <code class="docutils literal notranslate"><span class="pre">([],</span> <span class="pre">(0,</span> <span class="pre">1)</span> <span class="pre">zeros)</span></code> when
+nothing is detected.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.aruco.check_boardinfo_valid">
@@ -422,7 +441,22 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.aruco.detect_charuco">
 <span class="sig-prename descclassname"><span class="pre">paradex.image.aruco.</span></span><span class="sig-name descname"><span class="pre">detect_charuco</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/image/aruco.html#detect_charuco"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.aruco.detect_charuco" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Detect ChArUco board corners in a single image, per board.</p>
+<p>Runs every board’s cached <code class="docutils literal notranslate"><span class="pre">CharucoDetector</span></code> (from <code class="docutils literal notranslate"><span class="pre">charuco_info.json</span></code>) and
+omits boards with no detection.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>img</strong> (<em>numpy.ndarray</em>) – Input image.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">{board_id:</span> <span class="pre">{&quot;checkerCorner&quot;:</span> <span class="pre">(n,</span> <span class="pre">2),</span> <span class="pre">&quot;checkerIDs&quot;:</span> <span class="pre">(n,)}}</span></code> for each board
+that produced detections.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.aruco.get_adjecent_ids">
@@ -432,7 +466,22 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.aruco.merge_charuco_detection">
 <span class="sig-prename descclassname"><span class="pre">paradex.image.aruco.</span></span><span class="sig-name descname"><span class="pre">merge_charuco_detection</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">detection_list</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/image/aruco.html#merge_charuco_detection"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.aruco.merge_charuco_detection" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Flatten per-board ChArUco detections into a single id-offset corner set.</p>
+<p>Concatenates every board’s corners, offsetting each board’s ids by the running
+total <code class="docutils literal notranslate"><span class="pre">sum</span> <span class="pre">(numX-1)(numY-1)</span></code> so ids stay globally unique across boards.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>detection_list</strong> (<em>dict</em>) – Output of <a class="reference internal" href="#paradex.image.aruco.detect_charuco" title="paradex.image.aruco.detect_charuco"><code class="xref py py-func docutils literal notranslate"><span class="pre">detect_charuco()</span></code></a> (<code class="docutils literal notranslate"><span class="pre">{board_id:</span> <span class="pre">{checkerCorner,</span> <span class="pre">checkerIDs}}</span></code>).</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">{&quot;checkerCorner&quot;:</span> <span class="pre">(M,</span> <span class="pre">2),</span> <span class="pre">&quot;checkerIDs&quot;:</span> <span class="pre">(M,)}</span></code>; empty arrays if there were
+no detections.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.aruco.draw_charuco">
@@ -475,7 +524,20 @@ idx2: indices for array2
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.aruco.get_board_cor">
 <span class="sig-prename descclassname"><span class="pre">paradex.image.aruco.</span></span><span class="sig-name descname"><span class="pre">get_board_cor</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/image/aruco.html#get_board_cor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.aruco.get_board_cor" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Return ChArUco board object points, keyed by board id.</p>
+<p>Corners come from <code class="docutils literal notranslate"><span class="pre">board.getChessboardCorners()</span></code> (in checker-length units) and
+are scaled by <code class="docutils literal notranslate"><span class="pre">0.05</span></code>. This scale is board-<code class="docutils literal notranslate"><span class="pre">&quot;3&quot;</span></code>-specific: it yields 5 cm
+squares only for boards whose <code class="docutils literal notranslate"><span class="pre">checkerLength</span> <span class="pre">==</span> <span class="pre">1.0</span></code>; boards already in metric
+units would be double-scaled.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">{board_id:</span> <span class="pre">{&quot;checkerIDs&quot;:</span> <span class="pre">(N,),</span> <span class="pre">&quot;checkerCorner&quot;:</span> <span class="pre">(N,</span> <span class="pre">3)}}</span></code>.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>dict</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 </section>

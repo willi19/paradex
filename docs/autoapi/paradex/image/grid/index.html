@@ -204,6 +204,7 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture.html">Capture Session</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
@@ -213,6 +214,7 @@
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture_api.html">Capture Session — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
@@ -388,7 +390,21 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.grid.make_image_grid">
 <span class="sig-prename descclassname"><span class="pre">paradex.image.grid.</span></span><span class="sig-name descname"><span class="pre">make_image_grid</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span></span></span><a class="reference internal" href="../../../../_modules/paradex/image/grid.html#make_image_grid"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.grid.make_image_grid" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Tile a list of images into a nearly square grid (no labels).</p>
+<p>Odd-sized tiles are resized to the first image’s shape. Returns a <code class="docutils literal notranslate"><span class="pre">(1,</span> <span class="pre">1,</span> <span class="pre">3)</span></code>
+black pixel for an empty list.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>images</strong> (<em>list</em><em> of </em><em>numpy.ndarray</em>) – Images to tile, in order.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The tiled grid image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 </section>

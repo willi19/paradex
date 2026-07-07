@@ -11,7 +11,31 @@ Module Contents
 
 .. py:function:: precomute_undistort_map(intrinsic)
 
+   Precompute a CPU ``cv2.remap`` undistortion map for one camera.
+
+   :param intrinsic: Per-camera params with ``original_intrinsics``, ``dist_params``,
+                     ``intrinsics_undistort``, ``width``, ``height``.
+   :type intrinsic: dict
+
+   :returns: ``(new_cammtx, mapx, mapy)`` — the undistorted intrinsics and the ``CV_16SC2``
+             remap tables for :func:`apply_undistort_map`.
+   :rtype: tuple
+
+
 .. py:function:: apply_undistort_map(img, mapx, mapy)
+
+   Undistort an image with precomputed remap tables (``cv2.remap``).
+
+   :param img: Distorted input frame.
+   :type img: numpy.ndarray
+   :param mapx: Remap tables from :func:`precomute_undistort_map`.
+   :type mapx: numpy.ndarray
+   :param mapy: Remap tables from :func:`precomute_undistort_map`.
+   :type mapy: numpy.ndarray
+
+   :returns: The undistorted image.
+   :rtype: numpy.ndarray
+
 
 .. py:function:: precompute_undistort_map_torch(intrinsic, device='cuda')
 
@@ -39,6 +63,21 @@ Module Contents
 
 
 .. py:function:: undistort_points(pts, intrinsic)
+
+   Map distorted pixel coordinates to undistorted pixel coordinates.
+
+   Runs ``cv2.undistortPoints`` then re-applies ``intrinsics_undistort`` so the
+   result is in undistorted-image pixels (not normalized coordinates).
+
+   :param pts: Distorted points, ``(N, 1, 2)`` or ``(N, 2)``.
+   :type pts: numpy.ndarray
+   :param intrinsic: Per-camera params (``original_intrinsics``, ``dist_params``,
+                     ``intrinsics_undistort``).
+   :type intrinsic: dict
+
+   :returns: ``(N, 2)`` undistorted pixel coordinates.
+   :rtype: numpy.ndarray
+
 
 .. py:function:: remap_corners(corners, cammtx, dist_coef, sn, img=None)
 

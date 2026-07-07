@@ -204,6 +204,7 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture.html">Capture Session</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
@@ -213,6 +214,7 @@
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture_api.html">Capture Session — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
@@ -394,7 +396,26 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.merge.merge_image">
 <span class="sig-prename descclassname"><span class="pre">paradex.image.merge.</span></span><span class="sig-name descname"><span class="pre">merge_image</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image_dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">image_text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">put_text</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/image/merge.html#merge_image"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.merge.merge_image" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Tile a multi-camera image dict into one labeled near-square grid.</p>
+<p>Cameras are laid out in sorted-serial order; each tile is captioned with its
+serial (plus any extra text). Assumes ~2048x1536 source frames (the canvas size
+is hardcoded); intended for live previews and sync checks, not archival output.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image_dict</strong> (<em>dict</em>) – <code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">image}</span></code>.</p></li>
+<li><p><strong>image_text</strong> (<em>dict</em><em>, </em><em>optional</em>) – <code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">str}</span></code> extra caption appended after the serial.</p></li>
+<li><p><strong>put_text</strong> (<em>bool</em>) – Draw the serial/caption overlay when True.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The composited grid image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 </section>

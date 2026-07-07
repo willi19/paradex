@@ -120,7 +120,28 @@ def mesh_to_obj_dict(mesh, device='cuda', texture_type='vertex_color'):
     return obj_dict
 
 class BatchRenderer:
+    """Batched nvdiffrast rasterizer that renders a mesh into every camera view.
+
+    One instance is built per camera set; ``render`` / ``render_multi`` return
+    per-serial color, soft mask, and depth (plus an instance-id map for the multi
+    variant). Requires CUDA and ``nvdiffrast``. The OpenCV→OpenGL projection and a
+    ``diag(1, -1, -1, 1)`` z-flip are applied internally, with a final vertical flip
+    on the output to undo the GL y-origin.
+    """
+
     def __init__(self, intrinsics, extrinsics, near=0.01, far=2):
+        """Precompute per-camera GL projections and stacked extrinsics.
+
+        Parameters
+        ----------
+        intrinsics : dict
+            Per-serial intrinsics (uses ``intrinsics_undistort``, ``width``,
+            ``height``).
+        extrinsics : dict
+            Per-serial ``(3, 4)`` world→camera matrices.
+        near, far : float
+            Clip planes (metres) for the GL projection and depth denormalization.
+        """
 
         # self.glctx = dr.RasterizeGLContext() if opengl else dr.RasterizeCudaContext()
         self.glctx = dr.RasterizeCudaContext()
@@ -260,12 +281,25 @@ class BatchRenderer:
         return color, mask_soft, depth
 
     def render(self, mesh):
-        '''
-            texture_type == 'vectex_color'
-                obj_dict = {'type':'vertex_color' ,'vtx_pos':, 'pos_idx':, 'vtx_col':, 'col_idx':}
-            texture_type == 'triangle_uvs'
-                obj_dict = {'type': triangle_uvs, 'vtx_pos':, 'pos_idx':, 'uvs':, 'uv_idx', 'texture' }
-        '''
+        """Render a single mesh into every camera view.
+
+        Dispatches on the mesh texture type (``vertex_color`` or ``triangle_uvs``);
+        the obj-dict layout per type is::
+
+            vertex_color  -> {'type', 'verts', 'faces', 'vtx_col', 'col_idx'}
+            triangle_uvs  -> {'type', 'verts', 'faces', 'uvs', 'uv_idx', 'texture_tensor'}
+
+        Parameters
+        ----------
+        mesh : trimesh.Trimesh or open3d.geometry.TriangleMesh
+            Mesh to rasterize.
+
+        Returns
+        -------
+        tuple of dict
+            ``(color_dict, mask_dict, depth_dict)`` keyed by serial. ``mask`` is a
+            boolean ``(H, W)`` array per camera.
+        """
         obj_dict = mesh_to_obj_dict(mesh)
         if obj_dict['type'] == 'vertex_color':
             # render_wvertexcolor(self, mtx, pos, pos_idx, col, col_idx):

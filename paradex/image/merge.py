@@ -11,6 +11,26 @@ def get_optimal_font_scale(text, target_width, font=cv2.FONT_HERSHEY_SIMPLEX, th
     return 3.0
 
 def merge_image(image_dict, image_text={}, put_text=True):
+    """Tile a multi-camera image dict into one labeled near-square grid.
+
+    Cameras are laid out in sorted-serial order; each tile is captioned with its
+    serial (plus any extra text). Assumes ~2048x1536 source frames (the canvas size
+    is hardcoded); intended for live previews and sync checks, not archival output.
+
+    Parameters
+    ----------
+    image_dict : dict
+        ``{serial: image}``.
+    image_text : dict, optional
+        ``{serial: str}`` extra caption appended after the serial.
+    put_text : bool
+        Draw the serial/caption overlay when True.
+
+    Returns
+    -------
+    numpy.ndarray
+        The composited grid image.
+    """
     name_list = sorted(list(image_dict.keys()))
     num_images = len(name_list)
     

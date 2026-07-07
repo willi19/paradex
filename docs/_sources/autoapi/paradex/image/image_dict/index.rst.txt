@@ -16,6 +16,20 @@ Module Contents
 
 .. py:class:: ImageDict(images: Dict[str, numpy.ndarray], intrinsic: Optional[Dict[str, Dict]] = None, extrinsic: Optional[Dict[str, numpy.ndarray]] = None, path: Optional[Union[str, pathlib.Path]] = None)
 
+   Multi-camera image container with batch geometry operations.
+
+   Wraps ``{serial: image}`` together with the calibration (``intrinsic`` /
+   ``extrinsic``) and exposes operations that fan across every camera: undistort,
+   marker detection, multi-view triangulation, and mesh/point projection. Serial
+   numbers are string keys throughout. Derived state (projection matrices,
+   undistort maps, the renderer) is memoized in ``self._cache`` and **not
+   invalidated** — build a fresh ``ImageDict`` if you mutate the calibration.
+
+   See the :doc:`image-layer guide </image>` for the mental model. Triangulation
+   and projection go through ``get_cammtx`` (built from ``intrinsics_undistort``),
+   so feed them **undistorted** 2D coordinates.
+
+
    .. py:attribute:: images
 
 
@@ -32,6 +46,21 @@ Module Contents
 
    .. py:method:: from_path(path: Union[str, pathlib.Path]) -> ImageDict
       :classmethod:
+
+
+      Load an ``ImageDict`` from a capture directory.
+
+      Resolves the image directory as ``<path>/images`` → ``<path>/raw/images`` →
+      ``<path>`` itself, reads every image file, and loads the calibration when a
+      ``<path>/cam_param`` directory is present.
+
+      :param path: Capture directory to load.
+      :type path: str or pathlib.Path
+
+      :returns: Container populated with the images and (if available) calibration.
+      :rtype: ImageDict
+
+      :raises ValueError: If no readable images are found under ``path``.
 
 
 
@@ -89,17 +118,21 @@ Module Contents
 
    .. py:method:: apply(func: Callable, use_camparam=False, **kwargs) -> Dict
 
-      Apply a single-image function to all images.
+      Apply a single-image function to every camera's image.
 
-      :param func: Function with signature func(img, **kwargs) -> result
-      :param cache_key: Optional key to cache results
-      :param \*\*kwargs: Additional arguments passed to func
+      :param func: Called as ``func(img, **kwargs)`` per serial. When ``use_camparam`` is
+                   True it also receives ``intrinsic=`` and ``extrinsic=`` for that serial.
+      :type func: Callable
+      :param use_camparam: Pass per-serial calibration into ``func`` (raises if a serial lacks it).
+      :type use_camparam: bool
+      :param kwargs: Extra keyword arguments forwarded to ``func``.
 
-      :returns: Dictionary mapping serial numbers to results
+      :returns: ``{serial: result}``.
+      :rtype: dict
 
-      .. rubric:: Example
+      .. rubric:: Examples
 
-      >>> from paradex.image.detection import detect_aruco
+      >>> from paradex.image.aruco import detect_aruco
       >>> results = img_dict.apply(detect_aruco, dict_type='6X6_1000')
 
 

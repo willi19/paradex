@@ -4,6 +4,20 @@ import os
 import json
 
 def precomute_undistort_map(intrinsic):
+    """Precompute a CPU ``cv2.remap`` undistortion map for one camera.
+
+    Parameters
+    ----------
+    intrinsic : dict
+        Per-camera params with ``original_intrinsics``, ``dist_params``,
+        ``intrinsics_undistort``, ``width``, ``height``.
+
+    Returns
+    -------
+    tuple
+        ``(new_cammtx, mapx, mapy)`` — the undistorted intrinsics and the ``CV_16SC2``
+        remap tables for :func:`apply_undistort_map`.
+    """
     cammtx = np.array(intrinsic["original_intrinsics"])
     dist_coef = np.array(intrinsic["dist_params"])
     wh = (intrinsic["width"], intrinsic["height"])
@@ -12,6 +26,20 @@ def precomute_undistort_map(intrinsic):
     return new_cammtx, mapx, mapy
 
 def apply_undistort_map(img, mapx, mapy):
+    """Undistort an image with precomputed remap tables (``cv2.remap``).
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        Distorted input frame.
+    mapx, mapy : numpy.ndarray
+        Remap tables from :func:`precomute_undistort_map`.
+
+    Returns
+    -------
+    numpy.ndarray
+        The undistorted image.
+    """
     undistorted_img = cv2.remap(img, mapx, mapy, cv2.INTER_LINEAR)
     return undistorted_img
 
@@ -68,6 +96,24 @@ def undistort_img(img, intrinsic):
     return undistorted_img
 
 def undistort_points(pts, intrinsic):
+    """Map distorted pixel coordinates to undistorted pixel coordinates.
+
+    Runs ``cv2.undistortPoints`` then re-applies ``intrinsics_undistort`` so the
+    result is in undistorted-image pixels (not normalized coordinates).
+
+    Parameters
+    ----------
+    pts : numpy.ndarray
+        Distorted points, ``(N, 1, 2)`` or ``(N, 2)``.
+    intrinsic : dict
+        Per-camera params (``original_intrinsics``, ``dist_params``,
+        ``intrinsics_undistort``).
+
+    Returns
+    -------
+    numpy.ndarray
+        ``(N, 2)`` undistorted pixel coordinates.
+    """
     normalized_undistorted_pts = cv2.undistortPoints(pts, intrinsic["original_intrinsics"], intrinsic["dist_params"])
     new_cammtx = intrinsic["intrinsics_undistort"]
     undistorted_pts = normalized_undistorted_pts.squeeze() * np.array([[new_cammtx[0,0], new_cammtx[1,1]]]) + np.array([[new_cammtx[0,2], new_cammtx[1,2]]])

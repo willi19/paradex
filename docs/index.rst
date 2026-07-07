@@ -13,6 +13,7 @@ the ``paradex`` package source, so it always matches the code.
    :caption: Guide
 
    camera_system
+   calibration
    robot
    capture
    dataset_acquisition
@@ -24,6 +25,7 @@ the ``paradex`` package source, so it always matches the code.
    :caption: Subsystem API
 
    camera_system_api
+   calibration_api
    robot_api
    capture_api
    dataset_acquisition_api

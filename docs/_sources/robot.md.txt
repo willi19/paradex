@@ -131,8 +131,14 @@ flowchart TB
     D -->|"False"| PC["position move<br/>wait arrival"]
 ```
 
-Error state is surfaced via `is_error()` (set when the arm reports err/warn);
-`clear_error()` clears and re-enables servo mode without a reconnect.
+**Fault safety.** Every tick the loop checks `arm.has_err_warn`; on a fault it
+logs the `error_code` / `warn_code` / `state`, **stops streaming servo commands**
+(never hammers a dead arm), and wakes any blocked `move()` — but does **not**
+auto-clear (that could re-drive straight into the same singularity). The entire
+per-tick body is wrapped in `try/except`, so an IO/SDK exception can never
+silently kill the loop thread and leave callers hung. Recover with `clear_error()`
+(clear + re-enable servo, no reconnect) or `reset()` (full reconnect); poll state
+with `is_error()`. Full rationale in §11.
 
 ---
 
@@ -290,7 +296,69 @@ Method-by-method API (parameters / returns): {doc}`Robot Control — API <robot_
 
 ---
 
-## 11. Notes & Gotchas
+## 11. Fault Handling, Logging & Shutdown Safety
+
+Every controller drives a real device from a background loop thread. The failure
+mode this section prevents: **a device errors, its loop thread dies or blocks, and
+the whole program hangs — unresponsive even to `Ctrl-C`.** The fix is four small
+guarantees that together keep the process alive, killable, and diagnosable.
+
+### The failure chain (what used to happen)
+
+```{mermaid}
+flowchart TB
+    IO["IO/SDK call raises<br/>(socket drop, modbus, fault)"] --> DIE["loop thread dies<br/>(no try/except)"]
+    DIE --> WAIT["caller blocked in<br/>event.wait() / join() forever"]
+    WAIT --> SIG["no-timeout wait swallows<br/>SIGINT → Ctrl-C ignored"]
+    SIG --> HANG["whole process wedged<br/>only SIGKILL works"]
+```
+
+A `threading.Event.wait()` / `Thread.join()` with **no timeout** blocks in C and
+defers `KeyboardInterrupt` until it returns — so if the thread that would wake it
+is dead, `Ctrl-C` never fires. That is why an IO error could make the entire
+program unkillable.
+
+### The four guarantees
+
+| # | Guarantee | Mechanism |
+|---|-----------|-----------|
+| 1 | An IO error never kills the loop thread | per-tick body wrapped in `try/except`; on exception → log traceback, flag error, wake waiters, keep looping |
+| 2 | A device fault halts output, not the program | `has_err_warn` check → stop servo writes, wake waiters, keep loop alive (no auto-clear) |
+| 3 | `Ctrl-C` is always deliverable | every main-thread `wait()`/`join()` uses a **timeout** and re-checks `exit_event`/`error_event` |
+| 4 | A stuck thread can't block process exit | loop threads are `daemon=True` (last-resort backstop; graceful `end()` is still the primary path) |
+
+Guarantees 1–2 are the important ones (the user's insight: *"the real bug is that
+the IO error gets swallowed — a `try/except` fixes it"*). xArm SDK reports most
+servo failures as **return codes / `has_err_warn`, not exceptions**, so both a
+`try/except` (for real exceptions) **and** the `has_err_warn` check (for coded
+failures) are needed — neither alone is complete.
+
+Applied in: `xarm_controller.control_loop` (→ `_control_step`) and
+`inspire_controller_ip.move_hand` (→ `_hand_step`). `camera.py` already self-guards
+(`acquire` / `single_acquire` / `connect_camera` each `try/except` → `event["error"]`),
+so its `run()` loop needs no wrapper.
+
+### Logging → NAS
+
+All controllers log through `paradex.utils.log.get_logger(name)`, which writes to
+**console *and*** a per-PC, per-day file on the NAS:
+
+```
+~/shared_data/log/<pc_name>/<YYYYMMDD>/<name>_<HHMMSS>.log
+```
+
+- PC- and date-namespaced so the 6 capture PCs never clobber each other on shared storage.
+- One process run = one file (created lazily on first `get_logger`).
+- NAS unreachable → degrades to console-only (never crashes the caller).
+- Logger names: `xarm`, `inspire`, `camera`, `rcc`, `monitor`.
+
+When a fault fires, the arm's `error_code` / `warn_code` / `state` land here — **this
+is the fastest way to identify a kinematic error's real cause** (joint-range vs.
+overspeed vs. singularity vs. collision) on the next run, instead of guessing.
+
+---
+
+## 12. Notes & Gotchas
 
 - **Factory coupling to `network_info`.** `get_arm`/`get_hand` spread connection
   params straight from `system/current/network.json`; a missing key raises at
@@ -307,3 +375,10 @@ Method-by-method API (parameters / returns): {doc}`Robot Control — API <robot_
   `plan_goalset` / `plan_to_joint_target` are the supported entry points.
 - **`start()` before `stop()`.** Logging buffers only fill between `start(save_path)`
   and `stop()`; `end()` calls `stop()` for you if a session is still open.
+- **The `±2π` joint clamp is cosmetic, not a real limit.** XArm's servo `move`
+  clips joint targets to `±2π`, but the actual XArm6 range (verified against the
+  UFACTORY manual and `rsc/robot/xarm.urdf`) is tighter on J2 `[-2.06, 2.09]`,
+  J3 `[-3.93, 0.19]`, J5 `[-1.69, π]`. A target inside `±2π` but outside the real
+  range passes the clamp and is rejected by the arm's own kinematics check. Real
+  clamping should use the per-joint URDF limits — treat the current clamp as a
+  no-op guard, not protection.

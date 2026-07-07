@@ -204,6 +204,7 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture.html">Capture Session</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
@@ -213,6 +214,7 @@
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture_api.html">Capture Session — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
@@ -388,7 +390,15 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.dataset_acqusition.capture.CaptureSession">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.dataset_acqusition.capture.</span></span><span class="sig-name descname"><span class="pre">CaptureSession</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">camera</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">arm</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hand</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">teleop</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hand_ip</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.dataset_acqusition.capture.CaptureSession" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
+<dd><p>Record a multi-sensor capture session through one lifecycle.</p>
+<p>Fans a single <code class="docutils literal notranslate"><span class="pre">start</span></code> / <code class="docutils literal notranslate"><span class="pre">stop</span></code> / <code class="docutils literal notranslate"><span class="pre">end</span></code> across the camera rig, robot arm,
+robot hand, and XSens teleop, writing a fixed <code class="docutils literal notranslate"><span class="pre">raw/</span></code> directory tree under
+<code class="docutils literal notranslate"><span class="pre">shared_dir</span></code>. Only the devices requested at construction are built; unused
+ones stay <code class="docutils literal notranslate"><span class="pre">None</span></code> and are skipped in every lifecycle method, so camera-only,
+arm-only, and camera+arm+hand+teleop sessions all flow through the same calls.</p>
+<p>See the <a class="reference internal" href="../../../../dataset_acquisition.html"><span class="doc">dataset-acquisition guide</span></a> for the mental
+model, the <code class="docutils literal notranslate"><span class="pre">raw/</span></code> layout, and the sync-generator ordering invariant.</p>
+<dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.dataset_acqusition.capture.CaptureSession.save_path">
 <span class="sig-name descname"><span class="pre">save_path</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.dataset_acqusition.capture.CaptureSession.save_path" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -401,27 +411,83 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.dataset_acqusition.capture.CaptureSession.start">
 <span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">save_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'video'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">fps</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">30</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">exposure_time</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">gain</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">stage</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.dataset_acqusition.capture.CaptureSession.start" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Start recording on every enabled sensor.</p>
+<p>Creates <code class="docutils literal notranslate"><span class="pre">&lt;save_path&gt;/raw[/&lt;stage&gt;]/</span></code> under <code class="docutils literal notranslate"><span class="pre">shared_dir</span></code> and starts each
+recorder into its own subdir (<code class="docutils literal notranslate"><span class="pre">arm/</span></code>, <code class="docutils literal notranslate"><span class="pre">hand/</span></code>, <code class="docutils literal notranslate"><span class="pre">teleop/</span></code>,
+<code class="docutils literal notranslate"><span class="pre">timestamps/</span></code>, plus camera <code class="docutils literal notranslate"><span class="pre">videos/</span></code> or <code class="docutils literal notranslate"><span class="pre">images/</span></code>). The camera runs in
+sync mode and the UTGE900 trigger is fired <strong>last</strong>, after every trigger
+consumer (camera + timestamp monitor) is armed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>save_path</strong> (<em>str</em>) – Session directory <strong>relative to</strong> <code class="docutils literal notranslate"><span class="pre">shared_dir</span></code> (e.g.
+<code class="docutils literal notranslate"><span class="pre">&quot;capture/&lt;pipeline&gt;/&lt;name&gt;/&lt;ts&gt;&quot;</span></code>).</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – <code class="docutils literal notranslate"><span class="pre">&quot;image&quot;</span></code> captures stills; any other value (default <code class="docutils literal notranslate"><span class="pre">&quot;video&quot;</span></code>) arms
+the camera for continuous recording into a video sink.</p></li>
+<li><p><strong>fps</strong> (<em>int</em>) – Frame rate; also passed to the sync generator.</p></li>
+<li><p><strong>exposure_time</strong> (<em>optional</em>) – None uses the per-camera <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> baseline (recommended).</p></li>
+<li><p><strong>gain</strong> (<em>optional</em>) – None uses the per-camera <code class="docutils literal notranslate"><span class="pre">camera.json</span></code> baseline (recommended).</p></li>
+<li><p><strong>stage</strong> (<em>str</em><em> or </em><em>None</em>) – Optional sub-bucket: data lands under <code class="docutils literal notranslate"><span class="pre">raw/&lt;stage&gt;/…</span></code> instead of
+<code class="docutils literal notranslate"><span class="pre">raw/…</span></code> (the layout the upload processor expects when set).</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.dataset_acqusition.capture.CaptureSession.stop">
 <span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.dataset_acqusition.capture.CaptureSession.stop" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Stop all sensors and flush per-session artifacts.</p>
+<p>Teleop sessions dump <code class="docutils literal notranslate"><span class="pre">state/state_hist.npy</span></code> + <code class="docutils literal notranslate"><span class="pre">state/state_time.npy</span></code>.
+Camera sessions stop the timestamp monitor and the sync generator (in that
+order), then snapshot the current calibration next to the data via
+<code class="docutils literal notranslate"><span class="pre">save_current_camparam</span></code> + <code class="docutils literal notranslate"><span class="pre">save_current_C2R</span></code> so each dataset carries the
+calibration it was shot with. Clears <code class="docutils literal notranslate"><span class="pre">save_path</span></code>/<code class="docutils literal notranslate"><span class="pre">stage</span></code>, re-arming the
+session for another <code class="docutils literal notranslate"><span class="pre">start</span></code>.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.dataset_acqusition.capture.CaptureSession.end">
 <span class="sig-name descname"><span class="pre">end</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.dataset_acqusition.capture.CaptureSession.end" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Release every device. <code class="docutils literal notranslate"><span class="pre">camera.end()</span></code> frees the daemon lock.</p>
+<p>Call once per session lifetime — without it the camera lock is only freed
+after the daemon’s idle timeout.</p>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.dataset_acqusition.capture.CaptureSession.teleop">
 <span class="sig-name descname"><span class="pre">teleop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#paradex.dataset_acqusition.capture.CaptureSession.teleop" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Run the blocking XSens retarget loop until the operator stops or exits.</p>
+<p>The operator’s <strong>left</strong> hand drives a state machine: state 0 retargets and
+moves the arm/hand, 1 pauses, 2 is stop-hold, 3 is exit-hold. Holding stop
+or exit for more than ~90 ticks (~0.9 s at 10 ms) ends the loop. State is
+logged to <code class="docutils literal notranslate"><span class="pre">state_hist</span></code>/<code class="docutils literal notranslate"><span class="pre">state_time</span></code> only while a <code class="docutils literal notranslate"><span class="pre">save_path</span></code> is set
+(i.e. during the record phase, not the prepare phase).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><code class="docutils literal notranslate"><span class="pre">&quot;exit&quot;</span></code> or <code class="docutils literal notranslate"><span class="pre">&quot;stop&quot;</span></code> depending on which hold gesture ended the loop.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>str</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>ValueError</strong> – If the session has no teleop device.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.dataset_acqusition.capture.CaptureSession.move">
 <span class="sig-name descname"><span class="pre">move</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">action_dict</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.dataset_acqusition.capture.CaptureSession.move" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Scripted single-step control (alternative to <a class="reference internal" href="#paradex.dataset_acqusition.capture.CaptureSession.teleop" title="paradex.dataset_acqusition.capture.CaptureSession.teleop"><code class="xref py py-meth docutils literal notranslate"><span class="pre">teleop()</span></code></a>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>action_dict</strong> (<em>dict</em>) – May contain <code class="docutils literal notranslate"><span class="pre">&quot;arm&quot;</span></code> (wrist pose → <code class="docutils literal notranslate"><span class="pre">arm.move</span></code>) and/or <code class="docutils literal notranslate"><span class="pre">&quot;hand&quot;</span></code>
+(hand action → <code class="docutils literal notranslate"><span class="pre">hand.move</span></code>). Keys are optional, but a key for a device
+the session did not build will raise <code class="docutils literal notranslate"><span class="pre">AttributeError</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 </dd></dl>
 

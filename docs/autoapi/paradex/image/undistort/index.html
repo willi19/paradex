@@ -204,6 +204,7 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture.html">Capture Session</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
@@ -213,6 +214,7 @@
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture_api.html">Capture Session — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
@@ -388,12 +390,42 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.undistort.precomute_undistort_map">
 <span class="sig-prename descclassname"><span class="pre">paradex.image.undistort.</span></span><span class="sig-name descname"><span class="pre">precomute_undistort_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">intrinsic</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/image/undistort.html#precomute_undistort_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.undistort.precomute_undistort_map" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Precompute a CPU <code class="docutils literal notranslate"><span class="pre">cv2.remap</span></code> undistortion map for one camera.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>intrinsic</strong> (<em>dict</em>) – Per-camera params with <code class="docutils literal notranslate"><span class="pre">original_intrinsics</span></code>, <code class="docutils literal notranslate"><span class="pre">dist_params</span></code>,
+<code class="docutils literal notranslate"><span class="pre">intrinsics_undistort</span></code>, <code class="docutils literal notranslate"><span class="pre">width</span></code>, <code class="docutils literal notranslate"><span class="pre">height</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(new_cammtx,</span> <span class="pre">mapx,</span> <span class="pre">mapy)</span></code> — the undistorted intrinsics and the <code class="docutils literal notranslate"><span class="pre">CV_16SC2</span></code>
+remap tables for <a class="reference internal" href="#paradex.image.undistort.apply_undistort_map" title="paradex.image.undistort.apply_undistort_map"><code class="xref py py-func docutils literal notranslate"><span class="pre">apply_undistort_map()</span></code></a>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.undistort.apply_undistort_map">
 <span class="sig-prename descclassname"><span class="pre">paradex.image.undistort.</span></span><span class="sig-name descname"><span class="pre">apply_undistort_map</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">img</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapx</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapy</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/image/undistort.html#apply_undistort_map"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.undistort.apply_undistort_map" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Undistort an image with precomputed remap tables (<code class="docutils literal notranslate"><span class="pre">cv2.remap</span></code>).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>img</strong> (<em>numpy.ndarray</em>) – Distorted input frame.</p></li>
+<li><p><strong>mapx</strong> (<em>numpy.ndarray</em>) – Remap tables from <a class="reference internal" href="#paradex.image.undistort.precomute_undistort_map" title="paradex.image.undistort.precomute_undistort_map"><code class="xref py py-func docutils literal notranslate"><span class="pre">precomute_undistort_map()</span></code></a>.</p></li>
+<li><p><strong>mapy</strong> (<em>numpy.ndarray</em>) – Remap tables from <a class="reference internal" href="#paradex.image.undistort.precomute_undistort_map" title="paradex.image.undistort.precomute_undistort_map"><code class="xref py py-func docutils literal notranslate"><span class="pre">precomute_undistort_map()</span></code></a>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The undistorted image.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.undistort.precompute_undistort_map_torch">
@@ -431,7 +463,25 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.undistort.undistort_points">
 <span class="sig-prename descclassname"><span class="pre">paradex.image.undistort.</span></span><span class="sig-name descname"><span class="pre">undistort_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intrinsic</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/image/undistort.html#undistort_points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.undistort.undistort_points" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Map distorted pixel coordinates to undistorted pixel coordinates.</p>
+<p>Runs <code class="docutils literal notranslate"><span class="pre">cv2.undistortPoints</span></code> then re-applies <code class="docutils literal notranslate"><span class="pre">intrinsics_undistort</span></code> so the
+result is in undistorted-image pixels (not normalized coordinates).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pts</strong> (<em>numpy.ndarray</em>) – Distorted points, <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">1,</span> <span class="pre">2)</span></code> or <code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">2)</span></code>.</p></li>
+<li><p><strong>intrinsic</strong> (<em>dict</em>) – Per-camera params (<code class="docutils literal notranslate"><span class="pre">original_intrinsics</span></code>, <code class="docutils literal notranslate"><span class="pre">dist_params</span></code>,
+<code class="docutils literal notranslate"><span class="pre">intrinsics_undistort</span></code>).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(N,</span> <span class="pre">2)</span></code> undistorted pixel coordinates.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.undistort.remap_corners">

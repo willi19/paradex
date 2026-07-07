@@ -5,6 +5,21 @@ import numpy as np
 
 
 def make_image_grid(images: List[np.ndarray]) -> np.ndarray:
+    """Tile a list of images into a nearly square grid (no labels).
+
+    Odd-sized tiles are resized to the first image's shape. Returns a ``(1, 1, 3)``
+    black pixel for an empty list.
+
+    Parameters
+    ----------
+    images : list of numpy.ndarray
+        Images to tile, in order.
+
+    Returns
+    -------
+    numpy.ndarray
+        The tiled grid image.
+    """
     # Tile images (RGB) into a nearly square grid.
     if not images:
         return np.zeros((1, 1, 3), dtype=np.uint8)

@@ -204,6 +204,7 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture.html">Capture Session</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
@@ -213,6 +214,7 @@
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture_api.html">Capture Session — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
@@ -388,7 +390,25 @@
 <dl class="py function">
 <dt class="sig sig-object py" id="paradex.image.overlay.overlay_mask">
 <span class="sig-prename descclassname"><span class="pre">paradex.image.overlay.</span></span><span class="sig-name descname"><span class="pre">overlay_mask</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">image</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mask</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.7</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/image/overlay.html#overlay_mask"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.overlay.overlay_mask" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Alpha-blend a solid color over the masked region, in place.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>image</strong> (<em>numpy.ndarray</em>) – <code class="docutils literal notranslate"><span class="pre">(H,</span> <span class="pre">W,</span> <span class="pre">3)</span></code> image; <strong>modified in place</strong> (copy first to keep the original).</p></li>
+<li><p><strong>mask</strong> (<em>numpy.ndarray</em>) – Boolean <code class="docutils literal notranslate"><span class="pre">(H,</span> <span class="pre">W)</span></code> mask matching the image size.</p></li>
+<li><p><strong>color</strong> (<em>sequence</em><em> of </em><em>int</em>) – BGR color painted where <code class="docutils literal notranslate"><span class="pre">mask</span></code> is True.</p></li>
+<li><p><strong>alpha</strong> (<em>float</em>) – Weight of the original image at masked pixels (<code class="docutils literal notranslate"><span class="pre">alpha</span></code> image +
+<code class="docutils literal notranslate"><span class="pre">1</span> <span class="pre">-</span> <span class="pre">alpha</span></code> color).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The same <code class="docutils literal notranslate"><span class="pre">image</span></code> array, for convenience.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>numpy.ndarray</p>
+</dd>
+</dl>
+</dd></dl>
 
 </section>
 </section>

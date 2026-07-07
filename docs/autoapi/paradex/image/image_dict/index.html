@@ -204,6 +204,7 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture.html">Capture Session</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
@@ -213,6 +214,7 @@
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture_api.html">Capture Session — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
@@ -389,7 +391,17 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.image.image_dict.ImageDict">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.image.image_dict.</span></span><span class="sig-name descname"><span class="pre">ImageDict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">images</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">intrinsic</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extrinsic</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">pathlib.Path</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/image/image_dict.html#ImageDict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.image_dict.ImageDict" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
+<dd><p>Multi-camera image container with batch geometry operations.</p>
+<p>Wraps <code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">image}</span></code> together with the calibration (<code class="docutils literal notranslate"><span class="pre">intrinsic</span></code> /
+<code class="docutils literal notranslate"><span class="pre">extrinsic</span></code>) and exposes operations that fan across every camera: undistort,
+marker detection, multi-view triangulation, and mesh/point projection. Serial
+numbers are string keys throughout. Derived state (projection matrices,
+undistort maps, the renderer) is memoized in <code class="docutils literal notranslate"><span class="pre">self._cache</span></code> and <strong>not
+invalidated</strong> — build a fresh <code class="docutils literal notranslate"><span class="pre">ImageDict</span></code> if you mutate the calibration.</p>
+<p>See the <a class="reference internal" href="../../../../image.html"><span class="doc">image-layer guide</span></a> for the mental model. Triangulation
+and projection go through <code class="docutils literal notranslate"><span class="pre">get_cammtx</span></code> (built from <code class="docutils literal notranslate"><span class="pre">intrinsics_undistort</span></code>),
+so feed them <strong>undistorted</strong> 2D coordinates.</p>
+<dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.image.image_dict.ImageDict.images">
 <span class="sig-name descname"><span class="pre">images</span></span><a class="headerlink" href="#paradex.image.image_dict.ImageDict.images" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -412,7 +424,25 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.image.image_dict.ImageDict.from_path">
 <em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_path</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">pathlib.Path</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#paradex.image.image_dict.ImageDict" title="paradex.image.image_dict.ImageDict"><span class="pre">ImageDict</span></a></span></span><a class="reference internal" href="../../../../_modules/paradex/image/image_dict.html#ImageDict.from_path"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.image_dict.ImageDict.from_path" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
+<dd><p>Load an <code class="docutils literal notranslate"><span class="pre">ImageDict</span></code> from a capture directory.</p>
+<p>Resolves the image directory as <code class="docutils literal notranslate"><span class="pre">&lt;path&gt;/images</span></code> → <code class="docutils literal notranslate"><span class="pre">&lt;path&gt;/raw/images</span></code> →
+<code class="docutils literal notranslate"><span class="pre">&lt;path&gt;</span></code> itself, reads every image file, and loads the calibration when a
+<code class="docutils literal notranslate"><span class="pre">&lt;path&gt;/cam_param</span></code> directory is present.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>path</strong> (<em>str</em><em> or </em><em>pathlib.Path</em>) – Capture directory to load.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Container populated with the images and (if available) calibration.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#paradex.image.image_dict.ImageDict" title="paradex.image.image_dict.ImageDict">ImageDict</a></p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If no readable images are found under <code class="docutils literal notranslate"><span class="pre">path</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.image.image_dict.ImageDict.update">
@@ -489,21 +519,25 @@
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.image.image_dict.ImageDict.apply">
 <span class="sig-name descname"><span class="pre">apply</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_camparam</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span></span></span><a class="reference internal" href="../../../../_modules/paradex/image/image_dict.html#ImageDict.apply"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.image.image_dict.ImageDict.apply" title="Link to this definition">¶</a></dt>
-<dd><p>Apply a single-image function to all images.</p>
+<dd><p>Apply a single-image function to every camera’s image.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>func</strong> – Function with signature func(img, <a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs) -&gt; result</p></li>
-<li><p><strong>cache_key</strong> – Optional key to cache results</p></li>
-<li><p><strong>**kwargs</strong> – Additional arguments passed to func</p></li>
+<li><p><strong>func</strong> (<em>Callable</em>) – Called as <code class="docutils literal notranslate"><span class="pre">func(img,</span> <span class="pre">**kwargs)</span></code> per serial. When <code class="docutils literal notranslate"><span class="pre">use_camparam</span></code> is
+True it also receives <code class="docutils literal notranslate"><span class="pre">intrinsic=</span></code> and <code class="docutils literal notranslate"><span class="pre">extrinsic=</span></code> for that serial.</p></li>
+<li><p><strong>use_camparam</strong> (<em>bool</em>) – Pass per-serial calibration into <code class="docutils literal notranslate"><span class="pre">func</span></code> (raises if a serial lacks it).</p></li>
+<li><p><strong>kwargs</strong> – Extra keyword arguments forwarded to <code class="docutils literal notranslate"><span class="pre">func</span></code>.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Dictionary mapping serial numbers to results</p>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">{serial:</span> <span class="pre">result}</span></code>.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>dict</p>
 </dd>
 </dl>
-<p class="rubric">Example</p>
-<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">paradex.image.detection</span><span class="w"> </span><span class="kn">import</span> <span class="n">detect_aruco</span>
+<p class="rubric">Examples</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">from</span><span class="w"> </span><span class="nn">paradex.image.aruco</span><span class="w"> </span><span class="kn">import</span> <span class="n">detect_aruco</span>
 <span class="gp">&gt;&gt;&gt; </span><span class="n">results</span> <span class="o">=</span> <span class="n">img_dict</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="n">detect_aruco</span><span class="p">,</span> <span class="n">dict_type</span><span class="o">=</span><span class="s1">&#39;6X6_1000&#39;</span><span class="p">)</span>
 </pre></div>
 </div>

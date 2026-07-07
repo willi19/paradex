@@ -203,6 +203,7 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../capture.html">Capture Session</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../dataset_acquisition.html">Dataset Acquisition</a></li>
@@ -212,6 +213,7 @@
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../capture_api.html">Capture Session — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
@@ -396,8 +398,22 @@
 <div class="viewcode-block" id="ImageDict">
 <a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict">[docs]</a>
 <span class="k">class</span><span class="w"> </span><span class="nc">ImageDict</span><span class="p">:</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> 
-                 <span class="n">images</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> 
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Multi-camera image container with batch geometry operations.</span>
+
+<span class="sd">    Wraps ``{serial: image}`` together with the calibration (``intrinsic`` /</span>
+<span class="sd">    ``extrinsic``) and exposes operations that fan across every camera: undistort,</span>
+<span class="sd">    marker detection, multi-view triangulation, and mesh/point projection. Serial</span>
+<span class="sd">    numbers are string keys throughout. Derived state (projection matrices,</span>
+<span class="sd">    undistort maps, the renderer) is memoized in ``self._cache`` and **not</span>
+<span class="sd">    invalidated** — build a fresh ``ImageDict`` if you mutate the calibration.</span>
+
+<span class="sd">    See the :doc:`image-layer guide &lt;/image&gt;` for the mental model. Triangulation</span>
+<span class="sd">    and projection go through ``get_cammtx`` (built from ``intrinsics_undistort``),</span>
+<span class="sd">    so feed them **undistorted** 2D coordinates.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+                 <span class="n">images</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span>
                  <span class="n">intrinsic</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">extrinsic</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
                  <span class="n">path</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
@@ -417,9 +433,29 @@
 <div class="viewcode-block" id="ImageDict.from_path">
 <a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.from_path">[docs]</a>
     <span class="nd">@classmethod</span>
-    <span class="k">def</span><span class="w"> </span><span class="nf">from_path</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> 
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_path</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span>
                   <span class="n">path</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Path</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="s1">&#39;ImageDict&#39;</span><span class="p">:</span>
-        
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Load an ``ImageDict`` from a capture directory.</span>
+
+<span class="sd">        Resolves the image directory as ``&lt;path&gt;/images`` → ``&lt;path&gt;/raw/images`` →</span>
+<span class="sd">        ``&lt;path&gt;`` itself, reads every image file, and loads the calibration when a</span>
+<span class="sd">        ``&lt;path&gt;/cam_param`` directory is present.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        path : str or pathlib.Path</span>
+<span class="sd">            Capture directory to load.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ImageDict</span>
+<span class="sd">            Container populated with the images and (if available) calibration.</span>
+
+<span class="sd">        Raises</span>
+<span class="sd">        ------</span>
+<span class="sd">        ValueError</span>
+<span class="sd">            If no readable images are found under ``path``.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">path</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
         <span class="n">images_dir</span> <span class="o">=</span> <span class="kc">None</span>
         
@@ -445,8 +481,7 @@
                     <span class="n">images</span><span class="p">[</span><span class="n">serial</span><span class="p">]</span> <span class="o">=</span> <span class="n">img</span>
         
         <span class="k">if</span> <span class="ow">not</span> <span class="n">images</span><span class="p">:</span>
-            <span class="k">raise</span> <span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No images found in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        <span class="ne">ValueError</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;No images found in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
         <span class="c1"># Load calibration</span>
         <span class="n">intrinsic</span> <span class="o">=</span> <span class="p">{}</span>
         <span class="n">extrinsic</span> <span class="o">=</span> <span class="p">{}</span>
@@ -576,7 +611,7 @@
 
     
     <span class="k">def</span><span class="w"> </span><span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
-        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;ImageDict(serials=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">serials</span><span class="si">}</span><span class="s2">, n_cameras=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;ImageDict(serials=</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">serial_list</span><span class="si">}</span><span class="s2">, n_cameras=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span><span class="si">}</span><span class="s2">)&quot;</span>
     
 <div class="viewcode-block" id="ImageDict.save">
 <a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.save">[docs]</a>
@@ -615,20 +650,27 @@
 <div class="viewcode-block" id="ImageDict.apply">
 <a class="viewcode-back" href="../../../autoapi/paradex/image/image_dict/index.html#paradex.image.image_dict.ImageDict.apply">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">apply</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">use_camparam</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Apply a single-image function to all images.</span>
-<span class="sd">        </span>
-<span class="sd">        Args:</span>
-<span class="sd">            func: Function with signature func(img, **kwargs) -&gt; result</span>
-<span class="sd">            cache_key: Optional key to cache results</span>
-<span class="sd">            **kwargs: Additional arguments passed to func</span>
-<span class="sd">            </span>
-<span class="sd">        Returns:</span>
-<span class="sd">            Dictionary mapping serial numbers to results</span>
-<span class="sd">            </span>
-<span class="sd">        Example:</span>
-<span class="sd">            &gt;&gt;&gt; from paradex.image.detection import detect_aruco</span>
-<span class="sd">            &gt;&gt;&gt; results = img_dict.apply(detect_aruco, dict_type=&#39;6X6_1000&#39;)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Apply a single-image function to every camera&#39;s image.</span>
+
+<span class="sd">        Parameters</span>
+<span class="sd">        ----------</span>
+<span class="sd">        func : Callable</span>
+<span class="sd">            Called as ``func(img, **kwargs)`` per serial. When ``use_camparam`` is</span>
+<span class="sd">            True it also receives ``intrinsic=`` and ``extrinsic=`` for that serial.</span>
+<span class="sd">        use_camparam : bool</span>
+<span class="sd">            Pass per-serial calibration into ``func`` (raises if a serial lacks it).</span>
+<span class="sd">        kwargs</span>
+<span class="sd">            Extra keyword arguments forwarded to ``func``.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dict</span>
+<span class="sd">            ``{serial: result}``.</span>
+
+<span class="sd">        Examples</span>
+<span class="sd">        --------</span>
+<span class="sd">        &gt;&gt;&gt; from paradex.image.aruco import detect_aruco</span>
+<span class="sd">        &gt;&gt;&gt; results = img_dict.apply(detect_aruco, dict_type=&#39;6X6_1000&#39;)</span>
 <span class="sd">        &quot;&quot;&quot;</span>
         <span class="n">results</span> <span class="o">=</span> <span class="p">{}</span>
         

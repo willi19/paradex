@@ -29,13 +29,52 @@ Module Contents
 
 .. py:function:: detect_aruco(img, dict_type='6X6_1000') -> Tuple[List[numpy.ndarray], numpy.ndarray]
 
+   Detect ArUco markers in a single image.
+
+   :param img: Input image (BGR or grayscale).
+   :type img: numpy.ndarray
+   :param dict_type: Predefined dictionary key (e.g. ``'6X6_1000'``); see :data:`aruco_dict`.
+   :type dict_type: str
+
+   :returns: ``(corners, ids)``. ``corners`` is a list of ``(1, 4, 2)`` arrays and
+             ``ids`` is an ``(N, 1)`` int array; returns ``([], (0, 1) zeros)`` when
+             nothing is detected.
+   :rtype: tuple
+
+
 .. py:function:: check_boardinfo_valid(boardinfo)
 
 .. py:function:: detect_charuco(img)
 
+   Detect ChArUco board corners in a single image, per board.
+
+   Runs every board's cached ``CharucoDetector`` (from ``charuco_info.json``) and
+   omits boards with no detection.
+
+   :param img: Input image.
+   :type img: numpy.ndarray
+
+   :returns: ``{board_id: {"checkerCorner": (n, 2), "checkerIDs": (n,)}}`` for each board
+             that produced detections.
+   :rtype: dict
+
+
 .. py:function:: get_adjecent_ids()
 
 .. py:function:: merge_charuco_detection(detection_list)
+
+   Flatten per-board ChArUco detections into a single id-offset corner set.
+
+   Concatenates every board's corners, offsetting each board's ids by the running
+   total ``sum (numX-1)(numY-1)`` so ids stay globally unique across boards.
+
+   :param detection_list: Output of :func:`detect_charuco` (``{board_id: {checkerCorner, checkerIDs}}``).
+   :type detection_list: dict
+
+   :returns: ``{"checkerCorner": (M, 2), "checkerIDs": (M,)}``; empty arrays if there were
+             no detections.
+   :rtype: dict
+
 
 .. py:function:: draw_charuco(image, corners, color=(0, 255, 255), radius=4, thickness=2, ids=None)
 
@@ -60,4 +99,15 @@ Module Contents
 
 
 .. py:function:: get_board_cor()
+
+   Return ChArUco board object points, keyed by board id.
+
+   Corners come from ``board.getChessboardCorners()`` (in checker-length units) and
+   are scaled by ``0.05``. This scale is board-``"3"``-specific: it yields 5 cm
+   squares only for boards whose ``checkerLength == 1.0``; boards already in metric
+   units would be double-scaled.
+
+   :returns: ``{board_id: {"checkerIDs": (N,), "checkerCorner": (N, 3)}}``.
+   :rtype: dict
+
 

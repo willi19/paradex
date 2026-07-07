@@ -204,6 +204,7 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture.html">Capture Session</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition.html">Dataset Acquisition</a></li>
@@ -213,6 +214,7 @@
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../capture_api.html">Capture Session — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
@@ -424,7 +426,13 @@
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.image.projection.BatchRenderer">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.image.projection.</span></span><span class="sig-name descname"><span class="pre">BatchRenderer</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">intrinsics</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">extrinsics</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">near</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.01</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">far</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.image.projection.BatchRenderer" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
+<dd><p>Batched nvdiffrast rasterizer that renders a mesh into every camera view.</p>
+<p>One instance is built per camera set; <code class="docutils literal notranslate"><span class="pre">render</span></code> / <code class="docutils literal notranslate"><span class="pre">render_multi</span></code> return
+per-serial color, soft mask, and depth (plus an instance-id map for the multi
+variant). Requires CUDA and <code class="docutils literal notranslate"><span class="pre">nvdiffrast</span></code>. The OpenCV→OpenGL projection and a
+<code class="docutils literal notranslate"><span class="pre">diag(1,</span> <span class="pre">-1,</span> <span class="pre">-1,</span> <span class="pre">1)</span></code> z-flip are applied internally, with a final vertical flip
+on the output to undo the GL y-origin.</p>
+<dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.image.projection.BatchRenderer.glctx">
 <span class="sig-name descname"><span class="pre">glctx</span></span><a class="headerlink" href="#paradex.image.projection.BatchRenderer.glctx" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -501,10 +509,23 @@ depth: (B, H, W, 1)</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.image.projection.BatchRenderer.render">
 <span class="sig-name descname"><span class="pre">render</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mesh</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#paradex.image.projection.BatchRenderer.render" title="Link to this definition">¶</a></dt>
-<dd><dl class="simple">
-<dt>texture_type == ‘vectex_color’</dt><dd><p>obj_dict = {‘type’:’vertex_color’ ,’vtx_pos’:, ‘pos_idx’:, ‘vtx_col’:, ‘col_idx’:}</p>
+<dd><p>Render a single mesh into every camera view.</p>
+<p>Dispatches on the mesh texture type (<code class="docutils literal notranslate"><span class="pre">vertex_color</span></code> or <code class="docutils literal notranslate"><span class="pre">triangle_uvs</span></code>);
+the obj-dict layout per type is:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">vertex_color</span>  <span class="o">-&gt;</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;verts&#39;</span><span class="p">,</span> <span class="s1">&#39;faces&#39;</span><span class="p">,</span> <span class="s1">&#39;vtx_col&#39;</span><span class="p">,</span> <span class="s1">&#39;col_idx&#39;</span><span class="p">}</span>
+<span class="n">triangle_uvs</span>  <span class="o">-&gt;</span> <span class="p">{</span><span class="s1">&#39;type&#39;</span><span class="p">,</span> <span class="s1">&#39;verts&#39;</span><span class="p">,</span> <span class="s1">&#39;faces&#39;</span><span class="p">,</span> <span class="s1">&#39;uvs&#39;</span><span class="p">,</span> <span class="s1">&#39;uv_idx&#39;</span><span class="p">,</span> <span class="s1">&#39;texture_tensor&#39;</span><span class="p">}</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mesh</strong> (<em>trimesh.Trimesh</em><em> or </em><em>open3d.geometry.TriangleMesh</em>) – Mesh to rasterize.</p>
 </dd>
-<dt>texture_type == ‘triangle_uvs’</dt><dd><p>obj_dict = {‘type’: triangle_uvs, ‘vtx_pos’:, ‘pos_idx’:, ‘uvs’:, ‘uv_idx’, ‘texture’ }</p>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">(color_dict,</span> <span class="pre">mask_dict,</span> <span class="pre">depth_dict)</span></code> keyed by serial. <code class="docutils literal notranslate"><span class="pre">mask</span></code> is a
+boolean <code class="docutils literal notranslate"><span class="pre">(H,</span> <span class="pre">W)</span></code> array per camera.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>tuple of dict</p>
 </dd>
 </dl>
 </dd></dl>

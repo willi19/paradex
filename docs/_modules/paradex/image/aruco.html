@@ -9,8 +9,9 @@
       <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
     <link rel="stylesheet" type="text/css" href="../../../_static/styles/furo-extensions.css?v=302659d7" />
-    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=b00e8357" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/custom.css?v=1fe19d68" />
     
     
 
@@ -202,15 +203,21 @@
   <p class="caption" role="heading"><span class="caption-text">Guide</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../camera_system.html">Camera System</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../calibration.html">Calibration</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../robot.html">Robot Control</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../capture.html">Capture Session</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dataset_acquisition.html">Dataset Acquisition</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../image.html">Image Layer</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../process.html">Video Processing</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Subsystem API</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../camera_system_api.html">Camera System — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../calibration_api.html">Calibration — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../robot_api.html">Robot Control — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../capture_api.html">Capture Session — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../dataset_acquisition_api.html">Dataset Acquisition — API</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../image_api.html">Image Layer — API</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../process_api.html">Video Processing — API</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">API Reference</span></p>
@@ -310,6 +317,7 @@
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/utils/index.html">paradex.utils</a><input class="toctree-checkbox" id="toctree-checkbox-17" name="toctree-checkbox-17" role="switch" type="checkbox"/><label for="toctree-checkbox-17"><div class="visually-hidden">Toggle navigation of paradex.utils</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/file_io/index.html">paradex.utils.file_io</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/keyboard_listener/index.html">paradex.utils.keyboard_listener</a></li>
+<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/log/index.html">paradex.utils.log</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/path/index.html">paradex.utils.path</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/system/index.html">paradex.utils.system</a></li>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/utils/upload_file/index.html">paradex.utils.upload_file</a></li>
@@ -322,7 +330,12 @@
 </li>
 <li class="toctree-l3 has-children"><a class="reference internal" href="../../../autoapi/paradex/visualization/index.html">paradex.visualization</a><input class="toctree-checkbox" id="toctree-checkbox-19" name="toctree-checkbox-19" role="switch" type="checkbox"/><label for="toctree-checkbox-19"><div class="visually-hidden">Toggle navigation of paradex.visualization</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/visualization/robot/index.html">paradex.visualization.robot</a></li>
-<li class="toctree-l4"><a class="reference internal" href="../../../autoapi/paradex/visualization/visual_hull/index.html">paradex.visualization.visual_hull</a></li>
+<li class="toctree-l4 has-children"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/index.html">paradex.visualization.scene</a><input class="toctree-checkbox" id="toctree-checkbox-20" name="toctree-checkbox-20" role="switch" type="checkbox"/><label for="toctree-checkbox-20"><div class="visually-hidden">Toggle navigation of paradex.visualization.scene</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/base/index.html">paradex.visualization.scene.base</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/open3d_backend/index.html">paradex.visualization.scene.open3d_backend</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../autoapi/paradex/visualization/scene/viser_backend/index.html">paradex.visualization.scene.viser_backend</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -457,6 +470,22 @@
 <div class="viewcode-block" id="detect_aruco">
 <a class="viewcode-back" href="../../../autoapi/paradex/image/aruco/index.html#paradex.image.aruco.detect_aruco">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">detect_aruco</span><span class="p">(</span><span class="n">img</span><span class="p">,</span> <span class="n">dict_type</span><span class="o">=</span><span class="s1">&#39;6X6_1000&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">],</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect ArUco markers in a single image.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    img : numpy.ndarray</span>
+<span class="sd">        Input image (BGR or grayscale).</span>
+<span class="sd">    dict_type : str</span>
+<span class="sd">        Predefined dictionary key (e.g. ``&#39;6X6_1000&#39;``); see :data:`aruco_dict`.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tuple</span>
+<span class="sd">        ``(corners, ids)``. ``corners`` is a list of ``(1, 4, 2)`` arrays and</span>
+<span class="sd">        ``ids`` is an ``(N, 1)`` int array; returns ``([], (0, 1) zeros)`` when</span>
+<span class="sd">        nothing is detected.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">detector</span> <span class="o">=</span> <span class="n">get_aruco_detector</span><span class="p">(</span><span class="n">dict_type</span><span class="p">)</span>
     <span class="n">corners</span><span class="p">,</span> <span class="n">IDs</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">detector</span><span class="o">.</span><span class="n">detectMarkers</span><span class="p">(</span><span class="n">img</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">IDs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
@@ -478,6 +507,22 @@
 <div class="viewcode-block" id="detect_charuco">
 <a class="viewcode-back" href="../../../autoapi/paradex/image/aruco/index.html#paradex.image.aruco.detect_charuco">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">detect_charuco</span><span class="p">(</span><span class="n">img</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Detect ChArUco board corners in a single image, per board.</span>
+
+<span class="sd">    Runs every board&#39;s cached ``CharucoDetector`` (from ``charuco_info.json``) and</span>
+<span class="sd">    omits boards with no detection.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    img : numpy.ndarray</span>
+<span class="sd">        Input image.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        ``{board_id: {&quot;checkerCorner&quot;: (n, 2), &quot;checkerIDs&quot;: (n,)}}`` for each board</span>
+<span class="sd">        that produced detections.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">detection_results</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">detector</span> <span class="o">=</span> <span class="n">get_charuco_detector</span><span class="p">()</span>
     
@@ -526,7 +571,22 @@
 <div class="viewcode-block" id="merge_charuco_detection">
 <a class="viewcode-back" href="../../../autoapi/paradex/image/aruco/index.html#paradex.image.aruco.merge_charuco_detection">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">merge_charuco_detection</span><span class="p">(</span><span class="n">detection_list</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Flatten per-board ChArUco detections into a single id-offset corner set.</span>
 
+<span class="sd">    Concatenates every board&#39;s corners, offsetting each board&#39;s ids by the running</span>
+<span class="sd">    total ``sum (numX-1)(numY-1)`` so ids stay globally unique across boards.</span>
+
+<span class="sd">    Parameters</span>
+<span class="sd">    ----------</span>
+<span class="sd">    detection_list : dict</span>
+<span class="sd">        Output of :func:`detect_charuco` (``{board_id: {checkerCorner, checkerIDs}}``).</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        ``{&quot;checkerCorner&quot;: (M, 2), &quot;checkerIDs&quot;: (M,)}``; empty arrays if there were</span>
+<span class="sd">        no detections.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">offset_map</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">b_id</span><span class="p">,</span> <span class="n">cfg</span> <span class="ow">in</span> <span class="n">boardinfo_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -632,6 +692,18 @@
 <div class="viewcode-block" id="get_board_cor">
 <a class="viewcode-back" href="../../../autoapi/paradex/image/aruco/index.html#paradex.image.aruco.get_board_cor">[docs]</a>
 <span class="k">def</span><span class="w"> </span><span class="nf">get_board_cor</span><span class="p">():</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return ChArUco board object points, keyed by board id.</span>
+
+<span class="sd">    Corners come from ``board.getChessboardCorners()`` (in checker-length units) and</span>
+<span class="sd">    are scaled by ``0.05``. This scale is board-``&quot;3&quot;``-specific: it yields 5 cm</span>
+<span class="sd">    squares only for boards whose ``checkerLength == 1.0``; boards already in metric</span>
+<span class="sd">    units would be double-scaled.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    dict</span>
+<span class="sd">        ``{board_id: {&quot;checkerIDs&quot;: (N,), &quot;checkerCorner&quot;: (N, 3)}}``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
     <span class="n">board_cors</span> <span class="o">=</span> <span class="p">{}</span>
     <span class="n">offset</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="k">for</span> <span class="n">b_id</span><span class="p">,</span> <span class="n">cfg</span> <span class="ow">in</span> <span class="n">boardinfo_dict</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
@@ -678,6 +750,7 @@
     <script src="../../../_static/doctools.js?v=9bcbadda"></script>
     <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../../../_static/scripts/furo.js?v=5fa4622c"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
     <script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
     <script type="module">import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.esm.min.mjs";
 

@@ -16,3 +16,20 @@ Module Contents
 
 .. py:function:: merge_image(image_dict, image_text={}, put_text=True)
 
+   Tile a multi-camera image dict into one labeled near-square grid.
+
+   Cameras are laid out in sorted-serial order; each tile is captioned with its
+   serial (plus any extra text). Assumes ~2048x1536 source frames (the canvas size
+   is hardcoded); intended for live previews and sync checks, not archival output.
+
+   :param image_dict: ``{serial: image}``.
+   :type image_dict: dict
+   :param image_text: ``{serial: str}`` extra caption appended after the serial.
+   :type image_text: dict, optional
+   :param put_text: Draw the serial/caption overlay when True.
+   :type put_text: bool
+
+   :returns: The composited grid image.
+   :rtype: numpy.ndarray
+
+

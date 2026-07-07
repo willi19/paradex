@@ -11,6 +11,18 @@ Module Contents
 
 .. py:class:: CaptureSession(camera=False, arm=None, hand=None, teleop=None, hand_ip=False)
 
+   Record a multi-sensor capture session through one lifecycle.
+
+   Fans a single ``start`` / ``stop`` / ``end`` across the camera rig, robot arm,
+   robot hand, and XSens teleop, writing a fixed ``raw/`` directory tree under
+   ``shared_dir``. Only the devices requested at construction are built; unused
+   ones stay ``None`` and are skipped in every lifecycle method, so camera-only,
+   arm-only, and camera+arm+hand+teleop sessions all flow through the same calls.
+
+   See the :doc:`dataset-acquisition guide </dataset_acquisition>` for the mental
+   model, the ``raw/`` layout, and the sync-generator ordering invariant.
+
+
    .. py:attribute:: save_path
       :value: None
 
@@ -23,16 +35,79 @@ Module Contents
 
    .. py:method:: start(save_path, mode='video', fps=30, exposure_time=None, gain=None, stage=None)
 
+      Start recording on every enabled sensor.
+
+      Creates ``<save_path>/raw[/<stage>]/`` under ``shared_dir`` and starts each
+      recorder into its own subdir (``arm/``, ``hand/``, ``teleop/``,
+      ``timestamps/``, plus camera ``videos/`` or ``images/``). The camera runs in
+      sync mode and the UTGE900 trigger is fired **last**, after every trigger
+      consumer (camera + timestamp monitor) is armed.
+
+      :param save_path: Session directory **relative to** ``shared_dir`` (e.g.
+                        ``"capture/<pipeline>/<name>/<ts>"``).
+      :type save_path: str
+      :param mode: ``"image"`` captures stills; any other value (default ``"video"``) arms
+                   the camera for continuous recording into a video sink.
+      :type mode: str
+      :param fps: Frame rate; also passed to the sync generator.
+      :type fps: int
+      :param exposure_time: None uses the per-camera ``camera.json`` baseline (recommended).
+      :type exposure_time: optional
+      :param gain: None uses the per-camera ``camera.json`` baseline (recommended).
+      :type gain: optional
+      :param stage: Optional sub-bucket: data lands under ``raw/<stage>/…`` instead of
+                    ``raw/…`` (the layout the upload processor expects when set).
+      :type stage: str or None
+
+
 
    .. py:method:: stop()
+
+      Stop all sensors and flush per-session artifacts.
+
+      Teleop sessions dump ``state/state_hist.npy`` + ``state/state_time.npy``.
+      Camera sessions stop the timestamp monitor and the sync generator (in that
+      order), then snapshot the current calibration next to the data via
+      ``save_current_camparam`` + ``save_current_C2R`` so each dataset carries the
+      calibration it was shot with. Clears ``save_path``/``stage``, re-arming the
+      session for another ``start``.
+
 
 
    .. py:method:: end()
 
+      Release every device. ``camera.end()`` frees the daemon lock.
+
+      Call once per session lifetime — without it the camera lock is only freed
+      after the daemon's idle timeout.
+
+
 
    .. py:method:: teleop()
 
+      Run the blocking XSens retarget loop until the operator stops or exits.
+
+      The operator's **left** hand drives a state machine: state 0 retargets and
+      moves the arm/hand, 1 pauses, 2 is stop-hold, 3 is exit-hold. Holding stop
+      or exit for more than ~90 ticks (~0.9 s at 10 ms) ends the loop. State is
+      logged to ``state_hist``/``state_time`` only while a ``save_path`` is set
+      (i.e. during the record phase, not the prepare phase).
+
+      :returns: ``"exit"`` or ``"stop"`` depending on which hold gesture ended the loop.
+      :rtype: str
+
+      :raises ValueError: If the session has no teleop device.
+
+
 
    .. py:method:: move(action_dict)
+
+      Scripted single-step control (alternative to :meth:`teleop`).
+
+      :param action_dict: May contain ``"arm"`` (wrist pose → ``arm.move``) and/or ``"hand"``
+                          (hand action → ``hand.move``). Keys are optional, but a key for a device
+                          the session did not build will raise ``AttributeError``.
+      :type action_dict: dict
+
 
 

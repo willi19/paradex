@@ -17,8 +17,22 @@ from paradex.transforms.triangulate import triangulation
 from paradex.image.merge import merge_image
 
 class ImageDict:
-    def __init__(self, 
-                 images: Dict[str, np.ndarray], 
+    """Multi-camera image container with batch geometry operations.
+
+    Wraps ``{serial: image}`` together with the calibration (``intrinsic`` /
+    ``extrinsic``) and exposes operations that fan across every camera: undistort,
+    marker detection, multi-view triangulation, and mesh/point projection. Serial
+    numbers are string keys throughout. Derived state (projection matrices,
+    undistort maps, the renderer) is memoized in ``self._cache`` and **not
+    invalidated** — build a fresh ``ImageDict`` if you mutate the calibration.
+
+    See the :doc:`image-layer guide </image>` for the mental model. Triangulation
+    and projection go through ``get_cammtx`` (built from ``intrinsics_undistort``),
+    so feed them **undistorted** 2D coordinates.
+    """
+
+    def __init__(self,
+                 images: Dict[str, np.ndarray],
                  intrinsic: Optional[Dict[str, Dict]] = None,
                  extrinsic: Optional[Dict[str, np.ndarray]] = None,
                  path: Optional[Union[str, Path]] = None):
@@ -36,9 +50,29 @@ class ImageDict:
         self._cache = {}  # For caching results of operations
     
     @classmethod
-    def from_path(cls, 
+    def from_path(cls,
                   path: Union[str, Path]) -> 'ImageDict':
-        
+        """Load an ``ImageDict`` from a capture directory.
+
+        Resolves the image directory as ``<path>/images`` → ``<path>/raw/images`` →
+        ``<path>`` itself, reads every image file, and loads the calibration when a
+        ``<path>/cam_param`` directory is present.
+
+        Parameters
+        ----------
+        path : str or pathlib.Path
+            Capture directory to load.
+
+        Returns
+        -------
+        ImageDict
+            Container populated with the images and (if available) calibration.
+
+        Raises
+        ------
+        ValueError
+            If no readable images are found under ``path``.
+        """
         path = Path(path)
         images_dir = None
         
@@ -64,8 +98,7 @@ class ImageDict:
                     images[serial] = img
         
         if not images:
-            raise (f"No images found in {path}")
-        ValueError
+            raise ValueError(f"No images found in {path}")
         # Load calibration
         intrinsic = {}
         extrinsic = {}
@@ -170,7 +203,7 @@ class ImageDict:
         )
     
     def __repr__(self):
-        return f"ImageDict(serials={self.serials}, n_cameras={len(self)})"
+        return f"ImageDict(serials={self.serial_list}, n_cameras={len(self)})"
     
     def save(self, path=None):
         save_path = path or self.path
@@ -201,20 +234,27 @@ class ImageDict:
                 json.dump({k: v.tolist() for k, v in self.extrinsic.items()}, f, indent=4)
 
     def apply(self, func: Callable, use_camparam=False, **kwargs) -> Dict:
-        """
-        Apply a single-image function to all images.
-        
-        Args:
-            func: Function with signature func(img, **kwargs) -> result
-            cache_key: Optional key to cache results
-            **kwargs: Additional arguments passed to func
-            
-        Returns:
-            Dictionary mapping serial numbers to results
-            
-        Example:
-            >>> from paradex.image.detection import detect_aruco
-            >>> results = img_dict.apply(detect_aruco, dict_type='6X6_1000')
+        """Apply a single-image function to every camera's image.
+
+        Parameters
+        ----------
+        func : Callable
+            Called as ``func(img, **kwargs)`` per serial. When ``use_camparam`` is
+            True it also receives ``intrinsic=`` and ``extrinsic=`` for that serial.
+        use_camparam : bool
+            Pass per-serial calibration into ``func`` (raises if a serial lacks it).
+        kwargs
+            Extra keyword arguments forwarded to ``func``.
+
+        Returns
+        -------
+        dict
+            ``{serial: result}``.
+
+        Examples
+        --------
+        >>> from paradex.image.aruco import detect_aruco
+        >>> results = img_dict.apply(detect_aruco, dict_type='6X6_1000')
         """
         results = {}
         

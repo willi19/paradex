@@ -31,6 +31,15 @@ Module Contents
 
 .. py:class:: BatchRenderer(intrinsics, extrinsics, near=0.01, far=2)
 
+   Batched nvdiffrast rasterizer that renders a mesh into every camera view.
+
+   One instance is built per camera set; ``render`` / ``render_multi`` return
+   per-serial color, soft mask, and depth (plus an instance-id map for the multi
+   variant). Requires CUDA and ``nvdiffrast``. The OpenCV→OpenGL projection and a
+   ``diag(1, -1, -1, 1)`` z-flip are applied internally, with a final vertical flip
+   on the output to undo the GL y-origin.
+
+
    .. py:attribute:: glctx
 
 
@@ -87,10 +96,20 @@ Module Contents
 
    .. py:method:: render(mesh)
 
-      texture_type == 'vectex_color'
-          obj_dict = {'type':'vertex_color' ,'vtx_pos':, 'pos_idx':, 'vtx_col':, 'col_idx':}
-      texture_type == 'triangle_uvs'
-          obj_dict = {'type': triangle_uvs, 'vtx_pos':, 'pos_idx':, 'uvs':, 'uv_idx', 'texture' }
+      Render a single mesh into every camera view.
+
+      Dispatches on the mesh texture type (``vertex_color`` or ``triangle_uvs``);
+      the obj-dict layout per type is::
+
+          vertex_color  -> {'type', 'verts', 'faces', 'vtx_col', 'col_idx'}
+          triangle_uvs  -> {'type', 'verts', 'faces', 'uvs', 'uv_idx', 'texture_tensor'}
+
+      :param mesh: Mesh to rasterize.
+      :type mesh: trimesh.Trimesh or open3d.geometry.TriangleMesh
+
+      :returns: ``(color_dict, mask_dict, depth_dict)`` keyed by serial. ``mask`` is a
+                boolean ``(H, W)`` array per camera.
+      :rtype: tuple of dict
 
 
 

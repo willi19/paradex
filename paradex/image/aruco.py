@@ -83,6 +83,22 @@ def get_charuco_detector():
 
 
 def detect_aruco(img, dict_type='6X6_1000') -> Tuple[List[np.ndarray], np.ndarray]:
+    """Detect ArUco markers in a single image.
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        Input image (BGR or grayscale).
+    dict_type : str
+        Predefined dictionary key (e.g. ``'6X6_1000'``); see :data:`aruco_dict`.
+
+    Returns
+    -------
+    tuple
+        ``(corners, ids)``. ``corners`` is a list of ``(1, 4, 2)`` arrays and
+        ``ids`` is an ``(N, 1)`` int array; returns ``([], (0, 1) zeros)`` when
+        nothing is detected.
+    """
     detector = get_aruco_detector(dict_type)
     corners, IDs, _ = detector.detectMarkers(img)
     if IDs is None:
@@ -98,6 +114,22 @@ def check_boardinfo_valid(boardinfo):
 
 
 def detect_charuco(img):
+    """Detect ChArUco board corners in a single image, per board.
+
+    Runs every board's cached ``CharucoDetector`` (from ``charuco_info.json``) and
+    omits boards with no detection.
+
+    Parameters
+    ----------
+    img : numpy.ndarray
+        Input image.
+
+    Returns
+    -------
+    dict
+        ``{board_id: {"checkerCorner": (n, 2), "checkerIDs": (n,)}}`` for each board
+        that produced detections.
+    """
     detection_results = {}
     detector = get_charuco_detector()
     
@@ -140,7 +172,22 @@ def get_adjecent_ids():
     
 
 def merge_charuco_detection(detection_list):
+    """Flatten per-board ChArUco detections into a single id-offset corner set.
 
+    Concatenates every board's corners, offsetting each board's ids by the running
+    total ``sum (numX-1)(numY-1)`` so ids stay globally unique across boards.
+
+    Parameters
+    ----------
+    detection_list : dict
+        Output of :func:`detect_charuco` (``{board_id: {checkerCorner, checkerIDs}}``).
+
+    Returns
+    -------
+    dict
+        ``{"checkerCorner": (M, 2), "checkerIDs": (M,)}``; empty arrays if there were
+        no detections.
+    """
     offset_map = {}
     offset = 0
     for b_id, cfg in boardinfo_dict.items():
@@ -231,6 +278,18 @@ def find_common_indices(ids1, ids2):
     return idx1, idx2
 
 def get_board_cor():
+    """Return ChArUco board object points, keyed by board id.
+
+    Corners come from ``board.getChessboardCorners()`` (in checker-length units) and
+    are scaled by ``0.05``. This scale is board-``"3"``-specific: it yields 5 cm
+    squares only for boards whose ``checkerLength == 1.0``; boards already in metric
+    units would be double-scaled.
+
+    Returns
+    -------
+    dict
+        ``{board_id: {"checkerIDs": (N,), "checkerCorner": (N, 3)}}``.
+    """
     board_cors = {}
     offset = 0
     for b_id, cfg in boardinfo_dict.items():

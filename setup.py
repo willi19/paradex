@@ -3,7 +3,8 @@ from setuptools import find_packages, setup
 
 # Core requirements
 core_requirements = [
-
+    "pyzmq",      # capture_pc transport (PUB/SUB + PUSH/PULL)
+    "msgpack",    # capture_pc message envelope header codec
 ]
 
 setup(

@@ -126,10 +126,40 @@ Module Contents
 
 
 
-   .. py:method:: status(message: str = '', progress: Optional[float] = None)
+   .. py:method:: status(message: str = '', progress: Optional[float] = None, frame: Optional[int] = None, total: Optional[int] = None)
 
-      Report progress. ``progress`` is 0..1 (stored as 0..100 percent).
+      Report progress for the live dashboard / ETA.
 
+      :param message: free-text ("overlay", "colmap: matching", ...).
+      :param progress: fraction 0..1 (stored as 0..100 percent). Optional if you
+                       pass ``frame``/``total`` — it is derived as ``frame/total``.
+      :param frame: current item index (e.g. video frame). With ``total`` this
+                    drives the "340/1200 frames" readout and a frame-rate-based
+                    ETA (more accurate than a bare percentage).
+      :param total: total number of items (frames). Report it once; it sticks.
+
+      Timing (``elapsed``/``fps``/``eta``) is computed for you from the job's
+      processing start — you only report where you are, not how long it took.
+
+
+
+.. py:function:: fmt_dur(seconds: Optional[float]) -> str
+
+   Human-friendly duration: ``95`` -> ``"1m35s"``, ``3725`` -> ``"1h02m"``.
+
+
+.. py:function:: fmt_job(info: dict) -> str
+
+   One-line progress for a running job: percent, frame-of-N, elapsed, ETA, msg.
+
+
+.. py:function:: batch_eta(progress, num_workers: int) -> Optional[float]
+
+   Estimate seconds until a whole batch finishes on ``num_workers`` parallel slots.
+
+   Uses the mean wall-time of already-completed jobs as the per-job cost, so the
+   estimate sharpens as the run proceeds. Falls back to the max in-flight job ETA
+   early on (before any job has completed). ``None`` when nothing can be estimated.
 
 
 .. py:class:: Processor(jobs: List[Job], process_fn: Callable, num_workers: int = 4, keep_cache: bool = False, on_update: Optional[Callable] = None, quiet: bool = False)

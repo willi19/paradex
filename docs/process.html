@@ -250,8 +250,9 @@
 <li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/io/capture_pc/index.html">paradex.io.capture_pc</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/command_sender/index.html">paradex.io.capture_pc.command_sender</a></li>
 <li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/data_sender/index.html">paradex.io.capture_pc.data_sender</a></li>
-<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/processor/index.html">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/envelope/index.html">paradex.io.capture_pc.envelope</a></li>
 <li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/transport/index.html">paradex.io.capture_pc.transport</a></li>
 </ul>
 </li>
 <li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/io/robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -391,7 +392,8 @@ model; for method signatures, parameters, and return values see the
 <a class="reference internal" href="process_api.html"><span class="doc">API reference</span></a>.</p>
 <ul class="simple">
 <li><p>Core library: <code class="docutils literal notranslate"><span class="pre">paradex/video/</span></code> (<code class="docutils literal notranslate"><span class="pre">raw_video_processor.py</span></code>, <code class="docutils literal notranslate"><span class="pre">util.py</span></code>)</p></li>
-<li><p>Distributed driver: <code class="docutils literal notranslate"><span class="pre">src/util/upload_video/</span></code> (dashboard + workers)</p></li>
+<li><p>Distributed driver: the <code class="docutils literal notranslate"><span class="pre">paradex.process</span></code> batch framework, wired by
+<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/</span></code> (<code class="docutils literal notranslate"><span class="pre">main.py</span></code> + <code class="docutils literal notranslate"><span class="pre">worker.py</span></code>)</p></li>
 <li><p>Generated per-symbol API: <a class="reference internal" href="autoapi/index.html"><span class="doc">API Reference</span></a></p></li>
 </ul>
 <hr class="docutils" />

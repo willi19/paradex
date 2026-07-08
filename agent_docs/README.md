@@ -18,6 +18,9 @@ so agents stop rediscovering subsystem structure from scratch every session.
 | Batch-processing framework (`Job`/`Processor`/`run_jobs`, distributed) | [`process/README.md`](process/README.md) |
 | Robot controllers (arms/hands IO — `get_arm`/`get_hand`, control loop, fault handling) | [`robot_controller/README.md`](robot_controller/README.md) |
 | Robot kinematics/planning (`RobotWrapper`, `CuroboPlanner`, URDF) | [`robot/README.md`](robot/README.md) |
+| Teleop input (XSens / Oculus motion-capture receivers) | [`teleop/README.md`](teleop/README.md) |
+| Retargeting (human hand pose → robot hand/arm joints) | [`retargetor/README.md`](retargetor/README.md) |
+| Simulator (IsaacGym / PhysX physics wrapper) | [`simulator/README.md`](simulator/README.md) |
 | Transforms (rigid-align `SOLVE_XA_B`, triangulation, device frames) | [`transforms/README.md`](transforms/README.md) |
 | Utils (config/paths/file-I/O grab-bag — `shared_dir`, `network_info`) | [`utils/README.md`](utils/README.md) |
 | Video post-processing (raw→undistort→H.264→NAS upload) | [`video/README.md`](video/README.md) |

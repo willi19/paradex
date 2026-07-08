@@ -5,12 +5,24 @@ paradex.io.capture_pc.data_sender
 
 .. autoapi-nested-parse::
 
-   Simplified data publishing system using PUB-SUB pattern.
+   Backward-compatible data-transport shims.
 
-   Much simpler than ROUTER-DEALER:
-   - No registration handshake needed
-   - Just publish and subscribe
-   - Fire and forget
+   The real implementation now lives in :mod:`paradex.io.capture_pc.transport`
+   (:class:`Publisher` / :class:`Collector`) on the shared :mod:`paradex.io.capture_pc.envelope`
+   wire format — one stable, high-throughput format for both realtime frames and job
+   status, with sequence/latency/drop tracking built in.
+
+   ``DataPublisher`` / ``DataCollector`` are kept as thin adapters so existing callers
+   (calibration clients, validate, object6d, camera tuning, paradex.process) keep
+   working unchanged. **New code should use** :class:`Publisher` / :class:`Collector`
+   directly — they expose delivery modes (realtime vs lossless), topics, and
+   ``get_stats()``.
+
+   Wire/behaviour notes for the adapters (realtime PUB/SUB, newest-wins):
+   - ``send_data(metadata, data)`` publishes a list of per-item dicts plus raw
+     buffers; an item is linked to a buffer by ``data_index`` (or positionally when
+     item and buffer counts match).
+   - ``get_data(name)`` returns the newest item seen for that name (or the whole map).
 
 
 
@@ -21,104 +33,33 @@ Module Contents
 
 .. py:class:: DataPublisher(port: int = 1234, name: Optional[str] = None)
 
-   .. py:attribute:: port
-      :value: 1234
+   Bases: :py:obj:`paradex.io.capture_pc.transport.Publisher`
 
 
+   Deprecated alias for :class:`Publisher` (realtime mode).
 
-   .. py:attribute:: name
-      :value: 'publisher_1234'
-
-
-
-   .. py:attribute:: context
+   Kept for the existing ``dp.send_data(metadata, data)`` call sites.
 
 
-   .. py:attribute:: socket
-
-
-   .. py:attribute:: publishing
-      :value: False
-
-
-
-   .. py:attribute:: publish_thread
-      :value: None
-
-
-
-   .. py:method:: send_data(metadata: List[Dict[str, Any]], data: List[bytes]) -> None
-
-      Publish data using multipart messages for efficient binary transmission.
-
-      :param metadata: Metadata dictionary for each camera (frame_id, shape, image_index)
-      :param data: List of binary image data (JPEG bytes)
-
+   .. py:method:: send_data(metadata: List[Dict[str, Any]], data: Optional[List[bytes]] = None) -> int
 
 
    .. py:method:: close() -> None
 
-      Clean up resources.
+
+.. py:class:: DataCollector(pc_list: Optional[List[str]] = None, port: int = 1234)
+
+   Bases: :py:obj:`paradex.io.capture_pc.transport.Collector`
 
 
+   Deprecated alias for :class:`Collector` (realtime mode).
 
-.. py:class:: DataCollector(pc_list: Dict[str, Dict[str, str]] = None, port: int = 1234)
-
-   .. py:attribute:: pc_list
-
-
-   .. py:attribute:: port
-      :value: 1234
+   Kept for the existing ``dc.get_data(...)`` call sites.
 
 
+   .. py:method:: get_data(name: Optional[str] = None) -> Any
 
-   .. py:attribute:: context
-
-
-   .. py:attribute:: sockets
-
-
-   .. py:attribute:: poller
-
-
-   .. py:attribute:: latest_data
-
-
-   .. py:attribute:: collecting
-      :value: False
-
-
-
-   .. py:attribute:: collection_thread
-      :value: None
-
-
-
-   .. py:method:: start() -> None
-
-      Start collecting data from all PCs.
-
-
-
-   .. py:method:: stop() -> None
-
-      Stop collecting data.
-
-
-
-   .. py:method:: get_data(pc_name: Optional[str] = None) -> Any
-
-      Get the latest received data.
-
-      :param pc_name: Specific PC to get data from, or None for all PCs
-
-      :returns: Latest data from specified PC, or dict of all latest data
-
-
-
-   .. py:method:: end() -> None
-
-      Clean up resources.
+      Latest item by name, or the whole latest map. See :meth:`Collector.get`.
 
 
 

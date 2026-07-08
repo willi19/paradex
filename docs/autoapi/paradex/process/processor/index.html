@@ -250,8 +250,9 @@
 <li class="toctree-l4 has-children"><a class="reference internal" href="../../io/capture_pc/index.html">paradex.io.capture_pc</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l5"><a class="reference internal" href="../../io/capture_pc/command_sender/index.html">paradex.io.capture_pc.command_sender</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../../io/capture_pc/data_sender/index.html">paradex.io.capture_pc.data_sender</a></li>
-<li class="toctree-l5"><a class="reference internal" href="../../io/capture_pc/processor/index.html">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../io/capture_pc/envelope/index.html">paradex.io.capture_pc.envelope</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../../io/capture_pc/ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../io/capture_pc/transport/index.html">paradex.io.capture_pc.transport</a></li>
 </ul>
 </li>
 <li class="toctree-l4 has-children"><a class="reference internal" href="../../io/robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -512,10 +513,46 @@ capture are handled by the framework around it.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.process.processor.Ctx.status">
-<span class="sig-name descname"><span class="pre">status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/process/processor.html#Ctx.status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.process.processor.Ctx.status" title="Link to this definition">¶</a></dt>
-<dd><p>Report progress. <code class="docutils literal notranslate"><span class="pre">progress</span></code> is 0..1 (stored as 0..100 percent).</p>
+<span class="sig-name descname"><span class="pre">status</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">message</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">progress</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">frame</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">total</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/paradex/process/processor.html#Ctx.status"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.process.processor.Ctx.status" title="Link to this definition">¶</a></dt>
+<dd><p>Report progress for the live dashboard / ETA.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>message</strong> – free-text (“overlay”, “colmap: matching”, …).</p></li>
+<li><p><strong>progress</strong> – fraction 0..1 (stored as 0..100 percent). Optional if you
+pass <code class="docutils literal notranslate"><span class="pre">frame</span></code>/<code class="docutils literal notranslate"><span class="pre">total</span></code> — it is derived as <code class="docutils literal notranslate"><span class="pre">frame/total</span></code>.</p></li>
+<li><p><strong>frame</strong> – current item index (e.g. video frame). With <code class="docutils literal notranslate"><span class="pre">total</span></code> this
+drives the “340/1200 frames” readout and a frame-rate-based
+ETA (more accurate than a bare percentage).</p></li>
+<li><p><strong>total</strong> – total number of items (frames). Report it once; it sticks.</p></li>
+</ul>
+</dd>
+</dl>
+<p>Timing (<code class="docutils literal notranslate"><span class="pre">elapsed</span></code>/<code class="docutils literal notranslate"><span class="pre">fps</span></code>/<code class="docutils literal notranslate"><span class="pre">eta</span></code>) is computed for you from the job’s
+processing start — you only report where you are, not how long it took.</p>
 </dd></dl>
 
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="paradex.process.processor.fmt_dur">
+<span class="sig-prename descclassname"><span class="pre">paradex.process.processor.</span></span><span class="sig-name descname"><span class="pre">fmt_dur</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">seconds</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../../../_modules/paradex/process/processor.html#fmt_dur"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.process.processor.fmt_dur" title="Link to this definition">¶</a></dt>
+<dd><p>Human-friendly duration: <code class="docutils literal notranslate"><span class="pre">95</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">&quot;1m35s&quot;</span></code>, <code class="docutils literal notranslate"><span class="pre">3725</span></code> -&gt; <code class="docutils literal notranslate"><span class="pre">&quot;1h02m&quot;</span></code>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="paradex.process.processor.fmt_job">
+<span class="sig-prename descclassname"><span class="pre">paradex.process.processor.</span></span><span class="sig-name descname"><span class="pre">fmt_job</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">str</span></span></span><a class="reference internal" href="../../../../_modules/paradex/process/processor.html#fmt_job"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.process.processor.fmt_job" title="Link to this definition">¶</a></dt>
+<dd><p>One-line progress for a running job: percent, frame-of-N, elapsed, ETA, msg.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="paradex.process.processor.batch_eta">
+<span class="sig-prename descclassname"><span class="pre">paradex.process.processor.</span></span><span class="sig-name descname"><span class="pre">batch_eta</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">progress</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_workers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="reference internal" href="../../../../_modules/paradex/process/processor.html#batch_eta"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.process.processor.batch_eta" title="Link to this definition">¶</a></dt>
+<dd><p>Estimate seconds until a whole batch finishes on <code class="docutils literal notranslate"><span class="pre">num_workers</span></code> parallel slots.</p>
+<p>Uses the mean wall-time of already-completed jobs as the per-job cost, so the
+estimate sharpens as the run proceeds. Falls back to the max in-flight job ETA
+early on (before any job has completed). <code class="docutils literal notranslate"><span class="pre">None</span></code> when nothing can be estimated.</p>
 </dd></dl>
 
 <dl class="py class">
@@ -699,6 +736,9 @@ to the ZMQ dashboard, a log, etc.</p></li>
 <li><a class="reference internal" href="#paradex.process.processor.Ctx.status"><code class="docutils literal notranslate"><span class="pre">Ctx.status()</span></code></a></li>
 </ul>
 </li>
+<li><a class="reference internal" href="#paradex.process.processor.fmt_dur"><code class="docutils literal notranslate"><span class="pre">fmt_dur()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.process.processor.fmt_job"><code class="docutils literal notranslate"><span class="pre">fmt_job()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.process.processor.batch_eta"><code class="docutils literal notranslate"><span class="pre">batch_eta()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.process.processor.Processor"><code class="docutils literal notranslate"><span class="pre">Processor</span></code></a><ul>
 <li><a class="reference internal" href="#paradex.process.processor.Processor.jobs"><code class="docutils literal notranslate"><span class="pre">Processor.jobs</span></code></a></li>
 <li><a class="reference internal" href="#paradex.process.processor.Processor.process_fn"><code class="docutils literal notranslate"><span class="pre">Processor.process_fn</span></code></a></li>

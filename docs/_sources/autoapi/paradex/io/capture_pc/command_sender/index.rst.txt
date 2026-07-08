@@ -3,23 +3,35 @@ paradex.io.capture_pc.command_sender
 
 .. py:module:: paradex.io.capture_pc.command_sender
 
+.. autoapi-nested-parse::
+
+   Reliable command channel (REQ/REP) between the main PC and capture PCs.
+
+   ``CommandSender`` (main PC) fans a command out to every capture PC; each
+   ``CommandReceiver`` (capture PC) fires a local :class:`threading.Event` for it and
+   replies. This is the control path — start/stop/save/exit — not the data path
+   (see :mod:`paradex.io.capture_pc.transport` for that).
+
+   Reliability: plain REQ/REP wedges if a peer dies mid-request (the REQ socket is
+   stuck until it receives a reply that never comes). ``CommandSender`` uses the
+   **lazy-pirate** pattern — on timeout it discards and rebuilds that PC's socket and
+   retries — so one unreachable/restarting PC can never hang the orchestrator.
+
+
 
 
 
 Module Contents
 ---------------
 
-.. py:class:: CommandSender(pc_list: Optional[list] = None, port: int = 6890, timeout: int = 60000)
+.. py:class:: CommandSender(pc_list: Optional[list] = None, port: int = 6890, timeout: int = 60000, retries: int = 3)
 
-   Send commands to multiple PCs using REQ-REP pattern.
+   Send commands to multiple PCs over REQ/REP, with per-PC retry.
 
-   Usage:
-       sender = CommandSender(
-           pc_info={"pc1": {"ip": "192.168.1.10"}},
-           port=5482
-       )
-
-       sender.send_command({'action': 'start'})
+   :param pc_list: target PCs (default: ``get_pc_list()``).
+   :param port: REP port the receivers bind.
+   :param timeout: per-attempt reply timeout in ms.
+   :param retries: attempts per PC before giving up (socket is rebuilt between tries).
 
 
    .. py:attribute:: pc_list
@@ -30,15 +42,29 @@ Module Contents
 
 
 
+   .. py:attribute:: timeout
+      :value: 60000
+
+
+
+   .. py:attribute:: retries
+
+
    .. py:attribute:: context
+      :value: None
+
+
+
+   .. py:attribute:: ip
 
 
    .. py:attribute:: sockets
+      :type:  Dict[str, zmq.Socket]
 
 
-   .. py:method:: send_command(cmd: str, wait=False, cmd_info={}) -> None
+   .. py:method:: send_command(cmd: str, wait: bool = False, cmd_info: dict = None) -> None
 
-      Send command to all PCs and wait for responses.
+      Send ``cmd`` to all PCs in parallel and wait for their replies.
 
 
 
@@ -46,6 +72,13 @@ Module Contents
 
 
 .. py:class:: CommandReceiver(event_dict: Optional[Dict[str, threading.Event]] = None, port: int = 6890)
+
+   Bind a REP port and fire a local Event for each known command.
+
+   :param event_dict: ``{command: threading.Event}`` — the event is ``set()`` when
+                      its command arrives; ``info`` is stashed in ``event_info``.
+   :param port: REP port to bind.
+
 
    .. py:attribute:: port
       :value: 6890
@@ -56,28 +89,32 @@ Module Contents
 
 
    .. py:attribute:: event_info
+      :type:  Dict[str, Any]
 
 
    .. py:attribute:: context
+      :value: None
+
 
 
    .. py:attribute:: socket
 
 
-   .. py:attribute:: thread
-      :value: None
-
+   .. py:attribute:: poller
 
 
    .. py:attribute:: exit_event
+
+
+   .. py:attribute:: thread
+      :type:  Optional[threading.Thread]
+      :value: None
+
 
 
    .. py:method:: start() -> None
 
 
    .. py:method:: end() -> None
-
-      Clean up resources.
-
 
 

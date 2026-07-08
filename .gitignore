@@ -52,7 +52,7 @@ build/lib/paradex
 .claude-memory
 
 jisoo_test
-log
+/log/
 docs/_build/
 docs/_sphinx_design_static/
 .omc/

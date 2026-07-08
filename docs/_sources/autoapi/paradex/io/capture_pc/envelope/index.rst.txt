@@ -1,0 +1,99 @@
+paradex.io.capture_pc.envelope
+==============================
+
+.. py:module:: paradex.io.capture_pc.envelope
+
+.. autoapi-nested-parse::
+
+   The general message envelope shared by every capture_pc transport.
+
+   One wire format for *both* workloads:
+
+     * **realtime execution** — camera frames, robot/teleop state (binary payloads,
+       latency-sensitive), and
+     * **data processing** — job status / progress (small structured metadata).
+
+   A message is a multipart frame::
+
+       [ topic , header , buf0, buf1, ... ]
+
+       topic   : bytes  — subscription key (SUB prefix-matches on it); e.g. b"cam".
+       header  : msgpack of {seq, ts, src, meta, n} — see below.
+       buf0..  : ``n`` raw binary payloads, sent/received zero-copy. May be empty
+                 (a pure-metadata message, e.g. a status update).
+
+   Header fields:
+       seq  : monotonic per-(publisher) counter — lets a receiver detect drops.
+       ts   : send time in nanoseconds (``time.time_ns()``) — lets a receiver
+              measure end-to-end latency and order messages.
+       src  : publisher name (which PC / which producer).
+       meta : arbitrary msgpack-serializable payload (a dict, or a list of
+              per-item dicts). This is where camera shapes / encodings / job status
+              live. Buffers are referenced from meta by their index when needed.
+       n    : number of binary buffers that follow the header.
+
+   msgpack is used for the header (compact + fast vs JSON); buffers stay raw so
+   there is never a copy or re-encode of image bytes.
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: Message
+
+   A decoded envelope. ``bufs`` are raw ``bytes`` (e.g. JPEG / ``.npy``).
+
+
+   .. py:attribute:: topic
+      :type:  str
+
+
+   .. py:attribute:: seq
+      :type:  int
+
+
+   .. py:attribute:: ts_ns
+      :type:  int
+
+
+   .. py:attribute:: src
+      :type:  str
+
+
+   .. py:attribute:: meta
+      :type:  Any
+      :value: None
+
+
+
+   .. py:attribute:: bufs
+      :type:  List[bytes]
+      :value: []
+
+
+
+   .. py:property:: latency_ms
+      :type: float
+
+
+      End-to-end age of this message in milliseconds (recv - send).
+
+
+.. py:function:: encode(topic: str, meta: Any, bufs: List[bytes], seq: int, src: str) -> List[bytes]
+
+   Build the multipart parts for one message. ``bufs`` may be empty.
+
+
+.. py:function:: decode(parts: List[bytes]) -> Message
+
+   Parse multipart ``parts`` back into a :class:`Message`.
+
+   Raises ``ValueError`` on a truncated / malformed frame so callers can count
+   and skip it rather than crash the receive loop.
+
+

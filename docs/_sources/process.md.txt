@@ -6,7 +6,8 @@ model; for method signatures, parameters, and return values see the
 {doc}`API reference <process_api>`.
 
 - Core library: `paradex/video/` (`raw_video_processor.py`, `util.py`)
-- Distributed driver: `src/util/upload_video/` (dashboard + workers)
+- Distributed driver: the `paradex.process` batch framework, wired by
+  `src/util/upload_video/` (`main.py` + `worker.py`)
 - Generated per-symbol API: {doc}`API Reference <autoapi/index>`
 
 ---

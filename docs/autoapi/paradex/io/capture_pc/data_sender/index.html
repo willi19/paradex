@@ -3,7 +3,7 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" /><link rel="next" title="paradex.io.capture_pc.processor" href="../processor/index.html" /><link rel="prev" title="paradex.io.capture_pc.command_sender" href="../command_sender/index.html" />
+<link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" /><link rel="next" title="paradex.io.capture_pc.envelope" href="../envelope/index.html" /><link rel="prev" title="paradex.io.capture_pc.command_sender" href="../command_sender/index.html" />
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
         <title>paradex.io.capture_pc.data_sender - paradex 0.0.0 documentation</title>
@@ -250,8 +250,9 @@
 <li class="toctree-l4 current has-children"><a class="reference internal" href="../index.html">paradex.io.capture_pc</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l5"><a class="reference internal" href="../command_sender/index.html">paradex.io.capture_pc.command_sender</a></li>
 <li class="toctree-l5 current current-page"><a class="current reference internal" href="#">paradex.io.capture_pc.data_sender</a></li>
-<li class="toctree-l5"><a class="reference internal" href="../processor/index.html">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../envelope/index.html">paradex.io.capture_pc.envelope</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../transport/index.html">paradex.io.capture_pc.transport</a></li>
 </ul>
 </li>
 <li class="toctree-l4 has-children"><a class="reference internal" href="../../robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -385,141 +386,55 @@
         <article role="main" id="furo-main-content">
           <section id="module-paradex.io.capture_pc.data_sender">
 <span id="paradex-io-capture-pc-data-sender"></span><h1>paradex.io.capture_pc.data_sender<a class="headerlink" href="#module-paradex.io.capture_pc.data_sender" title="Link to this heading">¶</a></h1>
-<p>Simplified data publishing system using PUB-SUB pattern.</p>
-<p>Much simpler than ROUTER-DEALER:
-- No registration handshake needed
-- Just publish and subscribe
-- Fire and forget</p>
+<p>Backward-compatible data-transport shims.</p>
+<p>The real implementation now lives in <a class="reference internal" href="../transport/index.html#module-paradex.io.capture_pc.transport" title="paradex.io.capture_pc.transport"><code class="xref py py-mod docutils literal notranslate"><span class="pre">paradex.io.capture_pc.transport</span></code></a>
+(<code class="xref py py-class docutils literal notranslate"><span class="pre">Publisher</span></code> / <code class="xref py py-class docutils literal notranslate"><span class="pre">Collector</span></code>) on the shared <a class="reference internal" href="../envelope/index.html#module-paradex.io.capture_pc.envelope" title="paradex.io.capture_pc.envelope"><code class="xref py py-mod docutils literal notranslate"><span class="pre">paradex.io.capture_pc.envelope</span></code></a>
+wire format — one stable, high-throughput format for both realtime frames and job
+status, with sequence/latency/drop tracking built in.</p>
+<p><code class="docutils literal notranslate"><span class="pre">DataPublisher</span></code> / <code class="docutils literal notranslate"><span class="pre">DataCollector</span></code> are kept as thin adapters so existing callers
+(calibration clients, validate, object6d, camera tuning, paradex.process) keep
+working unchanged. <strong>New code should use</strong> <code class="xref py py-class docutils literal notranslate"><span class="pre">Publisher</span></code> / <code class="xref py py-class docutils literal notranslate"><span class="pre">Collector</span></code>
+directly — they expose delivery modes (realtime vs lossless), topics, and
+<code class="docutils literal notranslate"><span class="pre">get_stats()</span></code>.</p>
+<p>Wire/behaviour notes for the adapters (realtime PUB/SUB, newest-wins):
+- <code class="docutils literal notranslate"><span class="pre">send_data(metadata,</span> <span class="pre">data)</span></code> publishes a list of per-item dicts plus raw</p>
+<blockquote>
+<div><p>buffers; an item is linked to a buffer by <code class="docutils literal notranslate"><span class="pre">data_index</span></code> (or positionally when
+item and buffer counts match).</p>
+</div></blockquote>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">get_data(name)</span></code> returns the newest item seen for that name (or the whole map).</p></li>
+</ul>
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataPublisher">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.capture_pc.data_sender.</span></span><span class="sig-name descname"><span class="pre">DataPublisher</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1234</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataPublisher"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataPublisher" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataPublisher.port">
-<span class="sig-name descname"><span class="pre">port</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1234</span></em><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataPublisher.port" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataPublisher.name">
-<span class="sig-name descname"><span class="pre">name</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">'publisher_1234'</span></em><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataPublisher.name" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataPublisher.context">
-<span class="sig-name descname"><span class="pre">context</span></span><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataPublisher.context" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataPublisher.socket">
-<span class="sig-name descname"><span class="pre">socket</span></span><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataPublisher.socket" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataPublisher.publishing">
-<span class="sig-name descname"><span class="pre">publishing</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataPublisher.publishing" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataPublisher.publish_thread">
-<span class="sig-name descname"><span class="pre">publish_thread</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataPublisher.publish_thread" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
+<dd><p>Bases: <a class="reference internal" href="../transport/index.html#paradex.io.capture_pc.transport.Publisher" title="paradex.io.capture_pc.transport.Publisher"><code class="xref py py-obj docutils literal notranslate"><span class="pre">paradex.io.capture_pc.transport.Publisher</span></code></a></p>
+<p>Deprecated alias for <code class="xref py py-class docutils literal notranslate"><span class="pre">Publisher</span></code> (realtime mode).</p>
+<p>Kept for the existing <code class="docutils literal notranslate"><span class="pre">dp.send_data(metadata,</span> <span class="pre">data)</span></code> call sites.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataPublisher.send_data">
-<span class="sig-name descname"><span class="pre">send_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataPublisher.send_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataPublisher.send_data" title="Link to this definition">¶</a></dt>
-<dd><p>Publish data using multipart messages for efficient binary transmission.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>metadata</strong> – Metadata dictionary for each camera (frame_id, shape, image_index)</p></li>
-<li><p><strong>data</strong> – List of binary image data (JPEG bytes)</p></li>
-</ul>
-</dd>
-</dl>
-</dd></dl>
+<span class="sig-name descname"><span class="pre">send_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">metadata</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">int</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataPublisher.send_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataPublisher.send_data" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataPublisher.close">
 <span class="sig-name descname"><span class="pre">close</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataPublisher.close"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataPublisher.close" title="Link to this definition">¶</a></dt>
-<dd><p>Clean up resources.</p>
-</dd></dl>
+<dd></dd></dl>
 
 </dd></dl>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.capture_pc.data_sender.</span></span><span class="sig-name descname"><span class="pre">DataCollector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pc_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1234</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataCollector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.pc_list">
-<span class="sig-name descname"><span class="pre">pc_list</span></span><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.pc_list" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.port">
-<span class="sig-name descname"><span class="pre">port</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1234</span></em><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.port" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.context">
-<span class="sig-name descname"><span class="pre">context</span></span><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.context" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.sockets">
-<span class="sig-name descname"><span class="pre">sockets</span></span><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.sockets" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.poller">
-<span class="sig-name descname"><span class="pre">poller</span></span><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.poller" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.latest_data">
-<span class="sig-name descname"><span class="pre">latest_data</span></span><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.latest_data" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.collecting">
-<span class="sig-name descname"><span class="pre">collecting</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">False</span></em><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.collecting" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.collection_thread">
-<span class="sig-name descname"><span class="pre">collection_thread</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.collection_thread" title="Link to this definition">¶</a></dt>
-<dd></dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.start">
-<span class="sig-name descname"><span class="pre">start</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataCollector.start"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.start" title="Link to this definition">¶</a></dt>
-<dd><p>Start collecting data from all PCs.</p>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.stop">
-<span class="sig-name descname"><span class="pre">stop</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataCollector.stop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.stop" title="Link to this definition">¶</a></dt>
-<dd><p>Stop collecting data.</p>
-</dd></dl>
-
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.capture_pc.data_sender.</span></span><span class="sig-name descname"><span class="pre">DataCollector</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pc_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1234</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataCollector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../transport/index.html#paradex.io.capture_pc.transport.Collector" title="paradex.io.capture_pc.transport.Collector"><code class="xref py py-obj docutils literal notranslate"><span class="pre">paradex.io.capture_pc.transport.Collector</span></code></a></p>
+<p>Deprecated alias for <code class="xref py py-class docutils literal notranslate"><span class="pre">Collector</span></code> (realtime mode).</p>
+<p>Kept for the existing <code class="docutils literal notranslate"><span class="pre">dc.get_data(...)</span></code> call sites.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.get_data">
-<span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pc_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataCollector.get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.get_data" title="Link to this definition">¶</a></dt>
-<dd><p>Get the latest received data.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>pc_name</strong> – Specific PC to get data from, or None for all PCs</p>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>Latest data from specified PC, or dict of all latest data</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py method">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.data_sender.DataCollector.end">
-<span class="sig-name descname"><span class="pre">end</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataCollector.end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.end" title="Link to this definition">¶</a></dt>
-<dd><p>Clean up resources.</p>
+<span class="sig-name descname"><span class="pre">get_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Any</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/data_sender.html#DataCollector.get_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.data_sender.DataCollector.get_data" title="Link to this definition">¶</a></dt>
+<dd><p>Latest item by name, or the whole latest map. See <code class="xref py py-meth docutils literal notranslate"><span class="pre">Collector.get()</span></code>.</p>
 </dd></dl>
 
 </dd></dl>
@@ -532,12 +447,12 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="../processor/index.html">
+          <a class="next-page" href="../envelope/index.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">paradex.io.capture_pc.processor</div>
+                <div class="title">paradex.io.capture_pc.envelope</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
@@ -585,29 +500,12 @@
 <li><a class="reference internal" href="#">paradex.io.capture_pc.data_sender</a><ul>
 <li><a class="reference internal" href="#module-contents">Module Contents</a><ul>
 <li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataPublisher"><code class="docutils literal notranslate"><span class="pre">DataPublisher</span></code></a><ul>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataPublisher.port"><code class="docutils literal notranslate"><span class="pre">DataPublisher.port</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataPublisher.name"><code class="docutils literal notranslate"><span class="pre">DataPublisher.name</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataPublisher.context"><code class="docutils literal notranslate"><span class="pre">DataPublisher.context</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataPublisher.socket"><code class="docutils literal notranslate"><span class="pre">DataPublisher.socket</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataPublisher.publishing"><code class="docutils literal notranslate"><span class="pre">DataPublisher.publishing</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataPublisher.publish_thread"><code class="docutils literal notranslate"><span class="pre">DataPublisher.publish_thread</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataPublisher.send_data"><code class="docutils literal notranslate"><span class="pre">DataPublisher.send_data()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataPublisher.close"><code class="docutils literal notranslate"><span class="pre">DataPublisher.close()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector"><code class="docutils literal notranslate"><span class="pre">DataCollector</span></code></a><ul>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.pc_list"><code class="docutils literal notranslate"><span class="pre">DataCollector.pc_list</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.port"><code class="docutils literal notranslate"><span class="pre">DataCollector.port</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.context"><code class="docutils literal notranslate"><span class="pre">DataCollector.context</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.sockets"><code class="docutils literal notranslate"><span class="pre">DataCollector.sockets</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.poller"><code class="docutils literal notranslate"><span class="pre">DataCollector.poller</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.latest_data"><code class="docutils literal notranslate"><span class="pre">DataCollector.latest_data</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.collecting"><code class="docutils literal notranslate"><span class="pre">DataCollector.collecting</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.collection_thread"><code class="docutils literal notranslate"><span class="pre">DataCollector.collection_thread</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.start"><code class="docutils literal notranslate"><span class="pre">DataCollector.start()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.stop"><code class="docutils literal notranslate"><span class="pre">DataCollector.stop()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.get_data"><code class="docutils literal notranslate"><span class="pre">DataCollector.get_data()</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.data_sender.DataCollector.end"><code class="docutils literal notranslate"><span class="pre">DataCollector.end()</span></code></a></li>
 </ul>
 </li>
 </ul>

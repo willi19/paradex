@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../../../../../genindex.html" /><link rel="search" title="Search" href="../../../../../search.html" /><link rel="next" title="paradex.io.capture_pc.ssh" href="../ssh/index.html" /><link rel="prev" title="paradex.io.capture_pc.data_sender" href="../data_sender/index.html" />
 
     <!-- Generated with Sphinx 8.1.3 and Furo 2024.08.06 -->
-        <title>paradex.io.capture_pc.processor - paradex 0.0.0 documentation</title>
+        <title>paradex.io.capture_pc.envelope - paradex 0.0.0 documentation</title>
       <link rel="stylesheet" type="text/css" href="../../../../../_static/pygments.css?v=4526bb1b" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/styles/furo.css?v=354aac6f" />
     <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css?v=4ae1632d" />
@@ -181,7 +181,7 @@
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
         <div class="visually-hidden">Toggle table of contents sidebar</div>
         <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
@@ -250,8 +250,9 @@
 <li class="toctree-l4 current has-children"><a class="reference internal" href="../index.html">paradex.io.capture_pc</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l5"><a class="reference internal" href="../command_sender/index.html">paradex.io.capture_pc.command_sender</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../data_sender/index.html">paradex.io.capture_pc.data_sender</a></li>
-<li class="toctree-l5 current current-page"><a class="current reference internal" href="#">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5 current current-page"><a class="current reference internal" href="#">paradex.io.capture_pc.envelope</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../transport/index.html">paradex.io.capture_pc.transport</a></li>
 </ul>
 </li>
 <li class="toctree-l4 has-children"><a class="reference internal" href="../../robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -363,7 +364,7 @@
         </a>
         <div class="content-icon-container">
           <div class="view-this-page">
-  <a class="muted-link" href="../../../../../_sources/autoapi/paradex/io/capture_pc/processor/index.rst.txt" title="View this page">
+  <a class="muted-link" href="../../../../../_sources/autoapi/paradex/io/capture_pc/envelope/index.rst.txt" title="View this page">
     <svg><use href="#svg-eye"></use></svg>
     <span class="visually-hidden">View this page</span>
   </a>
@@ -377,14 +378,108 @@
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
             <div class="visually-hidden">Toggle table of contents sidebar</div>
             <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main" id="furo-main-content">
-          <section id="module-paradex.io.capture_pc.processor">
-<span id="paradex-io-capture-pc-processor"></span><h1>paradex.io.capture_pc.processor<a class="headerlink" href="#module-paradex.io.capture_pc.processor" title="Link to this heading">¶</a></h1>
+          <section id="module-paradex.io.capture_pc.envelope">
+<span id="paradex-io-capture-pc-envelope"></span><h1>paradex.io.capture_pc.envelope<a class="headerlink" href="#module-paradex.io.capture_pc.envelope" title="Link to this heading">¶</a></h1>
+<p>The general message envelope shared by every capture_pc transport.</p>
+<p>One wire format for <em>both</em> workloads:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p><strong>realtime execution</strong> — camera frames, robot/teleop state (binary payloads,
+latency-sensitive), and</p></li>
+<li><p><strong>data processing</strong> — job status / progress (small structured metadata).</p></li>
+</ul>
+</div></blockquote>
+<p>A message is a multipart frame:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[ topic , header , buf0, buf1, ... ]
+
+topic   : bytes  — subscription key (SUB prefix-matches on it); e.g. b&quot;cam&quot;.
+header  : msgpack of {seq, ts, src, meta, n} — see below.
+buf0..  : ``n`` raw binary payloads, sent/received zero-copy. May be empty
+          (a pure-metadata message, e.g. a status update).
+</pre></div>
+</div>
+<dl>
+<dt>Header fields:</dt><dd><p>seq  : monotonic per-(publisher) counter — lets a receiver detect drops.
+ts   : send time in nanoseconds (<code class="docutils literal notranslate"><span class="pre">time.time_ns()</span></code>) — lets a receiver</p>
+<blockquote>
+<div><p>measure end-to-end latency and order messages.</p>
+</div></blockquote>
+<p>src  : publisher name (which PC / which producer).
+meta : arbitrary msgpack-serializable payload (a dict, or a list of</p>
+<blockquote>
+<div><p>per-item dicts). This is where camera shapes / encodings / job status
+live. Buffers are referenced from meta by their index when needed.</p>
+</div></blockquote>
+<p>n    : number of binary buffers that follow the header.</p>
+</dd>
+</dl>
+<p>msgpack is used for the header (compact + fast vs JSON); buffers stay raw so
+there is never a copy or re-encode of image bytes.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.envelope.Message">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.capture_pc.envelope.</span></span><span class="sig-name descname"><span class="pre">Message</span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/envelope.html#Message"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.envelope.Message" title="Link to this definition">¶</a></dt>
+<dd><p>A decoded envelope. <code class="docutils literal notranslate"><span class="pre">bufs</span></code> are raw <code class="docutils literal notranslate"><span class="pre">bytes</span></code> (e.g. JPEG / <code class="docutils literal notranslate"><span class="pre">.npy</span></code>).</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.envelope.Message.topic">
+<span class="sig-name descname"><span class="pre">topic</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#paradex.io.capture_pc.envelope.Message.topic" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.envelope.Message.seq">
+<span class="sig-name descname"><span class="pre">seq</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#paradex.io.capture_pc.envelope.Message.seq" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.envelope.Message.ts_ns">
+<span class="sig-name descname"><span class="pre">ts_ns</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">int</span></em><a class="headerlink" href="#paradex.io.capture_pc.envelope.Message.ts_ns" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.envelope.Message.src">
+<span class="sig-name descname"><span class="pre">src</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">str</span></em><a class="headerlink" href="#paradex.io.capture_pc.envelope.Message.src" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.envelope.Message.meta">
+<span class="sig-name descname"><span class="pre">meta</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Any</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.capture_pc.envelope.Message.meta" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.envelope.Message.bufs">
+<span class="sig-name descname"><span class="pre">bufs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">[]</span></em><a class="headerlink" href="#paradex.io.capture_pc.envelope.Message.bufs" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.envelope.Message.latency_ms">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">latency_ms</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">float</span></em><a class="headerlink" href="#paradex.io.capture_pc.envelope.Message.latency_ms" title="Link to this definition">¶</a></dt>
+<dd><p>End-to-end age of this message in milliseconds (recv - send).</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.envelope.encode">
+<span class="sig-prename descclassname"><span class="pre">paradex.io.capture_pc.envelope.</span></span><span class="sig-name descname"><span class="pre">encode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">topic</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">meta</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bufs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seq</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">src</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/envelope.html#encode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.envelope.encode" title="Link to this definition">¶</a></dt>
+<dd><p>Build the multipart parts for one message. <code class="docutils literal notranslate"><span class="pre">bufs</span></code> may be empty.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.envelope.decode">
+<span class="sig-prename descclassname"><span class="pre">paradex.io.capture_pc.envelope.</span></span><span class="sig-name descname"><span class="pre">decode</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">parts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">bytes</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#paradex.io.capture_pc.envelope.Message" title="paradex.io.capture_pc.envelope.Message"><span class="pre">Message</span></a></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/envelope.html#decode"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.envelope.decode" title="Link to this definition">¶</a></dt>
+<dd><p>Parse multipart <code class="docutils literal notranslate"><span class="pre">parts</span></code> back into a <a class="reference internal" href="#paradex.io.capture_pc.envelope.Message" title="paradex.io.capture_pc.envelope.Message"><code class="xref py py-class docutils literal notranslate"><span class="pre">Message</span></code></a>.</p>
+<p>Raises <code class="docutils literal notranslate"><span class="pre">ValueError</span></code> on a truncated / malformed frame so callers can count
+and skip it rather than crash the receive loop.</p>
+</dd></dl>
+
+</section>
 </section>
 
         </article>
@@ -430,8 +525,41 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">paradex.io.capture_pc.envelope</a><ul>
+<li><a class="reference internal" href="#module-contents">Module Contents</a><ul>
+<li><a class="reference internal" href="#paradex.io.capture_pc.envelope.Message"><code class="docutils literal notranslate"><span class="pre">Message</span></code></a><ul>
+<li><a class="reference internal" href="#paradex.io.capture_pc.envelope.Message.topic"><code class="docutils literal notranslate"><span class="pre">Message.topic</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.envelope.Message.seq"><code class="docutils literal notranslate"><span class="pre">Message.seq</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.envelope.Message.ts_ns"><code class="docutils literal notranslate"><span class="pre">Message.ts_ns</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.envelope.Message.src"><code class="docutils literal notranslate"><span class="pre">Message.src</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.envelope.Message.meta"><code class="docutils literal notranslate"><span class="pre">Message.meta</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.envelope.Message.bufs"><code class="docutils literal notranslate"><span class="pre">Message.bufs</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.envelope.Message.latency_ms"><code class="docutils literal notranslate"><span class="pre">Message.latency_ms</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.envelope.encode"><code class="docutils literal notranslate"><span class="pre">encode()</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.envelope.decode"><code class="docutils literal notranslate"><span class="pre">decode()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>

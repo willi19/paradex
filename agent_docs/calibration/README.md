@@ -1,126 +1,50 @@
-# Calibration — parameters & implementation
+# agent_docs/calibration — agent orientation
 
-Two audiences:
-- **Consuming calibration** (you have a dataset / live rig and need camera matrices, poses, or the camera→robot transform) → [Using the parameters](#using-the-parameters).
-- **Editing the calibration code** (fixing/extending the capture or solve scripts) → [Implementation](#implementation).
+Docs for **AI agents working with `paradex/calibration/`** — the layer that produces and loads the
+**camera matrices, camera poses, and the camera→robot transform** that the rest of the rig depends on.
+Calibration is a **fixed three-stage pipeline** — **intrinsic → extrinsic → hand-eye** — where each
+stage consumes the previous stage's output. `paradex/calibration/` itself is only the **loaders +
+solvers** ([`utils.py`](../../paradex/calibration/utils.py), [`colmap.py`](../../paradex/calibration/colmap.py),
+[`Tsai_Lenz.py`](../../paradex/calibration/Tsai_Lenz.py)); the *capture + solve orchestration* lives in
+[`src/calibration/`](../../src/calibration/). Read the **one** file for your task.
 
-Pipeline order is fixed: **intrinsic → extrinsic → hand-eye**. Each stage consumes the previous stage's output.
+Mental model: **three parameter stores under `~/shared_data`, keyed by camera serial (string).**
+Each stage writes one store; `load_current_*` picks the **latest** timestamped dir and hands you numpy.
+You almost never call the loaders directly — [`ImageDict`](../../paradex/image/image_dict.py) pulls the
+calibration in for you. Intrinsics come in a **distorted** and an **undistorted** flavor; picking the
+wrong one is the single most common silent bug.
 
----
+| Your task | Read |
+|-----------|------|
+| **Consume** params: load K / poses / `C2R`, project, undistort, feed `ImageDict` | [`usage.md`](usage.md) |
+| **Edit** the capture or solve scripts (intrinsic/extrinsic/hand-eye), board gen, formats | [`internals.md`](internals.md) |
+| Detect / project / undistort **images** with the loaded params | [`agent_docs/image`](../image/README.md) |
+
+Rule of thumb: **reading calibration out** → `usage.md`; **producing or changing it** → `internals.md`.
 
 ## The three parameter stores
+Everything lives under `~/shared_data`. `<ts>`/`<name>` are `YYYYMMDD_HHMMSS`; "current" loaders pick the
+**latest** dir via `find_latest_directory`. All helpers are in [`utils.py`](../../paradex/calibration/utils.py).
 
-Everything lives under `~/shared_data`. Camera **serial numbers are string keys** everywhere.
+| Store | Path | Written by (stage) | Read by |
+|-------|------|--------------------|---------|
+| Per-camera intrinsics (raw) | `intrinsic/<serial>/param/<ts>.json` | `src/calibration/intrinsic/calculate.py` (1) | `load_current_intrinsic()` |
+| Combined cam params | `cam_param/<name>/{intrinsics,extrinsics}.json` | `src/calibration/extrinsic/calculate.py` (2) | `load_current_camparam()`, `load_camparam(demo_path)` |
+| Camera→robot | `handeye_calibration/<name>/<idx>/C2R.npy` | `src/calibration/handeye/calculate.py` (3) | `load_current_C2R()` |
 
-| Store | Path | Written by | Read by |
-|-------|------|-----------|---------|
-| Per-camera intrinsics | `intrinsic/<serial>/param/<ts>.json` | `src/calibration/intrinsic/calculate.py` | `load_current_intrinsic()` |
-| Combined cam params | `cam_param/<name>/{intrinsics,extrinsics}.json` | `src/calibration/extrinsic/calculate.py` | `load_current_camparam()`, `load_camparam(demo_path)` |
-| Camera→robot | `handeye_calibration/<name>/<idx>/C2R.npy` | `src/calibration/handeye/calculate.py` | `load_current_C2R()` |
+**Why two intrinsic stores:** `intrinsic/<serial>/param/*.json` is the raw per-camera calibration
+(one camera, `cv2.calibrateCamera`); the extrinsic solve reads those as seed intrinsics, runs COLMAP,
+and re-emits them **plus poses** into `cam_param/<name>/`. Downstream code almost always wants
+`cam_param/` (via `load_current_camparam`), not the raw per-camera dir.
 
-`<ts>`/`<name>` are `YYYYMMDD_HHMMSS`; "current" loaders pick the **latest** dir via `find_latest_directory`. All helpers are in [`paradex/calibration/utils.py`](../../paradex/calibration/utils.py).
+## File map
+| File | What it is |
+|------|-----------|
+| [`utils.py`](../../paradex/calibration/utils.py) | The public API: `load_current_camparam` / `load_camparam` / `load_current_intrinsic` / `load_current_C2R` / `get_cammtx` + the store-path constants. |
+| [`colmap.py`](../../paradex/calibration/colmap.py) | COLMAP glue for stage 2: `COLMAPDatabase` (SQLite schema), `get_two_view_geometries`, `load_colmap_camparam`. |
+| [`Tsai_Lenz.py`](../../paradex/calibration/Tsai_Lenz.py) | Hand-eye `AX = XB` solvers: `solve_axb_cpu` (Tsai-Lenz closed form) + `solve_ax_xb` (torch refine). |
+| `__init__.py` | Empty — import from the submodules directly. |
 
-### Why two intrinsic stores
-`intrinsic/<serial>/param/*.json` is the **raw per-camera calibration** (one camera, `cv2.calibrateCamera`). The extrinsic solve reads those as fixed intrinsics, runs COLMAP, and re-emits them **plus poses** into `cam_param/<name>/`. Downstream code almost always wants `cam_param/` (via `load_current_camparam`), not the raw per-camera dir.
-
----
-
-## Using the parameters
-
-### The one call you usually want
-```python
-from paradex.calibration.utils import load_current_camparam, load_current_C2R
-intrinsic, extrinsic = load_current_camparam()   # or load_camparam(demo_path) for a saved dataset
-C2R = load_current_C2R()                          # 4x4 camera->robot
-```
-
-`intrinsic[serial]` is a dict:
-| key | shape | meaning |
-|-----|-------|---------|
-| `original_intrinsics` | (3,3) | K for the **distorted** image (use with `dist_params`) |
-| `intrinsics_undistort` | (3,3) | K for the **undistorted** image (use after `cv2.undistort`, no dist) |
-| `dist_params` | (5,) or (1,5) | OpenCV `[k1,k2,p1,p2,k3]` |
-| `height`, `width` | int | image size |
-
-`extrinsic[serial]` is a **(3,4)** world→camera matrix `[R | t]` (camera-from-world). A world point `X` (3,) projects as:
-```python
-import numpy as np
-Xh = np.append(X, 1.0)
-uvw = intrinsic[serial]["intrinsics_undistort"] @ extrinsic[serial] @ Xh   # if X seen on undistorted image
-uv  = uvw[:2] / uvw[2]
-```
-Shortcut for the full 3x4 projection matrix per camera:
-```python
-from paradex.calibration.utils import get_cammtx
-P = get_cammtx(intrinsic, extrinsic)   # {serial: intrinsics_undistort @ extrinsic}  (3,4)
-```
-
-### `ImageDict` — the main consumer (auto-loads the file structure)
-Most downstream code does **not** call the loaders directly; it uses
-[`paradex.image.image_dict.ImageDict`](../../paradex/image/image_dict.py), which wraps a capture
-directory *and its `cam_param/`* and pulls the calibration in for you:
-```python
-from paradex.image.image_dict import ImageDict
-
-# from a saved dataset dir: if <path>/cam_param/ exists, intrinsic+extrinsic load automatically
-imgs = ImageDict.from_path(path)          # calls load_camparam(path) when cam_param/ is present
-# or attach the latest global calibration to any ImageDict:
-imgs.load_current_camparam()              # -> load_current_camparam()
-imgs.set_camparam(intrinsic, extrinsic)   # or inject explicitly
-```
-Once camparam is attached, the geometry methods use it:
-- `undistort()` — per-serial `cv2.undistort` with `original_intrinsics`+`dist_params` → `intrinsics_undistort`.
-- `triangulate_charuco()` / `triangulate_markers()` / `traingulate_points(pts2d)` — multi-view triangulation using `get_cammtx`.
-- `project_pointcloud(pts3d)` / `project_mesh(obj)` — project world geometry back into every camera.
-- `apply(func, use_camparam=True)` / `map_images(...)` — call `func(img, intrinsic=..., extrinsic=...)` per serial.
-- `save_camparam(path)` — writes `cam_param/{intrinsics,extrinsics}.json` back out (round-trips the format).
-
-So: to *use* calibration, prefer `ImageDict.from_path(...)` / `load_current_camparam()`; the raw
-loaders above are the low-level fallback.
-
-### Distorted vs. undistorted — pick one and stay consistent
-- Raw camera frames are **distorted** → project with `original_intrinsics` + `dist_params` (`cv2.projectPoints`), or undistort the image first (`cv2.undistort(img, original_intrinsics, dist_params, None, intrinsics_undistort)`) and then use `intrinsics_undistort` with **no** distortion. Mixing the two is the most common silent bug.
-- `intrinsics_undistort` comes from `cv2.getOptimalNewCameraMatrix(..., alpha=1)` (keeps all pixels, black borders). `load_current_intrinsic` also exposes `intrinsics_warped` (currently identical to undistort).
-
-### Camera → robot
-`C2R` (4x4) maps a point in **camera/world calibration frame** to the **robot base frame**: `X_robot = C2R @ [X_cam, 1]`. Extrinsics are metric (scaled so the Charuco square edge = 0.06 m), so `C2R` is metric too.
-
-### Units & conventions
-- Extrinsic translations are **meters** (rescaled in `extrinsic/calculate.py`).
-- Coordinate frames follow OpenCV camera convention (+Z forward, +X right, +Y down).
-- Rotations elsewhere in the repo: quaternions are **wxyz** in viser; scipy is xyzw — convert with `quat[[3,0,1,2]]`.
-
----
-
-## Implementation
-
-### Stage 1 — intrinsic (`src/calibration/intrinsic/`)
-Distributed, **auto-capture, no save button**. Each Capture PC (`client.py`) reads its cameras from the daemon's shared memory, detects the Charuco board, and keeps a frame only when the **full board** is visible and its mean per-corner displacement is ≥ `NOVELTY_PX` from every frame already kept for that camera (until `MAX_FRAMES`) — the proven `should_save` rule ported from the old distributed version. Main PC (`capture.py`) shows a merged preview + per-camera `kept/target`; `q` sends `exit`, clients save `keypoint/<ts>.npy` shape `(N, num_corners, 1, 2)`. `calculate.py` masks NaN per frame and runs `cv2.calibrateCamera` per serial → `param/<ts>.json`. Board object-point scale is irrelevant to K/distortion. See [`src/calibration/intrinsic/CLAUDE.md`](../../src/calibration/intrinsic/CLAUDE.md).
-
-### Stage 2 — extrinsic (`src/calibration/extrinsic/`)
-Distributed Charuco capture (`capture.py` + `client.py`, manual `c` to save all cameras' full-res corners/ids/images) → `calculate.py` builds a COLMAP database from the 2D corners, runs `pycolmap.incremental_mapping`, undistorts, triangulates the board, then a **refine pass** (keep corners with reproj err < 2px into a new timestamped dir) and re-solves, finally rescaling translations by `0.06 / mean_board_edge` → `cam_param/<name>/{intrinsics,extrinsics}.json`. Intrinsics are seeded from `load_current_intrinsic()` (stage 1). See [`src/calibration/extrinsic/CLAUDE.md`](../../src/calibration/extrinsic/CLAUDE.md).
-
-> **Why `ba_refine_focal_length/principal_point/extra_params=True`.** These are intentionally ON: with the stage-1 intrinsics held **fixed**, COLMAP incremental mapping **fails to converge** (registration/BA does not settle). Letting BA also refine intrinsics is what makes the solve converge. The tradeoff is that per-camera intrinsics can drift from stage 1, so intrinsic quality still matters (better stage-1 coverage → less drift). Do **not** naively flip these to False to "trust stage 1" — that reintroduces the non-convergence. A real fix for "fix intrinsics AND converge" needs a different solver (Charuco PnP-initialized multi-cam BA, where poses are seeded from known board geometry instead of SfM bootstrapping), not COLMAP incremental SfM.
-
-### Stage 3 — hand-eye (`src/calibration/handeye/`)
-Tsai-Lenz `AX = XB` from paired {camera-observed board pose, robot end-effector pose} → `C2R.npy`. Needs a valid extrinsic first.
-
-### Charuco detection (`paradex/image/aruco.py`)
-`boardinfo_dict` is loaded from `system/current/charuco_info.json` (board `"3"` = 11×8 → 70 corners is the default for intrinsic/extrinsic). `get_charuco_detector()` builds one `cv2.aruco.CharucoDetector` per board (cached), honoring `setLegacyPattern`. `detect_charuco(img)` returns `{b_id: {checkerCorner (n,2), checkerIDs (n,)}}`; `merge_charuco_detection` concatenates boards with per-board id offsets. Detector runs with **default params** (no `DetectorParameters`/`CharucoParameters` tuning) — a lever if detection is flaky.
-
-> **`setLegacyPattern` is a per-board toggle — each board just has to match its own print.** OpenCV ≥4.6 flipped the default Charuco layout (top-left cell went from marker → empty checker); `setLegacyPattern(True)` restores the old layout. It is set **per board** in `charuco_info.json`, so different boards legitimately differ: boards `"1"`/`"2"` are `setLegacyPattern:true` and board `"3"` omits it (→ modern/False) — that is fine, not a bug, as long as each physical board was printed with the same setting the detector uses for it. The only failure mode is a **mismatch between a board's print and its `charuco_info.json` flag**, which makes `detectBoard` fail wholesale or misassign ids. `charuco_info.json` is the single source of truth; if you must change a board's pattern, edit it there and reprint. To confirm empirically, run `detect_charuco` on one captured image (the flag is already baked into the cached detector).
-
-### Board generation (`src/calibration/generate_board.py`)
-Print-ready ChArUco PDF at **exact physical scale**, and the anti-mismatch tool. It renders with OpenCV's own `CharucoBoard.generateImage()` from the **same board object `detect_charuco` uses** (read straight from `charuco_info.json` — `setLegacyPattern` is never overridden, so a generated board cannot diverge from what detection expects), then feeds the raster back through `detect_charuco` and **refuses to write the PDF unless every corner is recovered** (self-check). Page == board size; prints the matching metric `charuco_info.json` entry to stdout but does not modify config. Defaults reproduce board `"3"` at `--square-mm 50` (→ 550×400 mm, marker 35 mm at board 3's 0.7 ratio). **Supersedes the old `src/util/marker/generate_charuco.py`**, which hand-placed markers with matplotlib (`(row+col)%2==0` = legacy layout) and could silently disagree with the detector — the original burn.
-
-### Format reference
-- `intrinsic/<serial>/param/<ts>.json`: `{RMS_error, K (3x3 list), distortion (5,), width, height}`.
-- `cam_param/<name>/intrinsics.json` per serial: `{original_intrinsics (9,), intrinsics_undistort (9,), dist_params, height, width}` — note the flattened 3x3.
-- `cam_param/<name>/extrinsics.json` per serial: 12-length list → reshaped to (3,4).
-- `C2R.npy`: (4,4) float.
-
-### Gotchas for editors
-- `capture.py`/`client.py` pairs are coupled by stream data types (`'image'` /8 JPEG, `'charuco_detection'` /8 float32) and ports (1234 publish, 6890 command). Change both together.
-- `load_current_intrinsic` derives `intrinsics_undistort` at load time via `getOptimalNewCameraMatrix(alpha=1)` — it is **not** stored in the per-camera `param` json (only `K`+`distortion` are).
-- `extrinsic/calculate.py` writes the refined model into a **new** timestamped extrinsic dir but the final `cam_param` uses the original `<name>` — trace `__main__` carefully before changing paths.
-- Typo `dataset_acqusition` is intentional; don't "fix" it.
+Consumers: [`ImageDict`](../../paradex/image/image_dict.py) is the primary one;
+`src/calibration/{intrinsic,extrinsic,handeye}/` are the producers (each has its own `CLAUDE.md`).
+Typo `dataset_acqusition` (missing 'i') is intentional repo-wide — don't "fix" it.

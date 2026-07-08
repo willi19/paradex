@@ -1,0 +1,41 @@
+paradex.utils.log
+=================
+
+.. py:module:: paradex.utils.log
+
+.. autoapi-nested-parse::
+
+   Shared logging for paradex.
+
+   One helper, ``get_logger(name)``, returns a logger that writes to the console
+   *and* to the NAS log folder so a run's output survives on shared storage.
+
+   Layout (PC- and date-namespaced so the 6 capture PCs never clobber each other
+   when they all write to the same NAS)::
+
+       ~/shared_data/log/<pc_name>/<YYYYMMDD>/<name>_<HHMMSS>.log
+
+   The file is created lazily on the first ``get_logger`` call for a given name in
+   a process, so one process run == one file. If the NAS is unreachable the file
+   handler is skipped and logging degrades to console-only rather than crashing the
+   caller.
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:data:: log_root
+
+.. py:function:: get_logger(name)
+
+   Return a console+NAS logger for ``name`` (idempotent per process).
+
+   ``name`` is used both as the logger name and the log-file stem, so keep it
+   short and filesystem-safe (e.g. ``"xarm"``, ``"camera"``, ``"rcc"``).
+
+

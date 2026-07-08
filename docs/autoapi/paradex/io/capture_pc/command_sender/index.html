@@ -250,8 +250,9 @@
 <li class="toctree-l4 current has-children"><a class="reference internal" href="../index.html">paradex.io.capture_pc</a><input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul class="current">
 <li class="toctree-l5 current current-page"><a class="current reference internal" href="#">paradex.io.capture_pc.command_sender</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../data_sender/index.html">paradex.io.capture_pc.data_sender</a></li>
-<li class="toctree-l5"><a class="reference internal" href="../processor/index.html">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../envelope/index.html">paradex.io.capture_pc.envelope</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../transport/index.html">paradex.io.capture_pc.transport</a></li>
 </ul>
 </li>
 <li class="toctree-l4 has-children"><a class="reference internal" href="../../robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -385,20 +386,29 @@
         <article role="main" id="furo-main-content">
           <section id="module-paradex.io.capture_pc.command_sender">
 <span id="paradex-io-capture-pc-command-sender"></span><h1>paradex.io.capture_pc.command_sender<a class="headerlink" href="#module-paradex.io.capture_pc.command_sender" title="Link to this heading">¶</a></h1>
+<p>Reliable command channel (REQ/REP) between the main PC and capture PCs.</p>
+<p><code class="docutils literal notranslate"><span class="pre">CommandSender</span></code> (main PC) fans a command out to every capture PC; each
+<code class="docutils literal notranslate"><span class="pre">CommandReceiver</span></code> (capture PC) fires a local <code class="xref py py-class docutils literal notranslate"><span class="pre">threading.Event</span></code> for it and
+replies. This is the control path — start/stop/save/exit — not the data path
+(see <a class="reference internal" href="../transport/index.html#module-paradex.io.capture_pc.transport" title="paradex.io.capture_pc.transport"><code class="xref py py-mod docutils literal notranslate"><span class="pre">paradex.io.capture_pc.transport</span></code></a> for that).</p>
+<p>Reliability: plain REQ/REP wedges if a peer dies mid-request (the REQ socket is
+stuck until it receives a reply that never comes). <code class="docutils literal notranslate"><span class="pre">CommandSender</span></code> uses the
+<strong>lazy-pirate</strong> pattern — on timeout it discards and rebuilds that PC’s socket and
+retries — so one unreachable/restarting PC can never hang the orchestrator.</p>
 <section id="module-contents">
 <h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">¶</a></h2>
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandSender">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.capture_pc.command_sender.</span></span><span class="sig-name descname"><span class="pre">CommandSender</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pc_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">6890</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">60000</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/command_sender.html#CommandSender"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender" title="Link to this definition">¶</a></dt>
-<dd><p>Send commands to multiple PCs using REQ-REP pattern.</p>
-<dl>
-<dt>Usage:</dt><dd><dl class="simple">
-<dt>sender = CommandSender(</dt><dd><p>pc_info={“pc1”: {“ip”: “192.168.1.10”}},
-port=5482</p>
-</dd>
-</dl>
-<p>)</p>
-<p>sender.send_command({‘action’: ‘start’})</p>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.capture_pc.command_sender.</span></span><span class="sig-name descname"><span class="pre">CommandSender</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pc_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">list</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">6890</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">timeout</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">60000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">retries</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/command_sender.html#CommandSender"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender" title="Link to this definition">¶</a></dt>
+<dd><p>Send commands to multiple PCs over REQ/REP, with per-PC retry.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>pc_list</strong> – target PCs (default: <code class="docutils literal notranslate"><span class="pre">get_pc_list()</span></code>).</p></li>
+<li><p><strong>port</strong> – REP port the receivers bind.</p></li>
+<li><p><strong>timeout</strong> – per-attempt reply timeout in ms.</p></li>
+<li><p><strong>retries</strong> – attempts per PC before giving up (socket is rebuilt between tries).</p></li>
+</ul>
 </dd>
 </dl>
 <dl class="py attribute">
@@ -412,19 +422,34 @@ port=5482</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandSender.timeout">
+<span class="sig-name descname"><span class="pre">timeout</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">60000</span></em><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender.timeout" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandSender.retries">
+<span class="sig-name descname"><span class="pre">retries</span></span><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender.retries" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandSender.context">
-<span class="sig-name descname"><span class="pre">context</span></span><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender.context" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">context</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender.context" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandSender.ip">
+<span class="sig-name descname"><span class="pre">ip</span></span><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender.ip" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandSender.sockets">
-<span class="sig-name descname"><span class="pre">sockets</span></span><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender.sockets" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">sockets</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">zmq.Socket</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender.sockets" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandSender.send_command">
-<span class="sig-name descname"><span class="pre">send_command</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cmd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wait</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmd_info</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">{}</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/command_sender.html#CommandSender.send_command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender.send_command" title="Link to this definition">¶</a></dt>
-<dd><p>Send command to all PCs and wait for responses.</p>
+<span class="sig-name descname"><span class="pre">send_command</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cmd</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">wait</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cmd_info</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/command_sender.html#CommandSender.send_command"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandSender.send_command" title="Link to this definition">¶</a></dt>
+<dd><p>Send <code class="docutils literal notranslate"><span class="pre">cmd</span></code> to all PCs in parallel and wait for their replies.</p>
 </dd></dl>
 
 <dl class="py method">
@@ -437,7 +462,17 @@ port=5482</p>
 <dl class="py class">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandReceiver">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">paradex.io.capture_pc.command_sender.</span></span><span class="sig-name descname"><span class="pre">CommandReceiver</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">event_dict</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">threading.Event</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">port</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">6890</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/command_sender.html#CommandReceiver"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver" title="Link to this definition">¶</a></dt>
-<dd><dl class="py attribute">
+<dd><p>Bind a REP port and fire a local Event for each known command.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>event_dict</strong> – <code class="docutils literal notranslate"><span class="pre">{command:</span> <span class="pre">threading.Event}</span></code> — the event is <code class="docutils literal notranslate"><span class="pre">set()</span></code> when
+its command arrives; <code class="docutils literal notranslate"><span class="pre">info</span></code> is stashed in <code class="docutils literal notranslate"><span class="pre">event_info</span></code>.</p></li>
+<li><p><strong>port</strong> – REP port to bind.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandReceiver.port">
 <span class="sig-name descname"><span class="pre">port</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">6890</span></em><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver.port" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
@@ -449,12 +484,12 @@ port=5482</p>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandReceiver.event_info">
-<span class="sig-name descname"><span class="pre">event_info</span></span><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver.event_info" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">event_info</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></em><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver.event_info" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandReceiver.context">
-<span class="sig-name descname"><span class="pre">context</span></span><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver.context" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">context</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver.context" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
@@ -463,13 +498,18 @@ port=5482</p>
 <dd></dd></dl>
 
 <dl class="py attribute">
-<dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandReceiver.thread">
-<span class="sig-name descname"><span class="pre">thread</span></span><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver.thread" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandReceiver.poller">
+<span class="sig-name descname"><span class="pre">poller</span></span><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver.poller" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py attribute">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandReceiver.exit_event">
 <span class="sig-name descname"><span class="pre">exit_event</span></span><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver.exit_event" title="Link to this definition">¶</a></dt>
+<dd></dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandReceiver.thread">
+<span class="sig-name descname"><span class="pre">thread</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">threading.Thread</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">None</span></em><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver.thread" title="Link to this definition">¶</a></dt>
 <dd></dd></dl>
 
 <dl class="py method">
@@ -480,8 +520,7 @@ port=5482</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="paradex.io.capture_pc.command_sender.CommandReceiver.end">
 <span class="sig-name descname"><span class="pre">end</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="reference internal" href="../../../../../_modules/paradex/io/capture_pc/command_sender.html#CommandReceiver.end"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#paradex.io.capture_pc.command_sender.CommandReceiver.end" title="Link to this definition">¶</a></dt>
-<dd><p>Clean up resources.</p>
-</dd></dl>
+<dd></dd></dl>
 
 </dd></dl>
 
@@ -548,7 +587,10 @@ port=5482</p>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandSender"><code class="docutils literal notranslate"><span class="pre">CommandSender</span></code></a><ul>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandSender.pc_list"><code class="docutils literal notranslate"><span class="pre">CommandSender.pc_list</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandSender.port"><code class="docutils literal notranslate"><span class="pre">CommandSender.port</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandSender.timeout"><code class="docutils literal notranslate"><span class="pre">CommandSender.timeout</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandSender.retries"><code class="docutils literal notranslate"><span class="pre">CommandSender.retries</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandSender.context"><code class="docutils literal notranslate"><span class="pre">CommandSender.context</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandSender.ip"><code class="docutils literal notranslate"><span class="pre">CommandSender.ip</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandSender.sockets"><code class="docutils literal notranslate"><span class="pre">CommandSender.sockets</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandSender.send_command"><code class="docutils literal notranslate"><span class="pre">CommandSender.send_command()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandSender.end"><code class="docutils literal notranslate"><span class="pre">CommandSender.end()</span></code></a></li>
@@ -560,8 +602,9 @@ port=5482</p>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandReceiver.event_info"><code class="docutils literal notranslate"><span class="pre">CommandReceiver.event_info</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandReceiver.context"><code class="docutils literal notranslate"><span class="pre">CommandReceiver.context</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandReceiver.socket"><code class="docutils literal notranslate"><span class="pre">CommandReceiver.socket</span></code></a></li>
-<li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandReceiver.thread"><code class="docutils literal notranslate"><span class="pre">CommandReceiver.thread</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandReceiver.poller"><code class="docutils literal notranslate"><span class="pre">CommandReceiver.poller</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandReceiver.exit_event"><code class="docutils literal notranslate"><span class="pre">CommandReceiver.exit_event</span></code></a></li>
+<li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandReceiver.thread"><code class="docutils literal notranslate"><span class="pre">CommandReceiver.thread</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandReceiver.start"><code class="docutils literal notranslate"><span class="pre">CommandReceiver.start()</span></code></a></li>
 <li><a class="reference internal" href="#paradex.io.capture_pc.command_sender.CommandReceiver.end"><code class="docutils literal notranslate"><span class="pre">CommandReceiver.end()</span></code></a></li>
 </ul>

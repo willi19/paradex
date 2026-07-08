@@ -3,7 +3,8 @@
 Docs for **AI agents working on `paradex/video/`** — the **post-capture** video layer.
 Cameras write raw distorted `.avi` to the capture PCs' local disks; this module turns those
 into calibrated, compressed, uploaded videos. It runs **after** a capture session, not during
-one (that's `camera_system/`). Read this one file; the module is only two files.
+one (that's `camera_system/`). Calling the pipeline or a converter? See [`usage.md`](usage.md).
+Editing the pipeline / drop-frame heuristic / delete-on-success path? See [`internals.md`](internals.md).
 
 Mental model: **raw local `.avi` → undistort + drop-frame fix → GPU H.264 re-encode → rsync to
 NAS → delete local.** `raw_video_processor.py` is the pipeline; `util.py` is a bag of standalone

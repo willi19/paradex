@@ -12,7 +12,8 @@ Submodules
 
    /autoapi/paradex/io/capture_pc/command_sender/index
    /autoapi/paradex/io/capture_pc/data_sender/index
-   /autoapi/paradex/io/capture_pc/processor/index
+   /autoapi/paradex/io/capture_pc/envelope/index
    /autoapi/paradex/io/capture_pc/ssh/index
+   /autoapi/paradex/io/capture_pc/transport/index
 
 

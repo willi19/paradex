@@ -248,8 +248,9 @@
 <li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/io/capture_pc/index.html">paradex.io.capture_pc</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/command_sender/index.html">paradex.io.capture_pc.command_sender</a></li>
 <li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/data_sender/index.html">paradex.io.capture_pc.data_sender</a></li>
-<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/processor/index.html">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/envelope/index.html">paradex.io.capture_pc.envelope</a></li>
 <li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+<li class="toctree-l5"><a class="reference internal" href="autoapi/paradex/io/capture_pc/transport/index.html">paradex.io.capture_pc.transport</a></li>
 </ul>
 </li>
 <li class="toctree-l4 has-children"><a class="reference internal" href="autoapi/paradex/io/robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -600,6 +601,8 @@
           <li><a href="autoapi/paradex/io/robot_controller/under_test/inspire_hand_ip_demo/index.html#paradex.io.robot_controller.under_test.inspire_hand_ip_demo.basic_demo">(in module paradex.io.robot_controller.under_test.inspire_hand_ip_demo)</a>
 </li>
         </ul></li>
+        <li><a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.batch_eta">batch_eta() (in module paradex.process.processor)</a>
+</li>
         <li><a href="autoapi/paradex/robot/curobo/index.html#paradex.robot.curobo.CuroboPlanner.batch_plan_config">batch_plan_config (paradex.robot.curobo.CuroboPlanner attribute)</a>
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.batch_size">batch_size (paradex.image.projection.BatchRenderer attribute)</a>
@@ -623,6 +626,8 @@
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.PyspinCameraConfig.BUFFER_COUNT">BUFFER_COUNT (paradex.io.camera_system.pyspin.PyspinCameraConfig attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#paradex.io.capture_pc.envelope.Message.bufs">bufs (paradex.io.capture_pc.envelope.Message attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP.build_tactile_index">build_tactile_index() (paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP method)</a>
 </li>
@@ -795,14 +800,16 @@
 </li>
           <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.close">(paradex.io.capture_pc.data_sender.DataPublisher method)</a>
 </li>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Publisher.close">(paradex.io.capture_pc.transport.Publisher method)</a>
+</li>
           <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP.close">(paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP method)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.cmd_queue">cmd_queue (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.collecting">collecting (paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
+        <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.collecting">collecting (paradex.io.capture_pc.transport.Collector attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.collection_thread">collection_thread (paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
+        <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector">Collector (class in paradex.io.capture_pc.transport)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.collision_scene">collision_scene (paradex.visualization.robot.RobotModule property)</a>
 </li>
@@ -812,14 +819,14 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller/index.html#paradex.io.robot_controller.inspire_controller.command">command (in module paradex.io.robot_controller.inspire_controller)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/camera_system/camera_server_daemon/index.html#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.command_port">command_port (paradex.io.camera_system.camera_server_daemon.camera_server_daemon attribute)</a>
 
         <ul>
           <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.command_port">(paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
 </li>
         </ul></li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/camera_system/camera_server_daemon/index.html#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.command_thread">command_thread() (paradex.io.camera_system.camera_server_daemon.camera_server_daemon method)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.COMMAND_TOPIC">COMMAND_TOPIC (in module paradex.io.robot_controller.allegro_controller)</a>
@@ -887,9 +894,9 @@
         <ul>
           <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandSender.context">(paradex.io.capture_pc.command_sender.CommandSender attribute)</a>
 </li>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.context">(paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.context">(paradex.io.capture_pc.transport.Collector attribute)</a>
 </li>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.context">(paradex.io.capture_pc.data_sender.DataPublisher attribute)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Publisher.context">(paradex.io.capture_pc.transport.Publisher attribute)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.continuous">continuous (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
@@ -1014,6 +1021,8 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/modbus/index.html#paradex.io.robot_controller.under_test.modbus.ModbusClient.debug">debug (paradex.io.robot_controller.under_test.modbus.ModbusClient attribute)</a>
 </li>
+        <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#paradex.io.capture_pc.envelope.decode">decode() (in module paradex.io.capture_pc.envelope)</a>
+</li>
         <li><a href="autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.DEFAULT_EXPOSURE">DEFAULT_EXPOSURE (in module paradex.io.camera_system.camera_loader)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.DEFAULT_FORCE_SET">DEFAULT_FORCE_SET (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
@@ -1030,10 +1039,10 @@
 </li>
         <li><a href="autoapi/paradex/image/aruco/index.html#paradex.image.aruco.detect_aruco">detect_aruco() (in module paradex.image.aruco)</a>
 </li>
-        <li><a href="autoapi/paradex/image/aruco/index.html#paradex.image.aruco.detect_charuco">detect_charuco() (in module paradex.image.aruco)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="autoapi/paradex/image/aruco/index.html#paradex.image.aruco.detect_charuco">detect_charuco() (in module paradex.image.aruco)</a>
+</li>
         <li><a href="autoapi/paradex/io/camera_system/signal_generator/index.html#paradex.io.camera_system.signal_generator.UTGE900.device">device (paradex.io.camera_system.signal_generator.UTGE900 attribute)</a>
 </li>
         <li><a href="autoapi/paradex/transforms/coordinate/index.html#paradex.transforms.coordinate.DEVICE2GLOBAL">DEVICE2GLOBAL (in module paradex.transforms.coordinate)</a>
@@ -1084,6 +1093,8 @@
     <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/calibration/utils/index.html#paradex.calibration.utils.eef_calib_path">eef_calib_path (in module paradex.calibration.utils)</a>
 </li>
+        <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#paradex.io.capture_pc.envelope.encode">encode() (in module paradex.io.capture_pc.envelope)</a>
+</li>
         <li><a href="autoapi/paradex/dataset_acqusition/capture/index.html#paradex.dataset_acqusition.capture.CaptureSession.end">end() (paradex.dataset_acqusition.capture.CaptureSession method)</a>
 
         <ul>
@@ -1101,7 +1112,7 @@
 </li>
           <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandSender.end">(paradex.io.capture_pc.command_sender.CommandSender method)</a>
 </li>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.end">(paradex.io.capture_pc.data_sender.DataCollector method)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.end">(paradex.io.capture_pc.transport.Collector method)</a>
 </li>
           <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.AllegroController.end">(paradex.io.robot_controller.allegro_controller.AllegroController method)</a>
 </li>
@@ -1222,6 +1233,10 @@
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.BatchRenderer.flip_z">flip_z (paradex.image.projection.BatchRenderer attribute)</a>
 </li>
+        <li><a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.fmt_dur">fmt_dur() (in module paradex.process.processor)</a>
+</li>
+        <li><a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.fmt_job">fmt_job() (in module paradex.process.processor)</a>
+</li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.FORCE_ACT">FORCE_ACT (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP.force_calibration">force_calibration() (paradex.io.robot_controller.under_test.hand_rh56dftp.InspireHandRH56DFTP method)</a>
@@ -1230,10 +1245,10 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.FORCE_MAX">FORCE_MAX (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.FORCE_SENSOR_CALIB">FORCE_SENSOR_CALIB (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
-</li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.FORCE_SENSOR_CALIB">FORCE_SENSOR_CALIB (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
+</li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.FORCE_SET">FORCE_SET (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.force_takeover">force_takeover() (paradex.io.camera_system.remote_camera_controller.remote_camera_controller method)</a>
@@ -1295,6 +1310,8 @@
         <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.generate_sim">generate_sim() (paradex.simulator.isaac.Simulator method)</a>
 </li>
         <li><a href="autoapi/paradex/robot/urdf/index.html#paradex.robot.urdf.generate_urdf">generate_urdf() (in module paradex.robot.urdf)</a>
+</li>
+        <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.get">get() (paradex.io.capture_pc.transport.Collector method)</a>
 </li>
         <li><a href="autoapi/paradex/retargetor/unimanual/index.html#paradex.retargetor.unimanual.Retargetor.get_action">get_action() (paradex.retargetor.unimanual.Retargetor method)</a>
 </li>
@@ -1518,6 +1535,8 @@
           <li><a href="autoapi/paradex/retargetor/state/index.html#paradex.retargetor.state.HandStateExtractor.get_state">(paradex.retargetor.state.HandStateExtractor method)</a>
 </li>
         </ul></li>
+        <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.get_stats">get_stats() (paradex.io.capture_pc.transport.Collector method)</a>
+</li>
         <li><a href="autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.get_status">get_status() (paradex.io.camera_system.camera.Camera method)</a>
 
         <ul>
@@ -1736,10 +1755,10 @@
 </li>
         <li><a href="autoapi/paradex/process/processor/index.html#id1">inputs (paradex.process.processor.Job attribute)</a>, <a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.Job.inputs">[1]</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/retargetor/hand_regargetor/index.html#paradex.retargetor.hand_regargetor.inspire">inspire() (in module paradex.retargetor.hand_regargetor)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller/index.html#paradex.io.robot_controller.inspire_controller.InspireController">InspireController (class in paradex.io.robot_controller.inspire_controller)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP">InspireControllerIP (class in paradex.io.robot_controller.inspire_controller_ip)</a>
@@ -1764,8 +1783,12 @@
 </li>
         <li><a href="autoapi/paradex/calibration/utils/index.html#paradex.calibration.utils.intrinsic_dir">intrinsic_dir (in module paradex.calibration.utils)</a>
 </li>
-        <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP.ip">ip (paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP attribute)</a>
+        <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandSender.ip">ip (paradex.io.capture_pc.command_sender.CommandSender attribute)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP.ip">(paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP attribute)</a>
 </li>
+        </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/camera_reader/index.html#paradex.io.camera_system.camera_reader.CameraReader.is_active">is_active() (paradex.io.camera_system.camera_reader.CameraReader method)</a>
 </li>
         <li><a href="autoapi/paradex/io/teleop/deprecated/occulus/receiver/index.html#paradex.io.teleop.deprecated.occulus.receiver.OculusReceiver.is_body">is_body (paradex.io.teleop.deprecated.occulus.receiver.OculusReceiver attribute)</a>
@@ -1900,7 +1923,9 @@
           <li><a href="autoapi/paradex/io/camera_system/timestamp_monitor/index.html#paradex.io.camera_system.timestamp_monitor.TimestampMonitor.last_traceback">(paradex.io.camera_system.timestamp_monitor.TimestampMonitor attribute)</a>
 </li>
         </ul></li>
-        <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.latest_data">latest_data (paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
+        <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#paradex.io.capture_pc.envelope.Message.latency_ms">latency_ms (paradex.io.capture_pc.envelope.Message property)</a>
+</li>
+        <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.latest">latest (paradex.io.capture_pc.transport.Collector attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP.latest_tactile">latest_tactile (paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP attribute)</a>
 </li>
@@ -2094,6 +2119,8 @@
         </ul></li>
         <li><a href="autoapi/paradex/calibration/Tsai_Lenz/index.html#paradex.calibration.Tsai_Lenz.logR">logR() (in module paradex.calibration.Tsai_Lenz)</a>
 </li>
+        <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.LOSSLESS">LOSSLESS (in module paradex.io.capture_pc.transport)</a>
+</li>
     </ul></td>
   </tr></table>
 </section>
@@ -2132,8 +2159,14 @@
 </li>
         <li><a href="autoapi/paradex/image/projection/index.html#paradex.image.projection.mesh_to_obj_dict">mesh_to_obj_dict() (in module paradex.image.projection)</a>
 </li>
-        <li><a href="autoapi/paradex/process/processor/index.html#id3">meta (paradex.process.processor.Job attribute)</a>, <a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.Job.meta">[1]</a>
+        <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#paradex.io.capture_pc.envelope.Message">Message (class in paradex.io.capture_pc.envelope)</a>
 </li>
+        <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#paradex.io.capture_pc.envelope.Message.meta">meta (paradex.io.capture_pc.envelope.Message attribute)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/process/processor/index.html#id3">(paradex.process.processor.Job attribute)</a>, <a href="autoapi/paradex/process/processor/index.html#paradex.process.processor.Job.meta">[1]</a>
+</li>
+        </ul></li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.MF_TOUCH">MF_TOUCH (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.FingerID.MIDDLE">MIDDLE (paradex.io.robot_controller.under_test.hand_rh56dftp.FingerID attribute)</a>
@@ -2158,6 +2191,10 @@
 
         <ul>
           <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.PyspinTimestampMonitor.mode">(paradex.io.camera_system.pyspin.PyspinTimestampMonitor attribute)</a>
+</li>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.mode">(paradex.io.capture_pc.transport.Collector attribute)</a>
+</li>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Publisher.mode">(paradex.io.capture_pc.transport.Publisher attribute)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/robot/robot_wrapper/index.html#paradex.robot.robot_wrapper.RobotWrapper.model">model (paradex.robot.robot_wrapper.RobotWrapper attribute)</a>
@@ -2232,9 +2269,11 @@
 </li>
           <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#module-paradex.io.capture_pc.data_sender">paradex.io.capture_pc.data_sender</a>
 </li>
-          <li><a href="autoapi/paradex/io/capture_pc/processor/index.html#module-paradex.io.capture_pc.processor">paradex.io.capture_pc.processor</a>
+          <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#module-paradex.io.capture_pc.envelope">paradex.io.capture_pc.envelope</a>
 </li>
           <li><a href="autoapi/paradex/io/capture_pc/ssh/index.html#module-paradex.io.capture_pc.ssh">paradex.io.capture_pc.ssh</a>
+</li>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#module-paradex.io.capture_pc.transport">paradex.io.capture_pc.transport</a>
 </li>
           <li><a href="autoapi/paradex/io/robot_controller/index.html#module-paradex.io.robot_controller">paradex.io.robot_controller</a>
 </li>
@@ -2420,7 +2459,7 @@
 </li>
           <li><a href="autoapi/paradex/io/camera_system/timestamp_monitor/index.html#paradex.io.camera_system.timestamp_monitor.TimestampMonitor.name">(paradex.io.camera_system.timestamp_monitor.TimestampMonitor attribute)</a>
 </li>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.name">(paradex.io.capture_pc.data_sender.DataPublisher attribute)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Publisher.name">(paradex.io.capture_pc.transport.Publisher attribute)</a>
 </li>
           <li><a href="autoapi/paradex/io/robot_controller/gui_controller/index.html#paradex.io.robot_controller.gui_controller.Waypoint.name">(paradex.io.robot_controller.gui_controller.Waypoint attribute)</a>
 </li>
@@ -2784,10 +2823,10 @@
 </li>
         </ul></li>
         <li>
-    paradex.io.capture_pc.processor
+    paradex.io.capture_pc.envelope
 
         <ul>
-          <li><a href="autoapi/paradex/io/capture_pc/processor/index.html#module-paradex.io.capture_pc.processor">module</a>
+          <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#module-paradex.io.capture_pc.envelope">module</a>
 </li>
         </ul></li>
         <li>
@@ -2795,6 +2834,13 @@
 
         <ul>
           <li><a href="autoapi/paradex/io/capture_pc/ssh/index.html#module-paradex.io.capture_pc.ssh">module</a>
+</li>
+        </ul></li>
+        <li>
+    paradex.io.capture_pc.transport
+
+        <ul>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#module-paradex.io.capture_pc.transport">module</a>
 </li>
         </ul></li>
         <li>
@@ -3308,7 +3354,7 @@
 </li>
           <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandSender.pc_list">(paradex.io.capture_pc.command_sender.CommandSender attribute)</a>
 </li>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.pc_list">(paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.pc_list">(paradex.io.capture_pc.transport.Collector attribute)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/utils/path/index.html#paradex.utils.path.pc_name">pc_name (in module paradex.utils.path)</a>
@@ -3379,8 +3425,12 @@
 </li>
         <li><a href="autoapi/paradex/robot/curobo/index.html#paradex.robot.curobo.CuroboPlanner.plan_to_joint_target">plan_to_joint_target() (paradex.robot.curobo.CuroboPlanner method)</a>
 </li>
-        <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.poller">poller (paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
+        <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandReceiver.poller">poller (paradex.io.capture_pc.command_sender.CommandReceiver attribute)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.poller">(paradex.io.capture_pc.transport.Collector attribute)</a>
 </li>
+        </ul></li>
         <li><a href="autoapi/paradex/video/raw_video_processor/index.html#paradex.video.raw_video_processor.RawVideoProcessor.pool">pool (paradex.video.raw_video_processor.RawVideoProcessor attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandReceiver.port">port (paradex.io.capture_pc.command_sender.CommandReceiver attribute)</a>
@@ -3388,9 +3438,9 @@
         <ul>
           <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandSender.port">(paradex.io.capture_pc.command_sender.CommandSender attribute)</a>
 </li>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.port">(paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.port">(paradex.io.capture_pc.transport.Collector attribute)</a>
 </li>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.port">(paradex.io.capture_pc.data_sender.DataPublisher attribute)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Publisher.port">(paradex.io.capture_pc.transport.Publisher attribute)</a>
 </li>
           <li><a href="autoapi/paradex/io/robot_controller/inspire_controller_ip/index.html#paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP.port">(paradex.io.robot_controller.inspire_controller_ip.InspireControllerIP attribute)</a>
 </li>
@@ -3491,9 +3541,7 @@
 </li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.pub_timeout">pub_timeout (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
 </li>
-        <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.publish_thread">publish_thread (paradex.io.capture_pc.data_sender.DataPublisher attribute)</a>
-</li>
-        <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.publishing">publishing (paradex.io.capture_pc.data_sender.DataPublisher attribute)</a>
+        <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Publisher">Publisher (class in paradex.io.capture_pc.transport)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/pyspin/index.html#paradex.io.camera_system.pyspin.PyspinCamera">PyspinCamera (class in paradex.io.camera_system.pyspin)</a>
 </li>
@@ -3580,6 +3628,8 @@
         <li><a href="autoapi/paradex/robot/xarm_kinematic_calib/index.html#paradex.robot.xarm_kinematic_calib.read_xarm_kinematic_params">read_xarm_kinematic_params() (in module paradex.robot.xarm_kinematic_calib)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera_reader/index.html#paradex.io.camera_system.camera_reader.MultiCameraReader.readers">readers (paradex.io.camera_system.camera_reader.MultiCameraReader attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.REALTIME">REALTIME (in module paradex.io.capture_pc.transport)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/scene/viser_backend/index.html#paradex.visualization.scene.viser_backend.ViserScene.record_flythrough">record_flythrough() (paradex.visualization.scene.viser_backend.ViserScene method)</a>
 </li>
@@ -3682,6 +3732,8 @@
         <li><a href="autoapi/paradex/io/camera_system/monitor_daemon/index.html#paradex.io.camera_system.monitor_daemon.CameraMonitor.restart_server">restart_server() (paradex.io.camera_system.monitor_daemon.CameraMonitor method)</a>
 </li>
         <li><a href="autoapi/paradex/retargetor/unimanual/index.html#paradex.retargetor.unimanual.Retargetor">Retargetor (class in paradex.retargetor.unimanual)</a>
+</li>
+        <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandSender.retries">retries (paradex.io.capture_pc.command_sender.CommandSender attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera_loader/index.html#paradex.io.camera_system.camera_loader.RETRY_COUNT">RETRY_COUNT (in module paradex.io.camera_system.camera_loader)</a>
 </li>
@@ -3853,6 +3905,8 @@
 </li>
         <li><a href="autoapi/paradex/visualization/robot/index.html#paradex.visualization.robot.RobotModule.scene">scene (paradex.visualization.robot.RobotModule property)</a>
 </li>
+        <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Publisher.send">send() (paradex.io.capture_pc.transport.Publisher method)</a>
+</li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.send_command">send_command() (paradex.io.camera_system.remote_camera_controller.remote_camera_controller method)</a>
 
         <ul>
@@ -3860,7 +3914,11 @@
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.send_data">send_data() (paradex.io.capture_pc.data_sender.DataPublisher method)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Publisher.send_data">(paradex.io.capture_pc.transport.Publisher method)</a>
 </li>
+        </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/remote_camera_controller/index.html#paradex.io.camera_system.remote_camera_controller.remote_camera_controller.sending_event">sending_event (paradex.io.camera_system.remote_camera_controller.remote_camera_controller attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller/index.html#paradex.io.robot_controller.inspire_controller.SENSOR_LAYOUT">SENSOR_LAYOUT (in module paradex.io.robot_controller.inspire_controller)</a>
@@ -3870,6 +3928,8 @@
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/process/distributed/index.html#paradex.process.distributed.SENTINEL_PREFIX">SENTINEL_PREFIX (in module paradex.process.distributed)</a>
+</li>
+        <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#paradex.io.capture_pc.envelope.Message.seq">seq (paradex.io.capture_pc.envelope.Message attribute)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Scene.sequence">sequence() (paradex.visualization.scene.base.Scene method)</a>
 </li>
@@ -4006,13 +4066,13 @@
         <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandReceiver.socket">socket (paradex.io.capture_pc.command_sender.CommandReceiver attribute)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.socket">(paradex.io.capture_pc.data_sender.DataPublisher attribute)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Publisher.socket">(paradex.io.capture_pc.transport.Publisher attribute)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandSender.sockets">sockets (paradex.io.capture_pc.command_sender.CommandSender attribute)</a>
 
         <ul>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.sockets">(paradex.io.capture_pc.data_sender.DataCollector attribute)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.sockets">(paradex.io.capture_pc.transport.Collector attribute)</a>
 </li>
         </ul></li>
         <li><a href="autoapi/paradex/calibration/Tsai_Lenz/index.html#paradex.calibration.Tsai_Lenz.solve_ax_xb">solve_ax_xb() (in module paradex.calibration.Tsai_Lenz)</a>
@@ -4032,6 +4092,8 @@
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.SPEED_SET">SPEED_SET (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.AllegroController.spin_thread">spin_thread (paradex.io.robot_controller.allegro_controller.AllegroController attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#paradex.io.capture_pc.envelope.Message.src">src (paradex.io.capture_pc.envelope.Message attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/capture_pc/ssh/index.html#paradex.io.capture_pc.ssh.ssh_port">ssh_port (in module paradex.io.capture_pc.ssh)</a>
 </li>
@@ -4060,7 +4122,7 @@
 </li>
           <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandReceiver.start">(paradex.io.capture_pc.command_sender.CommandReceiver method)</a>
 </li>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.start">(paradex.io.capture_pc.data_sender.DataCollector method)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.start">(paradex.io.capture_pc.transport.Collector method)</a>
 </li>
           <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.AllegroController.start">(paradex.io.robot_controller.allegro_controller.AllegroController method)</a>
 </li>
@@ -4082,6 +4144,8 @@
         <li><a href="autoapi/paradex/visualization/visualizer/viser/index.html#paradex.visualization.visualizer.viser.ViserViewer.start_viewer">start_viewer() (paradex.visualization.visualizer.viser.ViserViewer method)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera_server_daemon/index.html#paradex.io.camera_system.camera_server_daemon.camera_server_daemon.state">state (paradex.io.camera_system.camera_server_daemon.camera_server_daemon attribute)</a>
+</li>
+        <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.stats">stats (paradex.io.capture_pc.transport.Collector attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP.STATUS">STATUS (paradex.io.robot_controller.under_test.hand_rh56dftp.RegisterRH56DFTP attribute)</a>
 </li>
@@ -4110,7 +4174,7 @@
 </li>
           <li><a href="autoapi/paradex/io/camera_system/timestamp_monitor/index.html#paradex.io.camera_system.timestamp_monitor.TimestampMonitor.stop">(paradex.io.camera_system.timestamp_monitor.TimestampMonitor method)</a>
 </li>
-          <li><a href="autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.stop">(paradex.io.capture_pc.data_sender.DataCollector method)</a>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.stop">(paradex.io.capture_pc.transport.Collector method)</a>
 </li>
           <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.AllegroController.stop">(paradex.io.robot_controller.allegro_controller.AllegroController method)</a>
 </li>
@@ -4212,6 +4276,8 @@
         <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandReceiver.thread">thread (paradex.io.capture_pc.command_sender.CommandReceiver attribute)</a>
 
         <ul>
+          <li><a href="autoapi/paradex/io/capture_pc/transport/index.html#paradex.io.capture_pc.transport.Collector.thread">(paradex.io.capture_pc.transport.Collector attribute)</a>
+</li>
           <li><a href="autoapi/paradex/io/robot_controller/allegro_controller/index.html#paradex.io.robot_controller.allegro_controller.AllegroController.thread">(paradex.io.robot_controller.allegro_controller.AllegroController attribute)</a>
 </li>
           <li><a href="autoapi/paradex/io/robot_controller/inspire_controller/index.html#paradex.io.robot_controller.inspire_controller.InspireController.thread">(paradex.io.robot_controller.inspire_controller.InspireController attribute)</a>
@@ -4227,19 +4293,25 @@
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/under_test/hand_rh56dftp/index.html#paradex.io.robot_controller.under_test.hand_rh56dftp.FingerID.THUMB_ROTATE">THUMB_ROTATE (paradex.io.robot_controller.under_test.hand_rh56dftp.FingerID attribute)</a>
 </li>
-    </ul></td>
-    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/simulator/isaac/index.html#paradex.simulator.isaac.Simulator.tick">tick() (paradex.simulator.isaac.Simulator method)</a>
 </li>
+    </ul></td>
+    <td style="width: 33%; vertical-align: top;"><ul>
         <li><a href="autoapi/paradex/visualization/scene/base/index.html#paradex.visualization.scene.base.Timeline">Timeline (class in paradex.visualization.scene.base)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera_reader/index.html#paradex.io.camera_system.camera_reader.CameraReader.timeout">timeout (paradex.io.camera_system.camera_reader.CameraReader attribute)</a>
+
+        <ul>
+          <li><a href="autoapi/paradex/io/capture_pc/command_sender/index.html#paradex.io.capture_pc.command_sender.CommandSender.timeout">(paradex.io.capture_pc.command_sender.CommandSender attribute)</a>
 </li>
+        </ul></li>
         <li><a href="autoapi/paradex/io/camera_system/timestamp_monitor/index.html#paradex.io.camera_system.timestamp_monitor.TimestampMonitor">TimestampMonitor (class in paradex.io.camera_system.timestamp_monitor)</a>
 </li>
         <li><a href="autoapi/paradex/transforms/conversion/index.html#paradex.transforms.conversion.to_homo">to_homo() (in module paradex.transforms.conversion)</a>
 </li>
         <li><a href="autoapi/paradex/robot/curobo/index.html#paradex.robot.curobo.to_quat">to_quat() (in module paradex.robot.curobo)</a>
+</li>
+        <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#paradex.io.capture_pc.envelope.Message.topic">topic (paradex.io.capture_pc.envelope.Message attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/robot_controller/inspire_controller/index.html#paradex.io.robot_controller.inspire_controller.TOTAL_REG_COUNT">TOTAL_REG_COUNT (in module paradex.io.robot_controller.inspire_controller)</a>
 
@@ -4272,6 +4344,8 @@
         <li><a href="autoapi/paradex/transforms/triangulate/index.html#paradex.transforms.triangulate.triangulation">triangulation() (in module paradex.transforms.triangulate)</a>
 </li>
         <li><a href="autoapi/paradex/visualization/visualizer/open3d_viewer/index.html#paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer.trimesh_to_o3d">trimesh_to_o3d() (paradex.visualization.visualizer.open3d_viewer.Open3DVideoRenderer method)</a>
+</li>
+        <li><a href="autoapi/paradex/io/capture_pc/envelope/index.html#paradex.io.capture_pc.envelope.Message.ts_ns">ts_ns (paradex.io.capture_pc.envelope.Message attribute)</a>
 </li>
         <li><a href="autoapi/paradex/io/camera_system/camera/index.html#paradex.io.camera_system.camera.Camera.type">type (paradex.io.camera_system.camera.Camera attribute)</a>
 

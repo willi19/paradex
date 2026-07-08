@@ -3,7 +3,8 @@
 Docs for **AI agents working on `paradex/transforms/`** — the low-level **coordinate / rigid-transform
 math** layer. No I/O, no calibration loading, no camera or robot handles: just numpy (+ `transforms3d`)
 functions and a couple of hard-coded 4×4 lookup tables that everything geometric in the repo leans on.
-Three tiny source files (~130 lines total); read all of them — there's no `usage.md`/`internals.md` split here.
+Three tiny source files (~130 lines total). Calling one? See [`usage.md`](usage.md). Editing the math
+or chasing a shape/direction trap? See [`internals.md`](internals.md).
 
 Mental model: **points/poses in → points/poses out.** `conversion.py` = pose ↔ matrix + point projection +
 an SVD point-cloud aligner; `triangulate.py` = multi-view 2D → 3D (DLT, with a RANSAC wrapper); `coordinate.py`

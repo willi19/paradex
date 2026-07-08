@@ -158,7 +158,3 @@ for a driver-level grab timeout) is the usual way this module accretes cruft.
   the user runs the rig — say so in the commit/PR.
 - If you add/rename a health field, thread it all the way up (§2 step 7) or the main PC
   never sees it.
-- Roadmap / known limitations / the acquisition–sink decoupling redesign live in
-  [`design/camera-recording-redesign.md`](../../design/camera-recording-redesign.md)
-  (repo root `design/`) — intentionally **not** here; this file is orientation, that one
-  is the plan.

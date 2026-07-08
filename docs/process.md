@@ -6,7 +6,8 @@ model; for method signatures, parameters, and return values see the
 {doc}`API reference <process_api>`.
 
 - Core library: `paradex/video/` (`raw_video_processor.py`, `util.py`)
-- Distributed driver: `src/util/upload_video/` (dashboard + workers)
+- Distributed driver: the `paradex.process` batch framework, wired by
+  `src/util/upload_video/` (`main.py` + `worker.py`)
 - Generated per-symbol API: {doc}`API Reference <autoapi/index>`
 
 ---
@@ -102,30 +103,37 @@ displays. The two sides talk over ZMQ (port `1234`) via
 ```{mermaid}
 flowchart TB
     subgraph Main["Main PC"]
-      MON["VideoProgressMonitor<br/>(Flask + SocketIO)"] --> COL["DataCollector<br/>(ZMQ 1234)"]
-      MON --> WEB["browser dashboard<br/>(port 8081)"]
+      RD["run_distributed<br/>(paradex.process)"] --> COL["DataCollector<br/>(ZMQ 1234)"]
+      RD --> DASH["console dashboard<br/>(per-PC counts + rig ETA)"]
     end
     subgraph Cap["Capture PC (×6)"]
-      PUB["VideoProgressPublisher<br/>(client.py)"] --> RVP["RawVideoProcessor<br/>(worker Pool)"]
-      PUB --> DP["DataPublisher<br/>(ZMQ 1234)"]
+      W["worker.py<br/>serve_jobs(discover, process)"] --> URV["undistort_raw_video<br/>(per-video, worker Pool)"]
+      W --> DP["DataPublisher<br/>(ZMQ 1234)"]
     end
-    MON -. "run_script (SSH)<br/>launches client.py" .-> PUB
-    DP -- "progress metadata<br/>(status / % / fps / eta)" --> COL
+    RD -. "run_script (SSH)<br/>launches worker.py" .-> W
+    DP -- "progress items<br/>(status / % / frame / fps / eta)" --> COL
 ```
 
-- **Main PC** (`src/util/upload_video/process.py`): `kill_remote_clients()` SSHes
-  every PC and `pkill`s stale clients to free port `1234`, then `run_script(...)`
-  launches `client.py` remotely, then serves `VideoProgressMonitor` — a Flask +
-  `flask_socketio` app fed by a `DataCollector`. Its `update_loop` diffs collected
-  data each second and pushes `progress_update` to the browser. Dashboard is on
-  **8081** (the `__main__` value; the class default `web_port=8080` is overridden).
-- **Capture PC** (`src/util/upload_video/client.py`): `VideoProgressPublisher` wraps
-  a `RawVideoProcessor` and a `DataPublisher`. It calls `processor.process()`, then
-  loops while `not processor.finished()`, packing each video's progress into
-  `metadata` and calling `publisher.send_data(metadata=[...], data=[])`.
+The upload_video driver is now the `paradex.process` batch framework (the old
+Flask/SocketIO `VideoProgressMonitor` in `process.py` and `VideoProgressPublisher`
+in `client.py` were removed).
+
+- **Main PC** (`src/util/upload_video/main.py`): calls
+  `run_distributed("python src/util/upload_video/worker.py")` — SSH-launches the
+  worker on every capture PC, aggregates their ZMQ status via a `DataCollector`, and
+  prints the shared `paradex.process` console dashboard (per-PC counts, per-video
+  frame progress, and a rig-wide ETA) until all PCs finish.
+- **Capture PC** (`src/util/upload_video/worker.py`): a `paradex.process` worker.
+  `discover()` returns one `Job` per local raw `.avi`; `process(job, ctx)` calls
+  `undistort_raw_video` **unchanged**, forwarding its per-frame `progress_dict`
+  updates into `ctx.status(frame=…, total=…)` through a small `_CtxProgress` adapter
+  so the framework derives elapsed/fps/ETA. Data is local per PC, so no `shard` is
+  needed. `serve_jobs` publishes status over the standard `paradex.process` ZMQ
+  channel.
 
 For a single-PC run (no dashboard), `src/validate/upload_raw_video/upload_local.py`
-just does `RawVideoProcessor().process()` then `.wait_and_monitor()`.
+still uses the retained `RawVideoProcessor` directly: `RawVideoProcessor().process()`
+then `.wait_and_monitor()`.
 
 ---
 
@@ -175,8 +183,8 @@ safely re-run (idempotent skip / partial-file reprocess in §3).
 | `get_raw_videopath_list` | `paradex/video/raw_video_processor.py` | Glob `capture_path_list` for raw `.avi` (both layouts). |
 | `update_progress` | `paradex/video/raw_video_processor.py` | Safe read-modify-write of a `Manager.dict` entry. |
 | `util.py` converters | `paradex/video/util.py` | Standalone CPU `libx264` encode/convert helpers (off the main path). |
-| `VideoProgressPublisher` | `src/util/upload_video/client.py` | Capture-PC: run the processor, publish progress over ZMQ. |
-| `VideoProgressMonitor` | `src/util/upload_video/process.py` | Main-PC: collect progress, serve the Flask/SocketIO dashboard. |
+| `worker.py` (`discover`/`process`) | `src/util/upload_video/worker.py` | Capture-PC `paradex.process` worker: one Job per raw video; reuses `undistort_raw_video` via a `_CtxProgress` adapter, no `shard`. |
+| `main.py` (`run_distributed`) | `src/util/upload_video/main.py` | Main-PC orchestrator: SSH-launch workers, aggregate ZMQ status, print the shared console dashboard. |
 
 ---
 
@@ -190,8 +198,9 @@ safely re-run (idempotent skip / partial-file reprocess in §3).
 | Camera intrinsics loader | `paradex/calibration/utils.py` (`load_camparam`) |
 | NAS upload | `paradex/utils/upload_file.py` (`rsync_copy`) |
 | ZMQ transport | `paradex/io/capture_pc/data_sender.py` (`DataPublisher` / `DataCollector`) |
-| Main-PC dashboard | `src/util/upload_video/process.py` |
-| Capture-PC worker driver | `src/util/upload_video/client.py` |
-| Single-PC entry | `src/validate/upload_raw_video/upload_local.py` |
+| Distributed framework | `paradex/process/` (`run_distributed`, `serve_jobs`) |
+| Main-PC orchestrator | `src/util/upload_video/main.py` |
+| Capture-PC worker | `src/util/upload_video/worker.py` |
+| Single-PC entry (retained `RawVideoProcessor`) | `src/validate/upload_raw_video/upload_local.py` |
 
 Method-by-method API (parameters / returns): {doc}`Video Processing — API <process_api>`.

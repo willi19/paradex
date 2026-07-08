@@ -249,8 +249,9 @@
 <li class="toctree-l4 has-children"><a class="reference internal" href="../../../../autoapi/paradex/io/capture_pc/index.html">paradex.io.capture_pc</a><input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" role="switch" type="checkbox"/><label for="toctree-checkbox-7"><div class="visually-hidden">Toggle navigation of paradex.io.capture_pc</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
 <li class="toctree-l5"><a class="reference internal" href="../../../../autoapi/paradex/io/capture_pc/command_sender/index.html">paradex.io.capture_pc.command_sender</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../../../../autoapi/paradex/io/capture_pc/data_sender/index.html">paradex.io.capture_pc.data_sender</a></li>
-<li class="toctree-l5"><a class="reference internal" href="../../../../autoapi/paradex/io/capture_pc/processor/index.html">paradex.io.capture_pc.processor</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../../autoapi/paradex/io/capture_pc/envelope/index.html">paradex.io.capture_pc.envelope</a></li>
 <li class="toctree-l5"><a class="reference internal" href="../../../../autoapi/paradex/io/capture_pc/ssh/index.html">paradex.io.capture_pc.ssh</a></li>
+<li class="toctree-l5"><a class="reference internal" href="../../../../autoapi/paradex/io/capture_pc/transport/index.html">paradex.io.capture_pc.transport</a></li>
 </ul>
 </li>
 <li class="toctree-l4 has-children"><a class="reference internal" href="../../../../autoapi/paradex/io/robot_controller/index.html">paradex.io.robot_controller</a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" role="switch" type="checkbox"/><label for="toctree-checkbox-8"><div class="visually-hidden">Toggle navigation of paradex.io.robot_controller</div><i class="icon"><svg><use href="#svg-arrow-right"></use></svg></i></label><ul>
@@ -377,227 +378,81 @@
         </div>
         <article role="main" id="furo-main-content">
           <h1>Source code for paradex.io.capture_pc.data_sender</h1><div class="highlight"><pre>
-<span></span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">Simplified data publishing system using PUB-SUB pattern.</span>
+<span></span><span class="sd">&quot;&quot;&quot;Backward-compatible data-transport shims.</span>
 
-<span class="sd">Much simpler than ROUTER-DEALER:</span>
-<span class="sd">- No registration handshake needed</span>
-<span class="sd">- Just publish and subscribe</span>
-<span class="sd">- Fire and forget</span>
+<span class="sd">The real implementation now lives in :mod:`paradex.io.capture_pc.transport`</span>
+<span class="sd">(:class:`Publisher` / :class:`Collector`) on the shared :mod:`paradex.io.capture_pc.envelope`</span>
+<span class="sd">wire format — one stable, high-throughput format for both realtime frames and job</span>
+<span class="sd">status, with sequence/latency/drop tracking built in.</span>
+
+<span class="sd">``DataPublisher`` / ``DataCollector`` are kept as thin adapters so existing callers</span>
+<span class="sd">(calibration clients, validate, object6d, camera tuning, paradex.process) keep</span>
+<span class="sd">working unchanged. **New code should use** :class:`Publisher` / :class:`Collector`</span>
+<span class="sd">directly — they expose delivery modes (realtime vs lossless), topics, and</span>
+<span class="sd">``get_stats()``.</span>
+
+<span class="sd">Wire/behaviour notes for the adapters (realtime PUB/SUB, newest-wins):</span>
+<span class="sd">- ``send_data(metadata, data)`` publishes a list of per-item dicts plus raw</span>
+<span class="sd">  buffers; an item is linked to a buffer by ``data_index`` (or positionally when</span>
+<span class="sd">  item and buffer counts match).</span>
+<span class="sd">- ``get_data(name)`` returns the newest item seen for that name (or the whole map).</span>
 <span class="sd">&quot;&quot;&quot;</span>
 
-<span class="kn">import</span><span class="w"> </span><span class="nn">zmq</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">json</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
-<span class="kn">import</span><span class="w"> </span><span class="nn">threading</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">typing</span><span class="w"> </span><span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Dict</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
 
-<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.utils.system</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_pc_list</span><span class="p">,</span> <span class="n">get_pc_ip</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">paradex.io.capture_pc.transport</span><span class="w"> </span><span class="kn">import</span> <span class="n">Publisher</span><span class="p">,</span> <span class="n">Collector</span><span class="p">,</span> <span class="n">REALTIME</span><span class="p">,</span> <span class="n">LOSSLESS</span>
+
+<span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;DataPublisher&quot;</span><span class="p">,</span> <span class="s2">&quot;DataCollector&quot;</span><span class="p">,</span> <span class="s2">&quot;Publisher&quot;</span><span class="p">,</span> <span class="s2">&quot;Collector&quot;</span><span class="p">,</span>
+           <span class="s2">&quot;REALTIME&quot;</span><span class="p">,</span> <span class="s2">&quot;LOSSLESS&quot;</span><span class="p">]</span>
+
 
 <div class="viewcode-block" id="DataPublisher">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">DataPublisher</span><span class="p">():</span>
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span><span class="o">=</span><span class="mi">1234</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initialize data publisher.</span>
-<span class="sd">        </span>
-<span class="sd">        Args:</span>
-<span class="sd">            port: Port number to bind the PUB socket</span>
-<span class="sd">            name: Optional identifier for this publisher</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="n">name</span> <span class="ow">or</span> <span class="sa">f</span><span class="s2">&quot;publisher_</span><span class="si">{</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span>
-        
-        <span class="c1"># ZMQ PUB socket</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">PUB</span><span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">bind</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tcp://*:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
-        <span class="c1"># Publishing control</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">publishing</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">publish_thread</span> <span class="o">=</span> <span class="kc">None</span>
-        
+<span class="k">class</span><span class="w"> </span><span class="nc">DataPublisher</span><span class="p">(</span><span class="n">Publisher</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated alias for :class:`Publisher` (realtime mode).</span>
+
+<span class="sd">    Kept for the existing ``dp.send_data(metadata, data)`` call sites.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1234</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">REALTIME</span><span class="p">)</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] Publisher started on port </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
-        <span class="c1"># Give subscribers time to connect</span>
-        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>
 
 <div class="viewcode-block" id="DataPublisher.send_data">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.send_data">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">send_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span> <span class="n">data</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="nb">bytes</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Publish data using multipart messages for efficient binary transmission.</span>
-<span class="sd">        </span>
-<span class="sd">        Args:</span>
-<span class="sd">            metadata: Metadata dictionary for each camera (frame_id, shape, image_index)</span>
-<span class="sd">            data: List of binary image data (JPEG bytes)</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        
-        <span class="n">message</span> <span class="o">=</span> <span class="p">{</span>
-            <span class="s1">&#39;timestamp&#39;</span><span class="p">:</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
-            <span class="s1">&#39;publisher&#39;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
-            <span class="s1">&#39;items&#39;</span><span class="p">:</span> <span class="n">metadata</span>
-        <span class="p">}</span>
-        
-        <span class="c1"># Send as multipart: [topic, metadata_json, image1_bytes, image2_bytes, ...]</span>
-        <span class="n">message_parts</span> <span class="o">=</span> <span class="p">[</span><span class="sa">b</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">message</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">)]</span>
-        <span class="n">message_parts</span><span class="o">.</span><span class="n">extend</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">send_multipart</span><span class="p">(</span><span class="n">message_parts</span><span class="p">)</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="nf">send_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metadata</span><span class="p">:</span> <span class="n">List</span><span class="p">[</span><span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]],</span>
+                  <span class="n">data</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">bytes</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">send</span><span class="p">(</span><span class="n">meta</span><span class="o">=</span><span class="n">metadata</span><span class="p">,</span> <span class="n">bufs</span><span class="o">=</span><span class="n">data</span><span class="p">,</span> <span class="n">topic</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">)</span></div>
 
-    
+
 <div class="viewcode-block" id="DataPublisher.close">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataPublisher.close">[docs]</a>
     <span class="k">def</span><span class="w"> </span><span class="nf">close</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up resources.&quot;&quot;&quot;</span>
-        <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="mf">0.1</span><span class="p">)</span>  <span class="c1"># Let message send</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">term</span><span class="p">()</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
         <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">name</span><span class="si">}</span><span class="s2">] Closed&quot;</span><span class="p">)</span></div>
 </div>
 
 
+
 <div class="viewcode-block" id="DataCollector">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector">[docs]</a>
-<span class="k">class</span><span class="w"> </span><span class="nc">DataCollector</span><span class="p">:</span>
-    
-    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span>
-        <span class="bp">self</span><span class="p">,</span>
-        <span class="n">pc_list</span><span class="p">:</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
-        <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1234</span>
-    <span class="p">):</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Initialize data collector.</span>
-<span class="sd">        </span>
-<span class="sd">        Args:</span>
-<span class="sd">            port: Port to connect to on each client PC</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">pc_list</span> <span class="o">=</span> <span class="n">pc_list</span> <span class="ow">or</span> <span class="n">get_pc_list</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">port</span> <span class="o">=</span> <span class="n">port</span>
-        
-        <span class="c1"># ZMQ setup</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">context</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Context</span><span class="p">()</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">sockets</span> <span class="o">=</span> <span class="p">{}</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">poller</span> <span class="o">=</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Poller</span><span class="p">()</span>
-        
-        <span class="c1"># Data storage</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">latest_data</span> <span class="o">=</span> <span class="p">{}</span>
-        
-        <span class="c1"># Collection control</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">collecting</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">collection_thread</span> <span class="o">=</span> <span class="kc">None</span>
-        
-        <span class="c1"># Initialize sockets</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">_init_sockets</span><span class="p">()</span>
-    
-    <span class="k">def</span><span class="w"> </span><span class="nf">_init_sockets</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Initialize SUB sockets to all client PCs.&quot;&quot;&quot;</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">DataCollector</span><span class="p">(</span><span class="n">Collector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Deprecated alias for :class:`Collector` (realtime mode).</span>
+
+<span class="sd">    Kept for the existing ``dc.get_data(...)`` call sites.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc_list</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="n">port</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1234</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">pc_list</span><span class="o">=</span><span class="n">pc_list</span><span class="p">,</span> <span class="n">port</span><span class="o">=</span><span class="n">port</span><span class="p">,</span> <span class="n">mode</span><span class="o">=</span><span class="n">REALTIME</span><span class="p">)</span>
         <span class="k">for</span> <span class="n">pc_name</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">pc_list</span><span class="p">:</span>
-            <span class="n">ip</span> <span class="o">=</span> <span class="n">get_pc_ip</span><span class="p">(</span><span class="n">pc_name</span><span class="p">)</span>
-            
-            <span class="n">socket</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">socket</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">SUB</span><span class="p">)</span>
-            <span class="n">socket</span><span class="o">.</span><span class="n">setsockopt_string</span><span class="p">(</span><span class="n">zmq</span><span class="o">.</span><span class="n">SUBSCRIBE</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>  <span class="c1"># Subscribe to all messages</span>
-            <span class="n">socket</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;tcp://</span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-            
-            <span class="bp">self</span><span class="o">.</span><span class="n">sockets</span><span class="p">[</span><span class="n">pc_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">socket</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">poller</span><span class="o">.</span><span class="n">register</span><span class="p">(</span><span class="n">socket</span><span class="p">,</span> <span class="n">zmq</span><span class="o">.</span><span class="n">POLLIN</span><span class="p">)</span>
-            
-            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Collector] Subscribed to </span><span class="si">{</span><span class="n">pc_name</span><span class="si">}</span><span class="s2"> at </span><span class="si">{</span><span class="n">ip</span><span class="si">}</span><span class="s2">:</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-    
-    <span class="k">def</span><span class="w"> </span><span class="nf">_collection_loop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">while</span> <span class="bp">self</span><span class="o">.</span><span class="n">collecting</span><span class="p">:</span>
-            <span class="n">socks</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">poller</span><span class="o">.</span><span class="n">poll</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">100</span><span class="p">))</span>
-            
-            <span class="k">for</span> <span class="n">pc_name</span><span class="p">,</span> <span class="n">socket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sockets</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
-                <span class="k">if</span> <span class="n">socket</span> <span class="ow">in</span> <span class="n">socks</span><span class="p">:</span>
-                    <span class="k">try</span><span class="p">:</span>
-                        <span class="n">parts</span> <span class="o">=</span> <span class="n">socket</span><span class="o">.</span><span class="n">recv_multipart</span><span class="p">(</span><span class="n">flags</span><span class="o">=</span><span class="n">zmq</span><span class="o">.</span><span class="n">NOBLOCK</span><span class="p">)</span>
-                        
-                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
-                            <span class="k">continue</span>
-                        
-                        <span class="n">metadata</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">parts</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s1">&#39;utf-8&#39;</span><span class="p">))</span>
-                        
-                        <span class="c1"># 각 item을 name 기준으로 저장</span>
-                        <span class="n">items</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;items&#39;</span><span class="p">,</span> <span class="p">[])</span>
-                        <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">items</span><span class="p">:</span>
-                            <span class="k">if</span> <span class="s1">&#39;data_index&#39;</span> <span class="ow">in</span> <span class="n">item</span><span class="p">:</span>
-                                <span class="n">idx</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">pop</span><span class="p">(</span><span class="s1">&#39;data_index&#39;</span><span class="p">)</span>
-                                <span class="k">if</span> <span class="n">idx</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">parts</span><span class="p">):</span>
-                                    <span class="n">item</span><span class="p">[</span><span class="s1">&#39;data&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">parts</span><span class="p">[</span><span class="n">idx</span> <span class="o">+</span> <span class="mi">2</span><span class="p">]</span>
-                            
-                            <span class="c1"># name을 key로 저장!</span>
-                            <span class="n">item_name</span> <span class="o">=</span> <span class="n">item</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;name&#39;</span><span class="p">)</span>
-                            <span class="k">if</span> <span class="n">item_name</span><span class="p">:</span>
-                                <span class="n">item</span><span class="p">[</span><span class="s1">&#39;pc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pc_name</span>  <span class="c1"># 어느 PC에서 왔는지 기록</span>
-                                <span class="n">item</span><span class="p">[</span><span class="s1">&#39;timestamp&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;timestamp&#39;</span><span class="p">)</span>
-                                <span class="n">item</span><span class="p">[</span><span class="s1">&#39;publisher&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">metadata</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;publisher&#39;</span><span class="p">)</span>
-                                
-                                <span class="bp">self</span><span class="o">.</span><span class="n">latest_data</span><span class="p">[</span><span class="n">item_name</span><span class="p">]</span> <span class="o">=</span> <span class="n">item</span>
-                        
-                    <span class="k">except</span> <span class="n">zmq</span><span class="o">.</span><span class="n">Again</span><span class="p">:</span>
-                        <span class="k">pass</span>
-                    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
-                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Collector] Error from </span><span class="si">{</span><span class="n">pc_name</span><span class="si">}</span><span class="s2">: </span><span class="si">{</span><span class="n">e</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
-        
-<div class="viewcode-block" id="DataCollector.start">
-<a class="viewcode-back" href="../../../../autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.start">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">start</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Start collecting data from all PCs.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collecting</span><span class="p">:</span>
-            <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Collector] Already collecting&quot;</span><span class="p">)</span>
-            <span class="k">return</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">collecting</span> <span class="o">=</span> <span class="kc">True</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">collection_thread</span> <span class="o">=</span> <span class="n">threading</span><span class="o">.</span><span class="n">Thread</span><span class="p">(</span>
-            <span class="n">target</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_collection_loop</span><span class="p">,</span>
-            <span class="n">daemon</span><span class="o">=</span><span class="kc">True</span>
-        <span class="p">)</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">collection_thread</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Collector] Started&quot;</span><span class="p">)</span></div>
+            <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;[Collector] Subscribed to </span><span class="si">{</span><span class="n">pc_name</span><span class="si">}</span><span class="s2"> at &quot;</span>
+                  <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">port</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">stats</span><span class="p">[</span><span class="n">pc_name</span><span class="p">][</span><span class="s1">&#39;recv&#39;</span><span class="p">]</span><span class="si">}</span><span class="s2"> recv)&quot;</span><span class="p">)</span>
 
-    
-<div class="viewcode-block" id="DataCollector.stop">
-<a class="viewcode-back" href="../../../../autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.stop">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">stop</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Stop collecting data.&quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">collecting</span><span class="p">:</span>
-            <span class="k">return</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">collecting</span> <span class="o">=</span> <span class="kc">False</span>
-        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">collection_thread</span><span class="p">:</span>
-            <span class="bp">self</span><span class="o">.</span><span class="n">collection_thread</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">timeout</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></div>
-
-    
 <div class="viewcode-block" id="DataCollector.get_data">
 <a class="viewcode-back" href="../../../../autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.get_data">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">pc_name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
-<span class="sd">        Get the latest received data.</span>
-<span class="sd">        </span>
-<span class="sd">        Args:</span>
-<span class="sd">            pc_name: Specific PC to get data from, or None for all PCs</span>
-<span class="sd">            </span>
-<span class="sd">        Returns:</span>
-<span class="sd">            Latest data from specified PC, or dict of all latest data</span>
-<span class="sd">        &quot;&quot;&quot;</span>
-        <span class="k">if</span> <span class="n">pc_name</span><span class="p">:</span>
-            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">latest_data</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">pc_name</span><span class="p">)</span>
-        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">latest_data</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span></div>
-
-    
-<div class="viewcode-block" id="DataCollector.end">
-<a class="viewcode-back" href="../../../../autoapi/paradex/io/capture_pc/data_sender/index.html#paradex.io.capture_pc.data_sender.DataCollector.end">[docs]</a>
-    <span class="k">def</span><span class="w"> </span><span class="nf">end</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
-<span class="w">        </span><span class="sd">&quot;&quot;&quot;Clean up resources.&quot;&quot;&quot;</span>
-        <span class="bp">self</span><span class="o">.</span><span class="n">stop</span><span class="p">()</span>
-        
-        <span class="k">for</span> <span class="n">socket</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">sockets</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-            <span class="n">socket</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
-        
-        <span class="bp">self</span><span class="o">.</span><span class="n">context</span><span class="o">.</span><span class="n">term</span><span class="p">()</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Collector] Closed&quot;</span><span class="p">)</span></div>
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_data</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Any</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Latest item by name, or the whole latest map. See :meth:`Collector.get`.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">name</span><span class="p">)</span></div>
 </div>
 
 </pre></div>

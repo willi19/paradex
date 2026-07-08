@@ -89,9 +89,31 @@ class Ctx:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         return path
 
-    def status(self, message: str = "", progress: Optional[float] = None):
-        """Report progress. ``progress`` is 0..1 (stored as 0..100 percent)."""
-        upd = {"message": message}
+    def status(self, message: str = "", progress: Optional[float] = None,
+               frame: Optional[int] = None, total: Optional[int] = None):
+        """Report progress for the live dashboard / ETA.
+
+        Args:
+            message:  free-text ("overlay", "colmap: matching", ...).
+            progress: fraction 0..1 (stored as 0..100 percent). Optional if you
+                      pass ``frame``/``total`` — it is derived as ``frame/total``.
+            frame:    current item index (e.g. video frame). With ``total`` this
+                      drives the "340/1200 frames" readout and a frame-rate-based
+                      ETA (more accurate than a bare percentage).
+            total:    total number of items (frames). Report it once; it sticks.
+
+        Timing (``elapsed``/``fps``/``eta``) is computed for you from the job's
+        processing start — you only report where you are, not how long it took.
+        """
+        upd: Dict[str, Any] = {}
+        if message:
+            upd["message"] = message
+        if frame is not None:
+            upd["frame"] = int(frame)
+        if total is not None:
+            upd["total"] = int(total)
+        if progress is None and frame is not None and total:
+            progress = frame / total
         if progress is not None:
             upd["progress"] = max(0.0, min(1.0, progress)) * 100.0
         _update(self._progress, self.job.id, upd)
@@ -101,9 +123,34 @@ class Ctx:
 # internals
 # --------------------------------------------------------------------------- #
 def _update(progress_dict, job_id, updates):
-    """Atomically merge ``updates`` into ``progress_dict[job_id]`` (Manager.dict-safe)."""
+    """Atomically merge ``updates`` into ``progress_dict[job_id]`` (Manager.dict-safe),
+    stamping derived timing (``elapsed``/``fps``/``eta``) so every consumer — console
+    table, ZMQ dashboard, web UI — reads the same precomputed numbers.
+
+    ``eta`` is seconds-remaining, preferring a frame-rate estimate (``frame``/``total``)
+    and falling back to a percentage-based one; ``None`` while it can't be estimated.
+    """
     cur = dict(progress_dict.get(job_id, {}))
     cur.update(updates)
+
+    started = cur.get("started_at")
+    if started is not None:
+        now = time.time()
+        elapsed = max(0.0, now - started)
+        cur["elapsed"] = elapsed
+        prog = cur.get("progress")
+        frame, total = cur.get("frame"), cur.get("total")
+        if cur.get("status") in DONE_STATUSES:
+            cur["eta"] = 0.0
+        elif frame and total and elapsed > 0:
+            rate = frame / elapsed                       # frames / sec
+            cur["fps"] = rate
+            cur["eta"] = (total - frame) / rate if rate > 0 else None
+        elif prog and 0 < prog < 100 and elapsed > 0:
+            cur["eta"] = elapsed * (100.0 - prog) / prog
+        else:
+            cur["eta"] = None
+
     progress_dict[job_id] = cur
 
 
@@ -154,8 +201,9 @@ def _run_job(job: Job, process_fn, progress_dict, keep_cache: bool):
             _download(rel, local)
             ctx._inputs[name] = local
 
-        # 3) run the user's transform
-        _update(progress_dict, job.id, {"status": "processing", "message": "processing"})
+        # 3) run the user's transform (stamp start so ETA/elapsed can be derived)
+        _update(progress_dict, job.id,
+                {"status": "processing", "message": "processing", "started_at": time.time()})
         process_fn(job, ctx)
 
         # 4) upload declared outputs to NAS
@@ -195,6 +243,73 @@ def _rmtree_quiet(path):
         shutil.rmtree(path, ignore_errors=True)
     except Exception:
         pass
+
+
+# --------------------------------------------------------------------------- #
+# display helpers (shared by the console table and the distributed dashboard)
+# --------------------------------------------------------------------------- #
+def fmt_dur(seconds: Optional[float]) -> str:
+    """Human-friendly duration: ``95`` -> ``"1m35s"``, ``3725`` -> ``"1h02m"``."""
+    if seconds is None or seconds != seconds:  # None or NaN
+        return "?"
+    seconds = int(max(0, round(seconds)))
+    if seconds < 60:
+        return f"{seconds}s"
+    if seconds < 3600:
+        return f"{seconds // 60}m{seconds % 60:02d}s"
+    return f"{seconds // 3600}h{(seconds % 3600) // 60:02d}m"
+
+
+def fmt_job(info: dict) -> str:
+    """One-line progress for a running job: percent, frame-of-N, elapsed, ETA, msg."""
+    prog = info.get("progress", 0.0)
+    parts = [f"{prog:.0f}%"]
+    frame, total = info.get("frame"), info.get("total")
+    if frame is not None and total:
+        parts.append(f"{frame}/{total}")
+        if info.get("fps"):
+            parts[-1] += f" @{info['fps']:.0f}fps"
+    elapsed = _live_elapsed(info)
+    if elapsed is not None:
+        parts.append(fmt_dur(elapsed))
+    if info.get("eta") is not None:
+        parts.append(f"ETA {fmt_dur(info['eta'])}")
+    msg = info.get("message", "")
+    tail = f" - {msg}" if msg else ""
+    return " • ".join(parts) + tail
+
+
+def _live_elapsed(info: dict) -> Optional[float]:
+    """Elapsed for a job, recomputed live from ``started_at`` when still running."""
+    started = info.get("started_at")
+    if started is None:
+        return info.get("elapsed")
+    if info.get("status") in DONE_STATUSES:
+        return info.get("elapsed")
+    return max(0.0, time.time() - started)
+
+
+def batch_eta(progress, num_workers: int) -> Optional[float]:
+    """Estimate seconds until a whole batch finishes on ``num_workers`` parallel slots.
+
+    Uses the mean wall-time of already-completed jobs as the per-job cost, so the
+    estimate sharpens as the run proceeds. Falls back to the max in-flight job ETA
+    early on (before any job has completed). ``None`` when nothing can be estimated.
+    """
+    vals = list(progress.values()) if hasattr(progress, "values") else progress
+    durations = [v["elapsed"] for v in vals
+                 if v.get("status") == "completed" and v.get("elapsed")]
+    remaining = [v for v in vals if v.get("status") not in DONE_STATUSES]
+    if not remaining:
+        return 0.0
+    if durations:
+        avg = sum(durations) / len(durations)
+        # work still queued/running, spread over the parallel slots
+        done_frac = sum((v.get("progress", 0.0) / 100.0) for v in remaining)
+        work_left = max(0.0, len(remaining) - done_frac)
+        return work_left * avg / max(1, num_workers)
+    etas = [v["eta"] for v in remaining if v.get("eta") is not None]
+    return max(etas) if etas else None
 
 
 # --------------------------------------------------------------------------- #
@@ -304,15 +419,16 @@ class Processor:
     def _print_table(self):
         s = self.summary()
         done = s["completed"] + s["skipped"] + s["failed"]
+        eta = batch_eta(self.progress, self.num_workers)
+        eta_str = f" | batch ETA {fmt_dur(eta)}" if eta is not None else ""
         print(f"\n[paradex.process] {done}/{len(self.jobs)} done | "
               f"done={s['completed']} skip={s['skipped']} fail={s['failed']} "
               f"run={s['processing']} cache={s['caching']} up={s['uploading']} "
-              f"wait={s['pending']}")
+              f"wait={s['pending']}{eta_str}")
         for jid, info in sorted(self.progress.items()):
             st = info.get("status", "?")
             if st in ("processing", "caching", "uploading"):
-                print(f"    {jid}: {st} {info.get('progress', 0):.0f}% "
-                      f"- {info.get('message', '')}")
+                print(f"    {jid}: {st} {fmt_job(info)}")
             elif st == "failed":
                 print(f"    {jid}: FAILED - {info.get('message', '')}")
 

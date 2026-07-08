@@ -1,12 +1,15 @@
 import torch
 torch.set_grad_enabled(False)
 from PIL import Image
-from sam3.model_builder import build_sam3_video_predictor
-from sam3.visualization_utils import (
-    load_frame,
-    prepare_masks_for_visualization,
-    visualize_formatted_frame_output,
-)
+try:
+    from sam3.model_builder import build_sam3_video_predictor
+    from sam3.visualization_utils import (
+        load_frame,
+        prepare_masks_for_visualization,
+        visualize_formatted_frame_output,
+    )
+except Exception:  # sam3 is an external GPU-only dep — keep the module importable without it
+    build_sam3_video_predictor = None
 
 import os
 import cv2
@@ -22,8 +25,22 @@ from paradex.image.image_dict import ImageDict
 from paradex.transforms.conversion import SOLVE_XA_B
 from paradex.image.aruco import get_board_cor
 
-gpus_to_use = range(torch.cuda.device_count())
-video_predictor = build_sam3_video_predictor(gpus_to_use=gpus_to_use)
+_video_predictor = None
+
+
+def get_video_predictor():
+    """Lazily build the SAM3 video predictor (needs a GPU + the ``sam3`` package).
+
+    Built on first use rather than at import so this module can be imported (and
+    the other turntable stages composed) without a GPU present.
+    """
+    global _video_predictor
+    if _video_predictor is None:
+        if build_sam3_video_predictor is None:
+            raise RuntimeError("sam3 is not installed; cannot build the video predictor")
+        gpus_to_use = range(torch.cuda.device_count())
+        _video_predictor = build_sam3_video_predictor(gpus_to_use=gpus_to_use)
+    return _video_predictor
 
 def propagate_in_video(predictor, session_id, start_frame_idx):
     # we will just propagate from the start frame to the end of the video
@@ -58,7 +75,9 @@ def abs_to_rel_coords(coords, IMG_WIDTH, IMG_HEIGHT, coord_type="point"):
     else:
         raise ValueError(f"Unknown coord_type: {coord_type}")
 
-def process_video(root_dir, serial_num, video_predictor=video_predictor):
+def process_video(root_dir, serial_num, video_predictor=None):
+    if video_predictor is None:
+        video_predictor = get_video_predictor()
     image_dir = os.path.join(root_dir, "images")
     outdir = os.path.join(root_dir, "masks")
     outdir_img = os.path.join(root_dir, "masked_images")
@@ -155,33 +174,38 @@ def process_video(root_dir, serial_num, video_predictor=video_predictor):
     
 
         
-def load_mask(root_dir, predictor=video_predictor):
-이건 realdex거든 
+def load_mask(root_dir, predictor=None):
+    # NOTE: 이건 realdex거든 — masks every serial's extracted images in `root_dir`.
+    if predictor is None:
+        predictor = get_video_predictor()
     outdir = os.path.join(root_dir, "masks")
     outdir_img = os.path.join(root_dir, "masked_images")
     os.makedirs(outdir, exist_ok=True)
     os.makedirs(outdir_img, exist_ok=True)
-    
+
     obj_name = os.path.basename(os.path.dirname(root_dir))
     print(f"Processing object: {obj_name}")
 
     image_dir = os.path.join(root_dir, "images")
     for serial_num in os.listdir(image_dir):
-        process_video(root_dir, serial_num)
-    
-        
-        
-        
-root_dir = os.path.join(home_path, "paradex_download/capture/object_turntable")
-error_log = []
-for i, obj_name in enumerate(sorted(os.listdir(root_dir))):
-    obj_path = os.path.join(root_dir, obj_name)
-    for index in os.listdir(obj_path):
-        demo_path = os.path.join("capture/object_turntable", obj_name, index)
-        try:
-            load_mask(os.path.join(home_path, "paradex_download", demo_path), predictor=video_predictor)
-            print(f"Finished processing {demo_path}")
-        except Exception as e:
-            print(f"Error processing {demo_path}: {e}")
-            error_log.append((demo_path, i))
+        process_video(root_dir, serial_num, predictor)
+
+
+def main():
+    root_dir = os.path.join(home_path, "paradex_download/capture/object_turntable")
+    error_log = []
+    for i, obj_name in enumerate(sorted(os.listdir(root_dir))):
+        obj_path = os.path.join(root_dir, obj_name)
+        for index in os.listdir(obj_path):
+            demo_path = os.path.join("capture/object_turntable", obj_name, index)
+            try:
+                load_mask(os.path.join(home_path, "paradex_download", demo_path))
+                print(f"Finished processing {demo_path}")
+            except Exception as e:
+                print(f"Error processing {demo_path}: {e}")
+                error_log.append((demo_path, i))
+
+
+if __name__ == "__main__":
+    main()
         

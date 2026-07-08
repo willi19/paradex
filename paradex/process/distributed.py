@@ -25,7 +25,9 @@ from paradex.utils.path import pc_name
 from paradex.utils.system import get_pc_list
 from paradex.io.capture_pc.ssh import run_script
 from paradex.io.capture_pc.data_sender import DataPublisher, DataCollector
-from paradex.process.processor import Processor, Job, DONE_STATUSES
+from paradex.process.processor import (
+    Processor, Job, DONE_STATUSES, fmt_dur, fmt_job, batch_eta,
+)
 
 DEFAULT_PORT = 1234
 SENTINEL_PREFIX = "_pc::"
@@ -56,8 +58,13 @@ def shard(jobs: List[Job], pc_list: Optional[List[str]] = None,
 # --------------------------------------------------------------------------- #
 # worker side (runs on each capture PC)
 # --------------------------------------------------------------------------- #
-def _progress_to_items(progress: dict, pc: str) -> List[dict]:
-    """Flatten a Processor progress dict into DataPublisher items."""
+def _progress_to_items(progress: dict, pc: str, num_workers: int = 1) -> List[dict]:
+    """Flatten a Processor progress dict into DataPublisher items.
+
+    Carries the derived timing fields (``elapsed``/``fps``/``eta``/``frame``/``total``/
+    ``started_at``) so the main PC's dashboard and any web UI show frame-level progress
+    and ETA without recomputing anything.
+    """
     items = []
     counts = {}
     for jid, info in progress.items():
@@ -69,6 +76,12 @@ def _progress_to_items(progress: dict, pc: str) -> List[dict]:
             "status": st,
             "progress": info.get("progress", 0.0),
             "message": info.get("message", ""),
+            "frame": info.get("frame"),
+            "total": info.get("total"),
+            "fps": info.get("fps"),
+            "elapsed": info.get("elapsed"),
+            "eta": info.get("eta"),
+            "started_at": info.get("started_at"),
         })
     finished = all(info.get("status") in DONE_STATUSES for info in progress.values())
     items.append({
@@ -77,6 +90,8 @@ def _progress_to_items(progress: dict, pc: str) -> List[dict]:
         "status": "summary",
         "counts": counts,
         "total": len(progress),
+        "num_workers": num_workers,
+        "eta": batch_eta(progress, num_workers),
         "finished": finished and len(progress) > 0,
     })
     return items
@@ -94,7 +109,7 @@ def serve_jobs(jobs: List[Job], process_fn: Callable, num_workers: int = 4,
     publisher = DataPublisher(port=port, name=pc)
 
     def on_update(progress: dict):
-        publisher.send_data(_progress_to_items(progress, pc), [])
+        publisher.send_data(_progress_to_items(progress, pc, num_workers), [])
 
     try:
         proc = Processor(jobs, process_fn, num_workers=num_workers,
@@ -169,8 +184,12 @@ def _print_dashboard(data: dict, pc_list):
         st = v.get("status")
         if st in tot:
             tot[st] += 1
+    # Whole-rig ETA = the slowest still-working PC (they run in parallel).
+    pc_etas = [s.get("eta") for s in sentinels.values()
+               if not s.get("finished") and s.get("eta") is not None]
+    rig_eta = f" | rig ETA {fmt_dur(max(pc_etas))}" if pc_etas else ""
     print(f"\n[paradex.process] {len(jobs)} jobs | "
-          f"done={tot['completed']} skip={tot['skipped']} fail={tot['failed']}")
+          f"done={tot['completed']} skip={tot['skipped']} fail={tot['failed']}{rig_eta}")
     for pc in pc_list:
         s = sentinels.get(pc)
         if s is None:
@@ -178,7 +197,13 @@ def _print_dashboard(data: dict, pc_list):
         else:
             c = s.get("counts", {})
             flag = "DONE" if s.get("finished") else "running"
-            print(f"    {pc}: {flag} {dict(c)} of {s.get('total', 0)}")
+            eta = s.get("eta")
+            eta_str = "" if s.get("finished") or eta is None else f" ETA {fmt_dur(eta)}"
+            print(f"    {pc}: {flag} {dict(c)} of {s.get('total', 0)}{eta_str}")
+    # Live per-job lines for whatever is currently processing (frame-of-N + ETA).
+    running = [(jid, v) for jid, v in jobs.items() if v.get("status") == "processing"]
+    for jid, v in sorted(running)[:12]:
+        print(f"    [{v.get('pc')}] {jid}: {fmt_job(v)}")
     for jid, v in sorted(jobs.items()):
         if v.get("status") == "failed":
             print(f"    ✗ [{v.get('pc')}] {jid}: {v.get('message', '')}")

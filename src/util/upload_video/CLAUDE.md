@@ -1,28 +1,39 @@
 # CLAUDE.md — src/util/upload_video
 
 ## Purpose
-Distributed raw-video processing pipeline with a live progress dashboard. Capture PCs process videos and publish progress; the main PC aggregates and serves a Flask + SocketIO web UI.
+Distributed raw-video undistort + upload, on the `paradex.process` framework. Each
+capture PC undistorts its own local raw `.avi`s (NVENC) and uploads them to NAS; the
+main PC shows a live aggregated dashboard (per-PC counts, per-video frame progress,
+rig ETA).
 
 ## Files
-- `process.py` — MAIN PC entry. `kill_remote_clients()` SSHes each `get_pc_list()` PC and `pkill -f "src/util/upload_video/client.py"` to free ZMQ 1234. `VideoProgressMonitor(web_port, zmq_port)` wraps Flask + `flask_socketio.SocketIO(async_mode='threading')` + `DataCollector(port=zmq_port)`. Routes: `/` -> `video_monitor.html`, `/api/progress` -> JSON snapshot+summary. `update_loop` (daemon thread) diffs `collector.get_data()` each second and emits `progress_update`. `__main__`: kill clients, `run_script('python src/util/upload_video/client.py', log=True)`, then `VideoProgressMonitor(web_port=8081, zmq_port=1234).start()`.
-- `client.py` — CAPTURE PC entry. `VideoProgressPublisher(port=1234)` = `RawVideoProcessor()` + `DataPublisher(port, name="video_processor")`. `start_processing(update_interval)` calls `processor.process()`, then loops while `not processor.finished()` sending `publisher.send_data(metadata=[...], data=[])` per video, sleeping `update_interval`; sends a final snapshot, prints `processor.log`, closes publisher.
-- `templates/video_monitor.html` — SocketIO dashboard (~500 lines): summary header + per-video progress cards, listens for `initial_data` / `progress_update`.
+- `main.py` — MAIN PC entry. `run_distributed("python src/util/upload_video/worker.py")` — SSH-launches the worker on every capture PC and prints the aggregated dashboard until all finish.
+- `worker.py` — CAPTURE PC entry (also `--local`). `discover()` = one `Job` per raw `.avi` under `capture_path_list` (id = path relative to home). `process(job, ctx)` reuses `undistort_raw_video` unchanged, forwarding its per-frame progress into `ctx.status(frame=, total=)` via the `_CtxProgress` adapter. Data is local per PC → no `shard`.
 
 ## paradex modules used
-- `paradex.video.raw_video_processor.RawVideoProcessor`
-- `paradex.io.capture_pc.data_sender.DataPublisher` / `DataCollector`
-- `paradex.io.capture_pc.ssh.run_script`, `ssh_port`
-- `paradex.utils.system.get_pc_list`, `get_pc_ip`
+- `paradex.process` (`Job`, `run_jobs`, `serve_jobs`, `run_distributed`)
+- `paradex.video.raw_video_processor` (`get_raw_videopath_list`, `undistort_raw_video`)
+- `paradex.utils.path.home_path`
 
 ## Data flow & IO
-RawVideoProcessor -> DataPublisher (ZMQ 1234, capture PC) -> DataCollector (ZMQ 1234, main PC) -> Flask/SocketIO -> browser. No persistent file output; videos are processed in place by RawVideoProcessor. Metadata keys: name, status, progress, current_frame, total_frames, fps, eta, message, video_path.
+`worker.discover()` finds local raw videos → `undistort_raw_video` (torch undistort +
+NVENC ffmpeg) writes the undistorted `.avi`, rsyncs it to NAS, deletes the local
+source. Progress (`current_frame`/`total_frames`/`status`) is adapted into
+`ctx.status`; the framework derives elapsed/fps/ETA and publishes it to the main PC
+over the standard `paradex.process` ZMQ channel (port 1234).
 
 ## When working here
-- Run `process.py` only; it launches `client.py` remotely. Run `client.py` standalone only for single-PC debugging.
-- ZMQ port 1234 is shared; `kill_remote_clients` exists specifically to release it from zombie clients.
+- Run `python src/util/upload_video/main.py` on the main PC; it launches the workers.
+  Single-PC debugging: `python src/util/upload_video/worker.py --local`.
+- The undistort transform itself (skip/incomplete-file handling, NVENC flags, dropped-
+  frame detection, NAS upload) lives in `paradex/video/raw_video_processor.py` — edit
+  there, not here. `RawVideoProcessor` (its old standalone Pool driver) is still used by
+  `src/validate/upload_raw_video/`, so keep `undistort_raw_video`'s signature stable.
+- Tune throughput via `num_workers` in `worker.py`'s `__main__`.
 
 ## Gotchas
-- Port mismatch: `VideoProgressMonitor` class default `web_port=8080`, but `__main__` instantiates with `8081` — the live dashboard is on 8081.
-- `client.py` hard-codes port 1234; `DataCollector` in `process.py` must match (it does).
-- `process.py` SSH/pkill string includes the literal path `src/util/upload_video/client.py`; renaming/moving the client breaks the cleanup.
-- Flask runs with `allow_unsafe_werkzeug=True` — dev server, not production-hardened.
+- Replaces the previous Flask/SocketIO web monitor (`process.py`) + `DataPublisher`
+  client (`client.py`), both removed. The dashboard is now the shared `paradex.process`
+  console (per-job frame/ETA + per-PC + rig ETA). A web UI could be rebuilt on the
+  published items (they carry `frame`/`total`/`fps`/`eta`/`elapsed`).
+- `worker.py` id = raw path relative to `home_path`; it's the status key + cache subdir.

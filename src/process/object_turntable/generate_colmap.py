@@ -183,29 +183,31 @@ def run_colmap(demo_path):
     )
     
     
-root_dir = os.path.join(home_path, "paradex_download/capture/object_turntable")
-obj_list = sorted(os.listdir(root_dir))
-err_list = []
-for obj_name in tqdm.tqdm(['big_green_spray']):
-    index_list = os.listdir(os.path.join(root_dir, obj_name))
-    for index in index_list:
-        try:
-            demo_path = os.path.join(root_dir, obj_name, index)
+def colmap_demo(demo_path):
+    """Full COLMAP stage for one local demo dir: db -> reconstruct -> triangulate."""
+    generate_db(demo_path)
+    run_colmap(demo_path)
+    run_point_triangulator(demo_path)
 
-            print(f"Generating COLMAP database for {obj_name}/{index}...")
-            generate_db(demo_path)
 
-            print(f"Running COLMAP reconstruction...")
-            run_colmap(demo_path)
-            
-            print(f"✓ Done: {obj_name}/{index}")
-            run_point_triangulator(demo_path)
+def main(obj_filter=('big_green_spray',)):
+    root_dir = os.path.join(home_path, "paradex_download/capture/object_turntable")
+    err_list = []
+    for obj_name in tqdm.tqdm(list(obj_filter)):
+        for index in os.listdir(os.path.join(root_dir, obj_name)):
+            try:
+                demo_path = os.path.join(root_dir, obj_name, index)
+                print(f"COLMAP {obj_name}/{index}...")
+                colmap_demo(demo_path)
+                print(f"✓ Done: {obj_name}/{index}")
+            except Exception as e:
+                err_list.append((obj_name, index))
+                print(f"Error occurred for {obj_name}/{index}: {e}")
 
-        except Exception as e:
-            err_list.append((obj_name, index))
-            print(f"Error occurred for {obj_name}/{index}: {e}")
+    print("Errors occurred for the following objects/indices:")
+    for obj_name, index in err_list:
+        print(f"- {obj_name}/{index}")
 
-print("Errors occurred for the following objects/indices:")
-for obj_name, index in err_list:
-    print(f"- {obj_name}/{index}")
-            
+
+if __name__ == "__main__":
+    main()

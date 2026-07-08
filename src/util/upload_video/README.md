@@ -1,43 +1,43 @@
-# Video Upload / Processing Monitor
+# Video Undistort / Upload
 
-Distributed raw-video processing with a live web dashboard. Each capture PC processes its raw videos and publishes progress over ZMQ; the main PC collects all streams and serves a Flask + SocketIO web monitor.
+Distributed raw-video undistort + upload, built on the [`paradex.process`](../../../paradex/process/)
+batch framework. Each capture PC undistorts its own local raw videos (NVENC) and
+uploads them to NAS; the main PC SSH-launches the workers and shows a live console
+dashboard with per-video frame progress and a rig-wide ETA.
 
 ## Scripts
 | File | Purpose |
 |------|---------|
-| `process.py` | **Main PC.** Kills stale remote clients, launches `client.py` on every capture PC over SSH, collects progress (ZMQ) and serves a web dashboard. |
-| `client.py` | **Capture PC.** Runs `RawVideoProcessor`, publishes per-video progress to the main PC over ZMQ port 1234. |
-| `templates/video_monitor.html` | Dashboard UI (SocketIO client, per-video progress cards + summary). |
+| `main.py` | **Main PC.** `run_distributed(...)` — SSH-launches `worker.py` on every capture PC and prints the aggregated dashboard until all finish. |
+| `worker.py` | **Capture PC** (or `--local`). Discovers local raw `.avi`s and undistorts each via `undistort_raw_video`, reporting frame-level progress. |
 
 ## Usage
-Run only the main-PC script — it orchestrates the clients automatically:
+Run only the main-PC script — it orchestrates the workers automatically:
 ```bash
-python src/util/upload_video/process.py
+python src/util/upload_video/main.py
 ```
-This:
-1. SSHes to every PC from `get_pc_list()` and `pkill`s leftover `client.py` (frees ZMQ 1234).
-2. `run_script('python src/util/upload_video/client.py', log=True)` on the capture PCs.
-3. Starts a `DataCollector` on ZMQ 1234 and a Flask/SocketIO server.
+This launches `worker.py` on every capture PC (each processes its own local raw
+videos) and aggregates status over ZMQ (port 1234). The dashboard prints per-PC
+counts, each in-flight video's `frames @fps • ETA`, and a rig-wide ETA.
 
-Open the dashboard at **http://localhost:8081** (note: `__main__` passes `web_port=8081`, though the class default is 8080). The page auto-updates via SocketIO; `/api/progress` returns the current JSON snapshot.
-
-To run a client manually on a capture PC (debug):
+Single machine (debug / one PC):
 ```bash
-python src/util/upload_video/client.py
+python src/util/upload_video/worker.py --local
 ```
 
 ## Inputs & Outputs
-- `client.py`: reads raw videos discovered by `RawVideoProcessor` (`videopath_list`); processes them in place; emits metadata `{name, status, progress, current_frame, total_frames, fps, eta, message, video_path}`. No web/file output of its own.
-- `process.py`: no file output — serves HTTP/WebSocket. Aggregates per-PC progress and computes summary stats (total / completed / processing / failed / avg_progress).
+- `worker.py` discovers raw videos via `get_raw_videopath_list()` (local `capture_path_list`),
+  undistorts each in place, rsyncs the result to NAS, and removes the local source.
+- No web server — status is the shared `paradex.process` dashboard. The published
+  status items still carry `frame`/`total`/`fps`/`eta`/`elapsed`, so a web UI can be
+  rebuilt on them if desired.
 
 ## Inter-process flow
 ```
-capture PC: RawVideoProcessor -> DataPublisher(port=1234) ──ZMQ──▶ main PC: DataCollector(port=1234) -> Flask/SocketIO ──▶ browser
+capture PC: worker.serve_jobs (undistort_raw_video) ──ZMQ status──▶ main PC: run_distributed dashboard
 ```
 
 ## Related
-- [`paradex/video/raw_video_processor.py`](../../../paradex/video/raw_video_processor.py) — `RawVideoProcessor` (`process`, `finished`, `get_progress`, `log`).
-- [`paradex/io/capture_pc/data_sender.py`](../../../paradex/io/capture_pc/data_sender.py) — `DataPublisher`, `DataCollector`.
-- [`paradex/io/capture_pc/ssh.py`](../../../paradex/io/capture_pc/ssh.py) — `run_script`, `ssh_port`.
-- [`paradex/utils/system.py`](../../../paradex/utils/system.py) — `get_pc_list`, `get_pc_ip`.
-- Sibling capture apps in [`src/capture/`](../../capture).
+- [`paradex/process/`](../../../paradex/process/) — the batch framework (`Job`, `serve_jobs`, `run_distributed`).
+- [`paradex/video/raw_video_processor.py`](../../../paradex/video/raw_video_processor.py) — `undistort_raw_video`, `get_raw_videopath_list` (and the legacy `RawVideoProcessor`).
+- [`src/process/template/`](../../process/template/) — the copy-me worker/main template.

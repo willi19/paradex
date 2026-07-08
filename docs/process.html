@@ -499,29 +499,35 @@ displays. The two sides talk over ZMQ (port <code class="docutils literal notran
 <pre  class="mermaid">
         flowchart TB
     subgraph Main[&quot;Main PC&quot;]
-      MON[&quot;VideoProgressMonitor&lt;br/&gt;(Flask + SocketIO)&quot;] --&gt; COL[&quot;DataCollector&lt;br/&gt;(ZMQ 1234)&quot;]
-      MON --&gt; WEB[&quot;browser dashboard&lt;br/&gt;(port 8081)&quot;]
+      RD[&quot;run_distributed&lt;br/&gt;(paradex.process)&quot;] --&gt; COL[&quot;DataCollector&lt;br/&gt;(ZMQ 1234)&quot;]
+      RD --&gt; DASH[&quot;console dashboard&lt;br/&gt;(per-PC counts + rig ETA)&quot;]
     end
     subgraph Cap[&quot;Capture PC (×6)&quot;]
-      PUB[&quot;VideoProgressPublisher&lt;br/&gt;(client.py)&quot;] --&gt; RVP[&quot;RawVideoProcessor&lt;br/&gt;(worker Pool)&quot;]
-      PUB --&gt; DP[&quot;DataPublisher&lt;br/&gt;(ZMQ 1234)&quot;]
+      W[&quot;worker.py&lt;br/&gt;serve_jobs(discover, process)&quot;] --&gt; URV[&quot;undistort_raw_video&lt;br/&gt;(per-video, worker Pool)&quot;]
+      W --&gt; DP[&quot;DataPublisher&lt;br/&gt;(ZMQ 1234)&quot;]
     end
-    MON -. &quot;run_script (SSH)&lt;br/&gt;launches client.py&quot; .-&gt; PUB
-    DP -- &quot;progress metadata&lt;br/&gt;(status / % / fps / eta)&quot; --&gt; COL
-    </pre><ul class="simple">
-<li><p><strong>Main PC</strong> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/process.py</span></code>): <code class="docutils literal notranslate"><span class="pre">kill_remote_clients()</span></code> SSHes
-every PC and <code class="docutils literal notranslate"><span class="pre">pkill</span></code>s stale clients to free port <code class="docutils literal notranslate"><span class="pre">1234</span></code>, then <code class="docutils literal notranslate"><span class="pre">run_script(...)</span></code>
-launches <code class="docutils literal notranslate"><span class="pre">client.py</span></code> remotely, then serves <code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor</span></code> — a Flask +
-<code class="docutils literal notranslate"><span class="pre">flask_socketio</span></code> app fed by a <code class="docutils literal notranslate"><span class="pre">DataCollector</span></code>. Its <code class="docutils literal notranslate"><span class="pre">update_loop</span></code> diffs collected
-data each second and pushes <code class="docutils literal notranslate"><span class="pre">progress_update</span></code> to the browser. Dashboard is on
-<strong>8081</strong> (the <code class="docutils literal notranslate"><span class="pre">__main__</span></code> value; the class default <code class="docutils literal notranslate"><span class="pre">web_port=8080</span></code> is overridden).</p></li>
-<li><p><strong>Capture PC</strong> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/client.py</span></code>): <code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher</span></code> wraps
-a <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> and a <code class="docutils literal notranslate"><span class="pre">DataPublisher</span></code>. It calls <code class="docutils literal notranslate"><span class="pre">processor.process()</span></code>, then
-loops while <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">processor.finished()</span></code>, packing each video’s progress into
-<code class="docutils literal notranslate"><span class="pre">metadata</span></code> and calling <code class="docutils literal notranslate"><span class="pre">publisher.send_data(metadata=[...],</span> <span class="pre">data=[])</span></code>.</p></li>
+    RD -. &quot;run_script (SSH)&lt;br/&gt;launches worker.py&quot; .-&gt; W
+    DP -- &quot;progress items&lt;br/&gt;(status / % / frame / fps / eta)&quot; --&gt; COL
+    </pre><p>The upload_video driver is now the <code class="docutils literal notranslate"><span class="pre">paradex.process</span></code> batch framework (the old
+Flask/SocketIO <code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor</span></code> in <code class="docutils literal notranslate"><span class="pre">process.py</span></code> and <code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher</span></code>
+in <code class="docutils literal notranslate"><span class="pre">client.py</span></code> were removed).</p>
+<ul class="simple">
+<li><p><strong>Main PC</strong> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/main.py</span></code>): calls
+<code class="docutils literal notranslate"><span class="pre">run_distributed(&quot;python</span> <span class="pre">src/util/upload_video/worker.py&quot;)</span></code> — SSH-launches the
+worker on every capture PC, aggregates their ZMQ status via a <code class="docutils literal notranslate"><span class="pre">DataCollector</span></code>, and
+prints the shared <code class="docutils literal notranslate"><span class="pre">paradex.process</span></code> console dashboard (per-PC counts, per-video
+frame progress, and a rig-wide ETA) until all PCs finish.</p></li>
+<li><p><strong>Capture PC</strong> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/worker.py</span></code>): a <code class="docutils literal notranslate"><span class="pre">paradex.process</span></code> worker.
+<code class="docutils literal notranslate"><span class="pre">discover()</span></code> returns one <code class="docutils literal notranslate"><span class="pre">Job</span></code> per local raw <code class="docutils literal notranslate"><span class="pre">.avi</span></code>; <code class="docutils literal notranslate"><span class="pre">process(job,</span> <span class="pre">ctx)</span></code> calls
+<code class="docutils literal notranslate"><span class="pre">undistort_raw_video</span></code> <strong>unchanged</strong>, forwarding its per-frame <code class="docutils literal notranslate"><span class="pre">progress_dict</span></code>
+updates into <code class="docutils literal notranslate"><span class="pre">ctx.status(frame=…,</span> <span class="pre">total=…)</span></code> through a small <code class="docutils literal notranslate"><span class="pre">_CtxProgress</span></code> adapter
+so the framework derives elapsed/fps/ETA. Data is local per PC, so no <code class="docutils literal notranslate"><span class="pre">shard</span></code> is
+needed. <code class="docutils literal notranslate"><span class="pre">serve_jobs</span></code> publishes status over the standard <code class="docutils literal notranslate"><span class="pre">paradex.process</span></code> ZMQ
+channel.</p></li>
 </ul>
 <p>For a single-PC run (no dashboard), <code class="docutils literal notranslate"><span class="pre">src/validate/upload_raw_video/upload_local.py</span></code>
-just does <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor().process()</span></code> then <code class="docutils literal notranslate"><span class="pre">.wait_and_monitor()</span></code>.</p>
+still uses the retained <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> directly: <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor().process()</span></code>
+then <code class="docutils literal notranslate"><span class="pre">.wait_and_monitor()</span></code>.</p>
 </section>
 <hr class="docutils" />
 <section id="data-paths">
@@ -618,13 +624,13 @@ safely re-run (idempotent skip / partial-file reprocess in §3).</p>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/video/util.py</span></code></p></td>
 <td><p>Standalone CPU <code class="docutils literal notranslate"><span class="pre">libx264</span></code> encode/convert helpers (off the main path).</p></td>
 </tr>
-<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">src/util/upload_video/client.py</span></code></p></td>
-<td><p>Capture-PC: run the processor, publish progress over ZMQ.</p></td>
+<tr class="row-odd"><td><p><code class="docutils literal notranslate"><span class="pre">worker.py</span></code> (<code class="docutils literal notranslate"><span class="pre">discover</span></code>/<code class="docutils literal notranslate"><span class="pre">process</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/util/upload_video/worker.py</span></code></p></td>
+<td><p>Capture-PC <code class="docutils literal notranslate"><span class="pre">paradex.process</span></code> worker: one Job per raw video; reuses <code class="docutils literal notranslate"><span class="pre">undistort_raw_video</span></code> via a <code class="docutils literal notranslate"><span class="pre">_CtxProgress</span></code> adapter, no <code class="docutils literal notranslate"><span class="pre">shard</span></code>.</p></td>
 </tr>
-<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor</span></code></p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">src/util/upload_video/process.py</span></code></p></td>
-<td><p>Main-PC: collect progress, serve the Flask/SocketIO dashboard.</p></td>
+<tr class="row-even"><td><p><code class="docutils literal notranslate"><span class="pre">main.py</span></code> (<code class="docutils literal notranslate"><span class="pre">run_distributed</span></code>)</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/util/upload_video/main.py</span></code></p></td>
+<td><p>Main-PC orchestrator: SSH-launch workers, aggregate ZMQ status, print the shared console dashboard.</p></td>
 </tr>
 </tbody>
 </table>
@@ -659,13 +665,16 @@ safely re-run (idempotent skip / partial-file reprocess in §3).</p>
 <tr class="row-odd"><td><p>ZMQ transport</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">paradex/io/capture_pc/data_sender.py</span></code> (<code class="docutils literal notranslate"><span class="pre">DataPublisher</span></code> / <code class="docutils literal notranslate"><span class="pre">DataCollector</span></code>)</p></td>
 </tr>
-<tr class="row-even"><td><p>Main-PC dashboard</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">src/util/upload_video/process.py</span></code></p></td>
+<tr class="row-even"><td><p>Distributed framework</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">paradex/process/</span></code> (<code class="docutils literal notranslate"><span class="pre">run_distributed</span></code>, <code class="docutils literal notranslate"><span class="pre">serve_jobs</span></code>)</p></td>
 </tr>
-<tr class="row-odd"><td><p>Capture-PC worker driver</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">src/util/upload_video/client.py</span></code></p></td>
+<tr class="row-odd"><td><p>Main-PC orchestrator</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/util/upload_video/main.py</span></code></p></td>
 </tr>
-<tr class="row-even"><td><p>Single-PC entry</p></td>
+<tr class="row-even"><td><p>Capture-PC worker</p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">src/util/upload_video/worker.py</span></code></p></td>
+</tr>
+<tr class="row-odd"><td><p>Single-PC entry (retained <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code>)</p></td>
 <td><p><code class="docutils literal notranslate"><span class="pre">src/validate/upload_raw_video/upload_local.py</span></code></p></td>
 </tr>
 </tbody>

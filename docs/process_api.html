@@ -390,7 +390,8 @@
 values (output). For the architecture and how these fit together, see the
 <a class="reference internal" href="process.html"><span class="doc">overview</span></a>.</p>
 <p>Signatures are verified against the code. The subsystem lives in
-<code class="docutils literal notranslate"><span class="pre">paradex/video/</span></code>; the distributed driver classes live in <code class="docutils literal notranslate"><span class="pre">src/util/upload_video/</span></code>.</p>
+<code class="docutils literal notranslate"><span class="pre">paradex/video/</span></code>; the distributed driver is now the <code class="docutils literal notranslate"><span class="pre">paradex.process</span></code> framework, wired by
+<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/</span></code> (<code class="docutils literal notranslate"><span class="pre">main.py</span></code> + <code class="docutils literal notranslate"><span class="pre">worker.py</span></code>).</p>
 <p>Each entry is collapsed below — click to expand.</p>
 <details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3" open="open">
 <summary class="sd-summary-title sd-card-header">
@@ -584,82 +585,35 @@ through a <code class="docutils literal notranslate"><span class="pre">Manager()
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
 <summary class="sd-summary-title sd-card-header">
-<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/client.py</span></code>, capture PC)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
-<p class="sd-card-text">Runs a <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> and streams its progress to the main PC over ZMQ.</p>
+<span class="sd-summary-text">upload_video driver — now <code class="docutils literal notranslate"><span class="pre">paradex.process</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/</span></code>)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
+<p class="sd-card-text">The old <code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher</span></code> (<code class="docutils literal notranslate"><span class="pre">client.py</span></code>) and <code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor</span></code>
+(<code class="docutils literal notranslate"><span class="pre">process.py</span></code>, Flask/SocketIO) classes were <strong>removed</strong>. <code class="docutils literal notranslate"><span class="pre">undistort_raw_video</span></code> is now
+driven by the <code class="docutils literal notranslate"><span class="pre">paradex.process</span></code> batch framework — one <code class="docutils literal notranslate"><span class="pre">Job</span></code> per raw video.</p>
 <div class="table-wrapper colwidths-auto docutils container">
 <table class="docutils align-default">
 <thead>
-<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
-<th class="head"><p class="sd-card-text">Input</p></th>
-<th class="head"><p class="sd-card-text">Output</p></th>
+<tr class="row-odd"><th class="head"><p class="sd-card-text">Symbol</p></th>
+<th class="head"><p class="sd-card-text">Location</p></th>
 <th class="head"><p class="sd-card-text">Description</p></th>
 </tr>
 </thead>
 <tbody>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">VideoProgressPublisher(port=1234)</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">port:</span> <span class="pre">int</span></code></p></td>
-<td><p class="sd-card-text">instance</p></td>
-<td><p class="sd-card-text">Build a <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor()</span></code> and a <code class="docutils literal notranslate"><span class="pre">DataPublisher(port,</span> <span class="pre">name=&quot;video_processor&quot;)</span></code>.</p></td>
+<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">discover()</span></code> / <code class="docutils literal notranslate"><span class="pre">process(job,</span> <span class="pre">ctx)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">src/util/upload_video/worker.py</span></code></p></td>
+<td><p class="sd-card-text">Capture-PC worker: <code class="docutils literal notranslate"><span class="pre">discover()</span></code> returns one <code class="docutils literal notranslate"><span class="pre">Job</span></code> per local raw <code class="docutils literal notranslate"><span class="pre">.avi</span></code>; <code class="docutils literal notranslate"><span class="pre">process</span></code> calls <code class="docutils literal notranslate"><span class="pre">undistort_raw_video</span></code> <strong>unchanged</strong>, forwarding its <code class="docutils literal notranslate"><span class="pre">progress_dict</span></code> updates into <code class="docutils literal notranslate"><span class="pre">ctx.status(frame=,</span> <span class="pre">total=)</span></code> via a <code class="docutils literal notranslate"><span class="pre">_CtxProgress</span></code> adapter. Launched with <code class="docutils literal notranslate"><span class="pre">serve_jobs</span></code> (no <code class="docutils literal notranslate"><span class="pre">shard</span></code> — data is local per PC).</p></td>
 </tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start_processing(update_interval=1.0)</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">update_interval:</span> <span class="pre">float</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">processor.process()</span></code>, then loop while <code class="docutils literal notranslate"><span class="pre">not</span> <span class="pre">processor.finished()</span></code> sending <code class="docutils literal notranslate"><span class="pre">publisher.send_data(metadata=[per-video</span> <span class="pre">dicts],</span> <span class="pre">data=[])</span></code> every <code class="docutils literal notranslate"><span class="pre">update_interval</span></code> s; send a final snapshot, print <code class="docutils literal notranslate"><span class="pre">processor.log</span></code>, close the publisher.</p></td>
+<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">run_distributed(worker_cmd)</span></code></p></td>
+<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">src/util/upload_video/main.py</span></code></p></td>
+<td><p class="sd-card-text">Main-PC orchestrator: SSH-launch the worker on every capture PC and print the shared <code class="docutils literal notranslate"><span class="pre">paradex.process</span></code> console dashboard (per-PC counts, per-video frame/ETA, rig ETA).</p></td>
 </tr>
 </tbody>
 </table>
 </div>
-<p class="sd-card-text">Per-video metadata sent: <code class="docutils literal notranslate"><span class="pre">name</span></code> (= <code class="docutils literal notranslate"><span class="pre">video_id</span></code>), <code class="docutils literal notranslate"><span class="pre">status</span></code>, <code class="docutils literal notranslate"><span class="pre">progress</span></code>,
-<code class="docutils literal notranslate"><span class="pre">current_frame</span></code>, <code class="docutils literal notranslate"><span class="pre">total_frames</span></code>, <code class="docutils literal notranslate"><span class="pre">fps</span></code>, <code class="docutils literal notranslate"><span class="pre">eta</span></code>, <code class="docutils literal notranslate"><span class="pre">message</span></code>, <code class="docutils literal notranslate"><span class="pre">video_path</span></code>.</p>
-</div>
-</details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
-<summary class="sd-summary-title sd-card-header">
-<span class="sd-summary-text"><code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor</span></code> (<code class="docutils literal notranslate"><span class="pre">src/util/upload_video/process.py</span></code>, main PC)</span><span class="sd-summary-state-marker sd-summary-chevron-right"><svg version="1.1" width="1.5em" height="1.5em" class="sd-octicon sd-octicon-chevron-right" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.72 18.78a.75.75 0 0 1 0-1.06L14.44 12 8.72 6.28a.751.751 0 0 1 .018-1.042.751.751 0 0 1 1.042-.018l6.25 6.25a.75.75 0 0 1 0 1.06l-6.25 6.25a.75.75 0 0 1-1.06 0Z"></path></svg></span></summary><div class="sd-summary-content sd-card-body docutils">
-<p class="sd-card-text">Aggregates progress from all capture PCs and serves a Flask + SocketIO dashboard.</p>
-<div class="table-wrapper colwidths-auto docutils container">
-<table class="docutils align-default">
-<thead>
-<tr class="row-odd"><th class="head"><p class="sd-card-text">Method</p></th>
-<th class="head"><p class="sd-card-text">Input</p></th>
-<th class="head"><p class="sd-card-text">Output</p></th>
-<th class="head"><p class="sd-card-text">Description</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor(web_port=8080,</span> <span class="pre">zmq_port=1234)</span></code></p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">web_port:</span> <span class="pre">int</span></code>, <code class="docutils literal notranslate"><span class="pre">zmq_port:</span> <span class="pre">int</span></code></p></td>
-<td><p class="sd-card-text">instance</p></td>
-<td><p class="sd-card-text">Build the Flask app, <code class="docutils literal notranslate"><span class="pre">flask_socketio.SocketIO(async_mode='threading')</span></code>, and a <code class="docutils literal notranslate"><span class="pre">DataCollector(port=zmq_port)</span></code>; wire routes + socket events.</p></td>
-</tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.setup_routes()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text">Register <code class="docutils literal notranslate"><span class="pre">/</span></code> → <code class="docutils literal notranslate"><span class="pre">video_monitor.html</span></code> and <code class="docutils literal notranslate"><span class="pre">/api/progress</span></code> → JSON <code class="docutils literal notranslate"><span class="pre">{videos,</span> <span class="pre">summary}</span></code>.</p></td>
-</tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.setup_socketio()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text">Register <code class="docutils literal notranslate"><span class="pre">connect</span></code> (emit <code class="docutils literal notranslate"><span class="pre">initial_data</span></code>) / <code class="docutils literal notranslate"><span class="pre">disconnect</span></code> handlers.</p></td>
-</tr>
-<tr class="row-odd"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.update_loop()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text">Daemon-thread loop: every 1 s diff <code class="docutils literal notranslate"><span class="pre">collector.get_data()</span></code> and emit <code class="docutils literal notranslate"><span class="pre">progress_update</span></code> with changed videos + summary.</p></td>
-</tr>
-<tr class="row-even"><td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">.start()</span></code></p></td>
-<td><p class="sd-card-text">—</p></td>
-<td><p class="sd-card-text"><code class="docutils literal notranslate"><span class="pre">None</span></code></p></td>
-<td><p class="sd-card-text">Start the <code class="docutils literal notranslate"><span class="pre">DataCollector</span></code>, spawn <code class="docutils literal notranslate"><span class="pre">update_loop</span></code> thread, run the SocketIO server (<code class="docutils literal notranslate"><span class="pre">host=0.0.0.0</span></code>, <code class="docutils literal notranslate"><span class="pre">allow_unsafe_werkzeug=True</span></code>).</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<p class="sd-card-text">Module-level: <code class="docutils literal notranslate"><span class="pre">kill_remote_clients()</span></code> → <code class="docutils literal notranslate"><span class="pre">None</span></code> — SSH each <code class="docutils literal notranslate"><span class="pre">get_pc_list()</span></code> PC and
-<code class="docutils literal notranslate"><span class="pre">pkill</span> <span class="pre">-f</span> <span class="pre">&quot;src/util/upload_video/client.py&quot;</span></code> to release ZMQ port <code class="docutils literal notranslate"><span class="pre">1234</span></code>.</p>
-<blockquote>
-<div><p class="sd-card-text"><strong>Port note:</strong> <code class="docutils literal notranslate"><span class="pre">__main__</span></code> instantiates <code class="docutils literal notranslate"><span class="pre">VideoProgressMonitor(web_port=8081,</span> <span class="pre">...)</span></code>,
-so the live dashboard is on <strong>8081</strong> despite the <code class="docutils literal notranslate"><span class="pre">8080</span></code> constructor default.</p>
-</div></blockquote>
+<p class="sd-card-text">The framework API itself (<code class="docutils literal notranslate"><span class="pre">Job</span></code>, <code class="docutils literal notranslate"><span class="pre">Ctx</span></code>, <code class="docutils literal notranslate"><span class="pre">serve_jobs</span></code>, <code class="docutils literal notranslate"><span class="pre">run_distributed</span></code>, <code class="docutils literal notranslate"><span class="pre">shard</span></code>) is
+documented under <code class="docutils literal notranslate"><span class="pre">agent_docs/process/</span></code>. The <code class="docutils literal notranslate"><span class="pre">DataPublisher</span></code>/<code class="docutils literal notranslate"><span class="pre">DataCollector</span></code> transport
+(below) is unchanged. The standalone <code class="docutils literal notranslate"><span class="pre">RawVideoProcessor</span></code> (above) is <strong>retained</strong> and
+still used directly by <code class="docutils literal notranslate"><span class="pre">src/validate/upload_raw_video/upload_local.py</span></code> for a single-PC
+run.</p>
 </div>
 </details><details class="sd-sphinx-override sd-dropdown sd-card sd-mb-3">
 <summary class="sd-summary-title sd-card-header">

@@ -1,0 +1,6 @@
+paradex.io.capture_pc.deprecated.processor
+==========================================
+
+.. py:module:: paradex.io.capture_pc.deprecated.processor
+
+

@@ -5,7 +5,8 @@ values (output). For the architecture and how these fit together, see the
 {doc}`overview <process>`.
 
 Signatures are verified against the code. The subsystem lives in
-`paradex/video/`; the distributed driver classes live in `src/util/upload_video/`.
+`paradex/video/`; the distributed driver is now the `paradex.process` framework, wired by
+`src/util/upload_video/` (`main.py` + `worker.py`).
 
 Each entry is collapsed below — click to expand.
 
@@ -69,36 +70,22 @@ Standalone CPU (`libx264`) encode/convert helpers. **Not** on the
 | `convert_avi_to_compressed_avi(input_path, output_path)` | `input_path: str`, `output_path: str` | `None` | `libx264 -preset fast -crf 23 -an` (audio dropped). |
 :::
 
-:::{dropdown} `VideoProgressPublisher` (`src/util/upload_video/client.py`, capture PC)
+:::{dropdown} upload_video driver — now `paradex.process` (`src/util/upload_video/`)
 
-Runs a `RawVideoProcessor` and streams its progress to the main PC over ZMQ.
+The old `VideoProgressPublisher` (`client.py`) and `VideoProgressMonitor`
+(`process.py`, Flask/SocketIO) classes were **removed**. `undistort_raw_video` is now
+driven by the `paradex.process` batch framework — one `Job` per raw video.
 
-| Method | Input | Output | Description |
-|--------|-------|--------|-------------|
-| `VideoProgressPublisher(port=1234)` | `port: int` | instance | Build a `RawVideoProcessor()` and a `DataPublisher(port, name="video_processor")`. |
-| `.start_processing(update_interval=1.0)` | `update_interval: float` | `None` | `processor.process()`, then loop while `not processor.finished()` sending `publisher.send_data(metadata=[per-video dicts], data=[])` every `update_interval` s; send a final snapshot, print `processor.log`, close the publisher. |
+| Symbol | Location | Description |
+|--------|----------|-------------|
+| `discover()` / `process(job, ctx)` | `src/util/upload_video/worker.py` | Capture-PC worker: `discover()` returns one `Job` per local raw `.avi`; `process` calls `undistort_raw_video` **unchanged**, forwarding its `progress_dict` updates into `ctx.status(frame=, total=)` via a `_CtxProgress` adapter. Launched with `serve_jobs` (no `shard` — data is local per PC). |
+| `run_distributed(worker_cmd)` | `src/util/upload_video/main.py` | Main-PC orchestrator: SSH-launch the worker on every capture PC and print the shared `paradex.process` console dashboard (per-PC counts, per-video frame/ETA, rig ETA). |
 
-Per-video metadata sent: `name` (= `video_id`), `status`, `progress`,
-`current_frame`, `total_frames`, `fps`, `eta`, `message`, `video_path`.
-:::
-
-:::{dropdown} `VideoProgressMonitor` (`src/util/upload_video/process.py`, main PC)
-
-Aggregates progress from all capture PCs and serves a Flask + SocketIO dashboard.
-
-| Method | Input | Output | Description |
-|--------|-------|--------|-------------|
-| `VideoProgressMonitor(web_port=8080, zmq_port=1234)` | `web_port: int`, `zmq_port: int` | instance | Build the Flask app, `flask_socketio.SocketIO(async_mode='threading')`, and a `DataCollector(port=zmq_port)`; wire routes + socket events. |
-| `.setup_routes()` | — | `None` | Register `/` → `video_monitor.html` and `/api/progress` → JSON `{videos, summary}`. |
-| `.setup_socketio()` | — | `None` | Register `connect` (emit `initial_data`) / `disconnect` handlers. |
-| `.update_loop()` | — | `None` | Daemon-thread loop: every 1 s diff `collector.get_data()` and emit `progress_update` with changed videos + summary. |
-| `.start()` | — | `None` | Start the `DataCollector`, spawn `update_loop` thread, run the SocketIO server (`host=0.0.0.0`, `allow_unsafe_werkzeug=True`). |
-
-Module-level: `kill_remote_clients()` → `None` — SSH each `get_pc_list()` PC and
-`pkill -f "src/util/upload_video/client.py"` to release ZMQ port `1234`.
-
-> **Port note:** `__main__` instantiates `VideoProgressMonitor(web_port=8081, ...)`,
-> so the live dashboard is on **8081** despite the `8080` constructor default.
+The framework API itself (`Job`, `Ctx`, `serve_jobs`, `run_distributed`, `shard`) is
+documented under `agent_docs/process/`. The `DataPublisher`/`DataCollector` transport
+(below) is unchanged. The standalone `RawVideoProcessor` (above) is **retained** and
+still used directly by `src/validate/upload_raw_video/upload_local.py` for a single-PC
+run.
 :::
 
 :::{dropdown} Transport dependency — `data_sender` (`paradex/io/capture_pc/data_sender.py`)

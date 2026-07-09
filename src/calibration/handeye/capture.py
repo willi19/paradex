@@ -19,12 +19,17 @@ if __name__ == "__main__":
     parser.add_argument("--arm", type=str, default="xarm", help="Name of the arm to save the current hand-eye calibration for.")
     args = parser.parse_args()
     
-    name = network_info[args.arm]["name"]
-    if name == "xarm":
-        from paradex.io.robot_controller.xarm_controller import XArmController
-        controller = XArmController(**network_info["xarm"]["param"])
+    if args.arm == "franka":
+        # franka_ros2 (ROS 2) driven; connection info comes from ROS, not network.json.
+        from paradex.io.robot_controller.franka_controller import FrankaController
+        controller = FrankaController()
     else:
-        raise NotImplementedError(f"Robot controller for {name} is not implemented.")
+        name = network_info[args.arm]["name"]
+        if name == "xarm":
+            from paradex.io.robot_controller.xarm_controller import XArmController
+            controller = XArmController(**network_info["xarm"]["param"])
+        else:
+            raise NotImplementedError(f"Robot controller for {name} is not implemented.")
     
     root_dir = os.path.join(handeye_calib_path, datetime.now().strftime("%Y%m%d_%H%M%S"))
     root_name = os.path.basename(root_dir)

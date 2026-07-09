@@ -135,18 +135,27 @@ def undistort_and_detect_charuco(name):
         np.save(os.path.join(root_dir, index, "charuco_3d_ids.npy"), charuco_3d['checkerIDs'])
         np.save(os.path.join(root_dir, index, "charuco_3d_corners.npy"), charuco_3d['checkerCorner'])
 
+# End-effector (flange) link used for FK, per arm. Must be the frame the recorded
+# eef.npy is expressed in: xarm -> link6, franka -> fr3_link8 (franka.urdf's
+# world_joint is identity, so fr3_link8 FK == fr3_link0->fr3_link8 TF).
+EEF_LINK = {"xarm": "link6", "franka": "fr3_link8"}
+
+
 def compute_fk(name, arm):
     root_dir = os.path.join(handeye_calib_path, name)
     index_list = sorted(os.listdir(root_dir))
 
     robot_wrapper = RobotWrapper(get_robot_urdf_path(arm_name=arm))
+    if arm not in EEF_LINK:
+        raise NotImplementedError(f"EEF link for arm '{arm}' is not defined in EEF_LINK.")
+    link = EEF_LINK[arm]
 
     for index in index_list:
         if os.path.exists(os.path.join(root_dir, index, "eef_fk.npy")):
             continue
-        
+
         qpos = np.load(os.path.join(root_dir, index, "qpos.npy"))
-        eef = robot_wrapper.compute_forward_kinematics(qpos, link_list=["link6"])['link6']
+        eef = robot_wrapper.compute_forward_kinematics(qpos, link_list=[link])[link]
         np.save(os.path.join(root_dir, index, "eef_fk.npy"), eef)
 
 def compute_motion(name, min_corners=8, min_rotation_deg=5.0, rot_match_tol_deg=2.0):

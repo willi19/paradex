@@ -219,15 +219,21 @@ class CaptureSession():
                 self.camera.validate(timeout=10.0)
             except Exception:
                 try:
-                    if self._camera_capture_started:
-                        # Stop remote pipelines while pulses are still present
-                        # so aravissrc/avimux can finalize cleanly.
-                        self.camera.stop()
-                finally:
-                    self._camera_capture_started = False
+                    # Freeze the shared frame boundary before tearing down any
+                    # receiver. Direct Aravis streams do not need trigger
+                    # pulses for EOS/finalization.
                     if self._sync_generator_started:
                         self.sync_generator.stop()
                         self._sync_generator_started = False
+                    try:
+                        if self._timestamp_monitor_started and self.timestamp_monitor is not None:
+                            self.timestamp_monitor.stop()
+                            self._timestamp_monitor_started = False
+                    finally:
+                        if self._camera_capture_started:
+                            self.camera.stop()
+                finally:
+                    self._camera_capture_started = False
                 raise
         
         if self.realsense is not None:
@@ -266,15 +272,21 @@ class CaptureSession():
             try:
                 if self._camera_capture_started:
                     print("Stopping camera and saving calibration data...")
-                    # ParaOffice keeps hardware trigger pulses alive until
-                    # camera branches are closed. Stopping UTG first starves
-                    # aravissrc during AVI EOS/finalization.
-                    self.camera.stop()
-                    self._camera_capture_started = False
+                    # UTG is the shared clock. Stop it first so every camera
+                    # sees the same final trigger edge. The old aravissrc path
+                    # needed pulses during teardown; the direct Aravis/appsrc
+                    # backend does not.
+                    if self._sync_generator_started:
+                        self.sync_generator.stop()
+                        self._sync_generator_started = False
+                    try:
+                        if self._timestamp_monitor_started and self.timestamp_monitor is not None:
+                            self.timestamp_monitor.stop()
+                            self._timestamp_monitor_started = False
+                    finally:
+                        self.camera.stop()
+                        self._camera_capture_started = False
                     print("Camera stopped.")
-                    if self._timestamp_monitor_started and self.timestamp_monitor is not None:
-                        self.timestamp_monitor.stop()
-                        self._timestamp_monitor_started = False
 
                     save_current_camparam(os.path.join(shared_dir, self.save_path))
                     if self.arm is not None or self.arm_left is not None or self.arm_right is not None:

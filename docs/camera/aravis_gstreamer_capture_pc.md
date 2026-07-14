@@ -26,6 +26,19 @@ timestamp 카메라는 GStreamer를 사용하지 않고 프레임 ID와 `time.ti
 버퍼에 포함되므로 카메라에서 main PC로 이미지 payload가 전송되는 것 자체는
 필요하다.
 
+timestamp 카메라는 모든 capture 카메라와 같은 UTG pulse를 받는 master
+timeline이다. 시작할 때는 모든 capture 카메라와 timestamp 카메라를 먼저
+acquisition 상태로 만든 뒤 UTG를 켠다. 종료할 때는 UTG를 먼저 꺼 마지막
+trigger edge를 고정한 뒤 timestamp와 capture 카메라를 종료한다. 따라서
+정상 캡처에서는 영상의 n번째 프레임을 `timestamps/timestamp.npy`의 n번째
+값에 대응시킨다.
+
+카메라마다 내부 frame counter의 시작점이 다를 수 있으므로 서로 다른 카메라의
+절대 `frame_id` 값 자체가 같아야 하는 것은 아니다. 중요한 것은 세션 안에서
+frame ID가 연속적이고 timestamp 배열과 각 AVI의 프레임 수가 같은 것이다.
+종료 순서를 맞춘 뒤에도 개수가 다르면 해당 카메라 또는 수신/인코딩 경로에서
+실제 frame drop이 발생한 것이다.
+
 ## 1. Ubuntu 패키지 설치
 
 Aravis GI 패키지는 pip 패키지가 아니라 Ubuntu 패키지다. `flir_env` 같은

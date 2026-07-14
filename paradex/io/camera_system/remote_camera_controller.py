@@ -37,6 +37,7 @@ class remote_camera_controller:
         self.exit_event = threading.Event()
         self.start_event = threading.Event()
         self.stop_event = threading.Event()
+        self.validate_event = threading.Event()
         self.sending_event = threading.Event()
         self.error_event = threading.Event()
         self.ready_event = threading.Event()
@@ -160,6 +161,10 @@ class remote_camera_controller:
     def stop(self):
         return self._request(self.stop_event)
 
+    def validate(self, timeout=5.0):
+        self.validate_timeout = timeout
+        return self._request(self.validate_event)
+
     def end(self):
         self.exit_event.set()
         self.run_thread.join(timeout=self.COMMAND_WAIT_SECONDS)
@@ -216,9 +221,13 @@ class remote_camera_controller:
                     action = "stop"
                     command = {"action": action}
                     self.stop_event.clear()
+                elif self.validate_event.is_set():
+                    action = "validate"
+                    command = {"action": action, "timeout": self.validate_timeout}
+                    self.validate_event.clear()
 
                 response = self.send_command(command)
-                if action in ("start", "stop"):
+                if action in ("start", "stop", "validate"):
                     self._complete_command(action, response)
                 else:
                     failures = self._failed_responses(response)

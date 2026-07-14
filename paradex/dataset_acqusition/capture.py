@@ -213,6 +213,18 @@ class CaptureSession():
                 self._timestamp_monitor_started = True
             self.sync_generator.start(fps=30)
             self._sync_generator_started = True
+            try:
+                self.camera.validate(timeout=5.0)
+            except Exception:
+                # Stop remote pipelines while pulses are still present so
+                # aravissrc/avimux can finalize without trigger starvation.
+                try:
+                    self.camera.stop()
+                finally:
+                    self._camera_capture_started = False
+                    self.sync_generator.stop()
+                    self._sync_generator_started = False
+                raise
         
         if self.realsense is not None:
             self.realsense.start(
@@ -247,25 +259,29 @@ class CaptureSession():
             np.save(os.path.join(shared_dir, self.save_path, "raw", "state", "state_time.npy"), np.array(self.state_time))
 
         if self.camera is not None:
-            if self._sync_generator_started:
-                self.sync_generator.stop()
-                self._sync_generator_started = False
-            if self._camera_capture_started:
-                print("Stopping camera and saving calibration data...")
-                time.sleep(3.0)
-                self.camera.stop()
-                self._camera_capture_started = False
-                print("Camera stopped.")
-                if self._timestamp_monitor_started and self.timestamp_monitor is not None:
-                    self.timestamp_monitor.stop()
-                    self._timestamp_monitor_started = False
+            try:
+                if self._camera_capture_started:
+                    print("Stopping camera and saving calibration data...")
+                    # ParaOffice keeps hardware trigger pulses alive until
+                    # camera branches are closed. Stopping UTG first starves
+                    # aravissrc during AVI EOS/finalization.
+                    self.camera.stop()
+                    self._camera_capture_started = False
+                    print("Camera stopped.")
+                    if self._timestamp_monitor_started and self.timestamp_monitor is not None:
+                        self.timestamp_monitor.stop()
+                        self._timestamp_monitor_started = False
 
-                save_current_camparam(os.path.join(shared_dir, self.save_path))
-                if self.arm is not None or self.arm_left is not None or self.arm_right is not None:
-                    if self.arm_name == "xarm":
-                        save_current_C2R(os.path.join(shared_dir, self.save_path))
-                    elif self.arm_name == "openarm":
-                        save_current_C2R(os.path.join(shared_dir, self.save_path), arm="openarm")
+                    save_current_camparam(os.path.join(shared_dir, self.save_path))
+                    if self.arm is not None or self.arm_left is not None or self.arm_right is not None:
+                        if self.arm_name == "xarm":
+                            save_current_C2R(os.path.join(shared_dir, self.save_path))
+                        elif self.arm_name == "openarm":
+                            save_current_C2R(os.path.join(shared_dir, self.save_path), arm="openarm")
+            finally:
+                if self._sync_generator_started:
+                    self.sync_generator.stop()
+                    self._sync_generator_started = False
 
         if self.realsense is not None:
             self.realsense.stop()

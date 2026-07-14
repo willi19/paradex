@@ -52,6 +52,9 @@ class FakeCamera:
     def stop(self):
         self.calls.append(("stop",))
 
+    def wait_for_first_frame(self, timeout_seconds=None):
+        self.calls.append(("wait_for_first_frame", timeout_seconds))
+
     def end(self):
         self.calls.append(("end",))
 
@@ -76,6 +79,9 @@ class FakeLoader:
 
     def stop(self):
         self.calls.append(("stop",))
+
+    def wait_for_first_frames(self, timeout_seconds=None):
+        self.calls.append(("validate", timeout_seconds))
 
     def end(self):
         self.calls.append(("end",))
@@ -168,7 +174,7 @@ class AravisCaptureTests(unittest.TestCase):
             "TriggerActivation=RisingEdge TriggerOverlap=ReadOut TriggerMode=On",
         )
 
-    def test_hardware_sync_configuration_skips_free_run_frame_rate_nodes(self):
+    def test_hardware_sync_configuration_matches_paraoffice_feature_order(self):
         device = object()
         session = MagicMock()
         session.get_device.return_value = device
@@ -183,7 +189,9 @@ class AravisCaptureTests(unittest.TestCase):
         with patch(
             "paradex.io.camera_system.aravis_gstreamer._load_aravis",
             return_value=aravis,
-        ), patch("paradex.io.camera_system.aravis_gstreamer._write_feature") as write:
+        ), patch("paradex.io.camera_system.aravis_gstreamer._write_feature") as write, patch(
+            "paradex.io.camera_system.aravis_gstreamer._write_optional_feature"
+        ) as optional:
             camera._configure_camera(30, True)
 
         feature_order = [entry.args[1] for entry in write.call_args_list]
@@ -205,6 +213,38 @@ class AravisCaptureTests(unittest.TestCase):
                 "TriggerMode",
             ],
         )
+        self.assertEqual(
+            [entry.args for entry in optional.call_args_list],
+            [
+                (device, ("AcquisitionFrameRateAuto",), "Off"),
+                (
+                    device,
+                    ("AcquisitionFrameRateEnable", "AcquisitionFrameRateEnabled"),
+                    True,
+                ),
+                (
+                    device,
+                    ("AcquisitionFrameRate", "AcquisitionFrameRateAbs"),
+                    30.0,
+                ),
+            ],
+        )
+
+    def test_loader_validates_first_frame_for_every_camera(self):
+        first = FakeCamera("cam-a")
+        second = FakeCamera("cam-b")
+        cameras = iter((first, second))
+        loader = AravisGStreamerCameraLoader(
+            serial_list=["cam-a", "cam-b"],
+            camera_factory=lambda _serial: next(cameras),
+            reconcile_addresses=False,
+        )
+        loader._capture_active = True
+
+        loader.wait_for_first_frames(2.5)
+
+        self.assertIn(("wait_for_first_frame", 2.5), first.calls)
+        self.assertIn(("wait_for_first_frame", 2.5), second.calls)
 
     def test_optional_frame_rate_enable_uses_alias_or_skips(self):
         aliased = FakeOptionalFeatureDevice({"AcquisitionFrameRateEnabled"})

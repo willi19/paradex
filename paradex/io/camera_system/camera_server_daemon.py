@@ -163,6 +163,10 @@ class camera_server_daemon:
                     self.camera_loader.stop()
                 self.state = "idle"
                 return {"status": "ok", "msg": "stopped"}
+            if action == "validate":
+                with self._camera_lock:
+                    self.camera_loader.wait_for_first_frames(cmd.get("timeout"))
+                return {"status": "ok", "msg": "frames received"}
             if action == "end":
                 with self._camera_lock:
                     self.camera_loader.stop()

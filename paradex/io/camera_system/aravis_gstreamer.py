@@ -58,6 +58,7 @@ class AravisGStreamerSettings:
     jpeg_quality: int = 95
     queue_buffers: int = 60
     startup_timeout_seconds: float = 5.0
+    first_frame_timeout_seconds: float = 5.0
     eos_timeout_seconds: float = 15.0
 
     @classmethod
@@ -74,6 +75,7 @@ class AravisGStreamerSettings:
             trigger_overlap=os.getenv("PARADEX_TRIGGER_OVERLAP", "ReadOut"),
             jpeg_quality=_env_int("PARADEX_JPEG_QUALITY", 95),
             queue_buffers=_env_int("PARADEX_GST_QUEUE_BUFFERS", 60),
+            first_frame_timeout_seconds=_env_float("PARADEX_FIRST_FRAME_TIMEOUT", 5.0),
         )
 
 
@@ -224,25 +226,25 @@ class AravisGStreamerCamera:
 
             _write_feature(device, "TriggerMode", "Off")
             if sync_mode:
-                # Match the legacy Paradex PySpin path: the UTG900E defines
-                # cadence, so hardware-sync mode never touches free-run rate
-                # nodes that are absent from some deployed camera XMLs.
                 _write_feature(device, "TriggerSelector", "FrameStart")
                 _write_feature(device, "TriggerSource", self.settings.trigger_source)
                 _write_feature(device, "TriggerActivation", self.settings.trigger_activation)
                 _write_feature(device, "TriggerOverlap", self.settings.trigger_overlap)
-            else:
-                _write_optional_feature(device, ("AcquisitionFrameRateAuto",), "Off")
-                _write_optional_feature(
-                    device,
-                    ("AcquisitionFrameRateEnable", "AcquisitionFrameRateEnabled"),
-                    True,
-                )
-                _write_optional_feature(
-                    device,
-                    ("AcquisitionFrameRate", "AcquisitionFrameRateAbs"),
-                    float(fps),
-                )
+
+            # ParaOffice programs the AFR cap before arming the trigger.  Some
+            # deployed BFS XMLs expose older aliases (or no enable node), so
+            # preserve that order while accepting the firmware variants.
+            _write_optional_feature(device, ("AcquisitionFrameRateAuto",), "Off")
+            _write_optional_feature(
+                device,
+                ("AcquisitionFrameRateEnable", "AcquisitionFrameRateEnabled"),
+                True,
+            )
+            _write_optional_feature(
+                device,
+                ("AcquisitionFrameRate", "AcquisitionFrameRateAbs"),
+                float(fps),
+            )
             _write_feature(device, "ExposureAuto", "Off")
             _write_feature(device, "ExposureTime", exposure)
             _write_feature(device, "GainAuto", "Off")
@@ -271,7 +273,10 @@ class AravisGStreamerCamera:
             raise AravisGStreamerError("Could not create GStreamer pipeline for {}".format(self.name))
 
         source = self._make(Gst, "aravissrc", "src_{}".format(self.name))
-        source.set_property("camera-name", self.device_id)
+        # Match ParaOffice's aravissrc contract.  The full discovery id is
+        # still used above for reliable Aravis.Camera.new(), but aravissrc is
+        # given the stable vendor/serial alias it was designed to resolve.
+        source.set_property("camera-name", "FLIR-{}".format(self.name))
         source.set_property("features", trigger_features(settings, sync_mode))
 
         capsfilter = self._make(Gst, "capsfilter", "caps_{}".format(self.name))
@@ -427,6 +432,28 @@ class AravisGStreamerCamera:
             if self._state != "ERROR":
                 self._state = "READY"
 
+    def wait_for_first_frame(self, timeout_seconds: Optional[float] = None) -> None:
+        """Fail START unless a hardware-triggered frame actually arrives."""
+
+        timeout = (
+            self.settings.first_frame_timeout_seconds
+            if timeout_seconds is None
+            else timeout_seconds
+        )
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            self._raise_if_bus_error(0.0)
+            with self._frame_count_lock:
+                if self._frame_count > 0:
+                    return
+            time.sleep(0.01)
+        self._raise_if_bus_error(0.0)
+        raise AravisGStreamerError(
+            "Camera {} received no frames within {:.1f}s after UTG start".format(
+                self.name, timeout
+            )
+        )
+
     def _teardown_pipeline(self) -> None:
         if self._pipeline is not None and self._gst is not None:
             self._pipeline.set_state(self._gst.State.NULL)
@@ -440,9 +467,9 @@ class AravisGStreamerCamera:
                 return
             self._state = "STOPPING"
             try:
-                # CaptureSession stops the main-PC UTG before it sends this
-                # command.  EOS now drains JPEG/AVI buffers and lets avimux
-                # write the AVI index before the pipeline is set to NULL.
+                # CaptureSession sends this while UTG pulses still exist.
+                # This avoids the aravissrc starvation ParaOffice documented
+                # when the trigger is disabled before EOS/finalization.
                 self._pipeline.send_event(self._gst.Event.new_eos())
                 message = self._pipeline.get_bus().timed_pop_filtered(
                     int(self.settings.eos_timeout_seconds * self._gst.SECOND),
@@ -623,6 +650,15 @@ class AravisGStreamerCameraLoader:
             raise
         print("[Info] All Aravis/GStreamer cameras READY.")
         log.info("All Aravis/GStreamer cameras READY: %s", self.camera_names)
+
+    def wait_for_first_frames(self, timeout_seconds: Optional[float] = None) -> None:
+        if not self._capture_active:
+            raise AravisGStreamerError("Cannot validate frames before capture start")
+        self._parallel(
+            lambda camera, _path: camera.wait_for_first_frame(timeout_seconds),
+            [None] * len(self.cameralist),
+        )
+        print("[Info] First hardware-triggered frame received from every camera.")
 
     def _print_frame_counts(self) -> None:
         counts = []

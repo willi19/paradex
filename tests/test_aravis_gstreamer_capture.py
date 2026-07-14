@@ -66,7 +66,7 @@ class FakeLoader:
 
 class AravisCaptureTests(unittest.TestCase):
     def test_forceip_packet_has_expected_gvcp_fields(self):
-        packet = gvcp_forceip_packet("2c:dd:a3:7d:a6:9c", "192.168.11.100", request_id=42)
+        packet = gvcp_forceip_packet("2c:dd:a3:7d:a6:9c", "11.0.3.100", request_id=42)
 
         self.assertEqual(len(packet), 64)
         self.assertEqual(packet[:2], b"B\x01")
@@ -74,11 +74,11 @@ class AravisCaptureTests(unittest.TestCase):
         self.assertEqual(struct.unpack_from(">H", packet, 4)[0], 56)
         self.assertEqual(struct.unpack_from(">H", packet, 6)[0], 42)
         self.assertEqual(packet[10:16], bytes.fromhex("2cdda37da69c"))
-        self.assertEqual(packet[28:32], bytes((192, 168, 11, 100)))
+        self.assertEqual(packet[28:32], bytes((11, 0, 3, 100)))
 
     def test_forceip_plan_prefers_discovered_physical_nic(self):
-        left = NicSubnet("enp5s0", "192.168.11.1", ipaddress.ip_network("192.168.11.0/24"))
-        right = NicSubnet("enp6s0", "192.168.12.1", ipaddress.ip_network("192.168.12.0/24"))
+        left = NicSubnet("enp5s0", "11.0.1.1", ipaddress.ip_network("11.0.1.0/24"))
+        right = NicSubnet("enp6s0", "11.0.2.1", ipaddress.ip_network("11.0.2.0/24"))
         addressing = CameraAddressing([left, right])
         record = CameraRecord("cam-a", "FLIR-cam-a", "169.254.1.2", "2c:dd:a3:7d:a6:9c")
         addressing._seen = {record.serial: record}
@@ -86,7 +86,7 @@ class AravisCaptureTests(unittest.TestCase):
 
         plan = addressing._plan_force_ips()
 
-        self.assertEqual(plan["cam-a"], (right, "192.168.12.100"))
+        self.assertEqual(plan["cam-a"], (right, "11.0.2.100"))
 
     def test_trigger_features_rearm_line0_after_caps_negotiation(self):
         settings = AravisGStreamerSettings(trigger_source="Line0", trigger_activation="RisingEdge")

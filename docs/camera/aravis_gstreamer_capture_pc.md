@@ -75,10 +75,11 @@ continue to come from [`system/current/camera.json`](../../system/current/camera
 
 ## 2. Configure the camera NICs
 
-Keep the management NIC separate.  Each physical camera NIC needs a permanent
-`192.168.X.1/24` address (`X != 0`) and should normally carry one camera.  The
-agent uses this convention to recover a camera that power-cycled to a
-link-local address via GVCP ForceIP.
+Keep the management NIC separate. Each physical camera NIC needs a permanent
+`X.Y.Z.1/24` address and should normally carry one camera. Your existing
+`11.0.1.1/24`, `11.0.2.1/24`, ... layout is valid and does **not** need to be
+renumbered to `192.168.*`. The agent returns a camera that power-cycled to a
+link-local address to the subnet of its physical NIC via GVCP ForceIP.
 
 Example netplan stanza; substitute the real interface and subnet:
 
@@ -87,7 +88,7 @@ network:
   version: 2
   ethernets:
     enp5s0:
-      addresses: [192.168.11.1/24]
+      addresses: [11.0.1.1/24]
       mtu: 9216
 ```
 
@@ -108,10 +109,18 @@ If one link cannot do jumbo frames, set the NIC/camera path to normal MTU and
 start the service with `PARADEX_GIGE_PACKET_SIZE=1400`.  Never leave a 9000
 byte camera packet size on a 1500-byte path.
 
-Do not run ParaOffice's `scripts/setup-flir.sh` wholesale on these existing
-capture PCs: it regenerates `/etc/netplan/01-netcfg.yaml`, detects interfaces,
-and installs a local UTG service, which is the wrong ownership model here.
-It is useful as a reference for package and kernel settings only.
+ParaOffice does have `scripts/setup-flir.sh`, including a netplan step, but do
+not run it wholesale on these existing capture PCs: it regenerates
+`/etc/netplan/01-netcfg.yaml`, assumes `192.168.X.1/24`, and installs a local
+UTG service, which is the wrong ownership model here. Use it only as a package
+and kernel-settings reference.
+
+Set the physical camera NIC names explicitly in the service when possible;
+this prevents a Docker/VPN interface from being mistaken for a camera NIC:
+
+```ini
+Environment=PARADEX_CAMERA_NICS=enp5s0,enp6s0,enp7s0,enp8s0
+```
 
 ## 3. Tune the Linux receive path
 
@@ -197,6 +206,7 @@ Set these as systemd `Environment=` entries only when a rig differs:
 | Variable | Default | Purpose |
 | --- | ---: | --- |
 | `PARADEX_GIGE_PACKET_SIZE` | `9000` | Use `1400` when jumbo frames are unavailable. |
+| `PARADEX_CAMERA_NICS` | inferred | Comma-separated camera NICs; strongly recommended for a multi-NIC host. |
 | `PARADEX_CAMERA_WIDTH` | `2048` | Bayer frame width. |
 | `PARADEX_CAMERA_HEIGHT` | `1536` | Bayer frame height. |
 | `PARADEX_BAYER_FORMAT` | `rggb` | GStreamer Bayer caps format. |

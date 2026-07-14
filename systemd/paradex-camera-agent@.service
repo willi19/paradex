@@ -9,6 +9,9 @@ User=%i
 Group=%i
 WorkingDirectory=/opt/paradex
 Environment=PYTHONUNBUFFERED=1
+# Set the actual camera-facing interfaces, e.g. enp5s0,enp6s0,enp7s0,enp8s0.
+# Leaving this unset uses non-default IPv4 /24 addresses ending in .1.
+# Environment=PARADEX_CAMERA_NICS=enp5s0,enp6s0,enp7s0,enp8s0
 # Set this to 1400 only when the camera NIC/switch path cannot use jumbo frames.
 Environment=PARADEX_GIGE_PACKET_SIZE=9000
 ExecStart=/opt/paradex/.venv/bin/python /opt/paradex/src/camera/server_daemon.py --backend aravis-gstreamer

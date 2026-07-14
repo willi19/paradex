@@ -1,11 +1,11 @@
 """GigE Vision camera discovery and ForceIP recovery for capture PCs.
 
-The capture agents keep a fixed ``192.168.X.1/24`` address on each
-camera-facing NIC.  GigE cameras can lose their persistent address after a
-power cycle and fall back to a link-local address.  Aravis can discover such
-cameras but cannot control them until their address is moved back onto the
-NIC subnet, so this module runs the GVCP ForceIP recovery before a recording
-agent accepts commands.
+The capture agents keep a fixed ``X.Y.Z.1/24`` address on each camera-facing
+NIC. GigE cameras can lose their persistent address after a power cycle and
+fall back to a link-local address. Aravis can discover such cameras but cannot
+control them until their address is moved back onto the NIC subnet, so this
+module runs the GVCP ForceIP recovery before a recording agent accepts
+commands.
 
 All SDK imports are deliberately lazy.  This keeps the main Paradex package
 importable on the main PC and on development machines without Aravis.
@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ipaddress
 import logging
+import os
 import socket
 import struct
 import time
@@ -101,31 +102,43 @@ def _load_iproute():
 
 
 def discover_camera_nics() -> List[NicSubnet]:
-    """Return dedicated ``192.168.X.1/24`` camera NICs.
+    """Return dedicated camera NICs without imposing an address range.
 
-    The management network is intentionally excluded: ``192.168.0.0/24``
-    and every address not ending in ``.1`` are not eligible for ForceIP.
+    A camera NIC is an IPv4 ``/24`` address ending in ``.1`` that is not on
+    the host's default route. ``PARADEX_CAMERA_NICS=nic0,nic1`` is the
+    preferred explicit override; it avoids relying on inference when a host
+    also has Docker, VPN, or lab networks with the same address convention.
     """
 
     IPRoute = _load_iproute()
+    requested_names = {
+        name.strip() for name in os.getenv("PARADEX_CAMERA_NICS", "").split(",") if name.strip()
+    }
     nics: List[NicSubnet] = []
     with IPRoute() as ipr:
         link_names = {
             link["index"]: link.get_attr("IFLA_IFNAME") for link in ipr.get_links()
         }
+        default_route_indices = {
+            route.get_attr("RTA_OIF")
+            for route in ipr.get_routes(family=socket.AF_INET, dst_len=0)
+            if route.get_attr("RTA_OIF") is not None
+        }
         for address in ipr.get_addr(family=socket.AF_INET):
             if address["prefixlen"] != 24:
                 continue
             host_ip = address.get_attr("IFA_ADDRESS")
-            if not host_ip or not host_ip.startswith("192.168."):
+            if not host_ip:
                 continue
             interface = ipaddress.IPv4Interface("{}/24".format(host_ip))
+            if interface.ip.is_loopback or interface.ip.is_link_local:
+                continue
             if int(interface.ip.packed[-1]) != 1:
                 continue
-            if str(interface.network) == "192.168.0.0/24":
+            if address["index"] in default_route_indices:
                 continue
             name = link_names.get(address["index"])
-            if name:
+            if name and (not requested_names or name in requested_names):
                 nics.append(NicSubnet(name=name, host_ip=host_ip, network=interface.network))
     return sorted(nics, key=lambda nic: nic.name)
 
@@ -151,8 +164,8 @@ class CameraAddressing:
     def discover(self) -> Dict[str, CameraRecord]:
         if not self.nic_subnets:
             raise CameraAddressingError(
-                "No camera-facing NIC has a 192.168.X.1/24 address. "
-                "Configure the capture NICs before starting the agent."
+                "No camera-facing non-default IPv4 /24 NIC ending in .1 was found. "
+                "Configure PARADEX_CAMERA_NICS explicitly or configure the capture NICs before starting the agent."
             )
 
         Aravis = _load_aravis()

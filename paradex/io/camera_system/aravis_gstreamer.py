@@ -162,8 +162,10 @@ class AravisGStreamerCamera:
         serial: str,
         settings: Optional[AravisGStreamerSettings] = None,
         camera_config: Optional[Dict[str, dict]] = None,
+        device_id: Optional[str] = None,
     ) -> None:
         self.name = str(serial)
+        self.device_id = str(device_id or "FLIR-{}".format(self.name))
         self.settings = settings or AravisGStreamerSettings.from_environment()
         self.camera_config = camera_config if camera_config is not None else get_camera_config()
         self._lock = threading.RLock()
@@ -190,9 +192,13 @@ class AravisGStreamerCamera:
 
     def _configure_camera(self, fps: int, sync_mode: bool) -> None:
         Aravis = _load_aravis()
-        camera = Aravis.Camera.new("FLIR-{}".format(self.name))
+        camera = Aravis.Camera.new(self.device_id)
         if camera is None:
-            raise AravisGStreamerError("Camera {} was not found by Aravis".format(self.name))
+            raise AravisGStreamerError(
+                "Camera {} was not found by Aravis using device id {!r}".format(
+                    self.name, self.device_id
+                )
+            )
         device = camera.get_device()
         gain, exposure = self._camera_values(fps)
         try:
@@ -234,7 +240,7 @@ class AravisGStreamerCamera:
             raise AravisGStreamerError("Could not create GStreamer pipeline for {}".format(self.name))
 
         source = self._make(Gst, "aravissrc", "src_{}".format(self.name))
-        source.set_property("camera-name", "FLIR-{}".format(self.name))
+        source.set_property("camera-name", self.device_id)
         source.set_property("features", trigger_features(settings, sync_mode))
 
         capsfilter = self._make(Gst, "capsfilter", "caps_{}".format(self.name))
@@ -468,6 +474,7 @@ class AravisGStreamerCameraLoader:
             raise AravisGStreamerError("No camera serials are configured for this capture PC")
 
         self.camera_inventory: List[dict] = []
+        self.device_ids: Dict[str, str] = {}
         if reconcile_addresses:
             address_manager = addressing or CameraAddressing()
             address_manager.reconcile(self.camera_names)
@@ -492,9 +499,14 @@ class AravisGStreamerCameraLoader:
                         "nic": nic_name,
                     }
                 )
+                self.device_ids[serial] = record.device_id
 
         if camera_factory is None:
-            camera_factory = lambda serial: AravisGStreamerCamera(serial, self.settings)
+            camera_factory = lambda serial: AravisGStreamerCamera(
+                serial,
+                self.settings,
+                device_id=self.device_ids.get(serial),
+            )
         self.cameralist = [camera_factory(serial) for serial in self.camera_names]
         self._capture_active = False
         self._print_loaded_cameras()
@@ -556,12 +568,10 @@ class AravisGStreamerCameraLoader:
         paths = self._save_paths(mode, save_path)
         print("[Info] Starting Aravis/GStreamer cameras: {}".format(self.camera_names))
         try:
-            # Refresh once, then configure/build sequentially. ParaOffice uses
-            # this ordering so Aravis.Camera.new() is never fanned out across
-            # Python threads. It also prevents a daemon's boot-time discovery
-            # cache from being the only source of truth at recording time.
-            Aravis = _load_aravis()
-            Aravis.update_device_list()
+            # Configure/build sequentially using the exact device ids that
+            # address reconciliation discovered and verified at agent boot.
+            # Older Aravis releases do not reliably resolve the shorter
+            # ``FLIR-{serial}`` alias used by newer ParaOffice installations.
             for camera, path in zip(self.cameralist, paths):
                 camera.prepare(mode, syncMode, path, fps)
 

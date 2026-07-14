@@ -92,7 +92,10 @@ class FakeAddressing:
         ]
         self.seen = {
             "cam-a": CameraRecord(
-                "cam-a", "FLIR-cam-a", "11.0.1.100", "2c:dd:a3:7d:a6:9c"
+                "cam-a",
+                "FLIR-Blackfly-S-cam-a",
+                "11.0.1.100",
+                "2c:dd:a3:7d:a6:9c",
             )
         }
 
@@ -196,6 +199,14 @@ class AravisCaptureTests(unittest.TestCase):
         self.assertIn("serial=cam-a", text)
         self.assertIn("ip=11.0.1.100", text)
         self.assertIn("nic=enp6s0f0", text)
+
+    def test_loader_uses_exact_discovered_device_id(self):
+        loader = AravisGStreamerCameraLoader(
+            serial_list=["cam-a"],
+            addressing=FakeAddressing(),
+        )
+
+        self.assertEqual(loader.cameralist[0].device_id, "FLIR-Blackfly-S-cam-a")
 
     def test_loader_stops_all_cameras_after_partial_start_failure(self):
         first = FakeCamera("cam-a")

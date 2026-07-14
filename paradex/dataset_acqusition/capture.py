@@ -173,6 +173,9 @@ class CaptureSession():
             self.human_tactile.connect()
             
         self.save_path = None
+        self._camera_capture_started = False
+        self._timestamp_monitor_started = False
+        self._sync_generator_started = False
             
     def start(self, save_path): # Start recording on all sensors
         print("Starting new capture session, saving to:", save_path)
@@ -204,9 +207,12 @@ class CaptureSession():
         if self.camera is not None:
             # self.sync_generator.start(fps=30)
             self.camera.start("video", True, os.path.join(save_path, "raw"))
+            self._camera_capture_started = True
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.start(os.path.join(shared_dir, save_path, "raw", "timestamps"))
+                self._timestamp_monitor_started = True
             self.sync_generator.start(fps=30)
+            self._sync_generator_started = True
         
         if self.realsense is not None:
             self.realsense.start(
@@ -241,20 +247,25 @@ class CaptureSession():
             np.save(os.path.join(shared_dir, self.save_path, "raw", "state", "state_time.npy"), np.array(self.state_time))
 
         if self.camera is not None:
-            self.sync_generator.stop()
-            print("Stopping camera and saving calibration data...")
-            time.sleep(3.0)
-            self.camera.stop()
-            print("Camera stopped.")
-            if self.timestamp_monitor is not None:
-                self.timestamp_monitor.stop()
+            if self._sync_generator_started:
+                self.sync_generator.stop()
+                self._sync_generator_started = False
+            if self._camera_capture_started:
+                print("Stopping camera and saving calibration data...")
+                time.sleep(3.0)
+                self.camera.stop()
+                self._camera_capture_started = False
+                print("Camera stopped.")
+                if self._timestamp_monitor_started and self.timestamp_monitor is not None:
+                    self.timestamp_monitor.stop()
+                    self._timestamp_monitor_started = False
 
-            save_current_camparam(os.path.join(shared_dir, self.save_path))
-            if self.arm is not None or self.arm_left is not None or self.arm_right is not None:
-                if self.arm_name == "xarm":
-                    save_current_C2R(os.path.join(shared_dir, self.save_path))
-                elif self.arm_name == "openarm":
-                    save_current_C2R(os.path.join(shared_dir, self.save_path), arm="openarm")
+                save_current_camparam(os.path.join(shared_dir, self.save_path))
+                if self.arm is not None or self.arm_left is not None or self.arm_right is not None:
+                    if self.arm_name == "xarm":
+                        save_current_C2R(os.path.join(shared_dir, self.save_path))
+                    elif self.arm_name == "openarm":
+                        save_current_C2R(os.path.join(shared_dir, self.save_path), arm="openarm")
 
         if self.realsense is not None:
             self.realsense.stop()

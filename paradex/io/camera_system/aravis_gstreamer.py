@@ -154,6 +154,22 @@ def _write_feature(device, name: str, value) -> None:
         )
 
 
+def _write_optional_feature(device, names: Iterable[str], value) -> Optional[str]:
+    """Write a firmware-specific GenICam alias, or skip if none exist."""
+
+    attempted = []
+    for name in names:
+        attempted.append(name)
+        try:
+            _write_feature(device, name, value)
+            return name
+        except Exception as exc:
+            if "node '{}' not found".format(name) not in str(exc):
+                raise
+    log.warning("Optional GenICam nodes not found: %s; skipping", attempted)
+    return None
+
+
 class AravisGStreamerCamera:
     """One FLIR GigE camera with a native GStreamer recording pipeline."""
 
@@ -206,16 +222,27 @@ class AravisGStreamerCamera:
             _write_feature(device, "PixelFormat", self.settings.pixel_format)
             _write_feature(device, "GevSCPSPacketSize", self.settings.packet_size)
 
-            # Keep the exact ParaOffice CameraProgrammer ordering. FLIR makes
-            # several acquisition nodes unavailable while TriggerMode is On.
             _write_feature(device, "TriggerMode", "Off")
-            _write_feature(device, "TriggerSelector", "FrameStart")
-            _write_feature(device, "TriggerSource", self.settings.trigger_source)
-            _write_feature(device, "TriggerActivation", self.settings.trigger_activation)
-            _write_feature(device, "TriggerOverlap", self.settings.trigger_overlap)
-
-            _write_feature(device, "AcquisitionFrameRateEnable", True)
-            _write_feature(device, "AcquisitionFrameRate", float(fps))
+            if sync_mode:
+                # Match the legacy Paradex PySpin path: the UTG900E defines
+                # cadence, so hardware-sync mode never touches free-run rate
+                # nodes that are absent from some deployed camera XMLs.
+                _write_feature(device, "TriggerSelector", "FrameStart")
+                _write_feature(device, "TriggerSource", self.settings.trigger_source)
+                _write_feature(device, "TriggerActivation", self.settings.trigger_activation)
+                _write_feature(device, "TriggerOverlap", self.settings.trigger_overlap)
+            else:
+                _write_optional_feature(device, ("AcquisitionFrameRateAuto",), "Off")
+                _write_optional_feature(
+                    device,
+                    ("AcquisitionFrameRateEnable", "AcquisitionFrameRateEnabled"),
+                    True,
+                )
+                _write_optional_feature(
+                    device,
+                    ("AcquisitionFrameRate", "AcquisitionFrameRateAbs"),
+                    float(fps),
+                )
             _write_feature(device, "ExposureAuto", "Off")
             _write_feature(device, "ExposureTime", exposure)
             _write_feature(device, "GainAuto", "Off")

@@ -20,6 +20,7 @@ from paradex.io.camera_system.aravis_gstreamer import (
     AravisGStreamerCamera,
     AravisGStreamerCameraLoader,
     AravisGStreamerSettings,
+    _write_optional_feature,
     trigger_features,
 )
 from paradex.io.camera_system.camera_server_daemon import camera_server_daemon
@@ -104,6 +105,20 @@ class FakeAddressing:
         return list(expected_serials)
 
 
+class FakeOptionalFeatureDevice:
+    def __init__(self, available=()):
+        self.available = set(available)
+        self.values = {}
+
+    def set_boolean_feature_value(self, name, value):
+        if name not in self.available:
+            raise RuntimeError("node '{}' not found".format(name))
+        self.values[name] = value
+
+    def get_boolean_feature_value(self, name):
+        return self.values[name]
+
+
 class AravisCaptureTests(unittest.TestCase):
     def test_forceip_packet_has_expected_gvcp_fields(self):
         packet = gvcp_forceip_packet("2c:dd:a3:7d:a6:9c", "11.0.3.100", request_id=42)
@@ -153,7 +168,7 @@ class AravisCaptureTests(unittest.TestCase):
             "TriggerActivation=RisingEdge TriggerOverlap=ReadOut TriggerMode=On",
         )
 
-    def test_camera_configuration_uses_paraoffice_feature_order(self):
+    def test_hardware_sync_configuration_skips_free_run_frame_rate_nodes(self):
         device = object()
         session = MagicMock()
         session.get_device.return_value = device
@@ -183,14 +198,32 @@ class AravisCaptureTests(unittest.TestCase):
                 "TriggerSource",
                 "TriggerActivation",
                 "TriggerOverlap",
-                "AcquisitionFrameRateEnable",
-                "AcquisitionFrameRate",
                 "ExposureAuto",
                 "ExposureTime",
                 "GainAuto",
                 "Gain",
                 "TriggerMode",
             ],
+        )
+
+    def test_optional_frame_rate_enable_uses_alias_or_skips(self):
+        aliased = FakeOptionalFeatureDevice({"AcquisitionFrameRateEnabled"})
+        missing = FakeOptionalFeatureDevice()
+
+        self.assertEqual(
+            _write_optional_feature(
+                aliased,
+                ("AcquisitionFrameRateEnable", "AcquisitionFrameRateEnabled"),
+                True,
+            ),
+            "AcquisitionFrameRateEnabled",
+        )
+        self.assertIsNone(
+            _write_optional_feature(
+                missing,
+                ("AcquisitionFrameRateEnable", "AcquisitionFrameRateEnabled"),
+                True,
+            )
         )
 
     def test_loader_preserves_existing_avi_output_layout(self):

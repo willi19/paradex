@@ -273,10 +273,11 @@ class AravisGStreamerCamera:
             raise AravisGStreamerError("Could not create GStreamer pipeline for {}".format(self.name))
 
         source = self._make(Gst, "aravissrc", "src_{}".format(self.name))
-        # Match ParaOffice's aravissrc contract.  The full discovery id is
-        # still used above for reliable Aravis.Camera.new(), but aravissrc is
-        # given the stable vendor/serial alias it was designed to resolve.
-        source.set_property("camera-name", "FLIR-{}".format(self.name))
+        # Aravis 0.8.20 on the deployed capture PCs does not resolve the
+        # newer ParaOffice-style ``FLIR-{serial}`` alias.  Use the exact
+        # device id returned by discovery for both Camera.new() and
+        # aravissrc; this remains stable for the lifetime of the daemon.
+        source.set_property("camera-name", self.device_id)
         source.set_property("features", trigger_features(settings, sync_mode))
 
         capsfilter = self._make(Gst, "capsfilter", "caps_{}".format(self.name))

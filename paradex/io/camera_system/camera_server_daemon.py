@@ -184,6 +184,13 @@ class camera_server_daemon:
             return {"status": "error", "msg": "unknown action"}
         except Exception as exc:
             self.state = "error"
+            print(
+                "[Error] Camera command {!r} failed: {}: {}".format(
+                    action, type(exc).__name__, exc
+                ),
+                flush=True,
+            )
+            traceback.print_exc()
             return {
                 "status": "error",
                 "msg": "{}: {}".format(type(exc).__name__, exc),

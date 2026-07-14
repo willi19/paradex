@@ -35,7 +35,7 @@
     },
     "timestamp":{
         "param":{
-            "cam_type":"pyspin",
+            "cam_type":"aravis",
             "name":"22645026"
         }
     },

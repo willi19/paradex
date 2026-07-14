@@ -18,8 +18,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--backend",
         choices=("pyspin", "aravis-gstreamer"),
-        default=os.getenv("PARADEX_CAMERA_BACKEND", "pyspin"),
-        help="Local camera backend. Use aravis-gstreamer after capture-PC setup.",
+        default=os.getenv("PARADEX_CAMERA_BACKEND", "aravis-gstreamer"),
+        help="Local camera backend (default: aravis-gstreamer; pyspin is the rollback backend).",
     )
     args = parser.parse_args()
     server = None

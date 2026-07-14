@@ -5,7 +5,7 @@ import os
 import traceback
 
 class TimestampMonitor():
-    def __init__(self, cam_type, name):
+    def __init__(self, cam_type="aravis", name=None):
         self.event = {
             "start": Event(),
             "exit": Event(),
@@ -21,7 +21,9 @@ class TimestampMonitor():
         self.event["error_reset"].set()
         
         self.type = cam_type
-        self.name = name
+        if name is None:
+            raise ValueError("Timestamp camera serial name is required.")
+        self.name = str(name)
 
         self.last_error = None
         self.last_traceback = None
@@ -158,6 +160,8 @@ class TimestampMonitor():
         # Establish connection
         if self.type == "pyspin":
             from paradex.io.camera_system.pyspin import load_timestamp_monitor
+        elif self.type == "aravis":
+            from paradex.io.camera_system.aravis_timestamp import load_timestamp_monitor
         else:
             raise NotImplementedError(f"Camera type {self.type} is not implemented.")
         

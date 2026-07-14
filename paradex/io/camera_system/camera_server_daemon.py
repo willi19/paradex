@@ -15,15 +15,14 @@ from paradex.io.camera_system.camera_loader import CameraLoader
 class camera_server_daemon:
     """Serve the legacy camera ZMQ protocol with a selectable local backend.
 
-    ``aravis-gstreamer`` is the migration backend.  It owns only local camera
+    ``aravis-gstreamer`` is the default backend.  It owns only local camera
     discovery/configuration/pipelines; it intentionally has no UTG900E code.
-    The default remains ``pyspin`` so an unconfigured capture PC is not
-    silently switched merely by updating this repository.
+    ``pyspin`` remains available as an explicit rollback backend.
     """
 
     def __init__(
         self,
-        backend: str = "pyspin",
+        backend: str = "aravis-gstreamer",
         loader=None,
         loader_factory: Optional[Callable[[], object]] = None,
         start_threads: bool = True,

@@ -142,6 +142,14 @@ def _camera_subnet(
     return NicSubnet(name=name, host_ip=str(address), network=network)
 
 
+def _is_deployed_11_camera_address(host_ip: str) -> bool:
+    try:
+        address = ipaddress.IPv4Address(host_ip)
+    except ipaddress.AddressValueError:
+        return False
+    return address.packed[:2] == bytes((11, 0)) and address.packed[-1] == 1
+
+
 def discover_camera_nics() -> List[NicSubnet]:
     """Return dedicated camera NICs without imposing an address range.
 
@@ -174,7 +182,15 @@ def discover_camera_nics() -> List[NicSubnet]:
             if not host_ip:
                 continue
             explicitly_selected = name in requested_names
-            if address["index"] in default_route_indices and not explicitly_selected:
+            # The deployed rigs deliberately use 11.0.X.1 for camera links.
+            # Trust that convention even if NetworkManager has incorrectly
+            # marked one of those links as default-route capable.
+            is_deployed_camera_nic = _is_deployed_11_camera_address(host_ip)
+            if (
+                address["index"] in default_route_indices
+                and not explicitly_selected
+                and not is_deployed_camera_nic
+            ):
                 continue
             subnet = _camera_subnet(
                 name,

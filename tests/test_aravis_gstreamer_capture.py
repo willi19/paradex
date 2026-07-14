@@ -143,6 +143,44 @@ class FakeOptionalFeatureDevice:
         return self.values[name]
 
 
+class FakeAravisBufferFactory:
+    @staticmethod
+    def new_allocate(payload):
+        return ("buffer", payload)
+
+
+class FakeAravisModule:
+    Buffer = FakeAravisBufferFactory
+
+    class AcquisitionMode:
+        CONTINUOUS = "continuous"
+
+
+class FakeAravisStream:
+    def __init__(self):
+        self.buffers = []
+
+    def push_buffer(self, buffer):
+        self.buffers.append(buffer)
+
+
+class FakeAravisCameraSession:
+    def __init__(self, payload=4096):
+        self.payload = payload
+        self.stream = FakeAravisStream()
+        self.mode = None
+
+    def create_stream(self, callback, user_data):
+        self.create_args = (callback, user_data)
+        return self.stream
+
+    def get_payload(self):
+        return self.payload
+
+    def set_acquisition_mode(self, mode):
+        self.mode = mode
+
+
 class AravisCaptureTests(unittest.TestCase):
     def test_forceip_packet_has_expected_gvcp_fields(self):
         packet = gvcp_forceip_packet("2c:dd:a3:7d:a6:9c", "11.0.3.100", request_id=42)
@@ -197,8 +235,26 @@ class AravisCaptureTests(unittest.TestCase):
 
         self.assertEqual(
             camera_caps(settings, 30, True),
-            "video/x-bayer,format=rggb,width=2048,height=1536",
+            "video/x-bayer,format=rggb,width=2048,height=1536,framerate=0/1",
         )
+
+    def test_direct_aravis_stream_uses_reusable_buffers_and_continuous_mode(self):
+        settings = AravisGStreamerSettings(aravis_buffer_count=4)
+        camera = AravisGStreamerCamera(
+            "cam-a",
+            settings=settings,
+            camera_config={"cam-a": {}},
+        )
+        session = FakeAravisCameraSession(payload=8192)
+        camera._aravis = FakeAravisModule
+        camera._aravis_camera = session
+
+        camera._create_aravis_stream()
+
+        self.assertIs(camera._aravis_stream, session.stream)
+        self.assertEqual(session.create_args, (None, None))
+        self.assertEqual(session.stream.buffers, [("buffer", 8192)] * 4)
+        self.assertEqual(session.mode, "continuous")
         self.assertEqual(
             camera_caps(settings, 30, False),
             "video/x-bayer,format=rggb,width=2048,height=1536,framerate=30/1",

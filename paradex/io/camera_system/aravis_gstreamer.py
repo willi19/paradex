@@ -60,6 +60,8 @@ class AravisGStreamerSettings:
     startup_timeout_seconds: float = 5.0
     first_frame_timeout_seconds: float = 10.0
     eos_timeout_seconds: float = 15.0
+    aravis_buffer_count: int = 64
+    stream_poll_timeout_us: int = 200000
 
     @classmethod
     def from_environment(cls) -> "AravisGStreamerSettings":
@@ -76,6 +78,8 @@ class AravisGStreamerSettings:
             jpeg_quality=_env_int("PARADEX_JPEG_QUALITY", 95),
             queue_buffers=_env_int("PARADEX_GST_QUEUE_BUFFERS", 60),
             first_frame_timeout_seconds=_env_float("PARADEX_FIRST_FRAME_TIMEOUT", 10.0),
+            aravis_buffer_count=_env_int("PARADEX_ARAVIS_BUFFERS", 64),
+            stream_poll_timeout_us=_env_int("PARADEX_STREAM_POLL_TIMEOUT_US", 200000),
         )
 
 
@@ -116,7 +120,8 @@ def camera_caps(settings: AravisGStreamerSettings, fps: int, sync_mode: bool) ->
         settings.height,
     )
     if sync_mode:
-        return base
+        # Aravis' own viewer uses 0/1 for externally paced appsrc streams.
+        return "{},framerate=0/1".format(base)
     return "{},framerate={}/1".format(base, fps)
 
 
@@ -209,6 +214,13 @@ class AravisGStreamerCamera:
         self._lock = threading.RLock()
         self._pipeline = None
         self._gst = None
+        self._appsrc = None
+        self._aravis = None
+        self._aravis_camera = None
+        self._aravis_stream = None
+        self._stream_thread = None
+        self._stream_stop = threading.Event()
+        self._first_timestamp_ns = None
         self._state = "READY"
         self._last_error: Optional[str] = None
         self._last_traceback: Optional[str] = None
@@ -228,7 +240,7 @@ class AravisGStreamerCamera:
             raise AravisGStreamerError("FPS must be positive for {}".format(self.name))
         return gain, exposure
 
-    def _configure_camera(self, fps: int, sync_mode: bool) -> None:
+    def _configure_camera(self, fps: int, sync_mode: bool):
         Aravis = _load_aravis()
         camera = Aravis.Camera.new(self.device_id)
         if camera is None:
@@ -272,9 +284,11 @@ class AravisGStreamerCamera:
 
             if sync_mode:
                 _write_feature(device, "TriggerMode", "On")
-        finally:
+            return Aravis, camera
+        except Exception:
             del device
             del camera
+            raise
 
     @staticmethod
     def _make(Gst, factory: str, name: str):
@@ -292,19 +306,23 @@ class AravisGStreamerCamera:
         if pipeline is None:
             raise AravisGStreamerError("Could not create GStreamer pipeline for {}".format(self.name))
 
-        source = self._make(Gst, "aravissrc", "src_{}".format(self.name))
-        # Aravis 0.8.20 on the deployed capture PCs does not resolve the
-        # newer ParaOffice-style ``FLIR-{serial}`` alias.  Use the exact
-        # device id returned by discovery for both Camera.new() and
-        # aravissrc; this remains stable for the lifetime of the daemon.
-        source.set_property("camera-name", self.device_id)
-        source.set_property("features", trigger_features(settings, sync_mode))
+        # Use Aravis' stream API directly and feed GStreamer through appsrc.
+        # aravissrc treats a 2-second no-frame interval as fatal and also
+        # executes a USB3Vision-only setup path on these GigE cameras.  The
+        # direct stream loop can wait indefinitely for the first UTG pulse,
+        # preserving the original Paradex arm-all-then-trigger contract.
+        source = self._make(Gst, "appsrc", "src_{}".format(self.name))
+        source.set_property("is-live", True)
+        source.set_property("block", True)
+        source.set_property("format", Gst.Format.TIME)
+        source.set_property("do-timestamp", True)
 
         capsfilter = self._make(Gst, "capsfilter", "caps_{}".format(self.name))
         capsfilter.set_property(
             "caps",
             Gst.Caps.from_string(camera_caps(settings, fps, sync_mode)),
         )
+        source.set_property("caps", Gst.Caps.from_string(camera_caps(settings, fps, sync_mode)))
         raw_queue = self._make(Gst, "queue", "raw_queue_{}".format(self.name))
         raw_queue.set_property("max-size-buffers", settings.queue_buffers)
         raw_queue.set_property("max-size-bytes", 0)
@@ -351,7 +369,65 @@ class AravisGStreamerCamera:
                     )
                 )
         self._gst = Gst
+        self._appsrc = source
         return pipeline
+
+    def _create_aravis_stream(self) -> None:
+        assert self._aravis is not None
+        assert self._aravis_camera is not None
+        stream = self._aravis_camera.create_stream(None, None)
+        if stream is None:
+            raise AravisGStreamerError(
+                "Aravis could not create a stream for camera {}".format(self.name)
+            )
+        payload = int(self._aravis_camera.get_payload())
+        if payload <= 0:
+            raise AravisGStreamerError(
+                "Camera {} reported invalid payload {}".format(self.name, payload)
+            )
+        for _ in range(self.settings.aravis_buffer_count):
+            stream.push_buffer(self._aravis.Buffer.new_allocate(payload))
+        self._aravis_camera.set_acquisition_mode(
+            self._aravis.AcquisitionMode.CONTINUOUS
+        )
+        self._aravis_stream = stream
+
+    def _stream_frames(self) -> None:
+        assert self._aravis_stream is not None
+        assert self._appsrc is not None
+        assert self._gst is not None
+        try:
+            while not self._stream_stop.is_set():
+                arv_buffer = self._aravis_stream.timeout_pop_buffer(
+                    self.settings.stream_poll_timeout_us
+                )
+                if arv_buffer is None:
+                    # No external trigger yet is normal in Paradex.
+                    continue
+                try:
+                    if arv_buffer.get_status() != self._aravis.BufferStatus.SUCCESS:
+                        continue
+                    data = bytes(arv_buffer.get_data())
+                    gst_buffer = self._gst.Buffer.new_allocate(None, len(data), None)
+                    gst_buffer.fill(0, data)
+                    # Match Aravis' official viewer: appsrc timestamps buffers
+                    # against the running GStreamer clock. Camera timestamps
+                    # are not assumed to share an epoch across devices.
+                    result = self._appsrc.emit("push-buffer", gst_buffer)
+                    if result != self._gst.FlowReturn.OK:
+                        if not self._stream_stop.is_set():
+                            raise AravisGStreamerError(
+                                "GStreamer appsrc rejected frame for {}: {}".format(
+                                    self.name, result
+                                )
+                            )
+                        return
+                finally:
+                    self._aravis_stream.push_buffer(arv_buffer)
+        except Exception as exc:
+            self._last_error = str(exc)
+            self._state = "ERROR"
+            log.exception("Camera %s stream loop failed", self.name)
 
     def _raise_if_bus_error(self, timeout_seconds: float = 0.0) -> None:
         if self._pipeline is None or self._gst is None:
@@ -407,7 +483,8 @@ class AravisGStreamerCamera:
             with self._frame_count_lock:
                 self._frame_count = 0
             try:
-                self._configure_camera(fps, sync_mode)
+                self._aravis, self._aravis_camera = self._configure_camera(fps, sync_mode)
+                self._create_aravis_stream()
                 self._pipeline = self._build_pipeline(save_path, fps, sync_mode)
                 self._state = "PREPARED"
             except Exception as exc:
@@ -449,6 +526,16 @@ class AravisGStreamerCamera:
     def confirm_playing(self) -> None:
         with self._lock:
             self._raise_if_bus_error(0.05)
+            assert self._aravis_camera is not None
+            self._stream_stop.clear()
+            self._first_timestamp_ns = None
+            self._aravis_camera.start_acquisition()
+            self._stream_thread = threading.Thread(
+                target=self._stream_frames,
+                name="aravis-stream-{}".format(self.name),
+                daemon=True,
+            )
+            self._stream_thread.start()
             self._started_at = time.time()
             self._state = "CAPTURING"
 
@@ -489,9 +576,22 @@ class AravisGStreamerCamera:
         )
 
     def _teardown_pipeline(self) -> None:
+        self._stream_stop.set()
+        if self._aravis_camera is not None:
+            try:
+                self._aravis_camera.stop_acquisition()
+            except Exception:
+                pass
+        if self._stream_thread is not None:
+            self._stream_thread.join(timeout=2.0)
+        self._stream_thread = None
         if self._pipeline is not None and self._gst is not None:
             self._pipeline.set_state(self._gst.State.NULL)
         self._pipeline = None
+        self._appsrc = None
+        self._aravis_stream = None
+        self._aravis_camera = None
+        self._aravis = None
 
     def stop(self) -> None:
         with self._lock:
@@ -504,7 +604,12 @@ class AravisGStreamerCamera:
                 # CaptureSession sends this while UTG pulses still exist.
                 # This avoids the aravissrc starvation ParaOffice documented
                 # when the trigger is disabled before EOS/finalization.
-                self._pipeline.send_event(self._gst.Event.new_eos())
+                self._stream_stop.set()
+                if self._aravis_camera is not None:
+                    self._aravis_camera.stop_acquisition()
+                if self._stream_thread is not None:
+                    self._stream_thread.join(timeout=2.0)
+                self._appsrc.emit("end-of-stream")
                 message = self._pipeline.get_bus().timed_pop_filtered(
                     int(self.settings.eos_timeout_seconds * self._gst.SECOND),
                     self._gst.MessageType.EOS | self._gst.MessageType.ERROR,

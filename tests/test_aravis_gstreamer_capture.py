@@ -29,11 +29,23 @@ class FakeCamera:
         self.name = name
         self.fail_start = fail_start
         self.calls = []
+        self.frame_count = 17
 
     def start(self, mode, sync_mode, save_path, fps):
         self.calls.append(("start", mode, sync_mode, save_path, fps))
         if self.fail_start:
             raise RuntimeError("synthetic start failure")
+
+    def prepare(self, mode, sync_mode, save_path, fps):
+        self.calls.append(("prepare", mode, sync_mode, save_path, fps))
+        if self.fail_start:
+            raise RuntimeError("synthetic start failure")
+
+    def start_prepared(self):
+        self.calls.append(("start_prepared",))
+
+    def abort(self):
+        self.calls.append(("abort",))
 
     def stop(self):
         self.calls.append(("stop",))
@@ -45,7 +57,12 @@ class FakeCamera:
         return False, (None, None)
 
     def get_status(self):
-        return {"name": self.name, "state": "READY"}
+        return {
+            "name": self.name,
+            "state": "READY",
+            "frame_id": self.frame_count,
+            "frame_count": self.frame_count,
+        }
 
 
 class FakeLoader:
@@ -142,7 +159,9 @@ class AravisCaptureTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             capture_roots = [str(Path(temp_dir) / "captures1"), str(Path(temp_dir) / "captures2")]
-            with patch("paradex.io.camera_system.aravis_gstreamer.capture_path_list", capture_roots):
+            with patch("paradex.io.camera_system.aravis_gstreamer.capture_path_list", capture_roots), patch(
+                "paradex.io.camera_system.aravis_gstreamer._load_aravis"
+            ):
                 loader = AravisGStreamerCameraLoader(
                     serial_list=["cam-a", "cam-b", "cam-c"],
                     camera_factory=factory,
@@ -152,15 +171,15 @@ class AravisCaptureTests(unittest.TestCase):
 
             self.assertEqual(
                 cameras["cam-a"].calls[0],
-                ("start", "video", True, str(Path(capture_roots[0]) / "dataset/session/raw/videos/cam-a.avi"), 30),
+                ("prepare", "video", True, str(Path(capture_roots[0]) / "dataset/session/raw/videos/cam-a.avi"), 30),
             )
             self.assertEqual(
                 cameras["cam-b"].calls[0],
-                ("start", "video", True, str(Path(capture_roots[1]) / "dataset/session/raw/videos/cam-b.avi"), 30),
+                ("prepare", "video", True, str(Path(capture_roots[1]) / "dataset/session/raw/videos/cam-b.avi"), 30),
             )
             self.assertEqual(
                 cameras["cam-c"].calls[0],
-                ("start", "video", True, str(Path(capture_roots[0]) / "dataset/session/raw/videos/cam-c.avi"), 30),
+                ("prepare", "video", True, str(Path(capture_roots[0]) / "dataset/session/raw/videos/cam-c.avi"), 30),
             )
 
     def test_loader_prints_discovered_camera_inventory(self):
@@ -189,12 +208,34 @@ class AravisCaptureTests(unittest.TestCase):
         )
 
         with tempfile.TemporaryDirectory() as temp_dir:
-            with patch("paradex.io.camera_system.aravis_gstreamer.capture_path_list", [temp_dir]):
+            with patch("paradex.io.camera_system.aravis_gstreamer.capture_path_list", [temp_dir]), patch(
+                "paradex.io.camera_system.aravis_gstreamer._load_aravis"
+            ):
                 with self.assertRaisesRegex(RuntimeError, "synthetic start failure"):
                     loader.start("video", True, "session/raw", 30)
 
-        self.assertIn(("stop",), first.calls)
-        self.assertIn(("stop",), second.calls)
+        self.assertIn(("abort",), first.calls)
+        self.assertIn(("abort",), second.calls)
+
+    def test_loader_prints_frame_counts_once_when_capture_stops(self):
+        camera = FakeCamera("cam-a")
+        loader = AravisGStreamerCameraLoader(
+            serial_list=["cam-a"],
+            camera_factory=lambda _serial: camera,
+            reconcile_addresses=False,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch(
+            "paradex.io.camera_system.aravis_gstreamer.capture_path_list", [temp_dir]
+        ), patch("paradex.io.camera_system.aravis_gstreamer._load_aravis"):
+            loader.start("video", True, "session/raw", 30)
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                loader.stop()
+                loader.stop()
+
+        self.assertEqual(output.getvalue().count("serial=cam-a: 17 frames"), 1)
+        self.assertEqual(output.getvalue().count("Total captured frames: 17"), 1)
 
     def test_loader_rejects_pyspin_only_shared_memory_modes(self):
         loader = AravisGStreamerCameraLoader(

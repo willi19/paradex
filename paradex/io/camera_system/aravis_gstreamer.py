@@ -177,6 +177,8 @@ class AravisGStreamerCamera:
         self._sync_mode: Optional[bool] = None
         self._save_path: Optional[str] = None
         self._started_at: Optional[float] = None
+        self._frame_count = 0
+        self._frame_count_lock = threading.Lock()
 
     def _camera_values(self, fps: int) -> Tuple[float, float]:
         values = self.camera_config.get(self.name, {})
@@ -251,6 +253,16 @@ class AravisGStreamerCamera:
         raw_queue.set_property("max-size-buffers", settings.queue_buffers)
         raw_queue.set_property("max-size-bytes", 0)
         raw_queue.set_property("max-size-time", 0)
+        raw_queue_sink = raw_queue.get_static_pad("sink")
+        if raw_queue_sink is None:
+            raise AravisGStreamerError("Could not access frame-count pad for {}".format(self.name))
+
+        def count_frame(_pad, _info):
+            with self._frame_count_lock:
+                self._frame_count += 1
+            return Gst.PadProbeReturn.OK
+
+        raw_queue_sink.add_probe(Gst.PadProbeType.BUFFER, count_frame)
         bayer = self._make(Gst, "bayer2rgb", "bayer_{}".format(self.name))
         convert = self._make(Gst, "videoconvert", "convert_{}".format(self.name))
         jpegenc = self._make(Gst, "jpegenc", "jpeg_{}".format(self.name))
@@ -310,7 +322,14 @@ class AravisGStreamerCamera:
         # would deadlock the main-PC READY -> UTG-start protocol.
         self._raise_if_bus_error(0.05)
 
-    def start(self, mode: str, sync_mode: bool, save_path: Optional[str], fps: int) -> None:
+    def prepare(self, mode: str, sync_mode: bool, save_path: Optional[str], fps: int) -> None:
+        """Configure the camera and build its pipeline without opening aravissrc.
+
+        Aravis' process-global discovery/device machinery is not exercised
+        concurrently here. This mirrors ParaOffice's sequential camera
+        configure/build phase and avoids racing Camera.new() across cameras.
+        """
+
         if mode != "video":
             raise AravisGStreamerError(
                 "Aravis/GStreamer backend is the CaptureSession video backend; "
@@ -329,9 +348,25 @@ class AravisGStreamerCamera:
             self._fps = fps
             self._sync_mode = sync_mode
             self._save_path = save_path
+            with self._frame_count_lock:
+                self._frame_count = 0
             try:
                 self._configure_camera(fps, sync_mode)
                 self._pipeline = self._build_pipeline(save_path, fps, sync_mode)
+                self._state = "PREPARED"
+            except Exception as exc:
+                self._last_error = str(exc)
+                self._state = "ERROR"
+                self._teardown_pipeline()
+                raise
+
+    def start_prepared(self) -> None:
+        """Open a pipeline that was built by :meth:`prepare`."""
+
+        with self._lock:
+            if self._pipeline is None or self._state != "PREPARED":
+                raise AravisGStreamerError("Camera {} is not prepared".format(self.name))
+            try:
                 self._prepare_playing_state()
                 self._started_at = time.time()
                 self._state = "CAPTURING"
@@ -340,6 +375,20 @@ class AravisGStreamerCamera:
                 self._state = "ERROR"
                 self._teardown_pipeline()
                 raise
+
+    def start(self, mode: str, sync_mode: bool, save_path: Optional[str], fps: int) -> None:
+        """Compatibility entry point for starting one camera directly."""
+
+        self.prepare(mode, sync_mode, save_path, fps)
+        self.start_prepared()
+
+    def abort(self) -> None:
+        """Immediately release a partially prepared/started pipeline."""
+
+        with self._lock:
+            self._teardown_pipeline()
+            if self._state != "ERROR":
+                self._state = "READY"
 
     def _teardown_pipeline(self) -> None:
         if self._pipeline is not None and self._gst is not None:
@@ -387,9 +436,12 @@ class AravisGStreamerCamera:
         return self._state == "ERROR", (self._last_error, self._last_traceback)
 
     def get_status(self) -> dict:
+        with self._frame_count_lock:
+            frame_count = self._frame_count
         return {
             "state": self._state,
-            "frame_id": None,
+            "frame_id": frame_count,
+            "frame_count": frame_count,
             "name": self.name,
             "mode": self._mode,
             "fps": self._fps,
@@ -444,6 +496,7 @@ class AravisGStreamerCameraLoader:
         if camera_factory is None:
             camera_factory = lambda serial: AravisGStreamerCamera(serial, self.settings)
         self.cameralist = [camera_factory(serial) for serial in self.camera_names]
+        self._capture_active = False
         self._print_loaded_cameras()
 
     def _print_loaded_cameras(self) -> None:
@@ -503,19 +556,60 @@ class AravisGStreamerCameraLoader:
         paths = self._save_paths(mode, save_path)
         print("[Info] Starting Aravis/GStreamer cameras: {}".format(self.camera_names))
         try:
-            self._parallel(lambda camera, path: camera.start(mode, syncMode, path, fps), paths)
+            # Refresh once, then configure/build sequentially. ParaOffice uses
+            # this ordering so Aravis.Camera.new() is never fanned out across
+            # Python threads. It also prevents a daemon's boot-time discovery
+            # cache from being the only source of truth at recording time.
+            Aravis = _load_aravis()
+            Aravis.update_device_list()
+            for camera, path in zip(self.cameralist, paths):
+                camera.prepare(mode, syncMode, path, fps)
+
+            # set_state() is non-blocking for these live hardware-triggered
+            # sources. Keep this ordered as well; the main PC still receives
+            # READY only after every source has accepted PLAYING.
+            for camera in self.cameralist:
+                camera.start_prepared()
+            self._capture_active = True
         except Exception:
-            # Do not leave a partially-ready group waiting for trigger pulses.
-            self.stop()
+            # A pipeline that has not reached PLAYING must not wait for EOS.
+            # Hard-null every partial pipeline before returning the start error.
+            for camera in self.cameralist:
+                try:
+                    camera.abort()
+                except Exception:
+                    log.exception("Failed to roll back camera %s", camera.name)
             raise
         print("[Info] All Aravis/GStreamer cameras READY.")
         log.info("All Aravis/GStreamer cameras READY: %s", self.camera_names)
 
+    def _print_frame_counts(self) -> None:
+        counts = []
+        print("[Info] Captured frame counts:")
+        for camera in self.cameralist:
+            status = camera.get_status()
+            count = int(status.get("frame_count", status.get("frame_id") or 0))
+            counts.append(count)
+            print("  - serial={}: {} frames".format(camera.name, count))
+        print("[Info] Total captured frames: {}".format(sum(counts)))
+
     def stop(self) -> None:
-        self._parallel(lambda camera, _path: camera.stop(), [None] * len(self.cameralist))
+        was_active = self._capture_active
+        try:
+            self._parallel(lambda camera, _path: camera.stop(), [None] * len(self.cameralist))
+        finally:
+            if was_active:
+                self._capture_active = False
+                self._print_frame_counts()
 
     def end(self) -> None:
-        self._parallel(lambda camera, _path: camera.end(), [None] * len(self.cameralist))
+        was_active = self._capture_active
+        try:
+            self._parallel(lambda camera, _path: camera.end(), [None] * len(self.cameralist))
+        finally:
+            if was_active:
+                self._capture_active = False
+                self._print_frame_counts()
 
     def get_status_list(self) -> List[dict]:
         return [camera.get_status() for camera in self.cameralist]

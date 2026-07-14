@@ -62,6 +62,9 @@ class AravisGStreamerSettings:
     eos_timeout_seconds: float = 15.0
     aravis_buffer_count: int = 64
     stream_poll_timeout_us: int = 200000
+    preview_width: int = 640
+    preview_fps: int = 5
+    preview_jpeg_quality: int = 70
 
     @classmethod
     def from_environment(cls) -> "AravisGStreamerSettings":
@@ -80,6 +83,9 @@ class AravisGStreamerSettings:
             first_frame_timeout_seconds=_env_float("PARADEX_FIRST_FRAME_TIMEOUT", 10.0),
             aravis_buffer_count=_env_int("PARADEX_ARAVIS_BUFFERS", 64),
             stream_poll_timeout_us=_env_int("PARADEX_STREAM_POLL_TIMEOUT_US", 200000),
+            preview_width=_env_int("PARADEX_PREVIEW_WIDTH", 640),
+            preview_fps=_env_int("PARADEX_PREVIEW_FPS", 5),
+            preview_jpeg_quality=_env_int("PARADEX_PREVIEW_JPEG_QUALITY", 70),
         )
 
 
@@ -233,6 +239,8 @@ class AravisGStreamerCamera:
         self._started_at: Optional[float] = None
         self._frame_count = 0
         self._frame_count_lock = threading.Lock()
+        self._preview_lock = threading.Lock()
+        self._latest_preview: Optional[bytes] = None
 
     def _camera_values(self, fps: int) -> Tuple[float, float]:
         values = self.camera_config.get(self.name, {})
@@ -331,6 +339,11 @@ class AravisGStreamerCamera:
         raw_queue.set_property("max-size-time", 0)
         bayer = self._make(Gst, "bayer2rgb", "bayer_{}".format(self.name))
         convert = self._make(Gst, "videoconvert", "convert_{}".format(self.name))
+        tee = self._make(Gst, "tee", "tee_{}".format(self.name))
+        record_queue = self._make(Gst, "queue", "record_queue_{}".format(self.name))
+        record_queue.set_property("max-size-buffers", settings.queue_buffers)
+        record_queue.set_property("max-size-bytes", 0)
+        record_queue.set_property("max-size-time", 0)
         jpegenc = self._make(Gst, "jpegenc", "jpeg_{}".format(self.name))
         jpegenc.set_property("quality", settings.jpeg_quality)
         encoded_pad = jpegenc.get_static_pad("src")
@@ -346,7 +359,59 @@ class AravisGStreamerCamera:
 
         encoded_pad.add_probe(Gst.PadProbeType.BUFFER, count_frame)
 
-        elements = [source, capsfilter, raw_queue, bayer, convert, jpegenc]
+        preview_queue = self._make(Gst, "queue", "preview_queue_{}".format(self.name))
+        preview_queue.set_property("leaky", 2)
+        preview_queue.set_property("max-size-buffers", 1)
+        preview_queue.set_property("max-size-bytes", 0)
+        preview_queue.set_property("max-size-time", 0)
+        preview_rate = self._make(Gst, "videorate", "preview_rate_{}".format(self.name))
+        preview_rate.set_property("drop-only", True)
+        preview_scale = self._make(Gst, "videoscale", "preview_scale_{}".format(self.name))
+        preview_caps = self._make(Gst, "capsfilter", "preview_caps_{}".format(self.name))
+        preview_height = max(
+            2,
+            int(round(settings.preview_width * settings.height / settings.width / 2.0) * 2),
+        )
+        preview_caps.set_property(
+            "caps",
+            Gst.Caps.from_string(
+                "video/x-raw,width={},height={},framerate={}/1".format(
+                    settings.preview_width,
+                    preview_height,
+                    settings.preview_fps,
+                )
+            ),
+        )
+        preview_convert = self._make(
+            Gst, "videoconvert", "preview_convert_{}".format(self.name)
+        )
+        preview_jpeg = self._make(Gst, "jpegenc", "preview_jpeg_{}".format(self.name))
+        preview_jpeg.set_property("quality", settings.preview_jpeg_quality)
+        preview_sink = self._make(Gst, "appsink", "preview_sink_{}".format(self.name))
+        preview_sink.set_property("emit-signals", True)
+        preview_sink.set_property("drop", True)
+        preview_sink.set_property("max-buffers", 1)
+        preview_sink.set_property("sync", False)
+
+        def update_preview(sink):
+            try:
+                sample = sink.emit("pull-sample")
+                if sample is None:
+                    return Gst.FlowReturn.OK
+                buffer = sample.get_buffer()
+                if buffer is None:
+                    return Gst.FlowReturn.OK
+                jpeg = buffer.extract_dup(0, buffer.get_size())
+                with self._preview_lock:
+                    self._latest_preview = bytes(jpeg)
+            except Exception:
+                log.exception("Preview callback failed for camera %s", self.name)
+            return Gst.FlowReturn.OK
+
+        preview_sink.connect("new-sample", update_preview)
+
+        common = [source, capsfilter, raw_queue, bayer, convert, tee]
+        record = [record_queue, jpegenc]
         if save_path is not None:
             mux_queue = self._make(Gst, "queue", "mux_queue_{}".format(self.name))
             mux_queue.set_property("max-size-buffers", settings.queue_buffers)
@@ -357,24 +422,48 @@ class AravisGStreamerCamera:
             sink.set_property("location", save_path)
             sink.set_property("sync", False)
             sink.set_property("async", False)
-            elements.extend([mux_queue, mux, sink])
+            record.extend([mux_queue, mux, sink])
         else:
             sink = self._make(Gst, "fakesink", "sink_{}".format(self.name))
             sink.set_property("sync", False)
-            elements.append(sink)
+            record.append(sink)
+
+        preview = [
+            preview_queue,
+            preview_rate,
+            preview_scale,
+            preview_caps,
+            preview_convert,
+            preview_jpeg,
+            preview_sink,
+        ]
+        elements = common + record + preview
 
         for element in elements:
             pipeline.add(element)
-        for left, right in zip(elements, elements[1:]):
-            if not left.link(right):
+
+        def link_chain(chain):
+            for left, right in zip(chain, chain[1:]):
+                if left.link(right):
+                    continue
                 raise AravisGStreamerError(
                     "Could not link {} -> {} for camera {}".format(
                         left.get_name(), right.get_name(), self.name
                     )
                 )
+
+        link_chain(common)
+        link_chain([tee] + record)
+        link_chain([tee] + preview)
         self._gst = Gst
         self._appsrc = source
         return pipeline
+
+    def get_preview(self) -> Optional[bytes]:
+        """Return the newest low-bandwidth JPEG without blocking recording."""
+
+        with self._preview_lock:
+            return self._latest_preview
 
     def _create_aravis_stream(self) -> None:
         assert self._aravis is not None
@@ -519,6 +608,8 @@ class AravisGStreamerCamera:
             self._save_path = save_path
             with self._frame_count_lock:
                 self._frame_count = 0
+            with self._preview_lock:
+                self._latest_preview = None
             try:
                 self.prepare_hardware(fps, sync_mode)
                 self._pipeline = self._build_pipeline(save_path, fps, sync_mode)
@@ -913,6 +1004,12 @@ class AravisGStreamerCameraLoader:
 
     def get_status_list(self) -> List[dict]:
         return [camera.get_status() for camera in self.cameralist]
+
+    def get_preview(self, serial: str) -> Optional[bytes]:
+        for camera in self.cameralist:
+            if camera.name == str(serial):
+                return camera.get_preview()
+        return None
 
     def get_all_errors(self) -> Dict[str, Tuple[Optional[str], Optional[str]]]:
         errors = {}

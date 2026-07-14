@@ -5,7 +5,10 @@ from __future__ import annotations
 import threading
 import time
 import traceback
+import json
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Callable, Optional
+from urllib.parse import unquote, urlparse
 
 import zmq
 
@@ -26,6 +29,7 @@ class camera_server_daemon:
         loader=None,
         loader_factory: Optional[Callable[[], object]] = None,
         start_threads: bool = True,
+        preview_port: int = 5484,
     ):
         self.backend = backend
         self._loader_factory = loader_factory or self._make_loader_factory(backend)
@@ -35,6 +39,7 @@ class camera_server_daemon:
         self.monitor_port = 5481
         self.command_port = 5482
         self.connection_port = 5483
+        self.preview_port = int(preview_port)
         self.ctx = zmq.Context()
         self.current_controller = None
         self.state = "idle"
@@ -42,6 +47,7 @@ class camera_server_daemon:
         self._shutdown_event = threading.Event()
         self._close_lock = threading.Lock()
         self._camera_lock = threading.RLock()
+        self._preview_server = None
 
         if start_threads:
             self._start_threads()
@@ -62,6 +68,61 @@ class camera_server_daemon:
             thread = threading.Thread(target=target, daemon=True)
             thread.start()
             self._threads.append(thread)
+        self._start_preview_server()
+
+    def _start_preview_server(self):
+        daemon = self
+
+        class PreviewHandler(BaseHTTPRequestHandler):
+            def _send_json(self, status, payload):
+                body = json.dumps(payload).encode("utf-8")
+                self.send_response(status)
+                self.send_header("Content-Type", "application/json")
+                self.send_header("Content-Length", str(len(body)))
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                self.wfile.write(body)
+
+            def do_GET(self):
+                path = urlparse(self.path).path
+                if path == "/cameras":
+                    self._send_json(
+                        200,
+                        {
+                            "backend": daemon.backend,
+                            "state": daemon.state,
+                            "cameras": daemon.camera_loader.get_status_list(),
+                        },
+                    )
+                    return
+                if path.startswith("/preview/"):
+                    serial = unquote(path[len("/preview/") :])
+                    get_preview = getattr(daemon.camera_loader, "get_preview", None)
+                    jpeg = get_preview(serial) if get_preview is not None else None
+                    if jpeg is None:
+                        self._send_json(404, {"error": "preview unavailable", "serial": serial})
+                        return
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/jpeg")
+                    self.send_header("Content-Length", str(len(jpeg)))
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(jpeg)
+                    return
+                self._send_json(404, {"error": "not found"})
+
+            def log_message(self, _format, *_args):
+                return
+
+        self._preview_server = ThreadingHTTPServer(("0.0.0.0", self.preview_port), PreviewHandler)
+        thread = threading.Thread(
+            target=self._preview_server.serve_forever,
+            name="camera-preview-http",
+            daemon=True,
+        )
+        thread.start()
+        self._threads.append(thread)
+        print("[Info] Preview image API listening on port {}.".format(self.preview_port))
 
     def reload_cameras(self):
         with self._camera_lock:
@@ -87,6 +148,11 @@ class camera_server_daemon:
             finally:
                 self.current_controller = None
                 self.state = "closed"
+
+            if self._preview_server is not None:
+                self._preview_server.shutdown()
+                self._preview_server.server_close()
+                self._preview_server = None
 
             # command_thread can be waiting on its five-second receive timeout.
             for thread in self._threads:

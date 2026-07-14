@@ -102,6 +102,9 @@ class FakeLoader:
     def get_all_errors(self):
         return {}
 
+    def get_preview(self, serial):
+        return b"\xff\xd8preview\xff\xd9" if serial == "cam-a" else None
+
 
 class FakeTwoPhaseLoader(FakeLoader):
     def prepare(self, mode, sync_mode, save_path, fps):
@@ -262,6 +265,45 @@ class AravisCaptureTests(unittest.TestCase):
         self.assertEqual(session.create_args, (None, None))
         self.assertEqual(session.stream.buffers, [("buffer", 8192)] * 4)
         self.assertEqual(session.mode, "continuous")
+
+    def test_preview_http_api_returns_only_cached_jpeg(self):
+        class FakeHTTPServer:
+            def __init__(self, address, handler):
+                self.server_port = address[1]
+                self.handler = handler
+
+            def serve_forever(self):
+                return
+
+            def shutdown(self):
+                return
+
+            def server_close(self):
+                return
+
+        loader = FakeLoader()
+        server = camera_server_daemon(
+            loader=loader,
+            start_threads=False,
+            preview_port=0,
+        )
+        with patch(
+            "paradex.io.camera_system.camera_server_daemon.ThreadingHTTPServer",
+            FakeHTTPServer,
+        ):
+            server._start_preview_server()
+        handler = server._preview_server.handler.__new__(server._preview_server.handler)
+        handler.path = "/preview/cam-a"
+        handler.wfile = io.BytesIO()
+        handler.send_response = MagicMock()
+        handler.send_header = MagicMock()
+        handler.end_headers = MagicMock()
+
+        handler.do_GET()
+
+        handler.send_response.assert_called_once_with(200)
+        self.assertEqual(handler.wfile.getvalue(), b"\xff\xd8preview\xff\xd9")
+        server.close()
 
     def test_session_teardown_retains_prepared_aravis_hardware(self):
         camera = AravisGStreamerCamera(

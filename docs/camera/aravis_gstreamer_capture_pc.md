@@ -338,6 +338,48 @@ python -c "import numpy as np; print(len(np.load('<session>/raw/timestamps/frame
 | `PARADEX_STREAM_POLL_TIMEOUT_US` | `200000` | Aravis stream poll 간격 |
 | `PARADEX_FIRST_FRAME_TIMEOUT` | `10.0` | UTG ON 뒤 첫 프레임 검증 시간 |
 | `PARADEX_JPEG_QUALITY` | `95` | AVI MJPEG 품질 |
+| `PARADEX_PREVIEW_WIDTH` | `640` | main PC 웹 preview JPEG 폭 |
+| `PARADEX_PREVIEW_FPS` | `5` | preview branch 최대 FPS |
+| `PARADEX_PREVIEW_JPEG_QUALITY` | `70` | preview JPEG 품질 |
+
+## Main PC 웹 캡처 테스트
+
+capture PC에는 브라우저 UI가 없으며 `server_daemon.py`가 포트 `5484`에서
+최신 preview JPEG만 제공한다. 실제 녹화 branch와 preview branch는 GStreamer
+`tee` 뒤에서 분리되고 preview queue는 leaky이므로 main PC 또는 브라우저가
+느려져도 AVI 녹화를 막지 않는다.
+
+main PC 웹 의존성을 설치한다.
+
+```bash
+cd ~/paradex
+python -m pip install -e '.[site]'
+```
+
+각 capture PC에서 기존 daemon을 먼저 실행한 뒤 main PC에서 다음을 실행한다.
+
+```bash
+python -m paradex.dataset_acqusition.capture_site --host 0.0.0.0 --port 8000
+```
+
+브라우저에서는 main PC의 `http://<main-pc-ip>:8000`만 연다. main PC가
+`system/current/pc.json`의 serial/IP 매핑을 사용해 각 capture PC의 JPEG를
+proxy하므로 capture PC 웹페이지에 직접 접속할 필요가 없다.
+
+테스트 사이트의 저장 경로는 다음과 같다.
+
+```text
+~/shared_data/capture/site_test/<dataset>/<episode>/
+```
+
+내부 `raw/timestamps`, 카메라 파라미터 및 capture PC의 AVI 배치는 기존
+`CaptureSession`/Paradex 저장 형식을 그대로 따른다. 현재 preview는 녹화
+세션 중에만 갱신되며 idle 상태에서는 마지막 이미지가 없거나 404가 정상이다.
+
+필요한 방화벽 포트:
+
+- capture PC: TCP `5480`~`5484`
+- main PC 웹: TCP `8000`
 
 ## 문제 해결
 

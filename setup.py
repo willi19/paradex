@@ -10,6 +10,7 @@ extras_require = {
     # Aravis itself and PyGObject are Ubuntu packages. pyroute2 is used only
     # by capture-PC ForceIP recovery, so keep it out of the main-PC install.
     "aravis": ["pyroute2>=0.7"],
+    "site": ["fastapi>=0.110,<1", "uvicorn>=0.29,<1"],
 }
 
 setup(

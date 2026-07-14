@@ -230,12 +230,12 @@ class AravisCaptureTests(unittest.TestCase):
             "TriggerActivation=RisingEdge TriggerOverlap=ReadOut TriggerMode=On",
         )
 
-    def test_hardware_trigger_caps_omit_free_run_framerate(self):
+    def test_hardware_trigger_appsrc_caps_include_avi_rate(self):
         settings = AravisGStreamerSettings()
 
         self.assertEqual(
             camera_caps(settings, 30, True),
-            "video/x-bayer,format=rggb,width=2048,height=1536,framerate=0/1",
+            "video/x-bayer,format=rggb,width=2048,height=1536,framerate=30/1",
         )
 
     def test_direct_aravis_stream_uses_reusable_buffers_and_continuous_mode(self):

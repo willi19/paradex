@@ -4,7 +4,7 @@ This is intentionally an adapter for the existing ``CameraLoader`` contract:
 the ZMQ command protocol and CaptureSession stay unchanged, while each camera
 is prepared locally as::
 
-    aravissrc -> Bayer conversion -> JPEG -> AVI mux -> filesink
+    Aravis stream -> appsrc -> Bayer conversion -> JPEG -> AVI mux -> filesink
 
 The only trigger owner remains the main PC's UTG900E.  A capture PC returns
 from ``start`` only after its cameras were configured for ``Line0`` and their
@@ -120,8 +120,10 @@ def camera_caps(settings: AravisGStreamerSettings, fps: int, sync_mode: bool) ->
         settings.height,
     )
     if sync_mode:
-        # Aravis' own viewer uses 0/1 for externally paced appsrc streams.
-        return "{},framerate=0/1".format(base)
+        # Unlike the display-only Aravis viewer, Paradex terminates in
+        # avimux, which needs a concrete rate for stream negotiation and AVI
+        # headers. This is appsrc caps only; it does not program the camera.
+        return "{},framerate={}/1".format(base, fps)
     return "{},framerate={}/1".format(base, fps)
 
 
@@ -327,20 +329,22 @@ class AravisGStreamerCamera:
         raw_queue.set_property("max-size-buffers", settings.queue_buffers)
         raw_queue.set_property("max-size-bytes", 0)
         raw_queue.set_property("max-size-time", 0)
-        raw_queue_sink = raw_queue.get_static_pad("sink")
-        if raw_queue_sink is None:
-            raise AravisGStreamerError("Could not access frame-count pad for {}".format(self.name))
+        bayer = self._make(Gst, "bayer2rgb", "bayer_{}".format(self.name))
+        convert = self._make(Gst, "videoconvert", "convert_{}".format(self.name))
+        jpegenc = self._make(Gst, "jpegenc", "jpeg_{}".format(self.name))
+        jpegenc.set_property("quality", settings.jpeg_quality)
+        encoded_pad = jpegenc.get_static_pad("src")
+        if encoded_pad is None:
+            raise AravisGStreamerError(
+                "Could not access encoded frame-count pad for {}".format(self.name)
+            )
 
         def count_frame(_pad, _info):
             with self._frame_count_lock:
                 self._frame_count += 1
             return Gst.PadProbeReturn.OK
 
-        raw_queue_sink.add_probe(Gst.PadProbeType.BUFFER, count_frame)
-        bayer = self._make(Gst, "bayer2rgb", "bayer_{}".format(self.name))
-        convert = self._make(Gst, "videoconvert", "convert_{}".format(self.name))
-        jpegenc = self._make(Gst, "jpegenc", "jpeg_{}".format(self.name))
-        jpegenc.set_property("quality", settings.jpeg_quality)
+        encoded_pad.add_probe(Gst.PadProbeType.BUFFER, count_frame)
 
         elements = [source, capsfilter, raw_queue, bayer, convert, jpegenc]
         if save_path is not None:
@@ -448,14 +452,12 @@ class AravisGStreamerCamera:
             self._raise_if_bus_error(self.settings.startup_timeout_seconds)
             raise AravisGStreamerError("GStreamer could not start camera {}".format(self.name))
 
-        # A hardware-triggered aravissrc is live and can legitimately report
-        # NO_PREROLL/ASYNC before the UTG emits its first pulse.  Camera
-        # configuration is already verified above, so waiting for a frame here
-        # would deadlock the main-PC READY -> UTG-start protocol.
+        # A hardware-triggered appsrc pipeline legitimately has no preroll
+        # before the UTG emits its first pulse.
         self._raise_if_bus_error(0.05)
 
     def prepare(self, mode: str, sync_mode: bool, save_path: Optional[str], fps: int) -> None:
-        """Configure the camera and build its pipeline without opening aravissrc.
+        """Configure the camera and build its appsrc pipeline.
 
         Aravis' process-global discovery/device machinery is not exercised
         concurrently here. This mirrors ParaOffice's sequential camera
@@ -599,11 +601,16 @@ class AravisGStreamerCamera:
                 if self._state != "ERROR":
                     self._state = "READY"
                 return
+            if self._state == "ERROR":
+                # The bus/stream error is already recorded and reported by
+                # validate/heartbeat. Do not obscure it with a second EOS
+                # finalization failure during rollback.
+                self._teardown_pipeline()
+                return
             self._state = "STOPPING"
             try:
                 # CaptureSession sends this while UTG pulses still exist.
-                # This avoids the aravissrc starvation ParaOffice documented
-                # when the trigger is disabled before EOS/finalization.
+                # Pulses remain active until AVI EOS/finalization completes.
                 self._stream_stop.set()
                 if self._aravis_camera is not None:
                     self._aravis_camera.stop_acquisition()
@@ -786,10 +793,8 @@ class AravisGStreamerCameraLoader:
         """Open every prepared source immediately before the main-PC UTG starts."""
 
         try:
-            # set_state() can spend significant time in aravissrc caps
-            # negotiation. Request every local pipeline concurrently so the
-            # first source does not hit its no-frame timeout while later
-            # cameras are still opening.
+            # Request every local pipeline concurrently to minimize skew
+            # between camera acquisition start times.
             self._parallel(
                 lambda camera, _path: camera.request_playing(),
                 [None] * len(self.cameralist),

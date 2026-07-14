@@ -144,15 +144,33 @@ class camera_server_daemon:
             return {"status": "error", "msg": "no active controller"}
 
         try:
+            if action == "prepare":
+                self.state = "preparing"
+                prepare = getattr(self.camera_loader, "prepare", None)
+                if prepare is not None:
+                    with self._camera_lock:
+                        prepare(
+                            cmd.get("mode"),
+                            cmd.get("syncMode"),
+                            cmd.get("save_path"),
+                            cmd.get("fps", 30),
+                        )
+                self.state = "prepared"
+                return {"status": "ok", "msg": "prepared"}
             if action == "start":
                 self.state = "starting"
                 with self._camera_lock:
-                    self.camera_loader.start(
-                        cmd.get("mode"),
-                        cmd.get("syncMode"),
-                        cmd.get("save_path"),
-                        cmd.get("fps", 30),
-                    )
+                    activate = getattr(self.camera_loader, "activate", None)
+                    if activate is not None:
+                        activate()
+                    else:
+                        # Preserve the legacy PySpin loader contract.
+                        self.camera_loader.start(
+                            cmd.get("mode"),
+                            cmd.get("syncMode"),
+                            cmd.get("save_path"),
+                            cmd.get("fps", 30),
+                        )
                 self.state = "capturing"
                 # This is the main-PC barrier: every local pipeline has
                 # completed camera setup and state preparation at this point.
@@ -167,6 +185,15 @@ class camera_server_daemon:
                 with self._camera_lock:
                     self.camera_loader.wait_for_first_frames(cmd.get("timeout"))
                 return {"status": "ok", "msg": "frames received"}
+            if action == "abort":
+                with self._camera_lock:
+                    abort = getattr(self.camera_loader, "abort", None)
+                    if abort is not None:
+                        abort()
+                    else:
+                        self.camera_loader.stop()
+                self.state = "idle"
+                return {"status": "ok", "msg": "aborted"}
             if action == "end":
                 with self._camera_lock:
                     self.camera_loader.stop()

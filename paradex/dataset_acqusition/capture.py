@@ -205,25 +205,29 @@ class CaptureSession():
             self.state_time = []
 
         if self.camera is not None:
-            # self.sync_generator.start(fps=30)
-            self.camera.start("video", True, os.path.join(save_path, "raw"))
-            self._camera_capture_started = True
-            if self.timestamp_monitor is not None:
-                self.timestamp_monitor.start(os.path.join(shared_dir, save_path, "raw", "timestamps"))
-                self._timestamp_monitor_started = True
-            self.sync_generator.start(fps=30)
-            self._sync_generator_started = True
             try:
+                # Preserve the original Paradex synchronization contract:
+                # every camera is configured, armed and acquiring before the
+                # first UTG edge is emitted.
+                self.camera.start("video", True, os.path.join(save_path, "raw"))
+                self._camera_capture_started = True
+                if self.timestamp_monitor is not None:
+                    self.timestamp_monitor.start(os.path.join(shared_dir, save_path, "raw", "timestamps"))
+                    self._timestamp_monitor_started = True
+                self.sync_generator.start(fps=30)
+                self._sync_generator_started = True
                 self.camera.validate(timeout=5.0)
             except Exception:
-                # Stop remote pipelines while pulses are still present so
-                # aravissrc/avimux can finalize without trigger starvation.
                 try:
-                    self.camera.stop()
+                    if self._camera_capture_started:
+                        # Stop remote pipelines while pulses are still present
+                        # so aravissrc/avimux can finalize cleanly.
+                        self.camera.stop()
                 finally:
                     self._camera_capture_started = False
-                    self.sync_generator.stop()
-                    self._sync_generator_started = False
+                    if self._sync_generator_started:
+                        self.sync_generator.stop()
+                        self._sync_generator_started = False
                 raise
         
         if self.realsense is not None:

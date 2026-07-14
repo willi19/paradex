@@ -93,6 +93,17 @@ class FakeLoader:
         return {}
 
 
+class FakeTwoPhaseLoader(FakeLoader):
+    def prepare(self, mode, sync_mode, save_path, fps):
+        self.calls.append(("prepare", mode, sync_mode, save_path, fps))
+
+    def activate(self):
+        self.calls.append(("activate",))
+
+    def abort(self):
+        self.calls.append(("abort",))
+
+
 class FakeAddressing:
     def __init__(self):
         self.nic_subnets = [
@@ -392,6 +403,35 @@ class AravisCaptureTests(unittest.TestCase):
             )
             self.assertEqual(response, {"status": "ok", "msg": "ready"})
             self.assertEqual(loader.calls, [("start", "video", True, "session/raw", 30)])
+        finally:
+            server.close()
+
+    def test_server_separates_aravis_prepare_from_activation(self):
+        loader = FakeTwoPhaseLoader()
+        server = camera_server_daemon(backend="aravis", loader=loader, start_threads=False)
+        try:
+            server.execute_command({"action": "register", "controller_name": "main"})
+            prepare = server.execute_command(
+                {
+                    "action": "prepare",
+                    "controller_name": "main",
+                    "mode": "video",
+                    "syncMode": True,
+                    "save_path": "session/raw",
+                    "fps": 30,
+                }
+            )
+            self.assertEqual(prepare, {"status": "ok", "msg": "prepared"})
+            self.assertEqual(
+                loader.calls,
+                [("prepare", "video", True, "session/raw", 30)],
+            )
+
+            start = server.execute_command(
+                {"action": "start", "controller_name": "main"}
+            )
+            self.assertEqual(start, {"status": "ok", "msg": "ready"})
+            self.assertEqual(loader.calls[-1], ("activate",))
         finally:
             server.close()
 

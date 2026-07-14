@@ -623,9 +623,9 @@ class AravisGStreamerCameraLoader:
             messages = ["{}: {}".format(name, error) for name, error in errors]
             raise AravisGStreamerError("; ".join(messages))
 
-    def start(self, mode: str, syncMode: bool, save_path: Optional[str] = None, fps: int = 30) -> None:
+    def prepare(self, mode: str, syncMode: bool, save_path: Optional[str] = None, fps: int = 30) -> None:
         paths = self._save_paths(mode, save_path)
-        print("[Info] Starting Aravis/GStreamer cameras: {}".format(self.camera_names))
+        print("[Info] Preparing Aravis/GStreamer cameras: {}".format(self.camera_names))
         try:
             # Configure/build sequentially using the exact device ids that
             # address reconciliation discovered and verified at agent boot.
@@ -633,13 +633,6 @@ class AravisGStreamerCameraLoader:
             # ``FLIR-{serial}`` alias used by newer ParaOffice installations.
             for camera, path in zip(self.cameralist, paths):
                 camera.prepare(mode, syncMode, path, fps)
-
-            # set_state() is non-blocking for these live hardware-triggered
-            # sources. Keep this ordered as well; the main PC still receives
-            # READY only after every source has accepted PLAYING.
-            for camera in self.cameralist:
-                camera.start_prepared()
-            self._capture_active = True
         except Exception:
             # A pipeline that has not reached PLAYING must not wait for EOS.
             # Hard-null every partial pipeline before returning the start error.
@@ -649,8 +642,30 @@ class AravisGStreamerCameraLoader:
                 except Exception:
                     log.exception("Failed to roll back camera %s", camera.name)
             raise
-        print("[Info] All Aravis/GStreamer cameras READY.")
-        log.info("All Aravis/GStreamer cameras READY: %s", self.camera_names)
+        print("[Info] All Aravis/GStreamer cameras PREPARED.")
+
+    def activate(self) -> None:
+        """Open every prepared source immediately before the main-PC UTG starts."""
+
+        try:
+            for camera in self.cameralist:
+                camera.start_prepared()
+            self._capture_active = True
+        except Exception:
+            for camera in self.cameralist:
+                try:
+                    camera.abort()
+                except Exception:
+                    log.exception("Failed to roll back camera %s", camera.name)
+            raise
+        print("[Info] All Aravis/GStreamer cameras ARMED and waiting for UTG.")
+        log.info("All Aravis/GStreamer cameras ARMED: %s", self.camera_names)
+
+    def start(self, mode: str, syncMode: bool, save_path: Optional[str] = None, fps: int = 30) -> None:
+        """Compatibility path; distributed callers use prepare then activate."""
+
+        self.prepare(mode, syncMode, save_path, fps)
+        self.activate()
 
     def wait_for_first_frames(self, timeout_seconds: Optional[float] = None) -> None:
         if not self._capture_active:
@@ -660,6 +675,14 @@ class AravisGStreamerCameraLoader:
             [None] * len(self.cameralist),
         )
         print("[Info] First hardware-triggered frame received from every camera.")
+
+    def abort(self) -> None:
+        for camera in self.cameralist:
+            try:
+                camera.abort()
+            except Exception:
+                log.exception("Failed to abort camera %s", camera.name)
+        self._capture_active = False
 
     def _print_frame_counts(self) -> None:
         counts = []

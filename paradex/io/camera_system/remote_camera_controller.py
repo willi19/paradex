@@ -36,8 +36,10 @@ class remote_camera_controller:
 
         self.exit_event = threading.Event()
         self.start_event = threading.Event()
+        self.prepare_event = threading.Event()
         self.stop_event = threading.Event()
         self.validate_event = threading.Event()
+        self.abort_event = threading.Event()
         self.sending_event = threading.Event()
         self.error_event = threading.Event()
         self.ready_event = threading.Event()
@@ -156,7 +158,18 @@ class remote_camera_controller:
         self.syncMode = syncMode
         self.save_path = save_path
         self.fps = fps
-        return self._request(self.start_event)
+        # Slow camera programming/build happens on every PC before any
+        # aravissrc enters PLAYING.  ACTIVATE is then a short global barrier;
+        # CaptureSession enables UTG only after it completes.
+        try:
+            self._request(self.prepare_event)
+            return self._request(self.start_event)
+        except Exception:
+            try:
+                self._request(self.abort_event)
+            except Exception:
+                pass
+            raise
 
     def stop(self):
         return self._request(self.stop_event)
@@ -217,6 +230,16 @@ class remote_camera_controller:
                         "fps": self.fps,
                     }
                     self.start_event.clear()
+                elif self.prepare_event.is_set():
+                    action = "prepare"
+                    command = {
+                        "action": action,
+                        "mode": self.mode,
+                        "syncMode": self.syncMode,
+                        "save_path": self.save_path,
+                        "fps": self.fps,
+                    }
+                    self.prepare_event.clear()
                 elif self.stop_event.is_set():
                     action = "stop"
                     command = {"action": action}
@@ -225,9 +248,13 @@ class remote_camera_controller:
                     action = "validate"
                     command = {"action": action, "timeout": self.validate_timeout}
                     self.validate_event.clear()
+                elif self.abort_event.is_set():
+                    action = "abort"
+                    command = {"action": action}
+                    self.abort_event.clear()
 
                 response = self.send_command(command)
-                if action in ("start", "stop", "validate"):
+                if action in ("prepare", "start", "stop", "validate", "abort"):
                     self._complete_command(action, response)
                 else:
                     failures = self._failed_responses(response)

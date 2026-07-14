@@ -40,6 +40,9 @@ class camera_server_daemon:
         self.current_controller = None
         self.state = "idle"
         self._threads = []
+        self._shutdown_event = threading.Event()
+        self._close_lock = threading.Lock()
+        self._camera_lock = threading.RLock()
 
         if start_threads:
             self._start_threads()
@@ -62,33 +65,64 @@ class camera_server_daemon:
             self._threads.append(thread)
 
     def reload_cameras(self):
-        self.camera_loader.end()
-        time.sleep(1)
-        self.camera_loader = self._loader_factory()
+        with self._camera_lock:
+            self.camera_loader.end()
+            time.sleep(1)
+            self.camera_loader = self._loader_factory()
         print("[Info] {} camera loader reloaded.".format(self.backend))
+
+    def close(self):
+        """Finalize cameras and stop all ZMQ resources; safe to call twice."""
+
+        with self._close_lock:
+            if self._shutdown_event.is_set():
+                return
+            print("[Info] Shutting down {} camera agent...".format(self.backend))
+            self._shutdown_event.set()
+            try:
+                with self._camera_lock:
+                    self.camera_loader.end()
+            except Exception:
+                print("[Error] Camera cleanup failed during shutdown:")
+                traceback.print_exc()
+            finally:
+                self.current_controller = None
+                self.state = "closed"
+
+            # command_thread can be waiting on its five-second receive timeout.
+            for thread in self._threads:
+                thread.join(timeout=6.0)
+            self.ctx.destroy(linger=0)
+            print("[Info] Camera agent shutdown complete.")
 
     def pingpong_thread(self):
         socket = self.ctx.socket(zmq.REP)
         socket.setsockopt(zmq.LINGER, 0)
         socket.bind("tcp://*:{}".format(self.ping_port))
-        while True:
-            try:
-                socket.recv_string(flags=zmq.NOBLOCK)
-                socket.send_string("pong")
-            except zmq.ZMQError:
-                time.sleep(0.1)
+        try:
+            while not self._shutdown_event.is_set():
+                try:
+                    socket.recv_string(flags=zmq.NOBLOCK)
+                    socket.send_string("pong")
+                except zmq.ZMQError:
+                    time.sleep(0.1)
+        finally:
+            socket.close(linger=0)
 
     def monitor_thread(self):
         socket = self.ctx.socket(zmq.PUB)
         socket.bind("tcp://*:{}".format(self.monitor_port))
-        while True:
-            status = {
-                "backend": self.backend,
-                "cameras": self.camera_loader.get_status_list(),
-                "controller": self.current_controller or "None",
-            }
-            socket.send_json(status)
-            time.sleep(0.1)
+        try:
+            while not self._shutdown_event.is_set():
+                status = {
+                    "backend": self.backend,
+                    "cameras": self.camera_loader.get_status_list(),
+                    "controller": self.current_controller or "None",
+                }
+                socket.send_json(status)
+                time.sleep(0.1)
+        finally:
+            socket.close(linger=0)
 
     def _locked_response(self, controller_name):
         if controller_name != self.current_controller and self.current_controller is not None:
@@ -112,23 +146,26 @@ class camera_server_daemon:
         try:
             if action == "start":
                 self.state = "starting"
-                self.camera_loader.start(
-                    cmd.get("mode"),
-                    cmd.get("syncMode"),
-                    cmd.get("save_path"),
-                    cmd.get("fps", 30),
-                )
+                with self._camera_lock:
+                    self.camera_loader.start(
+                        cmd.get("mode"),
+                        cmd.get("syncMode"),
+                        cmd.get("save_path"),
+                        cmd.get("fps", 30),
+                    )
                 self.state = "capturing"
                 # This is the main-PC barrier: every local pipeline has
                 # completed camera setup and state preparation at this point.
                 return {"status": "ok", "msg": "ready"}
             if action == "stop":
                 self.state = "stopping"
-                self.camera_loader.stop()
+                with self._camera_lock:
+                    self.camera_loader.stop()
                 self.state = "idle"
                 return {"status": "ok", "msg": "stopped"}
             if action == "end":
-                self.camera_loader.stop()
+                with self._camera_lock:
+                    self.camera_loader.stop()
                 self.current_controller = None
                 self.state = "idle"
                 return {"status": "ok", "msg": "ended"}
@@ -154,28 +191,37 @@ class camera_server_daemon:
         socket.setsockopt(zmq.LINGER, 0)
         socket.setsockopt(zmq.RCVTIMEO, 5000)
         socket.bind("tcp://*:{}".format(self.command_port))
-        while True:
-            try:
-                command = socket.recv_json()
-                socket.send_json(self.execute_command(command))
-            except zmq.Again:
-                if self.current_controller is not None:
+        try:
+            while not self._shutdown_event.is_set():
+                try:
+                    command = socket.recv_json()
+                    socket.send_json(self.execute_command(command))
+                except zmq.Again:
+                    if self._shutdown_event.is_set():
+                        break
+                    if self.current_controller is not None:
+                        try:
+                            with self._camera_lock:
+                                self.camera_loader.stop()
+                        except Exception:
+                            traceback.print_exc()
+                        self.current_controller = None
+                        self.state = "idle"
+                        print("[Error] Command socket timeout. Camera loader stopped and controller released.")
+                except Exception as exc:
+                    if self._shutdown_event.is_set():
+                        break
+                    traceback.print_exc()
                     try:
-                        self.camera_loader.stop()
+                        with self._camera_lock:
+                            self.camera_loader.stop()
                     except Exception:
                         traceback.print_exc()
                     self.current_controller = None
-                    self.state = "idle"
-                    print("[Error] Command socket timeout. Camera loader stopped and controller released.")
-            except Exception as exc:
-                traceback.print_exc()
-                try:
-                    self.camera_loader.stop()
-                except Exception:
-                    traceback.print_exc()
-                self.current_controller = None
-                self.state = "error"
-                try:
-                    socket.send_json({"status": "error", "msg": "{}: {}".format(type(exc).__name__, exc)})
-                except zmq.ZMQError:
-                    pass
+                    self.state = "error"
+                    try:
+                        socket.send_json({"status": "error", "msg": "{}: {}".format(type(exc).__name__, exc)})
+                    except zmq.ZMQError:
+                        pass
+        finally:
+            socket.close(linger=0)

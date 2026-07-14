@@ -1,3 +1,5 @@
+import contextlib
+import io
 import ipaddress
 import struct
 import tempfile
@@ -64,6 +66,21 @@ class FakeLoader:
 
     def get_all_errors(self):
         return {}
+
+
+class FakeAddressing:
+    def __init__(self):
+        self.nic_subnets = [
+            NicSubnet("enp6s0f0", "11.0.1.1", ipaddress.ip_network("11.0.1.0/24"))
+        ]
+        self.seen = {
+            "cam-a": CameraRecord(
+                "cam-a", "FLIR-cam-a", "11.0.1.100", "2c:dd:a3:7d:a6:9c"
+            )
+        }
+
+    def reconcile(self, expected_serials):
+        return list(expected_serials)
 
 
 class AravisCaptureTests(unittest.TestCase):
@@ -146,6 +163,21 @@ class AravisCaptureTests(unittest.TestCase):
                 ("start", "video", True, str(Path(capture_roots[0]) / "dataset/session/raw/videos/cam-c.avi"), 30),
             )
 
+    def test_loader_prints_discovered_camera_inventory(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            AravisGStreamerCameraLoader(
+                serial_list=["cam-a"],
+                addressing=FakeAddressing(),
+                camera_factory=FakeCamera,
+            )
+
+        text = output.getvalue()
+        self.assertIn("Aravis/GStreamer cameras loaded (1/1 configured)", text)
+        self.assertIn("serial=cam-a", text)
+        self.assertIn("ip=11.0.1.100", text)
+        self.assertIn("nic=enp6s0f0", text)
+
     def test_loader_stops_all_cameras_after_partial_start_failure(self):
         first = FakeCamera("cam-a")
         second = FakeCamera("cam-b", fail_start=True)
@@ -195,7 +227,17 @@ class AravisCaptureTests(unittest.TestCase):
             self.assertEqual(response, {"status": "ok", "msg": "ready"})
             self.assertEqual(loader.calls, [("start", "video", True, "session/raw", 30)])
         finally:
-            server.ctx.term()
+            server.close()
+
+    def test_server_close_ends_loader_and_is_idempotent(self):
+        loader = FakeLoader()
+        server = camera_server_daemon(loader=loader, start_threads=False)
+
+        server.close()
+        server.close()
+
+        self.assertEqual(loader.calls, [("end",)])
+        self.assertEqual(server.state, "closed")
 
 
 if __name__ == "__main__":

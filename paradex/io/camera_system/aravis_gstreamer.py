@@ -13,6 +13,7 @@ GStreamer pipelines have been brought up; it never opens a USB trigger.
 
 from __future__ import annotations
 
+import ipaddress
 import logging
 import os
 import threading
@@ -414,12 +415,54 @@ class AravisGStreamerCameraLoader:
         if not self.camera_names:
             raise AravisGStreamerError("No camera serials are configured for this capture PC")
 
+        self.camera_inventory: List[dict] = []
         if reconcile_addresses:
-            (addressing or CameraAddressing()).reconcile(self.camera_names)
+            address_manager = addressing or CameraAddressing()
+            address_manager.reconcile(self.camera_names)
+            for serial in self.camera_names:
+                record = address_manager.seen[serial]
+                nic_name = "unknown"
+                try:
+                    camera_ip = ipaddress.IPv4Address(record.ip)
+                    nic_name = next(
+                        nic.name
+                        for nic in address_manager.nic_subnets
+                        if camera_ip in nic.network
+                    )
+                except (ValueError, StopIteration):
+                    pass
+                self.camera_inventory.append(
+                    {
+                        "serial": record.serial,
+                        "device_id": record.device_id,
+                        "ip": record.ip,
+                        "mac": record.mac,
+                        "nic": nic_name,
+                    }
+                )
 
         if camera_factory is None:
             camera_factory = lambda serial: AravisGStreamerCamera(serial, self.settings)
         self.cameralist = [camera_factory(serial) for serial in self.camera_names]
+        self._print_loaded_cameras()
+
+    def _print_loaded_cameras(self) -> None:
+        print(
+            "[Info] Aravis/GStreamer cameras loaded ({}/{} configured):".format(
+                len(self.camera_inventory) or len(self.camera_names),
+                len(self.camera_names),
+            )
+        )
+        if self.camera_inventory:
+            for camera in self.camera_inventory:
+                print(
+                    "  - serial={serial} ip={ip} nic={nic} mac={mac} device={device_id}".format(
+                        **camera
+                    )
+                )
+        else:
+            for serial in self.camera_names:
+                print("  - serial={}".format(serial))
 
     def _save_paths(self, mode: str, save_path: Optional[str]) -> List[Optional[str]]:
         if mode == "video":
@@ -458,12 +501,14 @@ class AravisGStreamerCameraLoader:
 
     def start(self, mode: str, syncMode: bool, save_path: Optional[str] = None, fps: int = 30) -> None:
         paths = self._save_paths(mode, save_path)
+        print("[Info] Starting Aravis/GStreamer cameras: {}".format(self.camera_names))
         try:
             self._parallel(lambda camera, path: camera.start(mode, syncMode, path, fps), paths)
         except Exception:
             # Do not leave a partially-ready group waiting for trigger pulses.
             self.stop()
             raise
+        print("[Info] All Aravis/GStreamer cameras READY.")
         log.info("All Aravis/GStreamer cameras READY: %s", self.camera_names)
 
     def stop(self) -> None:

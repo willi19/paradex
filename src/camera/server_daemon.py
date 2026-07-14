@@ -1,5 +1,6 @@
 import argparse
 import os
+import signal
 import sys
 import time
 from pathlib import Path
@@ -21,6 +22,18 @@ if __name__ == "__main__":
         help="Local camera backend. Use aravis-gstreamer after capture-PC setup.",
     )
     args = parser.parse_args()
-    server = camera_server_daemon(backend=args.backend)
-    while True:
-        time.sleep(1)
+    server = None
+
+    def handle_sigterm(_signum, _frame):
+        raise KeyboardInterrupt
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+    try:
+        server = camera_server_daemon(backend=args.backend)
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("\n[Info] Shutdown requested.")
+    finally:
+        if server is not None:
+            server.close()

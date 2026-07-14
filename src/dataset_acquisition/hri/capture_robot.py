@@ -23,16 +23,36 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--device', choices=['xsens', 'occulus'], default="xsens")
 parser.add_argument('--camera', type=str, default=True)
-parser.add_argument('--arm', type=str, default="xarm")
-parser.add_argument('--hand', type=str, default="inspire_f1")
+parser.add_argument('--arm', type=str, default="xarm",
+                    help="Arm controller name. Use 'none' (or empty) to disable arm control.")
+parser.add_argument('--hand', type=str, default="inspire_f1",
+                    help="Hand controller/retargetor name. Use 'wuji' for optimization, 'wuji_direct' for direct mapping, or 'wuji_hybrid' for opt thumb + direct fingers.")
 parser.add_argument('--capture_root', type=str, default="eccv2026/allegro_v5")
 parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--tactile', action="store_true")
 parser.add_argument('--ip', action="store_true")
 parser.add_argument('--visualize-tactile-realtime', action="store_true")
 parser.add_argument('--xarm-servo-api', choices=["cartesian_aa", "angle_j"], default="cartesian_aa")
+parser.add_argument(
+    '--scale', '--hand-scale',
+    dest='hand_scale',
+    type=float,
+    default=1.15
 
+    ,
+    help="Uniform Wuji hand keypoint scale around the wrist. Use 1.5 if the robot hand is about 1.5x larger.",
+)
 args = parser.parse_args()
+
+
+def _normalize_optional_name(name):
+    if name is not None and name.strip().lower() in ("", "none", "null"):
+        return None
+    return name
+
+
+args.arm = _normalize_optional_name(args.arm)
+args.hand = _normalize_optional_name(args.hand)
 
 
 stop_event = Event()
@@ -80,6 +100,8 @@ cs = CaptureSession(
     tactile=args.tactile,
     ip=args.ip,
     camera_pc_list=camera_pc_list,
+    arm_kwargs={"servo_api": args.xarm_servo_api} if args.arm == "xarm" else None,
+    hand_scale=args.hand_scale,
 )
 
 tactile_plotter = None

@@ -1,0 +1,53 @@
+# PEP 517/518 build backend. Required so PEP 621 [project] metadata below is
+# honored: with this table absent, pip falls back to setuptools.build_meta:__legacy__
+# plus whatever setuptools the host has. On Ubuntu 22.04 stock (setuptools 59.6,
+# pre-PEP 621) that silently builds an UNKNOWN-0.0.0 wheel and drops every
+# [project.dependencies] entry. Pinning setuptools>=61 forces a backend that
+# actually parses [project].
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wuji-retargeting"
+version = "2026.6.27"
+description = "High-precision hand pose retargeting system for WujiHand"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+dependencies = [
+    "numpy>=1.21.0",
+    "nlopt",
+    "pin>=3.8.0",
+    "pyyaml",
+    "scipy>=1.11.0",
+    "wuji-sdk>=0.10.0",
+]
+
+[project.optional-dependencies]
+video = [
+    "mediapipe",
+    "opencv-python",
+]
+realsense = [
+    "mediapipe",
+    "opencv-python",
+    "pyrealsense2",
+]
+zed = [
+    "mediapipe",
+    "opencv-python",
+    "pyzed",
+]
+tuning = [
+    "mujoco>=3.6",
+]
+
+[tool.setuptools.packages.find]
+include = ["wuji_retargeting*"]
+
+[tool.setuptools.package-data]
+"wuji_retargeting" = [
+    "urdf/*.urdf",
+    "meshes/**/*.STL",
+]

@@ -39,6 +39,16 @@ def get_hand(hand_name, tactile = False, ip = False, hand_side="right"):
         from .allegro_v5_controller_ros2 import AllegroController
         return AllegroController(hand_side=hand_side, tactile=tactile)
 
+    if hand_name == "robotiq_2f85":
+        from .robotiq_2f85_controller_ros2 import Robotiq2F85ControllerROS2
+        params = network_info.get("robotiq_2f85", {}).get("param", {})
+        return Robotiq2F85ControllerROS2(**params)
+
+    if hand_name in ("wuji", "wuji_direct", "wuji_hybrid"):
+        from .wuji_controller_ros2 import WujiControllerROS2
+        params = network_info.get("wuji", {}).get("param", {})
+        return WujiControllerROS2(hand_side=hand_side, **params)
+
     if hand_name == "kistar":
         from .kistarcontroller import KistarController
         return KistarController()

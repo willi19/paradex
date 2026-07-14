@@ -1,9 +1,488 @@
+import os
+import sys
+from pathlib import Path
+from typing import Dict
+
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 
-from typing import Dict
 import time
 import copy
+
+
+_MEDIAPIPE_TO_MANUS = (
+    1, 22, 23, 24, 25,
+    3, 4, 5, 6,
+    8, 9, 10, 11,
+    13, 14, 15, 16,
+    18, 19, 20, 21,
+)
+
+_WUJI_RETARGETERS = {}
+_WUJI_JOINT_LIMITS = {}
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_WUJI_THIRDPARTY_ROOT = _REPO_ROOT / "thirdparty" / "wuji-retargeting"
+_WUJI_DIRECT_FINGERS = (
+    (1, 2, 3, 4),
+    (5, 6, 7, 8),
+    (9, 10, 11, 12),
+    (13, 14, 15, 16),
+    (17, 18, 19, 20),
+)
+_WUJI_DIRECT_MCP_FROM_PIP_BLEND = 0.55
+_WUJI_DIRECT_MCP_FLEX_GAIN = 1.15
+_WUJI_DIRECT_THUMB_OPPOSITION_GAIN = 1.9
+_WUJI_DIRECT_FALLBACK_LOWER = np.array(
+    [
+        0.0475, -0.1387, -0.4642, -0.4699,
+        -0.1585, -0.3700, -0.4777, -0.4683,
+        -0.1644, -0.3700, -0.4739, -0.4684,
+        -0.1554, -0.3700, -0.4765, -0.4777,
+        -0.1626, -0.3700, -0.4768, -0.4683,
+    ],
+    dtype=np.float32,
+)
+_WUJI_DIRECT_FALLBACK_UPPER = np.array(
+    [
+        1.6033, 0.9324, 1.5623, 1.5568,
+        1.5604, 0.3700, 1.5485, 1.5753,
+        1.5516, 0.3700, 1.5512, 1.5745,
+        1.5585, 0.3700, 1.5487, 1.5634,
+        1.5585, 0.3700, 1.5490, 1.5735,
+    ],
+    dtype=np.float32,
+)
+
+
+def _pose_position(pose):
+    if isinstance(pose, np.ndarray):
+        pose = np.asarray(pose)
+        if pose.shape == (4, 4):
+            return pose[:3, 3].astype(np.float32)
+        if pose.shape == (3,):
+            return pose.astype(np.float32)
+
+    if hasattr(pose, "position"):
+        p = pose.position
+        return np.array([p.x, p.y, p.z], dtype=np.float32)
+
+    if isinstance(pose, dict):
+        if "pose" in pose:
+            return _pose_position(pose["pose"])
+        if "position" in pose:
+            return _pose_position(pose["position"])
+        if {"x", "y", "z"}.issubset(pose):
+            return np.array([pose["x"], pose["y"], pose["z"]], dtype=np.float32)
+
+    return None
+
+
+def _manus_position(pos):
+    # The standalone Wuji Manus ROS2 path mirrors raw Manus Y before retargeting.
+    pos = np.asarray(pos, dtype=np.float32)
+    return np.array([pos[0], -pos[1], pos[2]], dtype=np.float32)
+
+
+def _named_pose_position(pos):
+    # Xsens/named poses are already in the receiver's corrected global frame.
+    return np.asarray(pos, dtype=np.float32)
+
+
+def _node_id(node):
+    if hasattr(node, "node_id"):
+        return int(node.node_id)
+    if isinstance(node, dict):
+        if "node_id" in node:
+            return int(node["node_id"])
+        if "id" in node:
+            return int(node["id"])
+    return None
+
+
+def _node_pose(node):
+    if hasattr(node, "pose"):
+        return node.pose
+    if isinstance(node, dict):
+        return node.get("pose", node)
+    return node
+
+
+def _raw_nodes_from_frame(hand_pose_frame):
+    if hasattr(hand_pose_frame, "raw_nodes"):
+        return hand_pose_frame.raw_nodes
+    if isinstance(hand_pose_frame, (list, tuple)):
+        return hand_pose_frame
+    if isinstance(hand_pose_frame, dict):
+        if "raw_nodes" in hand_pose_frame:
+            return hand_pose_frame["raw_nodes"]
+        if hand_pose_frame and all(isinstance(k, (int, np.integer)) for k in hand_pose_frame):
+            return [
+                {"node_id": int(node_id), "pose": pose}
+                for node_id, pose in hand_pose_frame.items()
+            ]
+    return None
+
+
+def _manus_to_mediapipe(hand_pose_frame):
+    raw_nodes = _raw_nodes_from_frame(hand_pose_frame)
+    if raw_nodes is None:
+        return None
+
+    positions = {}
+    for node in raw_nodes:
+        node_id = _node_id(node)
+        pos = _pose_position(_node_pose(node))
+        if node_id is not None and pos is not None:
+            positions[node_id] = _manus_position(pos)
+
+    if 1 not in positions:
+        return None
+
+    if any(manus_id not in positions for manus_id in _MEDIAPIPE_TO_MANUS):
+        return None
+
+    keypoints = np.zeros((21, 3), dtype=np.float32)
+    for mp_idx, manus_id in enumerate(_MEDIAPIPE_TO_MANUS):
+        keypoints[mp_idx] = positions[manus_id]
+
+    return keypoints
+
+
+def _named_pose_point(hand_pose_frame, name):
+    if name not in hand_pose_frame:
+        return None
+    pos = _pose_position(hand_pose_frame[name])
+    if pos is None:
+        return None
+    return _named_pose_position(pos)
+
+
+def _finger_points(hand_pose_frame, names, count=4):
+    points = []
+    for name in names:
+        point = _named_pose_point(hand_pose_frame, name)
+        if point is not None:
+            points.append(point)
+    if not points:
+        return None
+
+    while len(points) < count:
+        if len(points) >= 2:
+            points.append(points[-1] + (points[-1] - points[-2]))
+        else:
+            points.append(points[-1].copy())
+
+    return points[:count]
+
+
+def _named_hand_pose_to_mediapipe(hand_pose_frame):
+    if not isinstance(hand_pose_frame, dict) or "wrist" not in hand_pose_frame:
+        return None
+
+    wrist = _named_pose_point(hand_pose_frame, "wrist")
+    if wrist is None:
+        return None
+
+    keypoints = np.zeros((21, 3), dtype=np.float32)
+    keypoints[0] = wrist
+
+    finger_specs = [
+        (1, ["thumb_metacarpal", "thumb_proximal", "thumb_intermediate", "thumb_distal", "thumb_tip"]),
+        (5, ["index_metacarpal", "index_proximal", "index_intermediate", "index_distal"]),
+        (9, ["middle_metacarpal", "middle_proximal", "middle_intermediate", "middle_distal"]),
+        (13, ["ring_metacarpal", "ring_proximal", "ring_intermediate", "ring_distal"]),
+        (17, ["pinky_metacarpal", "pinky_proximal", "pinky_intermediate", "pinky_distal"]),
+    ]
+
+    for start_idx, names in finger_specs:
+        points = _finger_points(hand_pose_frame, names, count=4)
+        if points is None:
+            return None
+        keypoints[start_idx:start_idx + 4] = points
+
+    return keypoints
+
+
+def _to_wuji_mediapipe(hand_pose_frame):
+    arr = np.asarray(hand_pose_frame) if not isinstance(hand_pose_frame, dict) else None
+    if arr is not None:
+        if arr.shape == (21, 3):
+            return arr.astype(np.float32)
+        if arr.shape == (63,):
+            return arr.reshape(21, 3).astype(np.float32)
+
+    keypoints = _manus_to_mediapipe(hand_pose_frame)
+    if keypoints is not None:
+        return keypoints
+
+    return _named_hand_pose_to_mediapipe(hand_pose_frame)
+
+
+def _scale_keypoints_about_wrist(keypoints, scale):
+    scale = float(scale)
+    if not np.isfinite(scale) or scale <= 0.0:
+        raise ValueError(f"Wuji hand scale must be a positive finite number, got {scale}")
+    if scale == 1.0:
+        return keypoints
+    wrist = keypoints[0:1]
+    return wrist + (keypoints - wrist) * scale
+
+
+def _unit_vector(vec, fallback=None):
+    vec = np.asarray(vec, dtype=np.float32)
+    norm = np.linalg.norm(vec)
+    if norm < 1e-6 or not np.isfinite(norm):
+        if fallback is None:
+            return None
+        return np.asarray(fallback, dtype=np.float32)
+    return vec / norm
+
+
+def _project_to_plane(vec, normal):
+    normal = _unit_vector(normal)
+    if normal is None:
+        return np.asarray(vec, dtype=np.float32)
+    vec = np.asarray(vec, dtype=np.float32)
+    return vec - np.dot(vec, normal) * normal
+
+
+def _angle_between(vec_a, vec_b):
+    a = _unit_vector(vec_a)
+    b = _unit_vector(vec_b)
+    if a is None or b is None:
+        return 0.0
+    return float(np.arccos(np.clip(np.dot(a, b), -1.0, 1.0)))
+
+
+def _signed_angle_between(vec_a, vec_b, axis):
+    a = _unit_vector(vec_a)
+    b = _unit_vector(vec_b)
+    axis = _unit_vector(axis)
+    if a is None or b is None or axis is None:
+        return 0.0
+    unsigned = _angle_between(a, b)
+    sign = np.sign(np.dot(np.cross(a, b), axis))
+    if sign == 0.0:
+        sign = 1.0
+    return float(unsigned * sign)
+
+
+def _wuji_direct_palm_frame(keypoints):
+    wrist = keypoints[0]
+    index_mcp = keypoints[5]
+    middle_mcp = keypoints[9]
+    pinky_mcp = keypoints[17]
+
+    lateral = _unit_vector(index_mcp - pinky_mcp, fallback=np.array([1.0, 0.0, 0.0]))
+    forward = _unit_vector(middle_mcp - wrist, fallback=np.array([0.0, 1.0, 0.0]))
+    normal = _unit_vector(np.cross(lateral, forward), fallback=np.array([0.0, 0.0, 1.0]))
+    forward = _unit_vector(np.cross(normal, lateral), fallback=forward)
+    return lateral, forward, normal
+
+
+def _resolve_wuji_direct_limits(is_right=True):
+    side = "right" if is_right else "left"
+    if side in _WUJI_JOINT_LIMITS:
+        return _WUJI_JOINT_LIMITS[side]
+
+    lower = []
+    upper = []
+    urdf_path = (
+        _WUJI_THIRDPARTY_ROOT
+        / "wuji_retargeting"
+        / "wuji-description"
+        / "hand"
+        / "body"
+        / "urdf"
+        / f"{side}.urdf"
+    )
+    try:
+        import xml.etree.ElementTree as ET
+
+        root = ET.parse(urdf_path).getroot()
+        for joint in root.findall("joint"):
+            if joint.get("type") == "fixed":
+                continue
+            limit = joint.find("limit")
+            if limit is None:
+                continue
+            lower.append(float(limit.get("lower")))
+            upper.append(float(limit.get("upper")))
+    except Exception:
+        lower = []
+        upper = []
+
+    if len(lower) != 20 or len(upper) != 20:
+        limits = (_WUJI_DIRECT_FALLBACK_LOWER, _WUJI_DIRECT_FALLBACK_UPPER)
+    else:
+        limits = (
+            np.asarray(lower, dtype=np.float32),
+            np.asarray(upper, dtype=np.float32),
+        )
+    _WUJI_JOINT_LIMITS[side] = limits
+    return limits
+
+
+def _wuji_direct_non_thumb_angles(keypoints, finger_indices, normal):
+    mcp, pip, dip, tip = [keypoints[i] for i in finger_indices]
+    base_dir = _project_to_plane(mcp - keypoints[0], normal)
+    prox = pip - mcp
+    mid = dip - pip
+    distal = tip - dip
+
+    base_dir = _unit_vector(base_dir, fallback=prox)
+    side_axis = _unit_vector(np.cross(normal, base_dir), fallback=np.array([1.0, 0.0, 0.0]))
+    prox_in_flex_plane = prox - np.dot(prox, side_axis) * side_axis
+
+    abduction = _signed_angle_between(
+        _project_to_plane(base_dir, normal),
+        _project_to_plane(prox, normal),
+        normal,
+    )
+    pip_flex = _angle_between(prox, mid)
+    dip_flex = _angle_between(mid, distal)
+    geometric_mcp_flex = _angle_between(base_dir, prox_in_flex_plane)
+    mcp_flex = max(geometric_mcp_flex, _WUJI_DIRECT_MCP_FROM_PIP_BLEND * pip_flex)
+    mcp_flex *= _WUJI_DIRECT_MCP_FLEX_GAIN
+    return np.array([mcp_flex, abduction, pip_flex, dip_flex], dtype=np.float32)
+
+
+def _wuji_direct_thumb_angles(keypoints, forward, normal):
+    cmc, mcp, ip, tip = [keypoints[i] for i in _WUJI_DIRECT_FINGERS[0]]
+    wrist = keypoints[0]
+    metacarpal = mcp - cmc
+    proximal = ip - mcp
+    distal = tip - ip
+
+    thumb_plane = _project_to_plane(metacarpal, normal)
+    opposition = abs(_signed_angle_between(forward, thumb_plane, normal))
+    cmc_flex = _angle_between(cmc - wrist, metacarpal)
+    mcp_flex = _angle_between(metacarpal, proximal)
+    ip_flex = _angle_between(proximal, distal)
+    opposition *= _WUJI_DIRECT_THUMB_OPPOSITION_GAIN
+    return np.array([cmc_flex, opposition, mcp_flex, ip_flex], dtype=np.float32)
+
+
+def _wuji_direct_from_mediapipe(keypoints, is_right=True):
+    if keypoints.shape != (21, 3) or not np.all(np.isfinite(keypoints)):
+        return None
+
+    _, forward, normal = _wuji_direct_palm_frame(keypoints)
+    angles = np.zeros((5, 4), dtype=np.float32)
+    angles[0] = _wuji_direct_thumb_angles(keypoints, forward, normal)
+    for finger_id, finger_indices in enumerate(_WUJI_DIRECT_FINGERS[1:], start=1):
+        angles[finger_id] = _wuji_direct_non_thumb_angles(keypoints, finger_indices, normal)
+
+    if not is_right:
+        angles[1:, 1] *= -1.0
+
+    lower, upper = _resolve_wuji_direct_limits(is_right=is_right)
+    return np.clip(angles.reshape(20), lower, upper).astype(np.float32)
+
+
+def _import_wuji_retargeter():
+    candidate_paths = []
+    env_path = os.environ.get("WUJI_RETARGETING_PATH")
+    if env_path:
+        candidate_paths.append(Path(env_path))
+    candidate_paths.append(_WUJI_THIRDPARTY_ROOT)
+
+    for path in reversed(candidate_paths):
+        if path.exists() and str(path) not in sys.path:
+            sys.path.insert(0, str(path))
+
+    try:
+        from wuji_retargeting import Retargeter
+        return Retargeter
+    except ImportError as exc:
+        raise RuntimeError(
+            "wuji hand retargeting requires wuji_retargeting and its dependencies. "
+            "Use thirdparty/wuji-retargeting, set WUJI_RETARGETING_PATH if needed, "
+            f"and make sure optimizer dependencies are available: {exc}"
+        ) from exc
+
+
+def _resolve_wuji_config_path(side):
+    side = side.lower()
+    direct_env = os.environ.get(f"WUJI_RETARGET_CONFIG_{side.upper()}") or os.environ.get("WUJI_RETARGET_CONFIG")
+    if direct_env:
+        path = Path(direct_env)
+        if path.exists():
+            return str(path)
+        raise FileNotFoundError(f"Wuji retarget config not found: {path}")
+
+    candidate_dirs = []
+    config_dir = os.environ.get("WUJI_RETARGET_CONFIG_DIR")
+    if config_dir:
+        candidate_dirs.append(Path(config_dir))
+
+    env_path = os.environ.get("WUJI_RETARGETING_PATH")
+    if env_path:
+        candidate_dirs.append(Path(env_path) / "example" / "config")
+
+    candidate_dirs.append(_WUJI_THIRDPARTY_ROOT / "example" / "config")
+
+    for cfg_dir in candidate_dirs:
+        path = cfg_dir / f"retarget_manus_{side}.yaml"
+        if path.exists():
+            return str(path)
+
+    raise FileNotFoundError(
+        f"Could not find retarget_manus_{side}.yaml. "
+        "Set WUJI_RETARGET_CONFIG_DIR or WUJI_RETARGET_CONFIG."
+    )
+
+
+def _get_wuji_retargeter(is_right=True):
+    side = "right" if is_right else "left"
+    config_path = _resolve_wuji_config_path(side)
+    key = (side, config_path)
+
+    if key not in _WUJI_RETARGETERS:
+        Retargeter = _import_wuji_retargeter()
+        _WUJI_RETARGETERS[key] = Retargeter.from_yaml(config_path, side)
+
+    return _WUJI_RETARGETERS[key]
+
+
+def wuji(hand_pose_frame, is_right=True, scale=1.0):
+    keypoints = _to_wuji_mediapipe(hand_pose_frame)
+    if keypoints is None:
+        return None
+    keypoints = _scale_keypoints_about_wrist(keypoints, scale)
+
+    retargeter = _get_wuji_retargeter(is_right=is_right)
+    return np.asarray(retargeter.retarget(keypoints), dtype=np.float32)
+
+
+def wuji_direct(hand_pose_frame, is_right=True, scale=1.0):
+    keypoints = _to_wuji_mediapipe(hand_pose_frame)
+    if keypoints is None:
+        return None
+    keypoints = _scale_keypoints_about_wrist(keypoints, scale)
+    return _wuji_direct_from_mediapipe(keypoints, is_right=is_right)
+
+
+def wuji_hybrid(hand_pose_frame, is_right=True, scale=1.0):
+    keypoints = _to_wuji_mediapipe(hand_pose_frame)
+    if keypoints is None:
+        return None
+    keypoints = _scale_keypoints_about_wrist(keypoints, scale)
+
+    direct_action = _wuji_direct_from_mediapipe(keypoints, is_right=is_right)
+    if direct_action is None:
+        return None
+
+    retargeter = _get_wuji_retargeter(is_right=is_right)
+    opt_action = np.asarray(retargeter.retarget(keypoints), dtype=np.float32)
+    if opt_action.shape != (20,) or not np.all(np.isfinite(opt_action)):
+        return direct_action
+
+    action = direct_action.copy()
+    action[:4] = opt_action[:4]
+    return action
+
+
 def allegro(hand_pose_frame):
     hand_joint_angle = np.zeros((20,3))
     allegro_angles = np.zeros(16)
@@ -84,7 +563,7 @@ def inspire(hand_pose_frame):
                 inspire_angles[4] = np.arccos(-tip_direction[1]) * 2000 - 1000 # no divide by pi for better range
             else:
                 inspire_angles[5] = 0
-                inspire_angles[4] = np.arcsin(-tip_direction[2]) / np.pi * 2000  * 3.5 - 1000
+                inspire_angles[4] = np.arcsin(-tip_direction[2]) / np.pi * 2000  * 3.8 - 1000
     # print(inspire_angles)
     return inspire_angles
 
@@ -208,6 +687,25 @@ def inspire_f1(hand_pose_frame: Dict[str, np.ndarray], is_right: bool = True):
     inspire_angles[4] = np.clip(inspire_angles[4], 1100, 1350)
 
     return inspire_angles
+
+
+def robotiq_2f85(hand_pose_frame: Dict[str, np.ndarray]):
+    required = ["thumb_distal", "index_distal"]
+    if any(k not in hand_pose_frame for k in required):
+        return None
+
+    thumb_tip = hand_pose_frame["thumb_distal"][:3, 3]
+    index_tip = hand_pose_frame["index_distal"][:3, 3]
+    pinch_distance = np.linalg.norm(thumb_tip - index_tip)
+    if not np.isfinite(pinch_distance):
+        return None
+
+    closed_distance = 0.025
+    open_distance = 0.100
+    close_value = (open_distance - pinch_distance) / (open_distance - closed_distance)
+    close_value = float(np.clip(close_value, 0.0, 1.0))
+
+    return np.asarray([close_value], dtype=np.float64)
 
 
 

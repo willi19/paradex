@@ -10,7 +10,6 @@ from paradex.dataset_acqusition.capture import CaptureSession
 from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.calibration.utils import save_current_camparam, save_current_C2R
 
-import json
 
 parser = argparse.ArgumentParser()
 
@@ -22,6 +21,12 @@ parser.add_argument('--name', type=str)
 # parser.add_argument('--capture_root', default="eccv2026/hand_taeyun")
 parser.add_argument('--capture_root', default="temp_22/")
 parser.add_argument('--realsense', action='store_true')
+parser.add_argument('--human_tactile', '--human-tactile', action='store_true')
+parser.add_argument('--human_tactile_port', '--human-tactile-port', default="/dev/ttyUSB0")
+parser.add_argument('--human_tactile_baud_rate', '--human-tactile-baud-rate', type=int, default=115200)
+parser.add_argument('--human_tactile_reset_wait', '--human-tactile-reset-wait', type=float, default=2.0)
+parser.add_argument('--human_tactile_plot_refresh_interval', '--human-tactile-plot-refresh-interval', type=float, default=0.02)
+parser.add_argument('--human_tactile_plot_max_samples', '--human-tactile-plot-max-samples', type=int, default=200)
 
 args = parser.parse_args()
 
@@ -32,7 +37,14 @@ exit_event = Event()
 listen_keyboard({"c": save_event, "q": exit_event, "s": stop_event})
 cs = CaptureSession(
     camera=True,
-    realsense=args.realsense
+    realsense=args.realsense,
+    human_tactile=args.human_tactile,
+    human_tactile_port=args.human_tactile_port,
+    human_tactile_baud_rate=args.human_tactile_baud_rate,
+    human_tactile_reset_wait=args.human_tactile_reset_wait,
+    human_tactile_plot_realtime=args.human_tactile,
+    human_tactile_plot_refresh_interval=args.human_tactile_plot_refresh_interval,
+    human_tactile_plot_max_samples=args.human_tactile_plot_max_samples,
 )
 
 name = args.name
@@ -41,51 +53,51 @@ name = args.name
 # last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.capture_root, args.hand_side, name)))
 last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.capture_root, args.hand_side, name)))
 
-while not exit_event.is_set():
-    if not save_event.is_set():
+try:
+    while not exit_event.is_set():
+        if not save_event.is_set():
+            stop_event.clear()
+            time.sleep(0.02)
+            continue
+
+        # index = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        last_idx += 1
+        save_path = os.path.join("capture", args.capture_root, args.hand_side, name, str(last_idx))
+        cs.start(save_path)
+        # cs.start(os.path.join(name, str(last_idx)))
+
+        print("Starting new recording session:", name)
+        while not stop_event.is_set() and not exit_event.is_set():
+            time.sleep(0.02)
+
+        cs.stop()
+
+        save_current_C2R(os.path.join(shared_dir, save_path))
+
+        print("Stopped recording session:", name)
+
+        save_event.clear()
         stop_event.clear()
-        continue
-    
-    
-    # index = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-    last_idx += 1
-    save_path = os.path.join("capture", args.capture_root, args.hand_side, name, str(last_idx))
-    cs.start(save_path)
-    # cs.start(os.path.join(name, str(last_idx)))
 
-    print("Starting new recording session:", name)
-    while not stop_event.is_set() and not exit_event.is_set():
-        time.sleep(0.02)
-        
-    cs.stop()
+        # print("Press Enter")
 
-    save_current_C2R(os.path.join(shared_dir, save_path))
-    
-    
-    
-    print("Stopped recording session:", name)
+        # paired_robot_episode = int(input(f"Enter the episode number of paired robot sequence for {args.name}: "))
 
-    save_event.clear()
-    stop_event.clear()
-    
-    # print("Press Enter")
-    
-    # paired_robot_episode = int(input(f"Enter the episode number of paired robot sequence for {args.name}: "))
+        # paired_info_json_path = os.path.join(shared_dir, save_path, "paired_robot_episode.json")
 
-        
-    # paired_info_json_path = os.path.join(shared_dir, save_path, "paired_robot_episode.json")
-    
-    # with open(paired_info_json_path, "w") as f:
-    #     json.dump(
-    #         {
-    #             "human hand episode": last_idx,
-    #             "paired robot episode": paired_robot_episode,
-    #         },
-    #         f,
-    #         indent=2,
-    #     )
-        
-    print(f"============== episode {last_idx} done =========================")
+        # with open(paired_info_json_path, "w") as f:
+        #     json.dump(
+        #         {
+        #             "human hand episode": last_idx,
+        #             "paired robot episode": paired_robot_episode,
+        #         },
+        #         f,
+        #         indent=2,
+        #     )
 
-print("Exiting recording.")
-cs.end()
+        print(f"============== episode {last_idx} done =========================")
+finally:
+    print("Exiting recording.")
+    if getattr(cs, "save_path", None) is not None:
+        cs.stop()
+    cs.end()

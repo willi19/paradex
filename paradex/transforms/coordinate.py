@@ -47,6 +47,10 @@ DEVICE2WRIST = {
                         [0, 0, -1, 0.025],
                         [0, 1, 0, 0],
                         [0, 0, 0, 1]]),
+
+    "wuji":np.eye(4),
+    "wuji_direct":np.eye(4),
+    "wuji_hybrid":np.eye(4),
     
     "xsens_left":np.array([[1, 0, 0, 0], 
                              [0, -1, 0, 0],

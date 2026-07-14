@@ -2,7 +2,17 @@ from functools import partial
 
 import numpy as np
 from paradex.transforms.coordinate import DEVICE2WRIST,  DEVICE2GLOBAL
-from paradex.retargetor.hand_regargetor import allegro_v5, inspire, allegro, inspire_f1, kistar
+from paradex.retargetor.hand_regargetor import (
+    allegro_v5,
+    inspire,
+    allegro,
+    inspire_f1,
+    kistar,
+    robotiq_2f85,
+    wuji,
+    wuji_direct,
+    wuji_hybrid,
+)
 
 _HAND_RETARGETORS = {
     "inspire": inspire,
@@ -10,15 +20,21 @@ _HAND_RETARGETORS = {
     "inspire_f1": inspire_f1,
     "kistar": kistar,
     "allegro_v5": allegro_v5,
+    "robotiq_2f85": robotiq_2f85,
+    "wuji": wuji,
+    "wuji_direct": wuji_direct,
+    "wuji_hybrid": wuji_hybrid,
 }
 
 
-def _resolve_hand(name, is_right=True):
+def _resolve_hand(name, is_right=True, scale=1.0):
     if name is None:
         return None
     if name not in _HAND_RETARGETORS:
         raise ValueError(f"Invalid hand name: {name}")
     fn = _HAND_RETARGETORS[name]
+    if name in ("wuji", "wuji_direct", "wuji_hybrid"):
+        return partial(fn, is_right=is_right, scale=scale)
     if name == "inspire_f1":
         return partial(fn, is_right=is_right)
     return fn
@@ -26,11 +42,14 @@ def _resolve_hand(name, is_right=True):
 
 class Retargetor(): # Input is only from Xsens
     def __init__(self, arm_name=None, hand_name=None, hand_side="Right",
-                 hand_name_left=None, hand_name_right=None):
+                 hand_name_left=None, hand_name_right=None, hand_scale=1.0):
         self.arm_name = arm_name
         self.hand_name = hand_name
         self.hand_name_left = hand_name_left
         self.hand_name_right = hand_name_right
+        self.hand_scale = float(hand_scale)
+        if not np.isfinite(self.hand_scale) or self.hand_scale <= 0.0:
+            raise ValueError(f"hand_scale must be a positive finite number, got {hand_scale}")
 
         if arm_name not in [None, "xarm", "franka"]:
             raise ValueError("Invalid arm name")
@@ -43,12 +62,22 @@ class Retargetor(): # Input is only from Xsens
             left = hand_name_left if hand_name_left is not None else hand_name
             right = hand_name_right if hand_name_right is not None else hand_name
             self.hand_retargetor = {
-                "Left": _resolve_hand(left, is_right=False),
-                "Right": _resolve_hand(right, is_right=True),
+                "Left": _resolve_hand(
+                    left,
+                    is_right=False,
+                    scale=self.hand_scale,
+                ),
+                "Right": _resolve_hand(
+                    right,
+                    is_right=True,
+                    scale=self.hand_scale,
+                ),
             }
         else:
             self.hand_retargetor = _resolve_hand(
-                hand_name, is_right=(self.hand_side != "Left")
+                hand_name,
+                is_right=(self.hand_side != "Left"),
+                scale=self.hand_scale,
             )
 
         if self.hand_side == "Bimanual":

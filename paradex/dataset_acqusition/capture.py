@@ -7,15 +7,22 @@ import chime
 chime.theme('pokemon')
 
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
-from paradex.io.camera_system.realsense_controller import realsense_controller
 from paradex.io.camera_system.signal_generator import UTGE900
 from paradex.io.camera_system.timestamp_monitor import TimestampMonitor
 from paradex.io.robot_controller import get_arm, get_hand
+from paradex.io.tactile import HumanTactileRecorder
 from paradex.utils.path import shared_dir
 from paradex.retargetor.state import HandStateExtractor
 from paradex.retargetor.unimanual import Retargetor
 from paradex.calibration.utils import save_current_camparam, save_current_C2R
 from paradex.utils.system import network_info
+
+
+def _normalize_optional_name(name):
+    if name is not None and isinstance(name, str) and name.strip().lower() in ("", "none", "null"):
+        return None
+    return name
+
 
 class CaptureSession():
     def __init__(
@@ -33,8 +40,22 @@ class CaptureSession():
         realsense=False,
         arm_kwargs=None,
         camera_pc_list=None,
+        hand_scale=1.0,
+        human_tactile=False,
+        human_tactile_port="/dev/ttyUSB0",
+        human_tactile_baud_rate=115200,
+        human_tactile_reset_wait=2.0,
+        human_tactile_plot_realtime=False,
+        human_tactile_plot_refresh_interval=0.02,
+        human_tactile_plot_max_samples=200,
     ):
+        arm = _normalize_optional_name(arm)
+        hand = _normalize_optional_name(hand)
+        hand_left = _normalize_optional_name(hand_left)
+        hand_right = _normalize_optional_name(hand_right)
+
         if realsense:
+            from paradex.io.camera_system.realsense_controller import realsense_controller
             self.realsense = realsense_controller()
         else:
             self.realsense = None
@@ -106,7 +127,12 @@ class CaptureSession():
         else:
             if hand is not None:
                 self.hand_name = hand
-                self.hand = get_hand(hand_name=hand, tactile=tactile, ip=ip)
+                self.hand = get_hand(
+                    hand_name=hand,
+                    tactile=tactile,
+                    ip=ip,
+                    hand_side=self.hand_side.lower(),
+                )
 
         
 
@@ -127,11 +153,24 @@ class CaptureSession():
                     hand_side=self.hand_side,
                     hand_name_left=self.hand_name_left,
                     hand_name_right=self.hand_name_right,
+                    hand_scale=hand_scale,
                 )
                 self.state_extractor = HandStateExtractor()
 
         else:
             self.teleop_device = None
+
+        self.human_tactile = None
+        if human_tactile:
+            self.human_tactile = HumanTactileRecorder(
+                port=human_tactile_port,
+                baud_rate=human_tactile_baud_rate,
+                reset_wait=human_tactile_reset_wait,
+                plot_realtime=human_tactile_plot_realtime,
+                plot_refresh_interval=human_tactile_plot_refresh_interval,
+                plot_max_samples=human_tactile_plot_max_samples,
+            )
+            self.human_tactile.connect()
             
         self.save_path = None
             
@@ -139,6 +178,9 @@ class CaptureSession():
         print("Starting new capture session, saving to:", save_path)
         self.save_path = save_path
         os.makedirs(os.path.join(shared_dir, save_path, "raw"), exist_ok=True)
+
+        if self.human_tactile is not None:
+            self.human_tactile.start(os.path.join(shared_dir, save_path, "raw", "human_tactile"))
         
         if self.arm is not None:
             self.arm.start(os.path.join(shared_dir, save_path, "raw", "arm"))
@@ -188,6 +230,9 @@ class CaptureSession():
             self.hand_left.stop()
         if self.hand_right is not None:
             self.hand_right.stop()
+
+        if self.human_tactile is not None:
+            self.human_tactile.stop()
                 
         if self.teleop_device is not None:
             self.teleop_device.stop()
@@ -239,6 +284,8 @@ class CaptureSession():
             self.sync_generator.end()
         if self.realsense is not None:
             self.realsense.end()
+        if self.human_tactile is not None:
+            self.human_tactile.close()
     
     def teleop(self, session_events=None, state_policy="gesture_control", loop_callback=None):
         if self.teleop_device is None:

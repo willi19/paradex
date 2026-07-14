@@ -78,8 +78,11 @@ continue to come from [`system/current/camera.json`](../../system/current/camera
 Keep the management NIC separate. Each physical camera NIC needs a permanent
 `X.Y.Z.1/24` address and should normally carry one camera. Your existing
 `11.0.1.1/24`, `11.0.2.1/24`, ... layout is valid and does **not** need to be
-renumbered to `192.168.*`. The agent returns a camera that power-cycled to a
-link-local address to the subnet of its physical NIC via GVCP ForceIP.
+renumbered to `192.168.*`. The agent also accepts this legacy `11.0.X.1`
+layout if the OS currently reports a broader netmask, treating each physical
+camera link as `11.0.X.0/24`; using `/24` in the OS network configuration is
+still preferred. The agent returns a camera that power-cycled to a link-local
+address to the subnet of its physical NIC via GVCP ForceIP.
 
 Example netplan stanza; substitute the real interface and subnet:
 

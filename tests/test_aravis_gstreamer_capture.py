@@ -9,6 +9,7 @@ from paradex.io.camera_system.aravis_addressing import (
     CameraAddressing,
     CameraRecord,
     NicSubnet,
+    _camera_subnet,
     gvcp_forceip_packet,
 )
 from paradex.io.camera_system.aravis_gstreamer import (
@@ -87,6 +88,16 @@ class AravisCaptureTests(unittest.TestCase):
         plan = addressing._plan_force_ips()
 
         self.assertEqual(plan["cam-a"], (right, "11.0.2.100"))
+
+    def test_legacy_11_network_uses_its_physical_link_as_a_24(self):
+        subnet = _camera_subnet(
+            "enp5s0", "11.0.3.1", 16, explicitly_selected=False
+        )
+
+        self.assertEqual(
+            subnet,
+            NicSubnet("enp5s0", "11.0.3.1", ipaddress.ip_network("11.0.3.0/24")),
+        )
 
     def test_trigger_features_rearm_line0_after_caps_negotiation(self):
         settings = AravisGStreamerSettings(trigger_source="Line0", trigger_activation="RisingEdge")

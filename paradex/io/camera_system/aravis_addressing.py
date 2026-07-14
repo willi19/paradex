@@ -101,13 +101,55 @@ def _load_iproute():
     return IPRoute
 
 
+def _camera_subnet(
+    name: str,
+    host_ip: str,
+    prefixlen: int,
+    *,
+    explicitly_selected: bool,
+) -> Optional[NicSubnet]:
+    """Build the camera's intended /24 subnet from a NIC address.
+
+    The deployed Paradex rigs historically use ``11.0.<nic>.1``. Some hosts
+    use a broad legacy netmask even though each physical camera link is a
+    separate /24. Explicitly selected NICs and that legacy layout are thus
+    interpreted as their containing /24. Other inferred addresses stay strict
+    to avoid accepting Docker, VPN, or lab interfaces as camera NICs.
+    """
+
+    try:
+        address = ipaddress.IPv4Address(host_ip)
+    except ipaddress.AddressValueError:
+        return None
+    if address.is_loopback or address.is_link_local or int(address.packed[-1]) != 1:
+        return None
+
+    if prefixlen == 24:
+        network = ipaddress.ip_network("{}/24".format(address), strict=False)
+    elif explicitly_selected or (address.packed[0] == 11 and address.packed[1] == 0):
+        network = ipaddress.ip_network("{}/24".format(address), strict=False)
+        log.warning(
+            "Camera NIC %s is configured as %s/%s; using %s for its dedicated "
+            "camera link. Configure it as /24 when practical.",
+            name,
+            address,
+            prefixlen,
+            network,
+        )
+    else:
+        return None
+
+    return NicSubnet(name=name, host_ip=str(address), network=network)
+
+
 def discover_camera_nics() -> List[NicSubnet]:
     """Return dedicated camera NICs without imposing an address range.
 
-    A camera NIC is an IPv4 ``/24`` address ending in ``.1`` that is not on
-    the host's default route. ``PARADEX_CAMERA_NICS=nic0,nic1`` is the
-    preferred explicit override; it avoids relying on inference when a host
-    also has Docker, VPN, or lab networks with the same address convention.
+    A camera NIC is normally an IPv4 ``/24`` address ending in ``.1`` that is
+    not on the host's default route. The existing Paradex ``11.0.<nic>.1``
+    layout is also accepted when it has a broad legacy netmask; each physical
+    link is treated as its own /24. Set ``PARADEX_CAMERA_NICS=nic0,nic1`` to
+    select NICs explicitly and avoid Docker/VPN/lab-network inference.
     """
 
     IPRoute = _load_iproute()
@@ -125,21 +167,23 @@ def discover_camera_nics() -> List[NicSubnet]:
             if route.get_attr("RTA_OIF") is not None
         }
         for address in ipr.get_addr(family=socket.AF_INET):
-            if address["prefixlen"] != 24:
+            name = link_names.get(address["index"])
+            if not name or (requested_names and name not in requested_names):
                 continue
             host_ip = address.get_attr("IFA_ADDRESS")
             if not host_ip:
                 continue
-            interface = ipaddress.IPv4Interface("{}/24".format(host_ip))
-            if interface.ip.is_loopback or interface.ip.is_link_local:
+            explicitly_selected = name in requested_names
+            if address["index"] in default_route_indices and not explicitly_selected:
                 continue
-            if int(interface.ip.packed[-1]) != 1:
-                continue
-            if address["index"] in default_route_indices:
-                continue
-            name = link_names.get(address["index"])
-            if name and (not requested_names or name in requested_names):
-                nics.append(NicSubnet(name=name, host_ip=host_ip, network=interface.network))
+            subnet = _camera_subnet(
+                name,
+                host_ip,
+                address["prefixlen"],
+                explicitly_selected=explicitly_selected,
+            )
+            if subnet is not None:
+                nics.append(subnet)
     return sorted(nics, key=lambda nic: nic.name)
 
 

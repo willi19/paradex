@@ -396,6 +396,27 @@ class AravisGStreamerCamera:
         )
         self._aravis_stream = stream
 
+    def prepare_hardware(self, fps: int = 30, sync_mode: bool = True) -> None:
+        """Configure and retain the camera/stream for the daemon lifetime."""
+
+        with self._lock:
+            if self._aravis_camera is not None and self._aravis_stream is not None:
+                return
+            self._state = "PREPARING_HARDWARE"
+            try:
+                self._aravis, self._aravis_camera = self._configure_camera(
+                    fps, sync_mode
+                )
+                self._create_aravis_stream()
+                self._fps = fps
+                self._sync_mode = sync_mode
+                self._state = "PREPARED"
+            except Exception as exc:
+                self._last_error = str(exc)
+                self._state = "ERROR"
+                self._teardown_pipeline(release_hardware=True)
+                raise
+
     def _stream_frames(self) -> None:
         assert self._aravis_stream is not None
         assert self._appsrc is not None
@@ -432,6 +453,20 @@ class AravisGStreamerCamera:
             self._last_error = str(exc)
             self._state = "ERROR"
             log.exception("Camera %s stream loop failed", self.name)
+
+    def _drain_aravis_output(self) -> None:
+        """Return completed buffers left over from the previous session."""
+
+        if self._aravis_stream is None:
+            return
+        try_pop = getattr(self._aravis_stream, "try_pop_buffer", None)
+        if try_pop is None:
+            return
+        while True:
+            buffer = try_pop()
+            if buffer is None:
+                return
+            self._aravis_stream.push_buffer(buffer)
 
     def _raise_if_bus_error(self, timeout_seconds: float = 0.0) -> None:
         if self._pipeline is None or self._gst is None:
@@ -485,14 +520,13 @@ class AravisGStreamerCamera:
             with self._frame_count_lock:
                 self._frame_count = 0
             try:
-                self._aravis, self._aravis_camera = self._configure_camera(fps, sync_mode)
-                self._create_aravis_stream()
+                self.prepare_hardware(fps, sync_mode)
                 self._pipeline = self._build_pipeline(save_path, fps, sync_mode)
                 self._state = "PREPARED"
             except Exception as exc:
                 self._last_error = str(exc)
                 self._state = "ERROR"
-                self._teardown_pipeline()
+                self._teardown_pipeline(release_hardware=False)
                 raise
 
     def start_prepared(self) -> None:
@@ -531,6 +565,7 @@ class AravisGStreamerCamera:
             assert self._aravis_camera is not None
             self._stream_stop.clear()
             self._first_timestamp_ns = None
+            self._drain_aravis_output()
             self._aravis_camera.start_acquisition()
             self._stream_thread = threading.Thread(
                 target=self._stream_frames,
@@ -553,7 +588,7 @@ class AravisGStreamerCamera:
         with self._lock:
             self._teardown_pipeline()
             if self._state != "ERROR":
-                self._state = "READY"
+                self._state = "PREPARED"
 
     def wait_for_first_frame(self, timeout_seconds: Optional[float] = None) -> None:
         """Fail START unless a hardware-triggered frame actually arrives."""
@@ -577,7 +612,7 @@ class AravisGStreamerCamera:
             )
         )
 
-    def _teardown_pipeline(self) -> None:
+    def _teardown_pipeline(self, release_hardware: bool = False) -> None:
         self._stream_stop.set()
         if self._aravis_camera is not None:
             try:
@@ -587,25 +622,29 @@ class AravisGStreamerCamera:
         if self._stream_thread is not None:
             self._stream_thread.join(timeout=2.0)
         self._stream_thread = None
+        self._drain_aravis_output()
         if self._pipeline is not None and self._gst is not None:
             self._pipeline.set_state(self._gst.State.NULL)
         self._pipeline = None
         self._appsrc = None
-        self._aravis_stream = None
-        self._aravis_camera = None
-        self._aravis = None
+        if release_hardware:
+            self._aravis_stream = None
+            self._aravis_camera = None
+            self._aravis = None
 
     def stop(self) -> None:
         with self._lock:
             if self._pipeline is None:
                 if self._state != "ERROR":
-                    self._state = "READY"
+                    self._state = (
+                        "PREPARED" if self._aravis_stream is not None else "READY"
+                    )
                 return
             if self._state == "ERROR":
                 # The bus/stream error is already recorded and reported by
                 # validate/heartbeat. Do not obscure it with a second EOS
                 # finalization failure during rollback.
-                self._teardown_pipeline()
+                self._teardown_pipeline(release_hardware=False)
                 return
             self._state = "STOPPING"
             try:
@@ -628,18 +667,19 @@ class AravisGStreamerCamera:
                     raise AravisGStreamerError(
                         "GStreamer failed while finalizing {}: {} ({})".format(self.name, error, debug)
                     )
-                self._state = "READY"
+                self._state = "PREPARED"
             except Exception as exc:
                 self._last_error = str(exc)
                 self._state = "ERROR"
                 raise
             finally:
-                self._teardown_pipeline()
+                self._teardown_pipeline(release_hardware=False)
 
     def end(self) -> None:
         try:
             self.stop()
         finally:
+            self._teardown_pipeline(release_hardware=True)
             self._state = "STOPPED"
 
     def get_error(self) -> Tuple[bool, Tuple[Optional[str], Optional[str]]]:
@@ -671,6 +711,7 @@ class AravisGStreamerCameraLoader:
         addressing: Optional[CameraAddressing] = None,
         camera_factory: Optional[Callable[[str], AravisGStreamerCamera]] = None,
         reconcile_addresses: bool = True,
+        prewarm_hardware: bool = True,
     ) -> None:
         self.settings = settings or AravisGStreamerSettings.from_environment()
         self.camera_names = [str(serial) for serial in (serial_list or get_camera_list())]
@@ -713,6 +754,13 @@ class AravisGStreamerCameraLoader:
             )
         self.cameralist = [camera_factory(serial) for serial in self.camera_names]
         self._capture_active = False
+        # Match the legacy PySpin CameraLoader: camera connections and receive
+        # buffers are established once at daemon boot, not once per capture.
+        if prewarm_hardware:
+            for camera in self.cameralist:
+                prepare_hardware = getattr(camera, "prepare_hardware", None)
+                if prepare_hardware is not None:
+                    prepare_hardware(fps=30, sync_mode=True)
         self._print_loaded_cameras()
 
     def _print_loaded_cameras(self) -> None:

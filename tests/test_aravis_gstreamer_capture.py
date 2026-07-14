@@ -39,6 +39,9 @@ class FakeCamera:
         if self.fail_start:
             raise RuntimeError("synthetic start failure")
 
+    def prepare_hardware(self, fps=30, sync_mode=True):
+        self.calls.append(("prepare_hardware", fps, sync_mode))
+
     def prepare(self, mode, sync_mode, save_path, fps):
         self.calls.append(("prepare", mode, sync_mode, save_path, fps))
         if self.fail_start:
@@ -237,6 +240,10 @@ class AravisCaptureTests(unittest.TestCase):
             camera_caps(settings, 30, True),
             "video/x-bayer,format=rggb,width=2048,height=1536,framerate=30/1",
         )
+        self.assertEqual(
+            camera_caps(settings, 30, False),
+            "video/x-bayer,format=rggb,width=2048,height=1536,framerate=30/1",
+        )
 
     def test_direct_aravis_stream_uses_reusable_buffers_and_continuous_mode(self):
         settings = AravisGStreamerSettings(aravis_buffer_count=4)
@@ -255,10 +262,50 @@ class AravisCaptureTests(unittest.TestCase):
         self.assertEqual(session.create_args, (None, None))
         self.assertEqual(session.stream.buffers, [("buffer", 8192)] * 4)
         self.assertEqual(session.mode, "continuous")
-        self.assertEqual(
-            camera_caps(settings, 30, False),
-            "video/x-bayer,format=rggb,width=2048,height=1536,framerate=30/1",
+
+    def test_session_teardown_retains_prepared_aravis_hardware(self):
+        camera = AravisGStreamerCamera(
+            "cam-a", camera_config={"cam-a": {}}, device_id="device-a"
         )
+        aravis = object()
+        session = object()
+        stream = object()
+        camera._aravis = aravis
+        camera._aravis_camera = session
+        camera._aravis_stream = stream
+
+        camera._teardown_pipeline(release_hardware=False)
+
+        self.assertIs(camera._aravis, aravis)
+        self.assertIs(camera._aravis_camera, session)
+        self.assertIs(camera._aravis_stream, stream)
+
+        camera._teardown_pipeline(release_hardware=True)
+        self.assertIsNone(camera._aravis)
+        self.assertIsNone(camera._aravis_camera)
+        self.assertIsNone(camera._aravis_stream)
+
+    def test_drain_returns_completed_buffers_before_next_session(self):
+        class FakeStream:
+            def __init__(self):
+                self.completed = ["old-a", "old-b"]
+                self.returned = []
+
+            def try_pop_buffer(self):
+                return self.completed.pop(0) if self.completed else None
+
+            def push_buffer(self, buffer):
+                self.returned.append(buffer)
+
+        camera = AravisGStreamerCamera(
+            "cam-a", camera_config={"cam-a": {}}, device_id="device-a"
+        )
+        stream = FakeStream()
+        camera._aravis_stream = stream
+
+        camera._drain_aravis_output()
+
+        self.assertEqual(stream.returned, ["old-a", "old-b"])
 
     def test_hardware_sync_configuration_matches_paraoffice_feature_order(self):
         device = object()
@@ -373,15 +420,15 @@ class AravisCaptureTests(unittest.TestCase):
                 loader.start("video", True, "dataset/session/raw", 30)
 
             self.assertEqual(
-                cameras["cam-a"].calls[0],
+                cameras["cam-a"].calls[1],
                 ("prepare", "video", True, str(Path(capture_roots[0]) / "dataset/session/raw/videos/cam-a.avi"), 30),
             )
             self.assertEqual(
-                cameras["cam-b"].calls[0],
+                cameras["cam-b"].calls[1],
                 ("prepare", "video", True, str(Path(capture_roots[1]) / "dataset/session/raw/videos/cam-b.avi"), 30),
             )
             self.assertEqual(
-                cameras["cam-c"].calls[0],
+                cameras["cam-c"].calls[1],
                 ("prepare", "video", True, str(Path(capture_roots[0]) / "dataset/session/raw/videos/cam-c.avi"), 30),
             )
 
@@ -404,6 +451,7 @@ class AravisCaptureTests(unittest.TestCase):
         loader = AravisGStreamerCameraLoader(
             serial_list=["cam-a"],
             addressing=FakeAddressing(),
+            prewarm_hardware=False,
         )
 
         self.assertEqual(loader.cameralist[0].device_id, "FLIR-Blackfly-S-cam-a")

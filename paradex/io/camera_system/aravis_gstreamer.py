@@ -205,6 +205,15 @@ class AravisGStreamerCamera:
             _write_feature(device, "GevHeartbeatTimeout", self.settings.heartbeat_timeout_ms)
             _write_feature(device, "PixelFormat", self.settings.pixel_format)
             _write_feature(device, "GevSCPSPacketSize", self.settings.packet_size)
+
+            # Keep the exact ParaOffice CameraProgrammer ordering. FLIR makes
+            # several acquisition nodes unavailable while TriggerMode is On.
+            _write_feature(device, "TriggerMode", "Off")
+            _write_feature(device, "TriggerSelector", "FrameStart")
+            _write_feature(device, "TriggerSource", self.settings.trigger_source)
+            _write_feature(device, "TriggerActivation", self.settings.trigger_activation)
+            _write_feature(device, "TriggerOverlap", self.settings.trigger_overlap)
+
             _write_feature(device, "AcquisitionFrameRateEnable", True)
             _write_feature(device, "AcquisitionFrameRate", float(fps))
             _write_feature(device, "ExposureAuto", "Off")
@@ -212,12 +221,7 @@ class AravisGStreamerCamera:
             _write_feature(device, "GainAuto", "Off")
             _write_feature(device, "Gain", gain)
 
-            _write_feature(device, "TriggerMode", "Off")
             if sync_mode:
-                _write_feature(device, "TriggerSelector", "FrameStart")
-                _write_feature(device, "TriggerSource", self.settings.trigger_source)
-                _write_feature(device, "TriggerActivation", self.settings.trigger_activation)
-                _write_feature(device, "TriggerOverlap", self.settings.trigger_overlap)
                 _write_feature(device, "TriggerMode", "On")
         finally:
             del device

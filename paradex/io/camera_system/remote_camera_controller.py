@@ -44,6 +44,7 @@ class remote_camera_controller:
         self._initialization_error = None
         self._command_error = None
         self._last_response: Dict[str, dict] = {}
+        self._last_heartbeat_failures = {}
 
         self.run_thread = threading.Thread(target=self.run, daemon=True)
         self.run_thread.start()
@@ -175,6 +176,9 @@ class remote_camera_controller:
         if failures:
             self.error_event.set()
             self._command_error = "{} failed: {}".format(action, failures)
+            self._last_heartbeat_failures = failures
+        else:
+            self._last_heartbeat_failures = {}
         self.sending_event.set()
 
     def run(self):
@@ -216,10 +220,16 @@ class remote_camera_controller:
                 response = self.send_command(command)
                 if action in ("start", "stop"):
                     self._complete_command(action, response)
-                elif self._failed_responses(response):
-                    self.error_event.set()
-                    for pc, message in self._failed_responses(response).items():
-                        print("{}: {}".format(pc, message))
+                else:
+                    failures = self._failed_responses(response)
+                    if failures:
+                        self.error_event.set()
+                        if failures != self._last_heartbeat_failures:
+                            for pc, message in failures.items():
+                                print("{}: {}".format(pc, message))
+                        self._last_heartbeat_failures = failures
+                    else:
+                        self._last_heartbeat_failures = {}
                 time.sleep(0.1)
         finally:
             try:

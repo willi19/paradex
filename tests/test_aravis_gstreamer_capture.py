@@ -5,7 +5,7 @@ import struct
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from paradex.io.camera_system.aravis_addressing import (
     CameraAddressing,
@@ -17,6 +17,7 @@ from paradex.io.camera_system.aravis_addressing import (
 )
 from paradex.io.camera_system.aravis_gstreamer import (
     AravisGStreamerError,
+    AravisGStreamerCamera,
     AravisGStreamerCameraLoader,
     AravisGStreamerSettings,
     trigger_features,
@@ -150,6 +151,46 @@ class AravisCaptureTests(unittest.TestCase):
             trigger_features(settings, True),
             "TriggerSelector=FrameStart TriggerSource=Line0 "
             "TriggerActivation=RisingEdge TriggerOverlap=ReadOut TriggerMode=On",
+        )
+
+    def test_camera_configuration_uses_paraoffice_feature_order(self):
+        device = object()
+        session = MagicMock()
+        session.get_device.return_value = device
+        aravis = MagicMock()
+        aravis.Camera.new.return_value = session
+        camera = AravisGStreamerCamera(
+            "cam-a",
+            camera_config={"cam-a": {"gain": 1.0, "exposure": 2200.0}},
+            device_id="FLIR-Blackfly-S-cam-a",
+        )
+
+        with patch(
+            "paradex.io.camera_system.aravis_gstreamer._load_aravis",
+            return_value=aravis,
+        ), patch("paradex.io.camera_system.aravis_gstreamer._write_feature") as write:
+            camera._configure_camera(30, True)
+
+        feature_order = [entry.args[1] for entry in write.call_args_list]
+        self.assertEqual(
+            feature_order,
+            [
+                "GevHeartbeatTimeout",
+                "PixelFormat",
+                "GevSCPSPacketSize",
+                "TriggerMode",
+                "TriggerSelector",
+                "TriggerSource",
+                "TriggerActivation",
+                "TriggerOverlap",
+                "AcquisitionFrameRateEnable",
+                "AcquisitionFrameRate",
+                "ExposureAuto",
+                "ExposureTime",
+                "GainAuto",
+                "Gain",
+                "TriggerMode",
+            ],
         )
 
     def test_loader_preserves_existing_avi_output_layout(self):

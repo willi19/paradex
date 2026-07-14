@@ -21,6 +21,7 @@ from paradex.io.camera_system.aravis_gstreamer import (
     AravisGStreamerCameraLoader,
     AravisGStreamerSettings,
     _write_optional_feature,
+    camera_caps,
     trigger_features,
 )
 from paradex.io.camera_system.camera_server_daemon import camera_server_daemon
@@ -45,6 +46,12 @@ class FakeCamera:
 
     def start_prepared(self):
         self.calls.append(("start_prepared",))
+
+    def request_playing(self):
+        self.calls.append(("request_playing",))
+
+    def confirm_playing(self):
+        self.calls.append(("confirm_playing",))
 
     def abort(self):
         self.calls.append(("abort",))
@@ -183,6 +190,18 @@ class AravisCaptureTests(unittest.TestCase):
             trigger_features(settings, True),
             "TriggerSelector=FrameStart TriggerSource=Line0 "
             "TriggerActivation=RisingEdge TriggerOverlap=ReadOut TriggerMode=On",
+        )
+
+    def test_hardware_trigger_caps_omit_free_run_framerate(self):
+        settings = AravisGStreamerSettings()
+
+        self.assertEqual(
+            camera_caps(settings, 30, True),
+            "video/x-bayer,format=rggb,width=2048,height=1536",
+        )
+        self.assertEqual(
+            camera_caps(settings, 30, False),
+            "video/x-bayer,format=rggb,width=2048,height=1536,framerate=30/1",
         )
 
     def test_hardware_sync_configuration_matches_paraoffice_feature_order(self):

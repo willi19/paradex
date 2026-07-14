@@ -216,7 +216,7 @@ class CaptureSession():
                     self._timestamp_monitor_started = True
                 self.sync_generator.start(fps=30)
                 self._sync_generator_started = True
-                self.camera.validate(timeout=5.0)
+                self.camera.validate(timeout=10.0)
             except Exception:
                 try:
                     if self._camera_capture_started:

@@ -51,14 +51,14 @@ class AravisGStreamerSettings:
     bayer_format: str = "rggb"
     pixel_format: str = "BayerRG8"
     packet_size: int = 9000
-    heartbeat_timeout_ms: int = 1500
+    heartbeat_timeout_ms: int = 10000
     trigger_source: str = "Line0"
     trigger_activation: str = "RisingEdge"
     trigger_overlap: str = "ReadOut"
     jpeg_quality: int = 95
     queue_buffers: int = 60
     startup_timeout_seconds: float = 5.0
-    first_frame_timeout_seconds: float = 5.0
+    first_frame_timeout_seconds: float = 10.0
     eos_timeout_seconds: float = 15.0
 
     @classmethod
@@ -69,13 +69,13 @@ class AravisGStreamerSettings:
             bayer_format=os.getenv("PARADEX_BAYER_FORMAT", "rggb"),
             pixel_format=os.getenv("PARADEX_PIXEL_FORMAT", "BayerRG8"),
             packet_size=_env_int("PARADEX_GIGE_PACKET_SIZE", 9000),
-            heartbeat_timeout_ms=_env_int("PARADEX_GIGE_HEARTBEAT_MS", 1500),
+            heartbeat_timeout_ms=_env_int("PARADEX_GIGE_HEARTBEAT_MS", 10000),
             trigger_source=os.getenv("PARADEX_TRIGGER_SOURCE", "Line0"),
             trigger_activation=os.getenv("PARADEX_TRIGGER_ACTIVATION", "RisingEdge"),
             trigger_overlap=os.getenv("PARADEX_TRIGGER_OVERLAP", "ReadOut"),
             jpeg_quality=_env_int("PARADEX_JPEG_QUALITY", 95),
             queue_buffers=_env_int("PARADEX_GST_QUEUE_BUFFERS", 60),
-            first_frame_timeout_seconds=_env_float("PARADEX_FIRST_FRAME_TIMEOUT", 5.0),
+            first_frame_timeout_seconds=_env_float("PARADEX_FIRST_FRAME_TIMEOUT", 10.0),
         )
 
 
@@ -98,6 +98,26 @@ def trigger_features(settings: AravisGStreamerSettings, sync_mode: bool) -> str:
             "TriggerMode=On",
         )
     )
+
+
+def camera_caps(settings: AravisGStreamerSettings, fps: int, sync_mode: bool) -> str:
+    """Build caps without invoking Aravis free-run rate control in HT mode.
+
+    On the deployed Aravis 0.8.20 plugin, a caps framerate makes aravissrc
+    call ``arv_camera_set_frame_rate()``.  That path also calls the
+    USB3Vision-only ``arv_camera_uv_set_usb_mode()`` even for GigE cameras,
+    producing a critical assertion and making each state transition slow.
+    UTG supplies the cadence in sync mode, so no framerate cap is required.
+    """
+
+    base = "video/x-bayer,format={},width={},height={}".format(
+        settings.bayer_format,
+        settings.width,
+        settings.height,
+    )
+    if sync_mode:
+        return base
+    return "{},framerate={}/1".format(base, fps)
 
 
 def _load_gst():
@@ -283,14 +303,7 @@ class AravisGStreamerCamera:
         capsfilter = self._make(Gst, "capsfilter", "caps_{}".format(self.name))
         capsfilter.set_property(
             "caps",
-            Gst.Caps.from_string(
-                "video/x-bayer,format={},width={},height={},framerate={}/1".format(
-                    settings.bayer_format,
-                    settings.width,
-                    settings.height,
-                    fps,
-                )
-            ),
+            Gst.Caps.from_string(camera_caps(settings, fps, sync_mode)),
         )
         raw_queue = self._make(Gst, "queue", "raw_queue_{}".format(self.name))
         raw_queue.set_property("max-size-buffers", settings.queue_buffers)
@@ -418,6 +431,26 @@ class AravisGStreamerCamera:
                 self._state = "ERROR"
                 self._teardown_pipeline()
                 raise
+
+    def request_playing(self) -> None:
+        """Request PLAYING without serializing camera state transitions."""
+
+        with self._lock:
+            if self._pipeline is None or self._state != "PREPARED":
+                raise AravisGStreamerError("Camera {} is not prepared".format(self.name))
+            assert self._gst is not None
+            result = self._pipeline.set_state(self._gst.State.PLAYING)
+            if result == self._gst.StateChangeReturn.FAILURE:
+                self._raise_if_bus_error(0.0)
+                raise AravisGStreamerError(
+                    "GStreamer could not start camera {}".format(self.name)
+                )
+
+    def confirm_playing(self) -> None:
+        with self._lock:
+            self._raise_if_bus_error(0.05)
+            self._started_at = time.time()
+            self._state = "CAPTURING"
 
     def start(self, mode: str, sync_mode: bool, save_path: Optional[str], fps: int) -> None:
         """Compatibility entry point for starting one camera directly."""
@@ -648,8 +681,16 @@ class AravisGStreamerCameraLoader:
         """Open every prepared source immediately before the main-PC UTG starts."""
 
         try:
+            # set_state() can spend significant time in aravissrc caps
+            # negotiation. Request every local pipeline concurrently so the
+            # first source does not hit its no-frame timeout while later
+            # cameras are still opening.
+            self._parallel(
+                lambda camera, _path: camera.request_playing(),
+                [None] * len(self.cameralist),
+            )
             for camera in self.cameralist:
-                camera.start_prepared()
+                camera.confirm_playing()
             self._capture_active = True
         except Exception:
             for camera in self.cameralist:

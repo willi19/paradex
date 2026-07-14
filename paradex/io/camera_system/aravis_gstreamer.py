@@ -1,0 +1,484 @@
+"""External-trigger Aravis + GStreamer camera backend for capture PCs.
+
+This is intentionally an adapter for the existing ``CameraLoader`` contract:
+the ZMQ command protocol and CaptureSession stay unchanged, while each camera
+is prepared locally as::
+
+    aravissrc -> Bayer conversion -> JPEG -> AVI mux -> filesink
+
+The only trigger owner remains the main PC's UTG900E.  A capture PC returns
+from ``start`` only after its cameras were configured for ``Line0`` and their
+GStreamer pipelines have been brought up; it never opens a USB trigger.
+"""
+
+from __future__ import annotations
+
+import logging
+import os
+import threading
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
+
+from paradex.io.camera_system.aravis_addressing import CameraAddressing
+from paradex.utils.path import capture_path_list, home_path
+from paradex.utils.system import get_camera_config, get_camera_list
+
+
+log = logging.getLogger(__name__)
+
+
+class AravisGStreamerError(RuntimeError):
+    """A capture PC could not prepare, run, or finalize a camera pipeline."""
+
+
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    return default if value is None else int(value)
+
+
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    return default if value is None else float(value)
+
+
+@dataclass(frozen=True)
+class AravisGStreamerSettings:
+    width: int = 2048
+    height: int = 1536
+    bayer_format: str = "rggb"
+    pixel_format: str = "BayerRG8"
+    packet_size: int = 9000
+    heartbeat_timeout_ms: int = 1500
+    trigger_source: str = "Line0"
+    trigger_activation: str = "RisingEdge"
+    trigger_overlap: str = "ReadOut"
+    jpeg_quality: int = 95
+    queue_buffers: int = 60
+    startup_timeout_seconds: float = 5.0
+    eos_timeout_seconds: float = 15.0
+
+    @classmethod
+    def from_environment(cls) -> "AravisGStreamerSettings":
+        return cls(
+            width=_env_int("PARADEX_CAMERA_WIDTH", 2048),
+            height=_env_int("PARADEX_CAMERA_HEIGHT", 1536),
+            bayer_format=os.getenv("PARADEX_BAYER_FORMAT", "rggb"),
+            pixel_format=os.getenv("PARADEX_PIXEL_FORMAT", "BayerRG8"),
+            packet_size=_env_int("PARADEX_GIGE_PACKET_SIZE", 9000),
+            heartbeat_timeout_ms=_env_int("PARADEX_GIGE_HEARTBEAT_MS", 1500),
+            trigger_source=os.getenv("PARADEX_TRIGGER_SOURCE", "Line0"),
+            trigger_activation=os.getenv("PARADEX_TRIGGER_ACTIVATION", "RisingEdge"),
+            trigger_overlap=os.getenv("PARADEX_TRIGGER_OVERLAP", "ReadOut"),
+            jpeg_quality=_env_int("PARADEX_JPEG_QUALITY", 95),
+            queue_buffers=_env_int("PARADEX_GST_QUEUE_BUFFERS", 60),
+        )
+
+
+def trigger_features(settings: AravisGStreamerSettings, sync_mode: bool) -> str:
+    """Return aravissrc's post-caps feature string.
+
+    aravissrc can switch a camera back to free-run while it negotiates caps.
+    Applying these values through its ``features`` property happens after
+    that transition and therefore keeps the external hardware trigger armed.
+    """
+
+    if not sync_mode:
+        return "TriggerMode=Off"
+    return " ".join(
+        (
+            "TriggerSelector=FrameStart",
+            "TriggerSource={}".format(settings.trigger_source),
+            "TriggerActivation={}".format(settings.trigger_activation),
+            "TriggerOverlap={}".format(settings.trigger_overlap),
+            "TriggerMode=On",
+        )
+    )
+
+
+def _load_gst():
+    try:
+        import gi
+
+        gi.require_version("Gst", "1.0")
+        from gi.repository import Gst
+    except (ImportError, ValueError) as exc:
+        raise AravisGStreamerError(
+            "GStreamer GI bindings are unavailable. Install python3-gi, "
+            "gir1.2-gstreamer-1.0, gstreamer plugins, and gir1.2-aravis-0.8."
+        ) from exc
+    Gst.init(None)
+    return Gst
+
+
+def _load_aravis():
+    try:
+        import gi
+
+        gi.require_version("Aravis", "0.8")
+        from gi.repository import Aravis
+    except (ImportError, ValueError) as exc:
+        raise AravisGStreamerError(
+            "Aravis GI bindings are unavailable. Install gir1.2-aravis-0.8."
+        ) from exc
+    return Aravis
+
+
+def _feature_equal(actual, expected) -> bool:
+    if isinstance(expected, float):
+        return abs(float(actual) - expected) <= max(0.1, abs(expected) * 0.01)
+    return actual == expected
+
+
+def _write_feature(device, name: str, value) -> None:
+    """Set a GenICam feature and fail before recording if readback differs."""
+
+    if isinstance(value, bool):
+        kind = "boolean"
+    elif isinstance(value, int):
+        kind = "integer"
+    elif isinstance(value, float):
+        kind = "float"
+    elif isinstance(value, str):
+        kind = "string"
+    else:
+        raise TypeError("Unsupported GenICam value for {}: {!r}".format(name, value))
+
+    getattr(device, "set_{}_feature_value".format(kind))(name, value)
+    actual = getattr(device, "get_{}_feature_value".format(kind))(name)
+    if not _feature_equal(actual, value):
+        raise AravisGStreamerError(
+            "Camera feature {} did not persist: requested {!r}, got {!r}".format(name, value, actual)
+        )
+
+
+class AravisGStreamerCamera:
+    """One FLIR GigE camera with a native GStreamer recording pipeline."""
+
+    def __init__(
+        self,
+        serial: str,
+        settings: Optional[AravisGStreamerSettings] = None,
+        camera_config: Optional[Dict[str, dict]] = None,
+    ) -> None:
+        self.name = str(serial)
+        self.settings = settings or AravisGStreamerSettings.from_environment()
+        self.camera_config = camera_config if camera_config is not None else get_camera_config()
+        self._lock = threading.RLock()
+        self._pipeline = None
+        self._gst = None
+        self._state = "READY"
+        self._last_error: Optional[str] = None
+        self._last_traceback: Optional[str] = None
+        self._mode: Optional[str] = None
+        self._fps: Optional[int] = None
+        self._sync_mode: Optional[bool] = None
+        self._save_path: Optional[str] = None
+        self._started_at: Optional[float] = None
+
+    def _camera_values(self, fps: int) -> Tuple[float, float]:
+        values = self.camera_config.get(self.name, {})
+        gain = float(values.get("gain", 1.0))
+        exposure = float(values.get("exposure", values.get("exposure_time", 2200.0)))
+        if fps <= 0:
+            raise AravisGStreamerError("FPS must be positive for {}".format(self.name))
+        return gain, exposure
+
+    def _configure_camera(self, fps: int, sync_mode: bool) -> None:
+        Aravis = _load_aravis()
+        camera = Aravis.Camera.new("FLIR-{}".format(self.name))
+        if camera is None:
+            raise AravisGStreamerError("Camera {} was not found by Aravis".format(self.name))
+        device = camera.get_device()
+        gain, exposure = self._camera_values(fps)
+        try:
+            _write_feature(device, "GevHeartbeatTimeout", self.settings.heartbeat_timeout_ms)
+            _write_feature(device, "PixelFormat", self.settings.pixel_format)
+            _write_feature(device, "GevSCPSPacketSize", self.settings.packet_size)
+            _write_feature(device, "AcquisitionFrameRateEnable", True)
+            _write_feature(device, "AcquisitionFrameRate", float(fps))
+            _write_feature(device, "ExposureAuto", "Off")
+            _write_feature(device, "ExposureTime", exposure)
+            _write_feature(device, "GainAuto", "Off")
+            _write_feature(device, "Gain", gain)
+
+            _write_feature(device, "TriggerMode", "Off")
+            if sync_mode:
+                _write_feature(device, "TriggerSelector", "FrameStart")
+                _write_feature(device, "TriggerSource", self.settings.trigger_source)
+                _write_feature(device, "TriggerActivation", self.settings.trigger_activation)
+                _write_feature(device, "TriggerOverlap", self.settings.trigger_overlap)
+                _write_feature(device, "TriggerMode", "On")
+        finally:
+            del device
+            del camera
+
+    @staticmethod
+    def _make(Gst, factory: str, name: str):
+        element = Gst.ElementFactory.make(factory, name)
+        if element is None:
+            raise AravisGStreamerError(
+                "GStreamer element {!r} is unavailable; install the required plugins".format(factory)
+            )
+        return element
+
+    def _build_pipeline(self, save_path: Optional[str], fps: int, sync_mode: bool):
+        Gst = _load_gst()
+        settings = self.settings
+        pipeline = Gst.Pipeline.new("camera_{}".format(self.name))
+        if pipeline is None:
+            raise AravisGStreamerError("Could not create GStreamer pipeline for {}".format(self.name))
+
+        source = self._make(Gst, "aravissrc", "src_{}".format(self.name))
+        source.set_property("camera-name", "FLIR-{}".format(self.name))
+        source.set_property("features", trigger_features(settings, sync_mode))
+
+        capsfilter = self._make(Gst, "capsfilter", "caps_{}".format(self.name))
+        capsfilter.set_property(
+            "caps",
+            Gst.Caps.from_string(
+                "video/x-bayer,format={},width={},height={},framerate={}/1".format(
+                    settings.bayer_format,
+                    settings.width,
+                    settings.height,
+                    fps,
+                )
+            ),
+        )
+        raw_queue = self._make(Gst, "queue", "raw_queue_{}".format(self.name))
+        raw_queue.set_property("max-size-buffers", settings.queue_buffers)
+        raw_queue.set_property("max-size-bytes", 0)
+        raw_queue.set_property("max-size-time", 0)
+        bayer = self._make(Gst, "bayer2rgb", "bayer_{}".format(self.name))
+        convert = self._make(Gst, "videoconvert", "convert_{}".format(self.name))
+        jpegenc = self._make(Gst, "jpegenc", "jpeg_{}".format(self.name))
+        jpegenc.set_property("quality", settings.jpeg_quality)
+
+        elements = [source, capsfilter, raw_queue, bayer, convert, jpegenc]
+        if save_path is not None:
+            mux_queue = self._make(Gst, "queue", "mux_queue_{}".format(self.name))
+            mux_queue.set_property("max-size-buffers", settings.queue_buffers)
+            mux_queue.set_property("max-size-bytes", 0)
+            mux_queue.set_property("max-size-time", 0)
+            mux = self._make(Gst, "avimux", "mux_{}".format(self.name))
+            sink = self._make(Gst, "filesink", "sink_{}".format(self.name))
+            sink.set_property("location", save_path)
+            sink.set_property("sync", False)
+            sink.set_property("async", False)
+            elements.extend([mux_queue, mux, sink])
+        else:
+            sink = self._make(Gst, "fakesink", "sink_{}".format(self.name))
+            sink.set_property("sync", False)
+            elements.append(sink)
+
+        for element in elements:
+            pipeline.add(element)
+        for left, right in zip(elements, elements[1:]):
+            if not left.link(right):
+                raise AravisGStreamerError(
+                    "Could not link {} -> {} for camera {}".format(
+                        left.get_name(), right.get_name(), self.name
+                    )
+                )
+        self._gst = Gst
+        return pipeline
+
+    def _raise_if_bus_error(self, timeout_seconds: float = 0.0) -> None:
+        if self._pipeline is None or self._gst is None:
+            return
+        message = self._pipeline.get_bus().timed_pop_filtered(
+            int(timeout_seconds * self._gst.SECOND), self._gst.MessageType.ERROR
+        )
+        if message is None:
+            return
+        error, debug = message.parse_error()
+        raise AravisGStreamerError("GStreamer error for {}: {} ({})".format(self.name, error, debug))
+
+    def _prepare_playing_state(self) -> None:
+        assert self._pipeline is not None
+        assert self._gst is not None
+        result = self._pipeline.set_state(self._gst.State.PLAYING)
+        if result == self._gst.StateChangeReturn.FAILURE:
+            self._raise_if_bus_error(self.settings.startup_timeout_seconds)
+            raise AravisGStreamerError("GStreamer could not start camera {}".format(self.name))
+
+        # A hardware-triggered aravissrc is live and can legitimately report
+        # NO_PREROLL/ASYNC before the UTG emits its first pulse.  Camera
+        # configuration is already verified above, so waiting for a frame here
+        # would deadlock the main-PC READY -> UTG-start protocol.
+        self._raise_if_bus_error(0.05)
+
+    def start(self, mode: str, sync_mode: bool, save_path: Optional[str], fps: int) -> None:
+        if mode != "video":
+            raise AravisGStreamerError(
+                "Aravis/GStreamer backend is the CaptureSession video backend; "
+                "use the pyspin agent for {!r} mode".format(mode)
+            )
+        if not save_path:
+            raise AravisGStreamerError("A save path is required for video mode")
+
+        with self._lock:
+            if self._pipeline is not None:
+                raise AravisGStreamerError("Camera {} is already recording".format(self.name))
+            self._state = "STARTING"
+            self._last_error = None
+            self._last_traceback = None
+            self._mode = mode
+            self._fps = fps
+            self._sync_mode = sync_mode
+            self._save_path = save_path
+            try:
+                self._configure_camera(fps, sync_mode)
+                self._pipeline = self._build_pipeline(save_path, fps, sync_mode)
+                self._prepare_playing_state()
+                self._started_at = time.time()
+                self._state = "CAPTURING"
+            except Exception as exc:
+                self._last_error = str(exc)
+                self._state = "ERROR"
+                self._teardown_pipeline()
+                raise
+
+    def _teardown_pipeline(self) -> None:
+        if self._pipeline is not None and self._gst is not None:
+            self._pipeline.set_state(self._gst.State.NULL)
+        self._pipeline = None
+
+    def stop(self) -> None:
+        with self._lock:
+            if self._pipeline is None:
+                if self._state != "ERROR":
+                    self._state = "READY"
+                return
+            self._state = "STOPPING"
+            try:
+                # CaptureSession stops the main-PC UTG before it sends this
+                # command.  EOS now drains JPEG/AVI buffers and lets avimux
+                # write the AVI index before the pipeline is set to NULL.
+                self._pipeline.send_event(self._gst.Event.new_eos())
+                message = self._pipeline.get_bus().timed_pop_filtered(
+                    int(self.settings.eos_timeout_seconds * self._gst.SECOND),
+                    self._gst.MessageType.EOS | self._gst.MessageType.ERROR,
+                )
+                if message is None:
+                    raise AravisGStreamerError("Timed out finalizing AVI for {}".format(self.name))
+                if message.type == self._gst.MessageType.ERROR:
+                    error, debug = message.parse_error()
+                    raise AravisGStreamerError(
+                        "GStreamer failed while finalizing {}: {} ({})".format(self.name, error, debug)
+                    )
+                self._state = "READY"
+            except Exception as exc:
+                self._last_error = str(exc)
+                self._state = "ERROR"
+                raise
+            finally:
+                self._teardown_pipeline()
+
+    def end(self) -> None:
+        try:
+            self.stop()
+        finally:
+            self._state = "STOPPED"
+
+    def get_error(self) -> Tuple[bool, Tuple[Optional[str], Optional[str]]]:
+        return self._state == "ERROR", (self._last_error, self._last_traceback)
+
+    def get_status(self) -> dict:
+        return {
+            "state": self._state,
+            "frame_id": None,
+            "name": self.name,
+            "mode": self._mode,
+            "fps": self._fps,
+            "syncMode": self._sync_mode,
+            "save_path": self._save_path,
+            "time": time.time(),
+        }
+
+
+class AravisGStreamerCameraLoader:
+    """Drop-in ``CameraLoader`` replacement used by the ZMQ server daemon."""
+
+    def __init__(
+        self,
+        serial_list: Optional[Iterable[str]] = None,
+        settings: Optional[AravisGStreamerSettings] = None,
+        addressing: Optional[CameraAddressing] = None,
+        camera_factory: Optional[Callable[[str], AravisGStreamerCamera]] = None,
+        reconcile_addresses: bool = True,
+    ) -> None:
+        self.settings = settings or AravisGStreamerSettings.from_environment()
+        self.camera_names = [str(serial) for serial in (serial_list or get_camera_list())]
+        if not self.camera_names:
+            raise AravisGStreamerError("No camera serials are configured for this capture PC")
+
+        if reconcile_addresses:
+            (addressing or CameraAddressing()).reconcile(self.camera_names)
+
+        if camera_factory is None:
+            camera_factory = lambda serial: AravisGStreamerCamera(serial, self.settings)
+        self.cameralist = [camera_factory(serial) for serial in self.camera_names]
+
+    def _save_paths(self, mode: str, save_path: Optional[str]) -> List[Optional[str]]:
+        if mode == "video":
+            if save_path is None:
+                raise AravisGStreamerError("save_path is required for video recording")
+            paths: List[Optional[str]] = []
+            for index, camera in enumerate(self.cameralist):
+                directory = Path(capture_path_list[index % len(capture_path_list)]) / save_path / "videos"
+                directory.mkdir(parents=True, exist_ok=True)
+                paths.append(str(directory / "{}.avi".format(camera.name)))
+            return paths
+        raise AravisGStreamerError(
+            "Aravis/GStreamer backend is limited to CaptureSession video mode; "
+            "use the pyspin agent for {!r} mode".format(mode)
+        )
+
+    def _parallel(self, action: Callable[[AravisGStreamerCamera, Optional[str]], None], paths: List[Optional[str]]) -> None:
+        errors: List[Tuple[str, BaseException]] = []
+        lock = threading.Lock()
+
+        def run(camera: AravisGStreamerCamera, path: Optional[str]) -> None:
+            try:
+                action(camera, path)
+            except BaseException as exc:
+                with lock:
+                    errors.append((camera.name, exc))
+
+        threads = [threading.Thread(target=run, args=(camera, path), daemon=False) for camera, path in zip(self.cameralist, paths)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        if errors:
+            messages = ["{}: {}".format(name, error) for name, error in errors]
+            raise AravisGStreamerError("; ".join(messages))
+
+    def start(self, mode: str, syncMode: bool, save_path: Optional[str] = None, fps: int = 30) -> None:
+        paths = self._save_paths(mode, save_path)
+        try:
+            self._parallel(lambda camera, path: camera.start(mode, syncMode, path, fps), paths)
+        except Exception:
+            # Do not leave a partially-ready group waiting for trigger pulses.
+            self.stop()
+            raise
+        log.info("All Aravis/GStreamer cameras READY: %s", self.camera_names)
+
+    def stop(self) -> None:
+        self._parallel(lambda camera, _path: camera.stop(), [None] * len(self.cameralist))
+
+    def end(self) -> None:
+        self._parallel(lambda camera, _path: camera.end(), [None] * len(self.cameralist))
+
+    def get_status_list(self) -> List[dict]:
+        return [camera.get_status() for camera in self.cameralist]
+
+    def get_all_errors(self) -> Dict[str, Tuple[Optional[str], Optional[str]]]:
+        errors = {}
+        for camera in self.cameralist:
+            has_error, error = camera.get_error()
+            if has_error:
+                errors[camera.name] = error
+        return errors

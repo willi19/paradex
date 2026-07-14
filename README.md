@@ -54,6 +54,9 @@ Captures image and video data from cameras in a distributed system.
 
 **Detailed guide:** [`src/capture/capture_readme.md`](src/capture/capture_readme.md)
 
+**Aravis/GStreamer capture-PC migration:**
+[`docs/camera/aravis_gstreamer_capture_pc.md`](docs/camera/aravis_gstreamer_capture_pc.md)
+
 #### Robot
 [To be added]
 

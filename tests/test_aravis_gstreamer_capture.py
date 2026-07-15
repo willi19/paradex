@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, patch
 
 from paradex.io.camera_system.aravis_addressing import (
     CameraAddressing,
+    CameraAddressingError,
     CameraRecord,
     NicSubnet,
     _camera_subnet,
@@ -195,6 +196,64 @@ class AravisCaptureTests(unittest.TestCase):
         plan = addressing._plan_force_ips()
 
         self.assertEqual(plan["cam-a"], (right, "11.0.2.100"))
+
+    def test_force_ip_prefers_aravis_persistent_ip(self):
+        nic = NicSubnet("enp5s0", "11.0.1.1", ipaddress.ip_network("11.0.1.0/24"))
+        record = CameraRecord("cam-a", "FLIR-cam-a", "169.254.1.2", "2c:dd:a3:7d:a6:9c")
+        addressing = CameraAddressing([nic])
+        addressing._set_persistent_ip = MagicMock()
+        addressing._send_raw_force_ip = MagicMock()
+
+        addressing.force_ip(record, nic, "11.0.1.100")
+
+        addressing._set_persistent_ip.assert_called_once_with(record, "11.0.1.100")
+        addressing._send_raw_force_ip.assert_not_called()
+
+    def test_persistent_ip_uses_aravis_api_and_resets_camera(self):
+        nic = NicSubnet("enp5s0", "11.0.1.1", ipaddress.ip_network("11.0.1.0/24"))
+        record = CameraRecord("cam-a", "FLIR-cam-a", "169.254.1.2", "2c:dd:a3:7d:a6:9c")
+        addressing = CameraAddressing([nic])
+        camera = MagicMock()
+        aravis = MagicMock()
+        aravis.Camera.new.return_value = camera
+        aravis.GvIpConfigurationMode.PERSISTENT_IP = "persistent"
+
+        with patch(
+            "paradex.io.camera_system.aravis_addressing._load_aravis",
+            return_value=aravis,
+        ):
+            addressing._set_persistent_ip(record, "11.0.1.100")
+
+        aravis.Camera.new.assert_called_once_with(record.device_id)
+        camera.gv_set_persistent_ip_from_string.assert_called_once_with(
+            "11.0.1.100", "255.255.255.0", "0.0.0.0"
+        )
+        camera.gv_set_ip_configuration_mode.assert_called_once_with("persistent")
+        camera.execute_command.assert_called_once_with("DeviceReset")
+
+    def test_force_ip_falls_back_when_camera_cannot_be_opened(self):
+        nic = NicSubnet("enp5s0", "11.0.1.1", ipaddress.ip_network("11.0.1.0/24"))
+        record = CameraRecord("cam-a", "FLIR-cam-a", "169.254.1.2", "2c:dd:a3:7d:a6:9c")
+        addressing = CameraAddressing([nic])
+        addressing._set_persistent_ip = MagicMock(side_effect=RuntimeError("not reachable"))
+        addressing._send_raw_force_ip = MagicMock()
+
+        addressing.force_ip(record, nic, "11.0.1.100")
+
+        addressing._send_raw_force_ip.assert_called_once_with(record, nic, "11.0.1.100")
+
+    def test_reconcile_rejects_camera_that_remains_link_local(self):
+        nic = NicSubnet("enp5s0", "11.0.1.1", ipaddress.ip_network("11.0.1.0/24"))
+        record = CameraRecord("cam-a", "FLIR-cam-a", "169.254.1.2", "2c:dd:a3:7d:a6:9c")
+        addressing = CameraAddressing([nic])
+        addressing._seen = {record.serial: record}
+        addressing.discover = MagicMock(return_value={record.serial: record})
+        addressing.force_ip = MagicMock()
+
+        with patch("paradex.io.camera_system.aravis_addressing.time.sleep"), self.assertRaisesRegex(
+            CameraAddressingError, "remain outside capture NIC subnets"
+        ):
+            addressing.reconcile([record.serial])
 
     def test_legacy_11_network_uses_its_physical_link_as_a_24(self):
         subnet = _camera_subnet(

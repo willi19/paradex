@@ -14,8 +14,8 @@ manipulation rig:
    timing are working.
 3. It calibrates cameras and camera-to-robot geometry.
 4. It records synchronized camera, robot, hand, and teleoperation streams.
-5. It processes raw sessions into synchronized, undistorted, reconstructed, or uploaded
-   outputs.
+5. It turns raw sessions into synchronized videos, undistorted frames,
+   reconstructions, and upload-ready outputs.
 6. It supports pose, grasp, visualization, and robot-readiness checks on top of
    those outputs.
 
@@ -25,10 +25,10 @@ configure rig
     -> calibrate intrinsic / extrinsic / hand-eye geometry
       -> capture synchronized sessions
         -> process videos, masks, reconstructions, uploads
-          -> validate pose, grasp, overlays, or robot readiness
+          -> check pose estimates, grasp transforms, overlays, and robot readiness
 ```
 
-## Runtime Roles
+## Machine Roles
 
 | Role | Runs where | Responsibility |
 |---------|------------|----------------|
@@ -51,13 +51,13 @@ capture-PC services, and those services control the camera SDK lifecycle.
 | `docs/` | Sphinx guide and generated API pages. |
 | `agent_docs/` | Task-oriented subsystem notes for AI coding agents. |
 
-## Practical Bring-Up Order
+## Practical Setup Order
 
-1. Confirm `system/current/pc.json`, `camera.json`, `network.json`, and shared
-   storage.
+1. Confirm `system/current/{pc,camera,network}.json` and shared storage.
 2. Start `src/camera/server_daemon.py` on every capture PC.
 3. Run transport and camera validation from `src/validate/`.
-4. Run calibration in order: intrinsic, extrinsic, hand-eye.
+4. Run intrinsic and extrinsic calibration; add hand-eye calibration when
+   camera-to-robot geometry is required.
 5. Run a short capture and inspect the output layout before collecting a full
    dataset.
 6. Run processing and output checks only after the raw session layout and calibration

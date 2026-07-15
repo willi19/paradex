@@ -32,7 +32,7 @@
           process recordings, and check pose or grasp results.
         </p>
         <div class="actions" aria-label="Primary actions">
-          <a class="button primary" href="#start">Start bring-up</a>
+          <a class="button primary" href="#start">Start setup checks</a>
           <a class="button" href="#runtime">See machine roles</a>
           <a class="button" href="docs/index.html">Open docs</a>
         </div>
@@ -55,7 +55,7 @@
 
       <div class="quick-system" aria-label="First screen system summary">
         <div class="mini-flow">
-          <span>config</span>
+          <span>configure</span>
           <span>validate</span>
           <span>calibrate</span>
           <span>capture</span>
@@ -65,7 +65,7 @@
         <div class="mini-roles">
           <div>
             <strong>Main PC</strong>
-            <p>starts validation, remote capture, monitoring, and processing</p>
+            <p>starts validation, remote capture, monitoring, and processing jobs</p>
           </div>
           <div>
             <strong>Capture PCs</strong>
@@ -77,7 +77,7 @@
           </div>
           <div>
             <strong>Shared storage</strong>
-            <p>stores raw sessions, calibration, processed outputs, and caches</p>
+            <p>stores raw sessions, calibration files, processed outputs, and caches</p>
           </div>
         </div>
       </div>
@@ -88,9 +88,9 @@
         <p class="eyebrow">End-to-end flow</p>
         <h2 id="flow-title">The pipeline runs in ordered stages.</h2>
         <p>
-          Start with rig configuration and low-risk validation. Move to calibration,
-          recording, and robot-dependent checks only after configuration, transport,
-          and camera services are working.
+          Start with rig configuration and checks that do not move hardware. Move to
+          calibration, recording, and robot-dependent checks only after configuration,
+          transport, and camera services are working.
         </p>
       </div>
 
@@ -98,7 +98,7 @@
         <li>
           <span>01</span>
           <strong>Configure</strong>
-          <p>Active <code>system/current</code> profile, camera serials, PC names, ports, shared storage.</p>
+          <p>Select the active <code>system/current</code> profile; verify camera serials, PC names, ports, and shared storage.</p>
         </li>
         <li>
           <span>02</span>
@@ -118,7 +118,7 @@
         <li>
           <span>05</span>
           <strong>Process</strong>
-          <p>Align frames, undistort, encode, reconstruct, upload, and prepare datasets.</p>
+          <p>Align timestamps, undistort, encode, reconstruct, upload, and prepare datasets.</p>
         </li>
         <li>
           <span>06</span>
@@ -130,11 +130,11 @@
 
     <section id="runtime" class="section surface-section" aria-labelledby="runtime-title">
       <div class="section-head">
-        <p class="eyebrow">Runtime map</p>
+        <p class="eyebrow">Machine roles</p>
         <h2 id="runtime-title">Which computer runs what</h2>
         <p>
-          Paradex is distributed. The main PC normally coordinates work; capture PCs
-          control camera hardware; robot control runs only where robot drivers and
+          Paradex runs across multiple machines. The main PC coordinates work; capture
+          PCs control camera hardware; robot control runs only where robot drivers and
           controllers are available.
         </p>
       </div>
@@ -181,22 +181,22 @@
 
     <section id="start" class="section" aria-labelledby="start-title">
       <div class="section-head">
-        <p class="eyebrow">Bring-up order</p>
+        <p class="eyebrow">Setup order</p>
         <h2 id="start-title">First checks to run on a fresh setup</h2>
         <p>
-          These commands are deliberately ordered from low-risk checks to hardware-dependent checks.
+          These commands are ordered from non-motion checks to hardware-dependent checks.
           Run them before a long capture session.
         </p>
       </div>
 
       <div class="runbook">
         <article>
-          <h3>1. Install package and select config</h3>
+          <h3>1. Install package and select configuration</h3>
 <pre><code>git clone https://github.com/willi19/paradex.git
 cd paradex
 pip install -e .
 
-# confirm active rig profile
+# confirm the active rig profile
 ls -l system/current
 cat system/current/pc.json</code></pre>
         </article>
@@ -219,7 +219,7 @@ python src/validate/camera_system/remote_camera_controller.py</code></pre>
           <h3>4. Move to calibration and capture</h3>
 <pre><code>python src/calibration/intrinsic/capture.py
 python src/calibration/extrinsic/capture.py
-# upstream hand-eye capture currently supports xArm in this script
+# this upstream hand-eye script currently supports xArm
 python src/calibration/handeye/capture.py --arm xarm
 
 # c starts recording, s stops, q exits
@@ -250,10 +250,10 @@ python src/capture/camera/video_remote.py --save_path dataset/001 --sync_mode</c
         </a>
         <a class="app-card" href="docs/process.html">
           <h3>Process</h3>
-          <p>Sync, undistortion, reconstruction, upload, and batching.</p>
+          <p>Synchronization, undistortion, reconstruction, upload, and batching.</p>
         </a>
         <a class="app-card" href="https://github.com/willi19/paradex/tree/main/src/object6d">
-          <h3>Object 6D</h3>
+          <h3>Object 6D Pose</h3>
           <p>Multi-view object pose workflows.</p>
         </a>
         <a class="app-card" href="https://github.com/willi19/paradex/tree/main/src/validate">

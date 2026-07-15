@@ -5,7 +5,7 @@ Paradex is a distributed multi-camera vision and robot control framework for
 dexterous manipulation research.
 
 The **Guide** starts with a system overview, then follows the normal working
-order: camera services, calibration, capture sessions, robot control, dataset
+order: camera services, calibration, robot control, capture sessions, dataset
 acquisition, image utilities, and processing. The **API Reference** is generated
 automatically from the ``paradex`` package source.
 
@@ -16,8 +16,8 @@ automatically from the ``paradex`` package source.
    overview
    camera_system
    calibration
-   capture
    robot
+   capture
    dataset_acquisition
    image
    process

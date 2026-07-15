@@ -127,29 +127,99 @@ auto-detects arm DOF from `get_data()` and, when the controller exposes
 `open_gripper`/`grasp`/`set_guiding_mode` (i.e. a Franka), swaps the 16-DOF hand panel
 for Gripper (Open/Grasp) + Guide-Mode buttons. `hand_controller` is now optional.
 
-## Daemon & Docker (source NOT in this repo)
+## Daemon & Docker (lives outside this repo, on the robot-control PC)
 
-> ⚠️ **TODO — fill in.** The `franka_daemon` C++ source, its `Dockerfile`, and
-> `docker-compose.yaml` live outside this repository (on the robot-control PC). The
-> details below are reconstructed from script docstrings and are **placeholders** —
-> replace with the authoritative locations/steps.
+The `franka_daemon` C++ source is **not** in this repo. As of 2026-07-16 it lives on the
+robot-control PC at:
 
-- **Where the daemon source lives:** `TODO` — repo/path of the C++ daemon and Docker files.
-  Docstrings reference a compose file at `docker_robot/docker-compose.yaml`, a service
-  named `franka_seoja`, and the built binary at
-  `/workspace/src_main/cpp_sources/daemon/build/franka_daemon` inside the container.
-- **How libfranka / the daemon is built & installed:** `TODO` — libfranka version, FCI
-  firmware version, build steps (`cmake`/`make`), and any `PREEMPT_RT` kernel requirement.
-- **How to launch the daemon (as documented in `validate_franka.py`):**
-  ```bash
-  # 1. Start the container
-  docker compose -f docker_robot/docker-compose.yaml up -d
-  docker compose -f docker_robot/docker-compose.yaml exec franka_seoja bash
+```
+/home/exp_main/robothome/Sookwan/exp5-bimanual-paradex2/src_main/cpp_sources/daemon/
+    franka_daemon.cpp      # ~60KB, the daemon
+    servo_protocol.hpp     # msgpack schema + ZMQ endpoint helpers
+    CMakeLists.txt
+    build_daemon.sh        # run INSIDE the container
+    build/franka_daemon    # built binary
+```
 
-  # 2. Inside the container, run the daemon against the robot's FCI IP
-  /workspace/src_main/cpp_sources/daemon/build/franka_daemon 172.16.1.11 \
-      --command_port 5555 --state_port 5556
-  ```
-- **Host requirements:** `TODO` — realtime kernel, network route to the robot's FCI IP,
-  robot unlocked / FCI enabled in Desk, Docker host networking (so :5555/:5556 are
-  reachable from Python).
+> ⚠️ Two similarly-named trees exist. `/home/exp_main/sookwan/exp5-bimanual-paradex2`
+> (lowercase, the `/workspace` mount) has only a **stale `build/CMakeFiles`** — no source,
+> no binary. The authoritative copy is the `robothome/Sookwan` (capital S) path above.
+> Neither tree is a git repo, so **this source is unversioned and has no backup.**
+
+### Docker
+
+| | |
+|---|---|
+| Image | `franka3/real:bimanual_control_libfranka0.18.0_v2` (~25.8 GB) |
+| Container | `franka_seoja` (also `franka_jangja` for the second arm) |
+| Network | **`host`** — ports are on the host stack directly, no port mapping |
+| Mounts | `/home/exp_main/sookwan/exp5-bimanual-paradex2` → `/workspace`<br>`/home/exp_main/robothome` → `/mnt/robothome` |
+| libfranka | **0.18.0**, installed at `/opt/libfranka` inside the image |
+
+The `docker_robot/docker-compose.yaml` referenced by the container labels
+(`.../exp5-bimanual-paradex2/docker_robot`) **no longer exists on disk** — the compose
+file is gone; only the built image and stopped containers remain. Start the existing
+container directly (`docker start -ai franka_seoja`) rather than via compose.
+
+### Build
+
+`build_daemon.sh` must run **inside the container** (it needs libfranka at `/opt/libfranka`):
+
+```bash
+docker start -ai franka_seoja        # or docker exec -it franka_seoja bash
+cd /mnt/robothome/Sookwan/exp5-bimanual-paradex2/src_main/cpp_sources/daemon
+./build_daemon.sh                    # cmake -DCMAKE_PREFIX_PATH=/opt/libfranka && make -j
+```
+
+### Run
+
+```
+Usage: ./franka_daemon <robot-ip> [--command_port PORT] [--state_port PORT]
+```
+
+Note the binary path in the script docstrings
+(`/workspace/src_main/cpp_sources/daemon/build/franka_daemon`) points at the **stale**
+lowercase tree and will not exist. Use the `/mnt/robothome` path:
+
+```bash
+/mnt/robothome/Sookwan/exp5-bimanual-paradex2/src_main/cpp_sources/daemon/build/franka_daemon \
+    <robot-fci-ip> --command_port 5555 --state_port 5556
+```
+
+## Using the daemon from other PCs
+
+**This already works — no configuration needed.** The daemon binds with
+`tcp_endpoint()` in `servo_protocol.hpp`:
+
+```cpp
+inline std::string tcp_endpoint(int port) { return "tcp://*:" + std::to_string(port); }
+```
+
+`tcp://*` = `0.0.0.0` (all interfaces), and the container uses **host networking**, so
+:5555/:5556 are reachable from any PC that can route to the daemon host. That is exactly
+why `network_info["franka"]` is `172.16.0.2` and not `localhost`. From another PC:
+
+```bash
+python validate_franka.py --host 172.16.0.2
+python franka_teaching.py --host 172.16.0.2 --save_path <dir>
+```
+
+### The real constraint: no client arbitration
+
+- **State (PUB/SUB :5556)** — safe for any number of subscribers. ZMQ PUB broadcasts to
+  all SUBs, so N PCs can monitor state concurrently with no side effects.
+- **Commands (REQ/REP :5555)** — ⚠️ **the daemon has no ownership/lease/token concept.**
+  (`g_robot_mutex` only guards the robot object for internal thread-safety; it does not
+  arbitrate between clients.) ZMQ REP fair-queues multiple REQ clients, so two PCs *can*
+  both send commands — and their `move` commands will interleave on a real robot arm.
+  Also, `move_to_qpos` blocks, so a second client's request queues behind the first and
+  may hit the client's 30 s `RCVTIMEO`.
+
+So: multi-PC **monitoring** is free today. Multi-PC **commanding** needs either human
+coordination ("one driver at a time") or a lease/token added to the daemon (C++ change).
+For a point-to-point alternative that avoids exposing the ports, an SSH tunnel works
+without touching the daemon: `ssh -L 5555:localhost:5555 -L 5556:localhost:5556 <host>`.
+
+### Host requirements
+Robot unlocked with FCI enabled in Desk, and a network route from the daemon host to the
+robot's FCI IP. (`PREEMPT_RT` kernel requirement for libfranka 0.18.0 not verified here.)

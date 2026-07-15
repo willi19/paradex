@@ -12,6 +12,7 @@ the ``paradex`` package source, so it always matches the code.
    :maxdepth: 2
    :caption: Guide
 
+   overview
    camera_system
    calibration
    robot

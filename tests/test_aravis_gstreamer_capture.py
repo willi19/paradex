@@ -20,7 +20,6 @@ from paradex.io.camera_system.aravis_gstreamer import (
     AravisGStreamerCamera,
     AravisGStreamerCameraLoader,
     AravisGStreamerSettings,
-    _write_optional_feature,
     camera_caps,
     trigger_features,
 )
@@ -133,20 +132,6 @@ class FakeAddressing:
 
     def reconcile(self, expected_serials):
         return list(expected_serials)
-
-
-class FakeOptionalFeatureDevice:
-    def __init__(self, available=()):
-        self.available = set(available)
-        self.values = {}
-
-    def set_boolean_feature_value(self, name, value):
-        if name not in self.available:
-            raise RuntimeError("node '{}' not found".format(name))
-        self.values[name] = value
-
-    def get_boolean_feature_value(self, name):
-        return self.values[name]
 
 
 class FakeAravisBufferFactory:
@@ -364,9 +349,7 @@ class AravisCaptureTests(unittest.TestCase):
         with patch(
             "paradex.io.camera_system.aravis_gstreamer._load_aravis",
             return_value=aravis,
-        ), patch("paradex.io.camera_system.aravis_gstreamer._write_feature") as write, patch(
-            "paradex.io.camera_system.aravis_gstreamer._write_optional_feature"
-        ) as optional:
+        ), patch("paradex.io.camera_system.aravis_gstreamer._write_feature") as write:
             camera._configure_camera(30, True)
 
         feature_order = [entry.args[1] for entry in write.call_args_list]
@@ -381,6 +364,8 @@ class AravisCaptureTests(unittest.TestCase):
                 "TriggerSource",
                 "TriggerActivation",
                 "TriggerOverlap",
+                "AcquisitionFrameRateEnable",
+                "AcquisitionFrameRate",
                 "ExposureAuto",
                 "ExposureTime",
                 "GainAuto",
@@ -389,19 +374,10 @@ class AravisCaptureTests(unittest.TestCase):
             ],
         )
         self.assertEqual(
-            [entry.args for entry in optional.call_args_list],
+            [entry.args for entry in write.call_args_list[8:10]],
             [
-                (device, ("AcquisitionFrameRateAuto",), "Off"),
-                (
-                    device,
-                    ("AcquisitionFrameRateEnable", "AcquisitionFrameRateEnabled"),
-                    True,
-                ),
-                (
-                    device,
-                    ("AcquisitionFrameRate", "AcquisitionFrameRateAbs"),
-                    30.0,
-                ),
+                (device, "AcquisitionFrameRateEnable", True),
+                (device, "AcquisitionFrameRate", 30.0),
             ],
         )
 
@@ -420,26 +396,6 @@ class AravisCaptureTests(unittest.TestCase):
 
         self.assertIn(("wait_for_first_frame", 2.5), first.calls)
         self.assertIn(("wait_for_first_frame", 2.5), second.calls)
-
-    def test_optional_frame_rate_enable_uses_alias_or_skips(self):
-        aliased = FakeOptionalFeatureDevice({"AcquisitionFrameRateEnabled"})
-        missing = FakeOptionalFeatureDevice()
-
-        self.assertEqual(
-            _write_optional_feature(
-                aliased,
-                ("AcquisitionFrameRateEnable", "AcquisitionFrameRateEnabled"),
-                True,
-            ),
-            "AcquisitionFrameRateEnabled",
-        )
-        self.assertIsNone(
-            _write_optional_feature(
-                missing,
-                ("AcquisitionFrameRateEnable", "AcquisitionFrameRateEnabled"),
-                True,
-            )
-        )
 
     def test_loader_preserves_existing_avi_output_layout(self):
         cameras = {}

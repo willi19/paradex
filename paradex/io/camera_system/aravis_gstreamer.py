@@ -189,22 +189,6 @@ def _write_feature(device, name: str, value) -> None:
         )
 
 
-def _write_optional_feature(device, names: Iterable[str], value) -> Optional[str]:
-    """Write a firmware-specific GenICam alias, or skip if none exist."""
-
-    attempted = []
-    for name in names:
-        attempted.append(name)
-        try:
-            _write_feature(device, name, value)
-            return name
-        except Exception as exc:
-            if "node '{}' not found".format(name) not in str(exc):
-                raise
-    log.warning("Optional GenICam nodes not found: %s; skipping", attempted)
-    return None
-
-
 class AravisGStreamerCamera:
     """One FLIR GigE camera with a native GStreamer recording pipeline."""
 
@@ -273,20 +257,11 @@ class AravisGStreamerCamera:
                 _write_feature(device, "TriggerActivation", self.settings.trigger_activation)
                 _write_feature(device, "TriggerOverlap", self.settings.trigger_overlap)
 
-            # ParaOffice programs the AFR cap before arming the trigger.  Some
-            # deployed BFS XMLs expose older aliases (or no enable node), so
-            # preserve that order while accepting the firmware variants.
-            _write_optional_feature(device, ("AcquisitionFrameRateAuto",), "Off")
-            _write_optional_feature(
-                device,
-                ("AcquisitionFrameRateEnable", "AcquisitionFrameRateEnabled"),
-                True,
-            )
-            _write_optional_feature(
-                device,
-                ("AcquisitionFrameRate", "AcquisitionFrameRateAbs"),
-                float(fps),
-            )
+            # Match ParaOffice's deployed FLIR BFS programming contract.  The
+            # cameras expose AcquisitionFrameRateEnable and
+            # AcquisitionFrameRate; AcquisitionFrameRateAuto is not present.
+            _write_feature(device, "AcquisitionFrameRateEnable", True)
+            _write_feature(device, "AcquisitionFrameRate", float(fps))
             _write_feature(device, "ExposureAuto", "Off")
             _write_feature(device, "ExposureTime", exposure)
             _write_feature(device, "GainAuto", "Off")

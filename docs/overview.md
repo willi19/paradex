@@ -6,7 +6,8 @@ calibration, post-processing, and downstream pose or grasp validation.
 
 ## What Paradex Does
 
-Paradex is easiest to understand as the glue around a robot manipulation rig:
+Paradex is easiest to understand as the coordination layer around a robot
+manipulation rig:
 
 1. It starts from a selected rig profile in `system/current`.
 2. It validates that capture PCs, camera services, command transport, and trigger
@@ -24,15 +25,15 @@ configure rig
     -> calibrate intrinsic / extrinsic / hand-eye geometry
       -> capture synchronized sessions
         -> process videos, masks, reconstructions, uploads
-          -> validate pose, grasp, overlays, or robot execution
+          -> validate pose, grasp, overlays, or robot readiness
 ```
 
 ## Runtime Surfaces
 
 | Surface | Runs where | Responsibility |
 |---------|------------|----------------|
-| Main PC | operator workstation | Orchestrates capture PCs, runs validation entry points, launches remote capture, aggregates status, starts processing jobs. |
-| Capture PCs | camera machines | Own FLIR/PySpin camera lifecycle through long-running daemons and publish frame/status data. |
+| Main PC | operator workstation | Orchestrates capture PCs, runs validation entry points, launches remote capture, aggregates status, and starts processing jobs. |
+| Capture PCs | camera machines | Own the FLIR/PySpin camera lifecycle through long-running daemons and return frame/status data. |
 | Robot/control host | robot-side host or main PC, depending on setup | Runs arm and hand controllers, robot state streaming, teleoperation, kinematics, and motion checks. |
 | Shared storage | usually mounted as `~/shared_data` | Stores calibration, raw sessions, processed videos, uploads, and reusable caches. |
 
@@ -44,7 +45,7 @@ capture-PC services, and those services own the camera SDK lifecycle.
 | Path | Role |
 |------|------|
 | `paradex/` | Reusable library modules: camera IO, capture-PC transport, calibration utilities, robot wrappers, transforms, visualization, processing helpers. |
-| `src/` | Runnable workflows that combine library modules into real tasks. Start at `src/README.md`. |
+| `src/` | Runnable workflows that combine library modules into real tasks. Start with the `src/README.md` in the repository. |
 | `system/` | Rig configuration. `system/current/` selects the active profile. |
 | `rsc/` | Robot URDFs, hand models, meshes, and other static resources. |
 | `docs/` | Sphinx guide and generated API pages. |
@@ -63,4 +64,5 @@ capture-PC services, and those services own the camera SDK lifecycle.
    files are known good.
 
 Use {doc}`camera_system` for camera failures, {doc}`calibration` for geometry or
-projection failures, and `src/validate/README.md` for subsystem smoke tests.
+projection failures, and the repository's `src/validate/README.md` for subsystem
+smoke tests.

@@ -4,9 +4,9 @@ Paradex Documentation
 Paradex is a distributed multi-camera vision and robot control framework for
 dexterous manipulation research.
 
-The **Guide** holds per-subsystem implementation walkthroughs (with diagrams) —
-read these before the code. The **API Reference** is generated automatically from
-the ``paradex`` package source, so it always matches the code.
+The **Guide** starts with a system overview, then moves through the camera,
+calibration, robot, capture, image, and processing layers. The **API Reference**
+is generated automatically from the ``paradex`` package source.
 
 .. toctree::
    :maxdepth: 2

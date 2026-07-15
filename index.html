@@ -15,7 +15,7 @@
         <a href="#flow">Flow</a>
         <a href="#runtime">Where it runs</a>
         <a href="#start">Start</a>
-        <a href="#apps">Applications</a>
+        <a href="#apps">Code map</a>
         <a href="docs/index.html">Docs</a>
         <a href="https://github.com/willi19/paradex">GitHub</a>
       </div>
@@ -26,10 +26,10 @@
     <section class="hero section-tight" aria-labelledby="hero-title">
       <div class="hero-copy">
         <p class="eyebrow">Distributed robot data pipeline</p>
-        <h1 id="hero-title">Paradex maps camera, robot, and processing data into one experiment pipeline.</h1>
+        <h1 id="hero-title">Paradex connects camera capture, robot state, calibration, and processing into one experiment pipeline.</h1>
         <p class="tagline">
           It coordinates capture PCs, FLIR cameras, hardware trigger signals, robot and hand state,
-          calibration, post-processing, and downstream pose or grasp validation.
+          calibration, post-processing, and downstream pose or grasp checks.
         </p>
         <div class="actions" aria-label="Primary actions">
           <a class="button primary" href="#start">Start bring-up</a>
@@ -45,7 +45,7 @@
         </div>
         <div>
           <span class="label">Core work</span>
-          <p>align time, calibrate geometry, undistort frames, sync streams, reconstruct scenes, validate results</p>
+          <p>time-align streams, calibrate geometry, undistort frames, synchronize sessions, reconstruct scenes, validate results</p>
         </div>
         <div>
           <span class="label">Outputs</span>
@@ -60,12 +60,12 @@
           <span>calibrate</span>
           <span>capture</span>
           <span>process</span>
-          <span>pose / grasp check</span>
+          <span>pose and grasp checks</span>
         </div>
         <div class="mini-roles">
           <div>
             <strong>Main PC</strong>
-            <p>orchestrates validation, remote capture, monitoring, processing</p>
+            <p>orchestrates validation, remote capture, monitoring, and processing</p>
           </div>
           <div>
             <strong>Capture PCs</strong>
@@ -86,7 +86,7 @@
     <section id="flow" class="section" aria-labelledby="flow-title">
       <div class="section-head">
         <p class="eyebrow">End-to-end flow</p>
-        <h2 id="flow-title">The pipeline is a sequence, not a single script.</h2>
+        <h2 id="flow-title">The pipeline runs in ordered stages.</h2>
         <p>
           Start with rig configuration and cheap validation. Only move to calibration,
           recording, and robot-dependent checks after the lower layers are healthy.
@@ -122,7 +122,7 @@
         <li>
           <span>06</span>
           <strong>Infer and check</strong>
-          <p>Object pose, grasp transforms, overlays, visualizers, and robot feasibility checks.</p>
+          <p>Object pose, grasp transforms, overlays, visualizers, and robot-readiness checks.</p>
         </li>
       </ol>
     </section>
@@ -190,7 +190,7 @@
       <div class="runbook">
         <article>
           <h3>1. Install and select config</h3>
-          <pre><code>git clone https://github.com/willi19/paradex.git
+<pre><code>git clone https://github.com/willi19/paradex.git
 cd paradex
 pip install -e .
 
@@ -200,7 +200,7 @@ cat system/current/pc.json</code></pre>
         </article>
         <article>
           <h3>2. Start camera services</h3>
-          <pre><code># on every capture PC
+<pre><code># on every capture PC
 python src/camera/server_daemon.py
 
 # optional status page on each capture PC
@@ -208,17 +208,19 @@ python src/camera/monitor_daemon.py</code></pre>
         </article>
         <article>
           <h3>3. Validate transport and cameras</h3>
-          <pre><code># on the main PC
+<pre><code># on the main PC
 python src/validate/data_sender/main.py
 python src/validate/command_sender/stream_remote.py
-python src/validate/camera_system/remote_camera_controller.py --duration 5 --fps 10 --no_stream</code></pre>
+python src/validate/camera_system/remote_camera_controller.py</code></pre>
         </article>
         <article>
           <h3>4. Move to calibration and capture</h3>
-          <pre><code>python src/calibration/intrinsic/capture.py
+<pre><code>python src/calibration/intrinsic/capture.py
 python src/calibration/extrinsic/capture.py
+# current upstream hand-eye capture path is xArm-specific
 python src/calibration/handeye/capture.py --arm xarm
 
+# c starts recording, s stops, q exits
 python src/capture/camera/video_remote.py --save_path dataset/001 --sync_mode</code></pre>
         </article>
       </div>
@@ -232,27 +234,27 @@ python src/capture/camera/video_remote.py --save_path dataset/001 --sync_mode</c
       </div>
 
       <div class="app-grid">
-        <a class="app-card" href="src/calibration/README.md">
+        <a class="app-card" href="docs/calibration.html">
           <h3>Calibration</h3>
           <p>Intrinsic, extrinsic, and hand-eye calibration.</p>
         </a>
-        <a class="app-card" href="src/camera/README.md">
+        <a class="app-card" href="docs/camera_system.html">
           <h3>Camera daemons</h3>
           <p>Capture-PC camera services and status monitoring.</p>
         </a>
-        <a class="app-card" href="src/capture/README.md">
+        <a class="app-card" href="docs/capture.html">
           <h3>Capture</h3>
           <p>Image, video, stream, robot, and teleop capture.</p>
         </a>
-        <a class="app-card" href="src/process/README.md">
+        <a class="app-card" href="docs/process.html">
           <h3>Process</h3>
           <p>Sync, undistortion, reconstruction, upload, and batching.</p>
         </a>
-        <a class="app-card" href="src/object6d/README.md">
+        <a class="app-card" href="https://github.com/willi19/paradex/tree/main/src/object6d">
           <h3>Object 6D</h3>
           <p>Multi-view object pose workflows.</p>
         </a>
-        <a class="app-card" href="src/validate/README.md">
+        <a class="app-card" href="https://github.com/willi19/paradex/tree/main/src/validate">
           <h3>Validation</h3>
           <p>Smoke tests for cameras, transport, sync, robots, and visualizers.</p>
         </a>

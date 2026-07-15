@@ -455,8 +455,10 @@ paradex/calibration/Tsai_Lenz.py
 paradex/calibration/__init__.py
 paradex/calibration/colmap.py
 paradex/calibration/utils.py
+paradex/dataset_acqusition/__init__.py
 paradex/dataset_acqusition/capture.py
 paradex/dataset_acqusition/capture_image.py
+paradex/dataset_acqusition/capture_site.py
 paradex/dataset_acqusition/match_sync.py
 paradex/image/README.md
 paradex/image/__init__.py

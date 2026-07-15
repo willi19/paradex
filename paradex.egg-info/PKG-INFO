@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: paradex
 Version: 0.1
 Summary: managing camera system of paradex
@@ -9,3 +9,12 @@ Requires-Python: >=3.8
 Description-Content-Type: text/markdown
 Provides-Extra: aravis
 Requires-Dist: pyroute2>=0.7; extra == "aravis"
+Provides-Extra: site
+Requires-Dist: fastapi<1,>=0.110; extra == "site"
+Requires-Dist: uvicorn<1,>=0.29; extra == "site"
+Dynamic: author
+Dynamic: author-email
+Dynamic: description-content-type
+Dynamic: provides-extra
+Dynamic: requires-python
+Dynamic: summary

@@ -25,11 +25,11 @@
   <main id="top">
     <section class="hero section-tight" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow">Distributed robot data pipeline</p>
+        <p class="eyebrow">Distributed robotics data pipeline</p>
         <h1 id="hero-title">Paradex connects camera capture, robot state, calibration, and processing into one experiment pipeline.</h1>
         <p class="tagline">
-          It coordinates capture PCs, FLIR cameras, hardware trigger signals, robot and hand state,
-          calibration, post-processing, and downstream pose or grasp checks.
+          It helps an operator collect synchronized camera and robot data, calibrate the rig,
+          process recordings, and check pose or grasp results.
         </p>
         <div class="actions" aria-label="Primary actions">
           <a class="button primary" href="#start">Start bring-up</a>
@@ -45,11 +45,11 @@
         </div>
         <div>
           <span class="label">Core work</span>
-          <p>time-align streams, calibrate geometry, undistort frames, synchronize sessions, reconstruct scenes, validate results</p>
+          <p>check connectivity, align timestamps, calibrate geometry, undistort frames, process sessions, review outputs</p>
         </div>
         <div>
           <span class="label">Outputs</span>
-          <p>raw sessions, processed videos, camera-to-robot transforms, overlays, masks, 3D models, pose/grasp files</p>
+          <p>raw sessions, processed videos, camera-to-robot transforms, overlays, masks, 3D models, pose/grasp results</p>
         </div>
       </aside>
 
@@ -65,19 +65,19 @@
         <div class="mini-roles">
           <div>
             <strong>Main PC</strong>
-            <p>orchestrates validation, remote capture, monitoring, and processing</p>
+            <p>starts validation, remote capture, monitoring, and processing</p>
           </div>
           <div>
             <strong>Capture PCs</strong>
-            <p>own FLIR/PySpin cameras through long-running daemons</p>
+            <p>run long-lived FLIR/PySpin camera services</p>
           </div>
           <div>
             <strong>Robot/control host</strong>
-            <p>runs arm, hand, teleop, state, and motion checks</p>
+            <p>runs arm, hand, state streaming, and motion checks</p>
           </div>
           <div>
             <strong>Shared storage</strong>
-            <p>stores raw sessions, calibration, processed outputs, caches</p>
+            <p>stores raw sessions, calibration, processed outputs, and caches</p>
           </div>
         </div>
       </div>
@@ -88,8 +88,9 @@
         <p class="eyebrow">End-to-end flow</p>
         <h2 id="flow-title">The pipeline runs in ordered stages.</h2>
         <p>
-          Start with rig configuration and cheap validation. Only move to calibration,
-          recording, and robot-dependent checks after the lower layers are healthy.
+          Start with rig configuration and low-risk validation. Move to calibration,
+          recording, and robot-dependent checks only after configuration, transport,
+          and camera services are working.
         </p>
       </div>
 
@@ -97,12 +98,12 @@
         <li>
           <span>01</span>
           <strong>Configure</strong>
-          <p><code>system/current</code>, camera serials, PC names, ports, shared storage.</p>
+          <p>Active <code>system/current</code> profile, camera serials, PC names, ports, shared storage.</p>
         </li>
         <li>
           <span>02</span>
           <strong>Validate</strong>
-          <p>Imports, SSH launch, command/data transport, camera daemons, trigger timing.</p>
+          <p>Python imports, SSH launch, command/data transport, camera services, trigger timing.</p>
         </li>
         <li>
           <span>03</span>
@@ -112,17 +113,17 @@
         <li>
           <span>04</span>
           <strong>Capture</strong>
-          <p>Remote image/video capture plus robot, hand, and teleoperation state.</p>
+          <p>Remote image/video capture plus robot, hand, and teleoperation streams.</p>
         </li>
         <li>
           <span>05</span>
           <strong>Process</strong>
-          <p>Synchronize, undistort, encode, reconstruct, upload, and prepare datasets.</p>
+          <p>Align frames, undistort, encode, reconstruct, upload, and prepare datasets.</p>
         </li>
         <li>
           <span>06</span>
-          <strong>Infer and check</strong>
-          <p>Object pose, grasp transforms, overlays, visualizers, and robot-readiness checks.</p>
+          <strong>Review outputs</strong>
+          <p>Pose estimates, grasp transforms, overlays, visualizers, and robot-readiness checks.</p>
         </li>
       </ol>
     </section>
@@ -132,15 +133,16 @@
         <p class="eyebrow">Runtime map</p>
         <h2 id="runtime-title">Which computer runs what</h2>
         <p>
-          Paradex is distributed. The main PC normally orchestrates; capture PCs own
-          camera hardware; robot control runs only where the robot stack is available.
+          Paradex is distributed. The main PC normally coordinates work; capture PCs
+          control camera hardware; robot control runs only where robot drivers and
+          controllers are available.
         </p>
       </div>
 
       <div class="surface-grid">
         <article class="surface-card">
           <h3>Main PC</h3>
-          <p>Runs orchestrators, validation entry points, dataset commands, monitoring, and aggregation.</p>
+          <p>Runs orchestration scripts, validation entry points, dataset commands, monitoring, and aggregation.</p>
           <ul>
             <li><code>src/validate/data_sender/main.py</code></li>
             <li><code>src/capture/camera/*_remote.py</code></li>
@@ -149,7 +151,7 @@
         </article>
         <article class="surface-card">
           <h3>Capture PCs</h3>
-          <p>Own FLIR/PySpin camera lifecycle through long-running daemons and stream status back.</p>
+          <p>Run FLIR/PySpin camera services and send frame/status data back.</p>
           <ul>
             <li><code>src/camera/server_daemon.py</code></li>
             <li><code>src/camera/monitor_daemon.py</code></li>
@@ -158,7 +160,7 @@
         </article>
         <article class="surface-card">
           <h3>Robot/control host</h3>
-          <p>Runs arm, hand, teleop, kinematics, and visualization checks when hardware is connected.</p>
+          <p>Runs arm and hand controllers, teleoperation, kinematics, and visualization checks when hardware is connected.</p>
           <ul>
             <li><code>src/capture/robot/**</code></li>
             <li><code>src/validate/robot/**</code></li>
@@ -167,7 +169,7 @@
         </article>
         <article class="surface-card">
           <h3>Shared storage</h3>
-          <p>Keeps calibration, raw sessions, processed outputs, uploads, and reusable caches.</p>
+          <p>Stores calibration, raw sessions, processed outputs, uploads, and reusable caches.</p>
           <ul>
             <li><code>~/shared_data</code></li>
             <li>camera params and processed videos</li>
@@ -189,7 +191,7 @@
 
       <div class="runbook">
         <article>
-          <h3>1. Install and select config</h3>
+          <h3>1. Install package and select config</h3>
 <pre><code>git clone https://github.com/willi19/paradex.git
 cd paradex
 pip install -e .
@@ -217,7 +219,7 @@ python src/validate/camera_system/remote_camera_controller.py</code></pre>
           <h3>4. Move to calibration and capture</h3>
 <pre><code>python src/calibration/intrinsic/capture.py
 python src/calibration/extrinsic/capture.py
-# current upstream hand-eye capture path is xArm-specific
+# upstream hand-eye capture currently supports xArm in this script
 python src/calibration/handeye/capture.py --arm xarm
 
 # c starts recording, s stops, q exits
@@ -244,7 +246,7 @@ python src/capture/camera/video_remote.py --save_path dataset/001 --sync_mode</c
         </a>
         <a class="app-card" href="docs/capture.html">
           <h3>Capture</h3>
-          <p>Image, video, stream, robot, and teleop capture.</p>
+          <p>Image, video, stream, robot, and teleoperation capture.</p>
         </a>
         <a class="app-card" href="docs/process.html">
           <h3>Process</h3>
@@ -256,7 +258,7 @@ python src/capture/camera/video_remote.py --save_path dataset/001 --sync_mode</c
         </a>
         <a class="app-card" href="https://github.com/willi19/paradex/tree/main/src/validate">
           <h3>Validation</h3>
-          <p>Smoke tests for cameras, transport, sync, robots, and visualizers.</p>
+          <p>Quick checks for cameras, transport, sync, robots, and visualizers.</p>
         </a>
       </div>
     </section>

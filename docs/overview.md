@@ -1,8 +1,8 @@
 # System Overview
 
-Paradex is a distributed pipeline for robot experiment data. It coordinates
-multi-camera acquisition, hardware trigger timing, robot and hand state,
-calibration, post-processing, and downstream pose or grasp validation.
+Paradex is a distributed pipeline for robot experiment data. It helps an
+operator collect synchronized camera and robot data, calibrate the rig, process
+recordings, and check pose or grasp results.
 
 ## What Paradex Does
 
@@ -11,10 +11,10 @@ manipulation rig:
 
 1. It starts from a selected rig profile in `system/current`.
 2. It validates that capture PCs, camera services, command transport, and trigger
-   timing are alive.
+   timing are working.
 3. It calibrates cameras and camera-to-robot geometry.
 4. It records synchronized camera, robot, hand, and teleoperation streams.
-5. It processes raw sessions into synced, undistorted, reconstructed, or uploaded
+5. It processes raw sessions into synchronized, undistorted, reconstructed, or uploaded
    outputs.
 6. It supports pose, grasp, visualization, and robot-readiness checks on top of
    those outputs.
@@ -28,24 +28,24 @@ configure rig
           -> validate pose, grasp, overlays, or robot readiness
 ```
 
-## Runtime Surfaces
+## Runtime Roles
 
-| Surface | Runs where | Responsibility |
+| Role | Runs where | Responsibility |
 |---------|------------|----------------|
 | Main PC | operator workstation | Orchestrates capture PCs, runs validation entry points, launches remote capture, aggregates status, and starts processing jobs. |
-| Capture PCs | camera machines | Own the FLIR/PySpin camera lifecycle through long-running daemons and return frame/status data. |
+| Capture PCs | camera machines | Run FLIR/PySpin camera services and return frame/status data. |
 | Robot/control host | robot-side host or main PC, depending on setup | Runs arm and hand controllers, robot state streaming, teleoperation, kinematics, and motion checks. |
 | Shared storage | usually mounted as `~/shared_data` | Stores calibration, raw sessions, processed videos, uploads, and reusable caches. |
 
 The main PC normally does not open camera hardware directly. It sends commands to
-capture-PC services, and those services own the camera SDK lifecycle.
+capture-PC services, and those services control the camera SDK lifecycle.
 
 ## Code Layout
 
 | Path | Role |
 |------|------|
 | `paradex/` | Reusable library modules: camera IO, capture-PC transport, calibration utilities, robot wrappers, transforms, visualization, processing helpers. |
-| `src/` | Runnable workflows that combine library modules into real tasks. Start with the `src/README.md` in the repository. |
+| `src/` | Runnable workflows that combine library modules into real tasks. Start with `src/README.md` in the repository. |
 | `system/` | Rig configuration. `system/current/` selects the active profile. |
 | `rsc/` | Robot URDFs, hand models, meshes, and other static resources. |
 | `docs/` | Sphinx guide and generated API pages. |
@@ -60,9 +60,9 @@ capture-PC services, and those services own the camera SDK lifecycle.
 4. Run calibration in order: intrinsic, extrinsic, hand-eye.
 5. Run a short capture and inspect the output layout before collecting a full
    dataset.
-6. Run processing and inference only after the raw session layout and calibration
+6. Run processing and output checks only after the raw session layout and calibration
    files are known good.
 
 Use {doc}`camera_system` for camera failures, {doc}`calibration` for geometry or
 projection failures, and the repository's `src/validate/README.md` for subsystem
-smoke tests.
+quick checks.

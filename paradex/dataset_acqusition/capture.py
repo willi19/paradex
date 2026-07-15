@@ -290,6 +290,7 @@ class CaptureSession():
             if self.hand_side != "Bimanual":
                 if data[self.hand_side] is None:
                     print("No data from teleop device...")
+                    self.retargetor.stop()
                     if session_events is not None:
                         if self.save_path is None and session_events["save"].is_set():
                             return "start"

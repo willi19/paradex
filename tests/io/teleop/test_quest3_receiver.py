@@ -4,6 +4,7 @@ import time
 
 import numpy as np
 import pytest
+from scipy.spatial.transform import Rotation as R
 
 from paradex.io.teleop.occulus.receiver import (
     QUEST_JOINT_ORDER,
@@ -13,7 +14,13 @@ from paradex.io.teleop.occulus.receiver import (
 from paradex.retargetor.unimanual import Retargetor
 
 
-def _packet(wrist_position, control_state=0, control_tracked=True, frame=1):
+def _packet(
+    wrist_position,
+    control_state=0,
+    control_tracked=True,
+    frame=1,
+    missing_joint_indices=(),
+):
     wrist_position = np.asarray(wrist_position, dtype=float)
     positions = []
     for index, _ in enumerate(QUEST_JOINT_ORDER[:21]):
@@ -28,7 +35,7 @@ def _packet(wrist_position, control_state=0, control_tracked=True, frame=1):
         "control_state": control_state,
         "control_tracked": control_tracked,
         "control_gesture": "open" if control_state else "fist",
-        "m": [1] * 21,
+        "m": [0 if index in missing_joint_indices else 1 for index in range(21)],
         "q": [0.0, 0.0, 0.0, 1.0] * 21,
         "jp": positions,
     }
@@ -106,6 +113,69 @@ def test_stale_hand_pose_is_not_returned():
         _wait_for_wrist(receiver, wrist)
         time.sleep(0.04)
         assert receiver.get_data()["Right"] is None
+    finally:
+        receiver.end()
+
+
+def test_missing_finger_joints_reuse_the_last_pose_in_the_current_wrist_frame():
+    receiver = Quest3Receiver(port=0, extrapolation_horizon_s=0.0)
+    try:
+        initial_wrist = np.array([0.1, 1.0, 0.3])
+        _send(receiver, _packet(initial_wrist, frame=1))
+        initial = _wait_for_wrist(receiver, initial_wrist)
+        initial_joint = initial["Right"]["index_distal"].copy()
+
+        moved_wrist = initial_wrist + [0.05, 0.0, 0.0]
+        _send(
+            receiver,
+            _packet(moved_wrist, frame=2, missing_joint_indices=(8,)),
+        )
+        moved = _wait_for_wrist(receiver, moved_wrist)
+
+        wrist_delta = (
+            moved["Right"]["wrist"]
+            @ np.linalg.inv(initial["Right"]["wrist"])
+        )
+        assert moved["Right"]["index_distal"] == pytest.approx(
+            wrist_delta @ initial_joint
+        )
+    finally:
+        receiver.end()
+
+
+def test_short_tracking_gap_extrapolates_wrist_and_hand_with_bounded_velocity():
+    receiver = Quest3Receiver(
+        port=0,
+        max_age_s=0.25,
+        extrapolation_delay_s=0.0,
+        extrapolation_horizon_s=0.10,
+        max_linear_speed_m_s=1.0,
+        max_angular_speed_rad_s=2.0,
+    )
+    try:
+        pose = {"wrist": np.eye(4), "index_distal": np.eye(4)}
+        pose["index_distal"][:3, 3] = [0.0, 0.0, 0.2]
+
+        predicted = receiver._extrapolate_hand_pose(
+            pose,
+            linear_velocity=np.array([0.5, 0.0, 0.0]),
+            angular_velocity=np.array([0.0, 0.0, 1.0]),
+            age_s=0.05,
+        )
+        expected_rotation = R.from_rotvec([0.0, 0.0, 0.05]).as_matrix()
+        assert predicted["wrist"][:3, 3] == pytest.approx([0.025, 0.0, 0.0])
+        assert predicted["wrist"][:3, :3] == pytest.approx(expected_rotation)
+        assert predicted["index_distal"] == pytest.approx(
+            predicted["wrist"] @ pose["index_distal"]
+        )
+
+        capped = receiver._extrapolate_hand_pose(
+            pose,
+            linear_velocity=np.array([0.5, 0.0, 0.0]),
+            angular_velocity=np.zeros(3),
+            age_s=0.20,
+        )
+        assert capped["wrist"][:3, 3] == pytest.approx([0.05, 0.0, 0.0])
     finally:
         receiver.end()
 

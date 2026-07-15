@@ -39,6 +39,10 @@ parser.add_argument('--xarm-servo-api', choices=["cartesian_aa", "angle_j"], def
 parser.add_argument('--quest-bind-host', default="0.0.0.0")
 parser.add_argument('--quest-port', type=int, default=9000)
 parser.add_argument('--quest-max-age-s', type=float, default=0.25)
+parser.add_argument('--quest-extrapolation-delay-s', type=float, default=0.03)
+parser.add_argument('--quest-extrapolation-horizon-s', type=float, default=0.10)
+parser.add_argument('--quest-max-linear-speed-m-s', type=float, default=0.5)
+parser.add_argument('--quest-max-angular-speed-rad-s', type=float, default=3.0)
 
 args = parser.parse_args()
 
@@ -48,6 +52,10 @@ if args.device in ("quest3", "occulus"):
         "host": args.quest_bind_host,
         "port": args.quest_port,
         "max_age_s": args.quest_max_age_s,
+        "extrapolation_delay_s": args.quest_extrapolation_delay_s,
+        "extrapolation_horizon_s": args.quest_extrapolation_horizon_s,
+        "max_linear_speed_m_s": args.quest_max_linear_speed_m_s,
+        "max_angular_speed_rad_s": args.quest_max_angular_speed_rad_s,
     }
     print(
         "Quest 3 teleoperation: listening on UDP "

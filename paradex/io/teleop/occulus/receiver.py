@@ -178,14 +178,23 @@ class Quest3Receiver:
         host: str = "0.0.0.0",
         port: int = 9000,
         max_age_s: float = 0.25,
+        extrapolation_delay_s: float = 0.03,
+        extrapolation_horizon_s: float = 0.10,
+        max_linear_speed_m_s: float = 0.5,
+        max_angular_speed_rad_s: float = 3.0,
     ) -> None:
         self.host = host
         self.max_age_s = float(max_age_s)
+        self.extrapolation_delay_s = max(0.0, float(extrapolation_delay_s))
+        self.extrapolation_horizon_s = max(0.0, float(extrapolation_horizon_s))
+        self.max_linear_speed_m_s = max(0.0, float(max_linear_speed_m_s))
+        self.max_angular_speed_rad_s = max(0.0, float(max_angular_speed_rad_s))
         self.exit_event = Event()
         self.error_event = Event()
         self.lock = Lock()
         self.hand_pose: Dict[str, Dict[str, np.ndarray]] = {}
         self.hand_time: Dict[str, float] = {}
+        self.hand_velocity: Dict[str, Tuple[np.ndarray, np.ndarray]] = {}
         self.control_state = 0
         self.control_tracked = False
         self._recording = False
@@ -275,9 +284,92 @@ class Quest3Receiver:
             pose[:3, 3] = QUEST_TO_GLOBAL @ joint_positions[name]
             hand_pose[_QUEST_TO_PARADEX_NAME[name]] = pose
 
-        if not _REQUIRED_TELEOP_JOINTS.issubset(hand_pose):
+        if "wrist" not in hand_pose:
             return None
         return side, hand_pose
+
+    @staticmethod
+    def _limit_norm(vector: np.ndarray, max_norm: float) -> np.ndarray:
+        norm = np.linalg.norm(vector)
+        if max_norm <= 0.0:
+            return np.zeros_like(vector)
+        if norm <= max_norm or norm < 1e-12:
+            return vector
+        return vector * (max_norm / norm)
+
+    @staticmethod
+    def _transform_hand_pose(
+        hand_pose: Dict[str, np.ndarray], transform: np.ndarray
+    ) -> Dict[str, np.ndarray]:
+        return {name: transform @ pose for name, pose in hand_pose.items()}
+
+    def _update_hand_pose(
+        self, side: str, partial_pose: Dict[str, np.ndarray], sample_time: float
+    ) -> bool:
+        previous = self.hand_pose.get(side)
+        if previous is None:
+            if not _REQUIRED_TELEOP_JOINTS.issubset(partial_pose):
+                return False
+            self.hand_pose[side] = {
+                name: pose.copy() for name, pose in partial_pose.items()
+            }
+            self.hand_time[side] = sample_time
+            self.hand_velocity[side] = (np.zeros(3), np.zeros(3))
+            return True
+
+        previous_wrist = previous["wrist"]
+        current_wrist = partial_pose["wrist"]
+        wrist_delta = current_wrist @ np.linalg.inv(previous_wrist)
+        merged = self._transform_hand_pose(previous, wrist_delta)
+        merged.update({name: pose.copy() for name, pose in partial_pose.items()})
+
+        previous_time = self.hand_time[side]
+        dt = sample_time - previous_time
+        if 1e-4 < dt <= self.max_age_s:
+            linear_velocity = (
+                current_wrist[:3, 3] - previous_wrist[:3, 3]
+            ) / dt
+            angular_velocity = R.from_matrix(
+                current_wrist[:3, :3] @ previous_wrist[:3, :3].T
+            ).as_rotvec() / dt
+            linear_velocity = self._limit_norm(
+                linear_velocity, self.max_linear_speed_m_s
+            )
+            angular_velocity = self._limit_norm(
+                angular_velocity, self.max_angular_speed_rad_s
+            )
+        else:
+            linear_velocity = np.zeros(3)
+            angular_velocity = np.zeros(3)
+
+        self.hand_pose[side] = merged
+        self.hand_time[side] = sample_time
+        self.hand_velocity[side] = (linear_velocity, angular_velocity)
+        return True
+
+    def _extrapolate_hand_pose(
+        self,
+        hand_pose: Dict[str, np.ndarray],
+        linear_velocity: np.ndarray,
+        angular_velocity: np.ndarray,
+        age_s: float,
+    ) -> Dict[str, np.ndarray]:
+        horizon = min(
+            max(0.0, age_s - self.extrapolation_delay_s),
+            self.extrapolation_horizon_s,
+        )
+        if horizon <= 0.0:
+            return {name: pose.copy() for name, pose in hand_pose.items()}
+
+        wrist = hand_pose["wrist"]
+        predicted_wrist = wrist.copy()
+        predicted_wrist[:3, 3] += linear_velocity * horizon
+        predicted_wrist[:3, :3] = (
+            R.from_rotvec(angular_velocity * horizon).as_matrix()
+            @ wrist[:3, :3]
+        )
+        wrist_delta = predicted_wrist @ np.linalg.inv(wrist)
+        return self._transform_hand_pose(hand_pose, wrist_delta)
 
     def _update_control(self, packet: Dict) -> None:
         if "control_tracked" not in packet:
@@ -312,13 +404,13 @@ class Quest3Receiver:
                 continue
 
             received_at = time.time()
+            sample_time = time.monotonic()
             parsed = self._parse_hand_packet(packet)
             with self.lock:
                 self._update_control(packet)
                 if parsed is not None:
                     side, hand_pose = parsed
-                    self.hand_pose[side] = hand_pose
-                    self.hand_time[side] = time.monotonic()
+                    self._update_hand_pose(side, hand_pose, sample_time)
                 if self._recording:
                     record = dict(packet)
                     record["received_at"] = received_at
@@ -338,9 +430,15 @@ class Quest3Receiver:
                 ):
                     result[side] = None
                 else:
-                    result[side] = {
-                        name: transform.copy() for name, transform in pose.items()
-                    }
+                    linear_velocity, angular_velocity = self.hand_velocity.get(
+                        side, (np.zeros(3), np.zeros(3))
+                    )
+                    result[side] = self._extrapolate_hand_pose(
+                        pose,
+                        linear_velocity,
+                        angular_velocity,
+                        now - updated_at,
+                    )
             result["control_state"] = self.control_state
             result["control_tracked"] = self.control_tracked
         result["time"] = time.time()

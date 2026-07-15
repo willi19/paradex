@@ -38,7 +38,12 @@ parser.add_argument('--visualize-tactile-realtime', action="store_true")
 parser.add_argument('--xarm-servo-api', choices=["cartesian_aa", "angle_j"], default="cartesian_aa")
 parser.add_argument('--quest-bind-host', default="0.0.0.0")
 parser.add_argument('--quest-port', type=int, default=9000)
-parser.add_argument('--quest-max-age-s', type=float, default=0.25)
+parser.add_argument(
+    '--quest-max-age-s',
+    type=float,
+    default=0.75,
+    help="Hold the last safe Quest pose for this long before rebasing tracking.",
+)
 parser.add_argument('--quest-extrapolation-delay-s', type=float, default=0.03)
 parser.add_argument('--quest-extrapolation-horizon-s', type=float, default=0.10)
 parser.add_argument('--quest-max-linear-speed-m-s', type=float, default=0.5)

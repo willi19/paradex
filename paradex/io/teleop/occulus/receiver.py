@@ -177,7 +177,7 @@ class Quest3Receiver:
         self,
         host: str = "0.0.0.0",
         port: int = 9000,
-        max_age_s: float = 0.25,
+        max_age_s: float = 0.75,
         extrapolation_delay_s: float = 0.03,
         extrapolation_horizon_s: float = 0.10,
         max_linear_speed_m_s: float = 0.5,

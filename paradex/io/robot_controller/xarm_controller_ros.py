@@ -77,6 +77,7 @@ class XArmControllerROS(Node):
         servo_api="cartesian_aa",
         namespace=None,
         track_action_qpos=False,
+        max_consecutive_command_failures=3,
     ):
         del ip  # kept for compatibility with existing network_info schema
 
@@ -99,6 +100,10 @@ class XArmControllerROS(Node):
         # servo command to record action_qpos. Off by default to keep the
         # control loop tight (one fewer ROS service call per iteration).
         self.track_action_qpos = bool(track_action_qpos)
+        self.max_consecutive_command_failures = max(
+            1, int(max_consecutive_command_failures)
+        )
+        self.consecutive_command_failures = 0
         self.servo_api = str(servo_api).strip().lower()
         if self.servo_api not in ("cartesian_aa", "angle_j"):
             self.get_logger().warning(
@@ -193,6 +198,7 @@ class XArmControllerROS(Node):
         done_event = Event()
         future.add_done_callback(lambda _f: done_event.set())
         if not done_event.wait(timeout=float(timeout_sec)):
+            future.cancel()
             return None
         return future.result()
 
@@ -229,7 +235,7 @@ class XArmControllerROS(Node):
         req.acc = 0.0
         req.mvtime = 0.0
         req.is_tool_coord = self.is_tool_coord
-        return self._call_sync(self.cli_set_servo_cart_aa, req, timeout_sec=1.0)
+        return self._call_sync(self.cli_set_servo_cart_aa, req, timeout_sec=0.2)
 
     def _send_servo_angle_j(self, joints):
         if self.cli_set_servo_angle_j is None or MoveJoint is None:
@@ -250,6 +256,18 @@ class XArmControllerROS(Node):
         if res is None or res.ret != 0 or len(res.datas) < 6:
             return None
         return np.asarray(res.datas[:6], dtype=np.float64)
+
+    def _record_command_failure(self):
+        self.consecutive_command_failures += 1
+        if (
+            self.consecutive_command_failures
+            >= self.max_consecutive_command_failures
+        ):
+            self.error_event.set()
+
+    def _record_command_success(self):
+        self.consecutive_command_failures = 0
+        self.error_event.clear()
 
     def control_loop(self):
         while not self.exit_event.is_set():
@@ -284,7 +302,7 @@ class XArmControllerROS(Node):
                             "set_servo_angle_j unavailable/timeout; command skipped"
                         )
                         self._warned_joint_fallback = True
-                    self.error_event.set()
+                    self._record_command_failure()
                     elapsed = time.perf_counter() - start_time
                     time.sleep(max(0.0, (1.0 / self.fps) - elapsed))
                     continue
@@ -292,11 +310,12 @@ class XArmControllerROS(Node):
                 res = self._send_servo_aa(aa)
             if res is None:
                 self.get_logger().warning(f"{cmd_name} timeout")
-                self.error_event.set()
+                self._record_command_failure()
             elif res.ret != 0:
                 self.get_logger().warning(f"{cmd_name} ret={res.ret}, msg={res.message}")
-                self.error_event.set()
+                self._record_command_failure()
             else:
+                self._record_command_success()
                 if use_joint_servo:
                     action_qpos = aa.copy()
                 elif self.track_action_qpos:

@@ -229,7 +229,7 @@ class XArmControllerROS(Node):
         req.acc = 0.0
         req.mvtime = 0.0
         req.is_tool_coord = self.is_tool_coord
-        return self._call_sync(self.cli_set_servo_cart_aa, req, timeout_sec=0.3)
+        return self._call_sync(self.cli_set_servo_cart_aa, req, timeout_sec=1.0)
 
     def _send_servo_angle_j(self, joints):
         if self.cli_set_servo_angle_j is None or MoveJoint is None:

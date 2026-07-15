@@ -106,10 +106,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--quest-port", type=int, default=9000)
     parser.add_argument("--quest-max-age-s", type=float, default=0.25)
     parser.add_argument("--wait-timeout-s", type=float, default=15.0)
-    parser.add_argument("--rate-hz", type=float, default=72.0)
+    parser.add_argument("--rate-hz", type=float, default=60.0)
     parser.add_argument("--duration-s", type=float, default=0.0)
-    parser.add_argument("--max-offset-m", type=float, default=0.30)
-    parser.add_argument("--max-step-m", type=float, default=0.05)
+    parser.add_argument("--max-offset-m", type=float, default=0.60)
+    parser.add_argument("--max-step-m", type=float, default=0.10)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--ignore-arm-errors", action="store_true")
     return parser

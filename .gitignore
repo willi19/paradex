@@ -56,3 +56,6 @@ jisoo_test
 docs/_build/
 docs/_sphinx_design_static/
 .omc/
+
+# backup archives
+*.zip

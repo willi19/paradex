@@ -33,6 +33,7 @@ class CaptureSession():
         realsense=False,
         arm_kwargs=None,
         camera_pc_list=None,
+        teleop_kwargs=None,
     ):
         if realsense:
             self.realsense = realsense_controller()
@@ -112,14 +113,16 @@ class CaptureSession():
 
             
         if teleop is not None:
+            teleop_kwargs = {} if teleop_kwargs is None else dict(teleop_kwargs)
             if teleop == "xsens":
                 # if arm == "openarm":
                 from paradex.io.teleop.xsens.receiver import XSensReceiver
                 self.teleop_device = XSensReceiver(**network_info["xsens"]["param"])
-                
-            # elif teleop == "occulus":
-            #     from paradex.io.teleop.oculus.receiver import OculusReceiver
-            #     self.teleop_device = OculusReceiver()
+            elif teleop in ("quest3", "occulus"):
+                from paradex.io.teleop.occulus.receiver import Quest3Receiver
+                self.teleop_device = Quest3Receiver(**teleop_kwargs)
+            else:
+                raise ValueError("Unsupported teleop device: {}".format(teleop))
             if arm != 'openarm':
                 self.retargetor = Retargetor(
                     arm_name=arm,
@@ -134,6 +137,16 @@ class CaptureSession():
             self.teleop_device = None
             
         self.save_path = None
+
+    def _get_unimanual_control_state(self, data):
+        get_control_state = getattr(self.teleop_device, "get_control_state", None)
+        if callable(get_control_state):
+            return get_control_state()
+
+        opposite_hand = data.get(self.hand_side_opposite)
+        if opposite_hand is None:
+            return None
+        return self.state_extractor.get_state(opposite_hand)
             
     def start(self, save_path): # Start recording on all sensors
         print("Starting new capture session, saving to:", save_path)
@@ -286,7 +299,11 @@ class CaptureSession():
                     time.sleep(0.01)
                     continue
 
-                state = self.state_extractor.get_state(data[self.hand_side_opposite])
+                state = self._get_unimanual_control_state(data)
+                if state is None:
+                    print("No control-hand data from teleop device...")
+                    time.sleep(0.01)
+                    continue
 
                 if self.save_path is not None:
                     self.state_hist.append(state)
@@ -301,7 +318,7 @@ class CaptureSession():
                     
                 if state == 0:
                     wrist_pose, hand_action = self.retargetor.get_action(data)
-                    if self.hand is not None:
+                    if self.hand is not None and hand_action is not None:
                         self.hand.move(hand_action)
 
                     if self.arm is not None:

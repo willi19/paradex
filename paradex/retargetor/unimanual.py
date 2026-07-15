@@ -24,7 +24,7 @@ def _resolve_hand(name, is_right=True):
     return fn
 
 
-class Retargetor(): # Input is only from Xsens
+class Retargetor():  # Input follows the normalized teleop hand-pose schema.
     def __init__(self, arm_name=None, hand_name=None, hand_side="Right",
                  hand_name_left=None, hand_name_right=None):
         self.arm_name = arm_name

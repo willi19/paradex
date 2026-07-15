@@ -21,7 +21,12 @@ camera_pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--device', choices=['xsens', 'occulus'], default="xsens")
+parser.add_argument(
+    '--device',
+    choices=['xsens', 'quest3', 'occulus'],
+    default="xsens",
+    help="Teleoperation source. 'occulus' is kept as an alias for quest3.",
+)
 parser.add_argument('--camera', type=str, default=True)
 parser.add_argument('--arm', type=str, default="xarm")
 parser.add_argument('--hand', type=str, default="inspire_f1")
@@ -31,8 +36,27 @@ parser.add_argument('--tactile', action="store_true")
 parser.add_argument('--ip', action="store_true")
 parser.add_argument('--visualize-tactile-realtime', action="store_true")
 parser.add_argument('--xarm-servo-api', choices=["cartesian_aa", "angle_j"], default="cartesian_aa")
+parser.add_argument('--quest-bind-host', default="0.0.0.0")
+parser.add_argument('--quest-port', type=int, default=9000)
+parser.add_argument('--quest-max-age-s', type=float, default=0.25)
 
 args = parser.parse_args()
+
+teleop_kwargs = None
+if args.device in ("quest3", "occulus"):
+    teleop_kwargs = {
+        "host": args.quest_bind_host,
+        "port": args.quest_port,
+        "max_age_s": args.quest_max_age_s,
+    }
+    print(
+        "Quest 3 teleoperation: listening on UDP "
+        "{}:{} (max age {:.3f}s)".format(
+            args.quest_bind_host,
+            args.quest_port,
+            args.quest_max_age_s,
+        )
+    )
 
 
 stop_event = Event()
@@ -80,6 +104,7 @@ cs = CaptureSession(
     tactile=args.tactile,
     ip=args.ip,
     camera_pc_list=camera_pc_list,
+    teleop_kwargs=teleop_kwargs,
 )
 
 tactile_plotter = None

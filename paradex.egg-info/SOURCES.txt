@@ -433,6 +433,7 @@ paradex/io/robot_controller/__init__.py
 paradex/io/robot_controller/allegro_controller.py
 paradex/io/robot_controller/allegro_controller_ros2.py
 paradex/io/robot_controller/allegro_controller_temp.py
+paradex/io/robot_controller/allegro_v5_controller_ros2.py
 paradex/io/robot_controller/gui_controller copy.py
 paradex/io/robot_controller/gui_controller.py
 paradex/io/robot_controller/gui_controller_prev.py
@@ -448,6 +449,8 @@ paradex/io/robot_controller/openarm_f1_xsens_standalone.py
 paradex/io/robot_controller/openarm_state_receiver.py
 paradex/io/robot_controller/xarm_controller.py
 paradex/io/robot_controller/xarm_controller_ros.py
+paradex/io/robot_controller/xarm_controller_ros_ik.py
+paradex/io/robot_controller/xarm_tcp_offset_reader.py
 paradex/io/robot_controller/deprecated/inspire_controller_ip.py
 paradex/io/teleop/__init__.py
 paradex/io/teleop/deprecated/occulus/receiver.py
@@ -1060,13 +1063,7 @@ rsc/robot/inspire_left/configuration/inspire_left_physics.usd
 rsc/robot/inspire_left/configuration/inspire_left_sensor.usd
 rsc/robot/spheres/xarm_allegro copy.yml
 rsc/robot/spheres/xarm_allegro.yml
-rsc/robot/xarm/allegro_contact.urdf
-rsc/robot/xarm/no_vis_xarm6_allegro_wrist_mounted_rotate.urdf
 rsc/robot/xarm/xarm.urdf
-rsc/robot/xarm/xarm6_allegro_wrist_mounted_rotate.urdf
-rsc/robot/xarm/xarm6_allegro_wrist_mounted_rotate_cur.urdf
-rsc/robot/xarm/xarm6_allegro_wrist_mounted_rotate_prev.urdf
-rsc/robot/xarm/xarm6_allegro_wrist_mounted_rotate_prev2.urdf
 rsc/robot/xarm/meshes/base.obj
 rsc/robot/xarm/meshes/base.stl
 rsc/robot/xarm/meshes/base.stl.convex.stl

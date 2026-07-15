@@ -1,14 +1,9 @@
-name: Deploy docs to GitHub Pages
-
-# Deploys the pre-built Sphinx site in docs/ as a static site (no Jekyll).
-# The legacy Jekyll build failed on this repo; this bypasses it.
+name: Deploy static site to GitHub Pages
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "docs/**"
-      - ".github/workflows/pages.yml"
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -18,7 +13,7 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -27,10 +22,37 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          path: docs
-      - id: deployment
+          python-version: "3.11"
+
+      - name: Install docs dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install sphinx furo sphinx-autoapi myst-parser sphinxcontrib-mermaid sphinx-design
+
+      - name: Build Sphinx docs
+        run: bash script/build_docs.sh
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Prepare static artifact
+        run: |
+          mkdir -p _site
+          cp index.html _site/index.html
+          cp .nojekyll _site/.nojekyll
+          cp -R assets docs _site/
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
         uses: actions/deploy-pages@v4

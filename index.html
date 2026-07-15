@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Paradex System Map</title>
-  <meta name="description" content="Paradex is a distributed robot data pipeline for multi-camera capture, calibration, synchronization, processing, and robot validation." />
+  <title>Paradex System Guide</title>
+  <meta name="description" content="Paradex is a distributed data pipeline for multi-camera robot experiments: camera services, synchronization, calibration, recording, processing, and validation." />
   <link rel="stylesheet" href="assets/style.css" />
 </head>
 <body>
@@ -12,9 +12,10 @@
     <nav class="nav" aria-label="Primary navigation">
       <a class="brand" href="#top">Paradex</a>
       <div class="nav-links">
-        <a href="#flow">Flow</a>
-        <a href="#runtime">Where it runs</a>
-        <a href="#start">Start</a>
+        <a href="#flow">Pipeline</a>
+        <a href="#runtime">Machines</a>
+        <a href="#terms">Terms</a>
+        <a href="#start">Setup</a>
         <a href="#apps">Code map</a>
         <a href="docs/index.html">Docs</a>
         <a href="https://github.com/willi19/paradex">GitHub</a>
@@ -25,11 +26,12 @@
   <main id="top">
     <section class="hero section-tight" aria-labelledby="hero-title">
       <div class="hero-copy">
-        <p class="eyebrow">Distributed robotics data pipeline</p>
-        <h1 id="hero-title">Paradex connects camera capture, robot state, calibration, and processing into one experiment pipeline.</h1>
+        <p class="eyebrow">Distributed robot data pipeline</p>
+        <h1 id="hero-title">Paradex is a system for recording and processing multi-camera robot experiments.</h1>
         <p class="tagline">
-          It helps an operator collect synchronized camera and robot data, calibrate the rig,
-          process recordings, and check pose or grasp results.
+          It coordinates Capture PCs, camera services, hardware-triggered cameras,
+          robot and hand streams, calibration, and post-processing so each session
+          can be checked for pose and grasp tasks.
         </p>
         <div class="actions" aria-label="Primary actions">
           <a class="button primary" href="#start">Start setup checks</a>
@@ -41,43 +43,43 @@
       <aside class="at-a-glance" aria-label="At a glance">
         <div>
           <span class="label">Inputs</span>
-          <p>camera frames, robot state, hand state, trigger timestamps, calibration boards, object scans</p>
+          <p>FLIR camera frames, robot state, hand state, hardware-trigger timestamps, calibration boards, object scans</p>
         </div>
         <div>
-          <span class="label">Core work</span>
-          <p>check connectivity, align timestamps, calibrate geometry, undistort frames, process sessions, review outputs</p>
+          <span class="label">Pipeline work</span>
+          <p>verify services, synchronize timestamps, calibrate geometry, record sessions, post-process data, inspect outputs</p>
         </div>
         <div>
           <span class="label">Outputs</span>
-          <p>raw sessions, processed videos, camera-to-robot transforms, overlays, masks, 3D models, pose/grasp results</p>
+          <p>raw session folders, synchronized videos, camera-to-robot transforms, overlays, masks, 3D models, pose and grasp results</p>
         </div>
       </aside>
 
       <div class="quick-system" aria-label="First screen system summary">
         <div class="mini-flow">
-          <span>configure</span>
-          <span>validate</span>
-          <span>calibrate</span>
-          <span>capture</span>
-          <span>process</span>
-          <span>pose and grasp checks</span>
+          <span>select rig profile</span>
+          <span>verify services</span>
+          <span>calibrate geometry</span>
+          <span>record session</span>
+          <span>post-process data</span>
+          <span>inspect results</span>
         </div>
         <div class="mini-roles">
           <div>
             <strong>Main PC</strong>
-            <p>starts validation, remote capture, monitoring, and processing jobs</p>
+            <p>runs orchestration, validation, remote camera commands, and processing jobs</p>
           </div>
           <div>
             <strong>Capture PCs</strong>
-            <p>run long-lived FLIR/PySpin camera services</p>
+            <p>run camera services that own FLIR/PySpin cameras</p>
           </div>
           <div>
             <strong>Robot/control host</strong>
-            <p>runs arm, hand, state streaming, and motion checks</p>
+            <p>runs arm and hand drivers, state streaming, and motion checks</p>
           </div>
           <div>
             <strong>Shared storage</strong>
-            <p>stores raw sessions, calibration files, processed outputs, and caches</p>
+            <p>stores calibration, raw sessions, processed datasets, and caches</p>
           </div>
         </div>
       </div>
@@ -85,45 +87,45 @@
 
     <section id="flow" class="section" aria-labelledby="flow-title">
       <div class="section-head">
-        <p class="eyebrow">End-to-end flow</p>
-        <h2 id="flow-title">The pipeline runs in ordered stages.</h2>
+        <p class="eyebrow">Pipeline stages</p>
+        <h2 id="flow-title">Each stage depends on the one before it.</h2>
         <p>
-          Start with rig configuration and checks that do not move hardware. Move to
-          calibration, recording, and robot-dependent checks only after configuration,
-          transport, and camera services are working.
+          Start with configuration and service checks that do not move hardware.
+          Move to calibration, recording, and robot-dependent checks only after the
+          lower layers are known to work.
         </p>
       </div>
 
       <ol class="pipeline" aria-label="Paradex data flow">
         <li>
           <span>01</span>
-          <strong>Configure</strong>
-          <p>Select the active <code>system/current</code> profile; verify camera serials, PC names, ports, and shared storage.</p>
+          <strong>Select rig profile</strong>
+          <p>Choose the active <code>system/current</code> profile; verify camera serials, PC names, ports, and shared storage.</p>
         </li>
         <li>
           <span>02</span>
-          <strong>Validate</strong>
-          <p>Python imports, SSH launch, command/data transport, camera services, trigger timing.</p>
+          <strong>Verify services</strong>
+          <p>Check Python imports, SSH launch, command/data transport, camera services, and hardware-trigger timing.</p>
         </li>
         <li>
           <span>03</span>
-          <strong>Calibrate</strong>
-          <p>Intrinsic, extrinsic, then hand-eye when camera-to-robot geometry matters.</p>
+          <strong>Calibrate geometry</strong>
+          <p>Solve intrinsics, extrinsics, and hand-eye transforms when camera-to-robot geometry is required.</p>
         </li>
         <li>
           <span>04</span>
-          <strong>Capture</strong>
-          <p>Remote image/video capture plus robot, hand, and teleoperation streams.</p>
+          <strong>Record session</strong>
+          <p>Record synchronized camera, robot, hand, and teleoperation streams into shared storage.</p>
         </li>
         <li>
           <span>05</span>
-          <strong>Process</strong>
-          <p>Align timestamps, undistort, encode, reconstruct, upload, and prepare datasets.</p>
+          <strong>Post-process data</strong>
+          <p>Match timestamps, undistort frames, encode videos, reconstruct scenes, upload, and prepare datasets.</p>
         </li>
         <li>
           <span>06</span>
-          <strong>Review outputs</strong>
-          <p>Pose estimates, grasp transforms, overlays, visualizers, and robot-readiness checks.</p>
+          <strong>Inspect results</strong>
+          <p>Check pose estimates, grasp transforms, calibration overlays, visualizers, and robot readiness.</p>
         </li>
       </ol>
     </section>
@@ -133,16 +135,16 @@
         <p class="eyebrow">Machine roles</p>
         <h2 id="runtime-title">Which computer runs what</h2>
         <p>
-          Paradex runs across multiple machines. The main PC coordinates work; capture
-          PCs control camera hardware; robot control runs only where robot drivers and
-          controllers are available.
+          Paradex separates orchestration from hardware ownership. The Main PC
+          coordinates work; Capture PCs own camera hardware; robot control runs
+          only where the robot drivers are installed and the robot is reachable.
         </p>
       </div>
 
       <div class="surface-grid">
         <article class="surface-card">
           <h3>Main PC</h3>
-          <p>Runs orchestration scripts, validation entry points, dataset commands, monitoring, and aggregation.</p>
+          <p>Runs orchestration scripts, validation entry points, remote camera commands, monitoring, and processing.</p>
           <ul>
             <li><code>src/validate/data_sender/main.py</code></li>
             <li><code>src/capture/camera/*_remote.py</code></li>
@@ -151,7 +153,7 @@
         </article>
         <article class="surface-card">
           <h3>Capture PCs</h3>
-          <p>Run FLIR/PySpin camera services and send frame/status data back.</p>
+          <p>Run camera services that own the FLIR/PySpin camera lifecycle and return frame/status data.</p>
           <ul>
             <li><code>src/camera/server_daemon.py</code></li>
             <li><code>src/camera/monitor_daemon.py</code></li>
@@ -160,7 +162,7 @@
         </article>
         <article class="surface-card">
           <h3>Robot/control host</h3>
-          <p>Runs arm and hand controllers, teleoperation, kinematics, and visualization checks when hardware is connected.</p>
+          <p>Runs arm and hand drivers, teleoperation, kinematics, and motion checks when hardware is connected.</p>
           <ul>
             <li><code>src/capture/robot/**</code></li>
             <li><code>src/validate/robot/**</code></li>
@@ -169,7 +171,7 @@
         </article>
         <article class="surface-card">
           <h3>Shared storage</h3>
-          <p>Stores calibration, raw sessions, processed outputs, uploads, and reusable caches.</p>
+          <p>Stores calibration files, raw sessions, processed datasets, uploads, and reusable caches.</p>
           <ul>
             <li><code>~/shared_data</code></li>
             <li>camera params and processed videos</li>
@@ -179,29 +181,75 @@
       </div>
     </section>
 
+    <section id="terms" class="section" aria-labelledby="terms-title">
+      <div class="section-head">
+        <p class="eyebrow">Core terms</p>
+        <h2 id="terms-title">Terms used throughout the system</h2>
+        <p>
+          These terms match the code and the physical setup. Use them consistently
+          when reading scripts, logs, and generated datasets.
+        </p>
+      </div>
+
+      <dl class="term-grid">
+        <div class="term-card">
+          <dt>Rig profile</dt>
+          <dd>The selected robot/camera setup under <code>system/current</code>, including PCs, cameras, network settings, and storage paths.</dd>
+        </div>
+        <div class="term-card">
+          <dt>Capture PC</dt>
+          <dd>A machine connected to one or more FLIR cameras. It runs camera services and usually receives commands from the Main PC.</dd>
+        </div>
+        <div class="term-card">
+          <dt>Camera service</dt>
+          <dd>The long-running process on a Capture PC, such as <code>server_daemon.py</code>, that owns the camera SDK and responds to remote commands.</dd>
+        </div>
+        <div class="term-card">
+          <dt>Hardware trigger</dt>
+          <dd>A shared timing signal, typically from the UTGE900, that makes cameras expose frames on the same pulse.</dd>
+        </div>
+        <div class="term-card">
+          <dt>Session</dt>
+          <dd>One recorded experiment folder containing raw camera data and any robot, hand, teleoperation, timestamp, and calibration snapshots.</dd>
+        </div>
+        <div class="term-card">
+          <dt>Intrinsic calibration</dt>
+          <dd>Per-camera lens and sensor parameters needed for undistortion and projection.</dd>
+        </div>
+        <div class="term-card">
+          <dt>Extrinsic calibration</dt>
+          <dd>Camera-to-camera or camera-to-scene geometry used to relate views in one coordinate frame.</dd>
+        </div>
+        <div class="term-card">
+          <dt>Hand-eye calibration</dt>
+          <dd>The camera-to-robot transform used when camera observations must align with robot motion or robot-frame overlays.</dd>
+        </div>
+      </dl>
+    </section>
+
     <section id="start" class="section" aria-labelledby="start-title">
       <div class="section-head">
-        <p class="eyebrow">Setup order</p>
-        <h2 id="start-title">First checks to run on a fresh setup</h2>
+        <p class="eyebrow">Setup checks</p>
+        <h2 id="start-title">First checks for a new rig profile</h2>
         <p>
-          These commands are ordered from non-motion checks to hardware-dependent checks.
-          Run them before a long capture session.
+          Run these in order before recording a long session. The first checks do
+          not move hardware; later checks depend on camera services and calibration.
         </p>
       </div>
 
       <div class="runbook">
         <article>
-          <h3>1. Install package and select configuration</h3>
+          <h3>1. Install package and select rig profile</h3>
 <pre><code>git clone https://github.com/willi19/paradex.git
 cd paradex
 pip install -e .
 
-# confirm the active rig profile
+# confirm the active rig profile and PC map
 ls -l system/current
 cat system/current/pc.json</code></pre>
         </article>
         <article>
-          <h3>2. Start camera services</h3>
+          <h3>2. Start Capture PC camera services</h3>
 <pre><code># on every capture PC
 python src/camera/server_daemon.py
 
@@ -209,20 +257,20 @@ python src/camera/server_daemon.py
 python src/camera/monitor_daemon.py</code></pre>
         </article>
         <article>
-          <h3>3. Validate transport and cameras</h3>
+          <h3>3. Verify transport and camera control</h3>
 <pre><code># on the main PC
 python src/validate/data_sender/main.py
 python src/validate/command_sender/stream_remote.py
 python src/validate/camera_system/remote_camera_controller.py</code></pre>
         </article>
         <article>
-          <h3>4. Move to calibration and capture</h3>
+          <h3>4. Continue to calibration and recording</h3>
 <pre><code>python src/calibration/intrinsic/capture.py
 python src/calibration/extrinsic/capture.py
 # this upstream hand-eye script currently supports xArm
 python src/calibration/handeye/capture.py --arm xarm
 
-# c starts recording, s stops, q exits
+# c starts recording, s stops recording, q exits
 python src/capture/camera/video_remote.py --save_path dataset/001 --sync_mode</code></pre>
         </article>
       </div>
@@ -241,24 +289,24 @@ python src/capture/camera/video_remote.py --save_path dataset/001 --sync_mode</c
           <p>Intrinsic, extrinsic, and hand-eye calibration.</p>
         </a>
         <a class="app-card" href="docs/camera_system.html">
-          <h3>Camera daemons</h3>
-          <p>Capture-PC camera services and status monitoring.</p>
+          <h3>Camera services</h3>
+          <p>Capture PC camera ownership, remote commands, and status monitoring.</p>
         </a>
         <a class="app-card" href="docs/capture.html">
-          <h3>Capture</h3>
-          <p>Image, video, stream, robot, and teleoperation capture.</p>
+          <h3>Session recording</h3>
+          <p>Image, video, stream, robot, and teleoperation recording.</p>
         </a>
         <a class="app-card" href="docs/process.html">
-          <h3>Process</h3>
-          <p>Synchronization, undistortion, reconstruction, upload, and batching.</p>
+          <h3>Post-processing</h3>
+          <p>Timestamp matching, undistortion, reconstruction, upload, and batching.</p>
         </a>
         <a class="app-card" href="https://github.com/willi19/paradex/tree/main/src/object6d">
           <h3>Object 6D Pose</h3>
           <p>Multi-view object pose workflows.</p>
         </a>
         <a class="app-card" href="https://github.com/willi19/paradex/tree/main/src/validate">
-          <h3>Validation</h3>
-          <p>Quick checks for cameras, transport, sync, robots, and visualizers.</p>
+          <h3>Validation checks</h3>
+          <p>Quick checks for cameras, transport, synchronization, robots, and visualizers.</p>
         </a>
       </div>
     </section>

@@ -1,13 +1,14 @@
 Paradex Documentation
 =====================
 
-Paradex is a distributed multi-camera vision and robot control framework for
-dexterous manipulation research.
+Paradex is a distributed data pipeline for multi-camera robot experiments:
+camera services, synchronization, calibration, session recording, processing,
+and validation.
 
-The **Guide** starts with a system overview, then follows the normal working
-order: camera services, calibration, robot control, capture sessions, dataset
-acquisition, image utilities, and processing. The **API Reference** is generated
-automatically from the ``paradex`` package source.
+The **Guide** starts with the system vocabulary and machine roles, then follows
+the normal working order: camera services, calibration, robot control, session
+recording, dataset acquisition, image utilities, and post-processing. The
+**API Reference** is generated automatically from the ``paradex`` package source.
 
 .. toctree::
    :maxdepth: 2

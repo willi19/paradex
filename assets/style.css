@@ -109,6 +109,7 @@ pre {
 .hero-copy,
 .at-a-glance,
 .surface-card,
+.term-card,
 .runbook article,
 .app-card,
 .pipeline li {
@@ -387,6 +388,29 @@ h3 {
   margin: 6px 0;
 }
 
+.term-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+  margin: 0;
+}
+
+.term-card {
+  min-width: 0;
+  padding: 18px;
+}
+
+.term-card dt {
+  margin: 0 0 8px;
+  font-weight: 760;
+}
+
+.term-card dd {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
 .runbook {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -448,7 +472,8 @@ pre code {
 
 @media (max-width: 1100px) {
   .pipeline,
-  .surface-grid {
+  .surface-grid,
+  .term-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
@@ -526,6 +551,10 @@ pre code {
   }
 
   .surface-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .term-grid {
     grid-template-columns: 1fr;
   }
 

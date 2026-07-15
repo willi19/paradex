@@ -127,24 +127,33 @@ auto-detects arm DOF from `get_data()` and, when the controller exposes
 `open_gripper`/`grasp`/`set_guiding_mode` (i.e. a Franka), swaps the 16-DOF hand panel
 for Gripper (Open/Grasp) + Guide-Mode buttons. `hand_controller` is now optional.
 
-## Daemon & Docker (lives outside this repo, on the robot-control PC)
+## Daemon & Docker
 
-The `franka_daemon` C++ source is **not** in this repo. As of 2026-07-16 it lives on the
-robot-control PC at:
+The `franka_daemon` C++ source lives in this repo at [`cpp/franka_daemon/`](../cpp/franka_daemon/):
 
 ```
-/home/exp_main/robothome/Sookwan/exp5-bimanual-paradex2/src_main/cpp_sources/daemon/
+cpp/franka_daemon/
     franka_daemon.cpp      # ~60KB, the daemon
     servo_protocol.hpp     # msgpack schema + ZMQ endpoint helpers
     CMakeLists.txt
     build_daemon.sh        # run INSIDE the container
-    build/franka_daemon    # built binary
 ```
 
-> ⚠️ Two similarly-named trees exist. `/home/exp_main/sookwan/exp5-bimanual-paradex2`
-> (lowercase, the `/workspace` mount) has only a **stale `build/CMakeFiles`** — no source,
-> no binary. The authoritative copy is the `robothome/Sookwan` (capital S) path above.
-> Neither tree is a git repo, so **this source is unversioned and has no backup.**
+The built binary is **not** committed (gitignored) — rebuild it with `build_daemon.sh`
+inside the container, which is the only place libfranka exists.
+
+### Provenance
+
+Vendored on 2026-07-16 from the robot-control PC at
+`.../robothome/Sookwan/exp5-bimanual-paradex2/src_main/cpp_sources/daemon/`, which was
+**not** a git repo — until then the daemon was unversioned with no backup, while its
+Python client lived here. That path also holds a prebuilt `build/franka_daemon`.
+
+> ⚠️ Two similarly-named trees exist on that PC. The lowercase `sookwan/...` tree (the
+> `/workspace` mount) has only a **stale `build/CMakeFiles`** — no source, no binary.
+> The authoritative copy was the `robothome/Sookwan` (capital S) path above. The script
+> docstrings' `/workspace/src_main/.../franka_daemon` path points at the stale tree and
+> does not exist.
 
 ### Docker
 

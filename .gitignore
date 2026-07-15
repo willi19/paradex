@@ -59,3 +59,6 @@ docs/_sphinx_design_static/
 
 # backup archives
 *.zip
+
+# C++ daemon build artifacts
+cpp/franka_daemon/build/

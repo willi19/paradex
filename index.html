@@ -13,6 +13,7 @@
       <a class="brand" href="#top">Paradex</a>
       <div class="nav-links">
         <a href="#flow">Pipeline</a>
+        <a href="#results">Results</a>
         <a href="#runtime">Machines</a>
         <a href="#terms">Terms</a>
         <a href="#start">Setup</a>
@@ -40,19 +41,19 @@
         </div>
       </div>
 
-      <aside class="at-a-glance" aria-label="At a glance">
-        <div>
-          <span class="label">Inputs</span>
-          <p>FLIR camera frames, robot state, hand state, hardware-trigger timestamps, calibration boards, object scans</p>
-        </div>
-        <div>
-          <span class="label">Pipeline work</span>
-          <p>verify services, synchronize timestamps, calibrate geometry, record sessions, post-process data, inspect outputs</p>
-        </div>
-        <div>
-          <span class="label">Outputs</span>
-          <p>raw session folders, synchronized videos, camera-to-robot transforms, overlays, masks, 3D models, pose and grasp results</p>
-        </div>
+      <aside class="hero-result" aria-label="Representative Paradex output">
+        <figure class="hero-visual">
+          <img
+            src="assets/results/multiview-calibration-grid.jpg"
+            width="1800"
+            height="948"
+            alt="Merged multi-camera calibration view with robot overlays and calibration boards"
+          />
+          <figcaption>
+            <strong>Multi-view calibration grid</strong>
+            <span>Camera views merged for synchronization and geometry checks.</span>
+          </figcaption>
+        </figure>
       </aside>
 
       <div class="quick-system" aria-label="First screen system summary">
@@ -128,6 +129,55 @@
           <p>Check pose estimates, grasp transforms, calibration overlays, visualizers, and robot readiness.</p>
         </li>
       </ol>
+    </section>
+
+    <section id="results" class="section" aria-labelledby="results-title">
+      <div class="section-head">
+        <p class="eyebrow">Function outputs</p>
+        <h2 id="results-title">Results from core functions</h2>
+      </div>
+
+      <div class="result-grid">
+        <figure class="result-card">
+          <img
+            src="assets/results/hand-eye-overlay.jpg"
+            width="1400"
+            height="1050"
+            loading="lazy"
+            alt="Robot mesh overlay aligned with a camera image"
+          />
+          <figcaption>
+            <strong>Hand-eye calibration</strong>
+            <span>Robot geometry projected onto camera frames.</span>
+          </figcaption>
+        </figure>
+        <figure class="result-card">
+          <img
+            src="assets/results/recorded-session-frame.jpg"
+            width="1400"
+            height="1050"
+            loading="lazy"
+            alt="Recorded Paradex validation frame with robot arm and calibration marker"
+          />
+          <figcaption>
+            <strong>Session recording</strong>
+            <span>Frame saved from a Paradex validation upload.</span>
+          </figcaption>
+        </figure>
+        <figure class="result-card">
+          <img
+            src="assets/results/object-pose-validation.jpg"
+            width="1400"
+            height="1050"
+            loading="lazy"
+            alt="Object pose overlay on a camera frame with marker detections"
+          />
+          <figcaption>
+            <strong>Object pose validation</strong>
+            <span>Object pose and marker alignment check.</span>
+          </figcaption>
+        </figure>
+      </div>
     </section>
 
     <section id="runtime" class="section surface-section" aria-labelledby="runtime-title">

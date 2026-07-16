@@ -78,6 +78,8 @@ pre {
 }
 
 .nav-links a {
+  flex: 0 0 auto;
+  white-space: nowrap;
   color: var(--muted);
   font-size: 0.92rem;
 }
@@ -107,7 +109,8 @@ pre {
 }
 
 .hero-copy,
-.at-a-glance,
+.hero-result,
+.result-card,
 .surface-card,
 .term-card,
 .runbook article,
@@ -199,35 +202,57 @@ h3 {
   color: #fff;
 }
 
-.at-a-glance {
+.hero-result {
   display: grid;
   gap: 0;
   overflow: hidden;
   min-width: 0;
 }
 
-.at-a-glance div {
-  padding: 18px;
-  border-bottom: 1px solid var(--line);
-}
-
-.at-a-glance div:last-child {
-  border-bottom: 0;
-}
-
-.label {
-  display: block;
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 760;
-  text-transform: uppercase;
-}
-
-.at-a-glance p {
+.hero-visual,
+.result-card {
   margin: 0;
-  font-size: 0.96rem;
-  overflow-wrap: break-word;
+  overflow: hidden;
+}
+
+.hero-visual {
+  height: 100%;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.hero-visual img,
+.result-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #dce3ea;
+}
+
+.hero-visual img {
+  min-height: 320px;
+}
+
+.hero-visual figcaption,
+.result-card figcaption {
+  display: grid;
+  gap: 4px;
+  padding: 14px 16px 16px;
+  border-top: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.hero-visual strong,
+.result-card strong {
+  font-size: 0.95rem;
+}
+
+.hero-visual span,
+.result-card span {
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.4;
 }
 
 .quick-system {
@@ -347,6 +372,18 @@ h3 {
   background: #e8eef4;
   color: #223142;
   font-size: 0.9em;
+}
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.result-card {
+  min-width: 0;
+  display: grid;
+  grid-template-rows: minmax(0, 240px) auto;
 }
 
 .surface-section,
@@ -472,6 +509,7 @@ pre code {
 
 @media (max-width: 1100px) {
   .pipeline,
+  .result-grid,
   .surface-grid,
   .term-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -500,6 +538,10 @@ pre code {
     grid-template-columns: 1fr;
   }
 
+  .result-grid {
+    grid-template-columns: 1fr;
+  }
+
   .mini-roles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -515,6 +557,17 @@ pre code {
 }
 
 @media (max-width: 620px) {
+  .nav {
+    padding: 14px 16px;
+  }
+
+  .nav-links {
+    display: grid;
+    grid-template-columns: repeat(3, max-content);
+    gap: 8px 14px;
+    justify-content: start;
+  }
+
   .section,
   .section-tight {
     width: 100%;
@@ -525,7 +578,8 @@ pre code {
   }
 
   .hero-copy,
-  .at-a-glance,
+  .hero-result,
+  .result-card,
   .quick-system,
   .mini-flow,
   .mini-roles {
@@ -552,6 +606,10 @@ pre code {
 
   .surface-grid {
     grid-template-columns: 1fr;
+  }
+
+  .result-card {
+    grid-template-rows: minmax(0, 220px) auto;
   }
 
   .term-grid {

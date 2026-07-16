@@ -26,6 +26,19 @@ from typing import Dict, Iterable, List, Optional, Set
 log = logging.getLogger(__name__)
 
 GVCP_PORT = 3956
+DISCOVERY_OPCODE = 0x0002
+DISCOVERY_ACK_OPCODE = 0x0003
+DISCOVERY_REQUEST_ID = 0xFFFF
+DISCOVERY_DATA_SIZE = 0xF8
+DISCOVERY_MAC_OFFSET = 0x08
+DISCOVERY_IP_OFFSET = 0x24
+DISCOVERY_VENDOR_OFFSET = 0x48
+DISCOVERY_VENDOR_SIZE = 32
+DISCOVERY_MODEL_OFFSET = 0x68
+DISCOVERY_MODEL_SIZE = 32
+DISCOVERY_SERIAL_OFFSET = 0xD8
+DISCOVERY_SERIAL_SIZE = 16
+RAW_DISCOVERY_TIMEOUT_SECONDS = 0.5
 FORCEIP_OPCODE = 0x0004
 FORCEIP_PAYLOAD_LEN = 56
 # FLIR DeviceReset performs a full camera reboot. Give all cameras enough time
@@ -51,6 +64,43 @@ class NicSubnet:
     name: str
     host_ip: str
     network: ipaddress.IPv4Network
+
+
+def gvcp_discovery_packet(request_id: int = DISCOVERY_REQUEST_ID) -> bytes:
+    """Build an 8-byte GigE Vision ``DISCOVERY_CMD`` packet."""
+
+    return struct.pack(">BBHHH", 0x42, 0x01, DISCOVERY_OPCODE, 0, request_id)
+
+
+def _gvcp_text(data: bytes, offset: int, size: int) -> str:
+    return data[offset : offset + size].split(b"\0", 1)[0].decode("ascii", "replace").strip()
+
+
+def parse_gvcp_discovery_ack(packet: bytes) -> CameraRecord:
+    """Parse a GVCP discovery acknowledgement without opening the camera."""
+
+    if len(packet) < 8 + DISCOVERY_DATA_SIZE:
+        raise ValueError("GVCP discovery acknowledgement is truncated")
+    _status, opcode, payload_size, request_id = struct.unpack_from(">HHHH", packet, 0)
+    if opcode != DISCOVERY_ACK_OPCODE or request_id != DISCOVERY_REQUEST_ID:
+        raise ValueError("Packet is not a GVCP discovery acknowledgement")
+    if payload_size < DISCOVERY_DATA_SIZE or len(packet) < 8 + payload_size:
+        raise ValueError("GVCP discovery acknowledgement has an invalid payload size")
+
+    data = packet[8 : 8 + payload_size]
+    mac_bytes = data[DISCOVERY_MAC_OFFSET + 2 : DISCOVERY_MAC_OFFSET + 8]
+    mac = ":".join("{:02x}".format(octet) for octet in mac_bytes)
+    serial = _gvcp_text(data, DISCOVERY_SERIAL_OFFSET, DISCOVERY_SERIAL_SIZE) or mac
+    vendor = _gvcp_text(data, DISCOVERY_VENDOR_OFFSET, DISCOVERY_VENDOR_SIZE)
+    model = _gvcp_text(data, DISCOVERY_MODEL_OFFSET, DISCOVERY_MODEL_SIZE)
+    current_ip = socket.inet_ntoa(data[DISCOVERY_IP_OFFSET : DISCOVERY_IP_OFFSET + 4])
+    label = "-".join(part for part in (vendor, model, serial) if part)
+    return CameraRecord(
+        serial=serial,
+        device_id="raw-gvcp:{}".format(label or mac),
+        ip=current_ip,
+        mac=mac,
+    )
 
 
 def gvcp_forceip_packet(
@@ -246,7 +296,95 @@ class CameraAddressing:
             records[record.serial] = record
         self._seen = records
         self._snapshot_neighbor_table()
+
+        raw_records, raw_mac_to_nic = self._raw_gvcp_discover()
+        for serial, record in raw_records.items():
+            # Preserve Aravis device IDs when its high-level discovery worked.
+            records.setdefault(serial, record)
+        self._seen = records
+        self._mac_to_nic.update(raw_mac_to_nic)
         return self.seen
+
+    def _raw_gvcp_discover(self) -> tuple[Dict[str, CameraRecord], Dict[str, NicSubnet]]:
+        """Discover cameras from GVCP ACKs even when Aravis drops them.
+
+        A wildcard socket receives limited-broadcast replies that are not
+        delivered to Aravis 0.8.20 sockets bound to a specific ``11.0.X.1``
+        address. ``IP_PKTINFO`` supplies the ingress interface, so ForceIP can
+        be sent back through the exact physical camera link.
+        """
+
+        packet_info = getattr(socket, "IP_PKTINFO", None)
+        if packet_info is None or not hasattr(socket.socket, "sendmsg"):
+            log.warning("Raw GVCP discovery is unavailable: IP_PKTINFO/sendmsg is unsupported")
+            return {}, {}
+
+        nic_by_index: Dict[int, NicSubnet] = {}
+        for nic in self.nic_subnets:
+            try:
+                nic_by_index[socket.if_nametoindex(nic.name)] = nic
+            except OSError as exc:
+                log.warning("Raw GVCP discovery skipped unavailable NIC %s: %s", nic.name, exc)
+        records: Dict[str, CameraRecord] = {}
+        mac_to_nic: Dict[str, NicSubnet] = {}
+        discover_packet = gvcp_discovery_packet()
+
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) as sock:
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+            sock.setsockopt(socket.IPPROTO_IP, packet_info, 1)
+            sock.bind(("", 0))
+
+            for ifindex, nic in nic_by_index.items():
+                pktinfo = struct.pack(
+                    "I4s4s",
+                    ifindex,
+                    socket.inet_aton(nic.host_ip),
+                    b"\0" * 4,
+                )
+                try:
+                    sock.sendmsg(
+                        [discover_packet],
+                        [(socket.IPPROTO_IP, packet_info, pktinfo)],
+                        0,
+                        ("255.255.255.255", GVCP_PORT),
+                    )
+                except OSError as exc:
+                    log.warning("Raw GVCP discovery send failed on %s: %s", nic.name, exc)
+
+            deadline = time.monotonic() + RAW_DISCOVERY_TIMEOUT_SECONDS
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                sock.settimeout(remaining)
+                try:
+                    payload, ancillary, _flags, _source = sock.recvmsg(65535, 256)
+                except socket.timeout:
+                    break
+
+                ingress_index = None
+                for level, kind, data in ancillary:
+                    if level == socket.IPPROTO_IP and kind == packet_info and len(data) >= 4:
+                        ingress_index = struct.unpack_from("I", data)[0]
+                        break
+                nic = nic_by_index.get(ingress_index)
+                if nic is None:
+                    continue
+                try:
+                    record = parse_gvcp_discovery_ack(payload)
+                except ValueError:
+                    continue
+                records[record.serial] = record
+                mac_to_nic[record.mac.lower().replace("-", ":")] = nic
+                log.info(
+                    "Raw GVCP discovery found camera %s at %s via %s (%s)",
+                    record.serial,
+                    record.ip,
+                    nic.name,
+                    record.mac,
+                )
+
+        return records, mac_to_nic
 
     def _snapshot_neighbor_table(self) -> None:
         """Map each discovered camera MAC to the NIC on which it replied."""
@@ -402,6 +540,10 @@ class CameraAddressing:
 
     def force_ip(self, record: CameraRecord, nic: NicSubnet, target_ip: str) -> None:
         """Move one camera to its target subnet before capture starts."""
+
+        if record.device_id.startswith("raw-gvcp:"):
+            self._send_raw_force_ip(record, nic, target_ip)
+            return
 
         try:
             self._set_persistent_ip(record, target_ip)

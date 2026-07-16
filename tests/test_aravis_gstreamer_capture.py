@@ -1,6 +1,7 @@
 import contextlib
 import io
 import ipaddress
+import socket
 import struct
 import tempfile
 import unittest
@@ -14,7 +15,9 @@ from paradex.io.camera_system.aravis_addressing import (
     NicSubnet,
     _camera_subnet,
     _is_deployed_11_camera_address,
+    gvcp_discovery_packet,
     gvcp_forceip_packet,
+    parse_gvcp_discovery_ack,
 )
 from paradex.io.camera_system.aravis_gstreamer import (
     AravisGStreamerError,
@@ -196,6 +199,103 @@ class FakeAravisCameraSession:
 
 
 class AravisCaptureTests(unittest.TestCase):
+    def test_discovery_packet_has_expected_gvcp_fields(self):
+        self.assertEqual(gvcp_discovery_packet(), bytes.fromhex("420100020000ffff"))
+
+    def test_discovery_ack_parser_extracts_identity_and_address(self):
+        data = bytearray(0xF8)
+        data[10:16] = bytes.fromhex("00b09d5a2441")
+        data[0x24:0x28] = bytes((169, 254, 36, 67))
+        data[0x48:0x52] = b"Point Grey"
+        data[0x68:0x75] = b"Blackfly BFLY"
+        data[0xD8:0xE0] = b"23022639"
+        packet = struct.pack(">HHHH", 0, 3, len(data), 0xFFFF) + data
+
+        record = parse_gvcp_discovery_ack(packet)
+
+        self.assertEqual(record.serial, "23022639")
+        self.assertEqual(record.ip, "169.254.36.67")
+        self.assertEqual(record.mac, "00:b0:9d:5a:24:41")
+        self.assertTrue(record.device_id.startswith("raw-gvcp:Point Grey-Blackfly BFLY-"))
+
+    def test_discover_merges_raw_fallback_and_preserves_ingress_nic(self):
+        nic = NicSubnet("enp5s0f1", "11.0.2.1", ipaddress.ip_network("11.0.2.0/24"))
+        raw = CameraRecord(
+            "23022639",
+            "raw-gvcp:Point Grey-Blackfly-23022639",
+            "169.254.36.67",
+            "00:b0:9d:5a:24:41",
+        )
+        addressing = CameraAddressing([nic])
+        aravis = MagicMock()
+        aravis.get_n_devices.return_value = 0
+        addressing._raw_gvcp_discover = MagicMock(
+            return_value=({raw.serial: raw}, {raw.mac: nic})
+        )
+
+        with patch(
+            "paradex.io.camera_system.aravis_addressing._load_aravis",
+            return_value=aravis,
+        ):
+            discovered = addressing.discover()
+
+        self.assertEqual(discovered, {raw.serial: raw})
+        self.assertEqual(addressing._mac_to_nic, {raw.mac: nic})
+
+    def test_raw_discovery_receives_broadcast_ack_on_ingress_nic(self):
+        nic = NicSubnet("enp5s0f1", "11.0.2.1", ipaddress.ip_network("11.0.2.0/24"))
+        data = bytearray(0xF8)
+        data[10:16] = bytes.fromhex("00b09d5a2441")
+        data[0x24:0x28] = bytes((169, 254, 36, 67))
+        data[0xD8:0xE0] = b"23022639"
+        ack = struct.pack(">HHHH", 0, 3, len(data), 0xFFFF) + data
+
+        class FakeDiscoverySocket:
+            def __init__(self):
+                self.sent = []
+                self.received = False
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_args):
+                return False
+
+            def setsockopt(self, *_args):
+                pass
+
+            def bind(self, address):
+                self.bound = address
+
+            def sendmsg(self, *args):
+                self.sent.append(args)
+
+            def settimeout(self, timeout):
+                self.timeout = timeout
+
+            def recvmsg(self, *_args):
+                if self.received:
+                    raise socket.timeout
+                self.received = True
+                ancillary = [(socket.IPPROTO_IP, socket.IP_PKTINFO, struct.pack("I4s4s", 17, b"\0" * 4, b"\0" * 4))]
+                return ack, ancillary, 0, ("169.254.36.67", 3956)
+
+        fake_socket = FakeDiscoverySocket()
+        addressing = CameraAddressing([nic])
+        with patch(
+            "paradex.io.camera_system.aravis_addressing.socket.socket",
+            return_value=fake_socket,
+        ), patch(
+            "paradex.io.camera_system.aravis_addressing.socket.if_nametoindex",
+            return_value=17,
+        ):
+            records, mac_to_nic = addressing._raw_gvcp_discover()
+
+        self.assertEqual(fake_socket.bound, ("", 0))
+        self.assertEqual(len(fake_socket.sent), 1)
+        self.assertEqual(records["23022639"].ip, "169.254.36.67")
+        self.assertEqual(mac_to_nic["00:b0:9d:5a:24:41"], nic)
+
     def test_forceip_packet_has_expected_gvcp_fields(self):
         packet = gvcp_forceip_packet("2c:dd:a3:7d:a6:9c", "11.0.3.100", request_id=42)
 
@@ -261,6 +361,20 @@ class AravisCaptureTests(unittest.TestCase):
 
         addressing.force_ip(record, nic, "11.0.1.100")
 
+        addressing._send_raw_force_ip.assert_called_once_with(record, nic, "11.0.1.100")
+
+    def test_force_ip_from_raw_discovery_skips_unopenable_aravis_device(self):
+        nic = NicSubnet("enp5s0", "11.0.1.1", ipaddress.ip_network("11.0.1.0/24"))
+        record = CameraRecord(
+            "cam-a", "raw-gvcp:FLIR-Blackfly-cam-a", "169.254.1.2", "2c:dd:a3:7d:a6:9c"
+        )
+        addressing = CameraAddressing([nic])
+        addressing._set_persistent_ip = MagicMock()
+        addressing._send_raw_force_ip = MagicMock()
+
+        addressing.force_ip(record, nic, "11.0.1.100")
+
+        addressing._set_persistent_ip.assert_not_called()
         addressing._send_raw_force_ip.assert_called_once_with(record, nic, "11.0.1.100")
 
     def test_reconcile_rejects_camera_that_remains_link_local(self):

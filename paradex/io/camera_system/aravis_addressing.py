@@ -360,21 +360,38 @@ class CameraAddressing:
             log.warning("Camera %s at %s is not addressable: %s", record.serial, record.ip, exc)
             return False
 
-    def reconcile(self, expected_serials: Iterable[str]) -> List[str]:
-        """Discover, recover addresses, and verify all expected cameras.
+    def reconcile(
+        self,
+        expected_serials: Iterable[str],
+        allow_partial: bool = False,
+    ) -> List[str]:
+        """Discover, recover addresses, and return the usable configured cameras.
 
-        A missing configured camera is a hard startup error: responding READY
-        with only a subset would let the main PC begin hardware triggering a
-        partial rig.
+        Strict callers retain the original all-or-nothing behavior. Camera
+        agents may opt into ``allow_partial`` so one disconnected camera does
+        not prevent the remaining local cameras from recording.
         """
 
         expected = [str(serial) for serial in expected_serials]
         self.discover()
         missing = sorted(set(expected) - set(self._seen))
         if missing:
-            raise CameraAddressingError("Configured cameras were not discovered: {}".format(missing))
+            if not allow_partial:
+                raise CameraAddressingError(
+                    "Configured cameras were not discovered: {}".format(missing)
+                )
+            log.warning(
+                "Configured cameras were not discovered and will be skipped: %s",
+                missing,
+            )
 
-        plan = self._plan_force_ips(expected)
+        usable = [serial for serial in expected if serial in self._seen]
+        if not usable:
+            raise CameraAddressingError(
+                "No configured cameras were discovered; unavailable cameras: {}".format(missing)
+            )
+
+        plan = self._plan_force_ips(usable)
         if plan:
             for serial, (nic, target_ip) in plan.items():
                 record = self._seen[serial]
@@ -383,11 +400,30 @@ class CameraAddressing:
             time.sleep(DISCOVERY_SETTLE_SECONDS)
             self.discover()
 
-        missing = sorted(set(expected) - set(self._seen))
-        if missing:
-            raise CameraAddressingError("Configured cameras disappeared after ForceIP: {}".format(missing))
+        disappeared = sorted(set(usable) - set(self._seen))
+        if disappeared:
+            if not allow_partial:
+                raise CameraAddressingError(
+                    "Configured cameras disappeared after ForceIP: {}".format(disappeared)
+                )
+            log.warning(
+                "Configured cameras disappeared after ForceIP and will be skipped: %s",
+                disappeared,
+            )
+            usable = [serial for serial in usable if serial in self._seen]
 
-        failed = [serial for serial in expected if not self._verify(self._seen[serial])]
+        failed = [serial for serial in usable if not self._verify(self._seen[serial])]
         if failed:
-            raise CameraAddressingError("Configured cameras are not controllable: {}".format(failed))
-        return expected
+            if not allow_partial:
+                raise CameraAddressingError(
+                    "Configured cameras are not controllable: {}".format(failed)
+                )
+            log.warning(
+                "Configured cameras are not controllable and will be skipped: %s",
+                failed,
+            )
+            usable = [serial for serial in usable if serial not in failed]
+
+        if not usable:
+            raise CameraAddressingError("No configured cameras are usable")
+        return usable

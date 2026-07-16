@@ -131,8 +131,15 @@ class FakeAddressing:
             )
         }
 
-    def reconcile(self, expected_serials):
+    def reconcile(self, expected_serials, allow_partial=False):
+        self.allow_partial = allow_partial
         return list(expected_serials)
+
+
+class FakePartialAddressing(FakeAddressing):
+    def reconcile(self, expected_serials, allow_partial=False):
+        self.allow_partial = allow_partial
+        return ["cam-a"]
 
 
 class FakeOptionalFeatureDevice:
@@ -210,6 +217,20 @@ class AravisCaptureTests(unittest.TestCase):
         plan = addressing._plan_force_ips()
 
         self.assertEqual(plan["cam-a"], (right, "11.0.2.100"))
+
+    def test_reconcile_allows_missing_camera_and_returns_usable_subset(self):
+        subnet = NicSubnet("enp5s0", "11.0.1.1", ipaddress.ip_network("11.0.1.0/24"))
+        addressing = CameraAddressing([subnet])
+        record = CameraRecord("cam-a", "FLIR-cam-a", "11.0.1.100", "2c:dd:a3:7d:a6:9c")
+        addressing._seen = {record.serial: record}
+
+        with patch.object(addressing, "discover", return_value=addressing.seen), patch.object(
+            addressing, "_verify", return_value=True
+        ), self.assertLogs("paradex.io.camera_system.aravis_addressing", level="WARNING") as logs:
+            usable = addressing.reconcile(["cam-a", "cam-b"], allow_partial=True)
+
+        self.assertEqual(usable, ["cam-a"])
+        self.assertTrue(any("cam-b" in message for message in logs.output))
 
     def test_legacy_11_network_uses_its_physical_link_as_a_24(self):
         subnet = _camera_subnet(
@@ -488,6 +509,22 @@ class AravisCaptureTests(unittest.TestCase):
         self.assertIn("serial=cam-a", text)
         self.assertIn("ip=11.0.1.100", text)
         self.assertIn("nic=enp6s0f0", text)
+
+    def test_loader_continues_with_discovered_camera_subset(self):
+        output = io.StringIO()
+        addressing = FakePartialAddressing()
+        with contextlib.redirect_stdout(output):
+            loader = AravisGStreamerCameraLoader(
+                serial_list=["cam-a", "cam-b"],
+                addressing=addressing,
+                camera_factory=FakeCamera,
+                prewarm_hardware=False,
+            )
+
+        self.assertTrue(addressing.allow_partial)
+        self.assertEqual(loader.camera_names, ["cam-a"])
+        self.assertEqual([camera.name for camera in loader.cameralist], ["cam-a"])
+        self.assertIn("Aravis/GStreamer cameras loaded (1/2 configured)", output.getvalue())
 
     def test_loader_uses_exact_discovered_device_id(self):
         loader = AravisGStreamerCameraLoader(

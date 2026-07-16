@@ -808,12 +808,16 @@ class AravisGStreamerCameraLoader:
         self.camera_names = [str(serial) for serial in (serial_list or get_camera_list())]
         if not self.camera_names:
             raise AravisGStreamerError("No camera serials are configured for this capture PC")
+        self._configured_camera_count = len(self.camera_names)
 
         self.camera_inventory: List[dict] = []
         self.device_ids: Dict[str, str] = {}
         if reconcile_addresses:
             address_manager = addressing or CameraAddressing()
-            address_manager.reconcile(self.camera_names)
+            self.camera_names = address_manager.reconcile(
+                self.camera_names,
+                allow_partial=True,
+            )
             for serial in self.camera_names:
                 record = address_manager.seen[serial]
                 nic_name = "unknown"
@@ -858,7 +862,7 @@ class AravisGStreamerCameraLoader:
         print(
             "[Info] Aravis/GStreamer cameras loaded ({}/{} configured):".format(
                 len(self.camera_inventory) or len(self.camera_names),
-                len(self.camera_names),
+                self._configured_camera_count,
             )
         )
         if self.camera_inventory:

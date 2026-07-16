@@ -2,10 +2,10 @@
 
 The capture agents keep a fixed ``X.Y.Z.1/24`` address on each camera-facing
 NIC. GigE cameras can lose their persistent address after a power cycle and
-fall back to a link-local address. Aravis can discover such cameras but cannot
-control them until their address is moved back onto the NIC subnet, so this
-module runs the GVCP ForceIP recovery before a recording agent accepts
-commands.
+fall back to a link-local address. This module recovers camera addresses before
+a recording agent accepts commands. Reachable cameras use Aravis' official
+persistent-IP API and are reset so the address takes effect immediately. A raw
+GVCP ForceIP packet remains as a fallback for cameras that cannot be opened.
 
 All SDK imports are deliberately lazy.  This keeps the main Paradex package
 importable on the main PC and on development machines without Aravis.
@@ -28,7 +28,9 @@ log = logging.getLogger(__name__)
 GVCP_PORT = 3956
 FORCEIP_OPCODE = 0x0004
 FORCEIP_PAYLOAD_LEN = 56
-DISCOVERY_SETTLE_SECONDS = 3.0
+# FLIR DeviceReset performs a full camera reboot. Give all cameras enough time
+# to rejoin discovery before treating the address recovery as failed.
+DISCOVERY_SETTLE_SECONDS = 8.0
 FIRST_CAMERA_HOST = 100
 
 
@@ -264,6 +266,37 @@ class CameraAddressing:
                     link["index"]: link.get_attr("IFLA_IFNAME") for link in ipr.get_links()
                 }
                 subnets = {nic.name: nic for nic in self.nic_subnets}
+
+                # A recovery setup may carry one temporary link-local address
+                # per camera NIC. Matching the camera's current address to
+                # those networks gives an unambiguous physical NIC mapping,
+                # even before the kernel neighbour table has been populated.
+                address_networks = []
+                for address in ipr.get_addr(family=socket.AF_INET):
+                    name = link_names.get(address["index"])
+                    host_ip = address.get_attr("IFA_ADDRESS")
+                    if name not in subnets or not host_ip:
+                        continue
+                    try:
+                        network = ipaddress.ip_network(
+                            "{}/{}".format(host_ip, address["prefixlen"]),
+                            strict=False,
+                        )
+                    except ValueError:
+                        continue
+                    address_networks.append((name, network))
+
+                for record in self._seen.values():
+                    try:
+                        camera_ip = ipaddress.IPv4Address(record.ip)
+                    except ValueError:
+                        continue
+                    for name, network in address_networks:
+                        if camera_ip in network:
+                            mac = record.mac.lower().replace("-", ":")
+                            self._mac_to_nic[mac] = subnets[name]
+                            break
+
                 for neighbor in ipr.get_neighbours(family=socket.AF_INET):
                     mac = (neighbor.get_attr("NDA_LLADDR") or "").lower()
                     name = link_names.get(neighbor["ifindex"])
@@ -334,16 +367,56 @@ class CameraAddressing:
                 raise CameraAddressingError("No free camera IP remains in {}".format(nic.network))
         return plan
 
-    def force_ip(self, record: CameraRecord, nic: NicSubnet, target_ip: str) -> None:
-        """Send a directed broadcast ForceIP command through one camera NIC."""
+    def _set_persistent_ip(self, record: CameraRecord, target_ip: str) -> None:
+        """Configure and immediately apply a reachable camera's target IP."""
+
+        Aravis = _load_aravis()
+        camera = Aravis.Camera.new(record.device_id)
+        if camera is None:
+            raise CameraAddressingError("Could not open camera {}".format(record.serial))
+
+        set_persistent = getattr(camera, "gv_set_persistent_ip_from_string", None)
+        set_mode = getattr(camera, "gv_set_ip_configuration_mode", None)
+        if set_persistent is None or set_mode is None:
+            raise CameraAddressingError(
+                "Installed Aravis lacks the persistent-IP API (requires Aravis >= 0.8.22)"
+            )
+
+        set_persistent(target_ip, "255.255.255.0", "0.0.0.0")
+        set_mode(Aravis.GvIpConfigurationMode.PERSISTENT_IP)
+        # FLIR applies the selected persistent address after DeviceReset. The
+        # command acknowledgement is sent before the control connection drops.
+        camera.execute_command("DeviceReset")
+
+    def _send_raw_force_ip(self, record: CameraRecord, nic: NicSubnet, target_ip: str) -> None:
+        """Send a raw GVCP ForceIP command when the camera cannot be opened."""
 
         packet = gvcp_forceip_packet(record.mac, target_ip)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP) as sock:
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-            # Binding the source IP is sufficient to select the NIC and avoids
-            # SO_BINDTODEVICE/CAP_NET_RAW requirements in a normal systemd unit.
             sock.bind((nic.host_ip, 0))
-            sock.sendto(packet, (str(nic.network.broadcast_address), GVCP_PORT))
+            # A ForceIP target is, by definition, not necessarily on the
+            # target subnet yet. Use the limited broadcast instead of that
+            # subnet's directed broadcast.
+            sock.sendto(packet, ("255.255.255.255", GVCP_PORT))
+
+    def force_ip(self, record: CameraRecord, nic: NicSubnet, target_ip: str) -> None:
+        """Move one camera to its target subnet before capture starts."""
+
+        try:
+            self._set_persistent_ip(record, target_ip)
+            log.info(
+                "Configured persistent IP for camera %s: %s; device reset requested",
+                record.serial,
+                target_ip,
+            )
+        except Exception as exc:
+            log.warning(
+                "Aravis persistent-IP setup failed for camera %s; falling back to raw ForceIP: %s",
+                record.serial,
+                exc,
+            )
+            self._send_raw_force_ip(record, nic, target_ip)
 
     def _verify(self, record: CameraRecord) -> bool:
         Aravis = _load_aravis()
@@ -411,6 +484,21 @@ class CameraAddressing:
                 disappeared,
             )
             usable = [serial for serial in usable if serial in self._seen]
+
+        misaligned = [serial for serial in usable if not self._is_aligned(self._seen[serial])]
+        if misaligned:
+            details = {serial: self._seen[serial].ip for serial in misaligned}
+            if not allow_partial:
+                raise CameraAddressingError(
+                    "Camera IP recovery failed; cameras remain outside capture NIC subnets: {}".format(
+                        details
+                    )
+                )
+            log.warning(
+                "Camera IP recovery failed; cameras remain outside capture NIC subnets and will be skipped: %s",
+                details,
+            )
+            usable = [serial for serial in usable if serial not in misaligned]
 
         failed = [serial for serial in usable if not self._verify(self._seen[serial])]
         if failed:

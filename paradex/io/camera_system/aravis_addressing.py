@@ -314,9 +314,12 @@ class CameraAddressing:
         be sent back through the exact physical camera link.
         """
 
-        packet_info = getattr(socket, "IP_PKTINFO", None)
-        if packet_info is None or not hasattr(socket.socket, "sendmsg"):
-            log.warning("Raw GVCP discovery is unavailable: IP_PKTINFO/sendmsg is unsupported")
+        # Some Ubuntu Python builds omit ``socket.IP_PKTINFO`` even though the
+        # Linux kernel and socket API support it. IP_PKTINFO is fixed at 8 in
+        # Linux UAPI headers, so retain compatibility with those builds.
+        packet_info = getattr(socket, "IP_PKTINFO", 8)
+        if not hasattr(socket.socket, "sendmsg") or not hasattr(socket.socket, "recvmsg"):
+            log.warning("Raw GVCP discovery is unavailable: sendmsg/recvmsg is unsupported")
             return {}, {}
 
         nic_by_index: Dict[int, NicSubnet] = {}

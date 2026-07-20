@@ -13,6 +13,7 @@ handeye_calib_path = os.path.join(shared_dir, "handeye_calibration")
 handeye_calib_path_openarm = os.path.join(shared_dir, "handeye_calibration_openarm")
 eef_calib_path = os.path.join(shared_dir, "eef")
 extrinsic_dir = os.path.join(shared_dir, "extrinsic")
+intrinsic_dir = os.path.join(shared_dir, "intrinsic")
 
 def load_current_camparam(name=None):
     if name == None:

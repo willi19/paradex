@@ -404,7 +404,7 @@
   <joint name="robotiq_85_base_joint" type="fixed">
     <parent link="link6"/>
     <child link="robotiq_85_base_link"/>
-    <origin xyz="0 0 0" rpy="0 0 0"/>
+    <origin xyz="0 0 0.014" rpy="0 0 0"/>
   </joint>
   <joint name="robotiq_85_left_knuckle_joint" type="revolute">
     <parent link="robotiq_85_base_link"/>

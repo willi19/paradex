@@ -17,7 +17,6 @@ from paradex.utils.path import rsc_path, shared_dir
 from paradex.visualization.visualizer.viser import ViserViewer
 from paradex.visualization.robot import RobotModule
 from paradex.utils.load_data import load_series, resample_to
-from paradex.robot.inspire import inspire_action_to_qpos, inspire_f1_action_to_qpos_dof6
 
 
 # Suppress per-frame yourdfpy mimic-chain warnings (thumb_4 -> thumb_3 -> thumb_2).
@@ -108,6 +107,19 @@ def kistar_encoder_to_rad(hand_state: np.ndarray) -> np.ndarray:
     denom = np.maximum(enc_max - enc_min, 1e-12)
     t = np.clip((hand_state - enc_min) / denom, 0.0, 1.0)
     return rad_min + t * (rad_max - rad_min)
+
+
+def robotiq_2f85_state_to_qpos(hand_state: np.ndarray) -> np.ndarray:
+    """Convert the recorded Robotiq state to the URDF's single actuated joint."""
+    hand_state = np.asarray(hand_state, dtype=float)
+    if hand_state.ndim == 1:
+        hand_state = hand_state[:, None]
+    if hand_state.ndim != 2 or hand_state.shape[1] != 1:
+        raise ValueError(f"Robotiq 2F-85 hand state must be [N,1], got {hand_state.shape}")
+
+    # The ROS2 capture stores the left-knuckle joint position directly. Mimic
+    # joints in the URDF are driven automatically by yourdfpy.
+    return np.clip(hand_state, 0.0, 0.8)
 
 def str2bool(v):
     if isinstance(v, bool):
@@ -1061,11 +1073,23 @@ def build_link_color_map(urdf_path: str) -> Dict[str, np.ndarray]:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--arm", type=str, default="xarm")
-    parser.add_argument("--hand", type=str, default="inspire_f1")
+    parser.add_argument(
+        "--hand",
+        type=str,
+        default="inspire_f1",
+        help="Hand model (inspire_f1, inspire, allegro, kistar, or robotiq_2f85).",
+    )
     parser.add_argument("--object", type=str, required=True)
     parser.add_argument("--ep", type=int, required=True)
     
-    parser.add_argument("--capture-root", default=None)
+    parser.add_argument(
+        "--capture-root",
+        default=None,
+        help=(
+            "Either the episode directory containing raw/, or the hand-level "
+            "directory containing <object>/<ep>."
+        ),
+    )
     
     parser.add_argument("--object-mesh", type=str, default=None, help="Mesh file for the object.")
     parser.add_argument("--visualize-object", action="store_true")
@@ -1143,13 +1167,19 @@ def main():
 
     
 
-    if args.capture_root == None:
-        capture_root = os.path.join("/home/temp_id/shared_data/capture/eccv2026", args.hand, args.object, str(args.ep))
-    else:
-        capture_root = os.path.join(args.capture_root, args.object, str(args.ep))
-    
     if args.hand == "_allegro":
         args.hand = "allegro"
+
+    if args.capture_root is None:
+        capture_root = os.path.join(
+            shared_dir, "capture", "eccv2026", args.hand, args.object, str(args.ep)
+        )
+    else:
+        capture_root_arg = os.path.abspath(os.path.expanduser(args.capture_root))
+        if os.path.isdir(os.path.join(capture_root_arg, "raw")):
+            capture_root = capture_root_arg
+        else:
+            capture_root = os.path.join(capture_root_arg, args.object, str(args.ep))
     
     if args.object_pos_path == None:
         object_pos_path = os.path.join(capture_root, "single_frame_refine_output", "refined_pose_world.txt")
@@ -1194,6 +1224,8 @@ def main():
         hand_action, hand_time = load_series(hand_dir, ("position.npy", ))
     elif args.hand == "kistar":
         hand_action, hand_time = load_series(hand_dir, ("qpos.npy", "position.npy"))
+    elif args.hand in ("robotiq_2f85", "robotiq_2f_85"):
+        hand_action, hand_time = load_series(hand_dir, ("position.npy", "action.npy"))
     else:
         raise ValueError(f"Invalid hand name: {args.hand}")
 
@@ -1208,11 +1240,17 @@ def main():
 
     hand_action = resample_to(hand_time, hand_action, arm_time)
     if args.hand == "inspire":
+        from paradex.robot.inspire import inspire_action_to_qpos
+
         hand_qpos = inspire_action_to_qpos(hand_action)
     elif args.hand == "inspire_f1" or args.hand == "_inspire_f1":
+        from paradex.robot.inspire import inspire_f1_action_to_qpos_dof6
+
         hand_qpos = inspire_f1_action_to_qpos_dof6(hand_action)
     elif args.hand == "kistar":
         hand_qpos = kistar_encoder_to_rad(hand_action)
+    elif args.hand in ("robotiq_2f85", "robotiq_2f_85"):
+        hand_qpos = robotiq_2f85_state_to_qpos(hand_action)
     else:
         hand_qpos = hand_action
 
@@ -1430,6 +1468,8 @@ def main():
         urdf_path = "/home/temp_id/paradex/rsc/robot/xarm_inspire_DFTP.urdf"
     elif args.hand == "kistar":
         urdf_path = os.path.join(rsc_path, "robot", "xarm_kistar.urdf")
+    elif args.hand in ("robotiq_2f85", "robotiq_2f_85"):
+        urdf_path = os.path.join(rsc_path, "robot", "xarm_robotiq_2f_85.urdf")
     else:
         raise ValueError("Invalid hand name")
 

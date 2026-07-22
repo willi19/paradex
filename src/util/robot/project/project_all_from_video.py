@@ -1,4 +1,5 @@
 import argparse
+import json
 import os
 import re
 import shutil
@@ -7,16 +8,72 @@ import subprocess
 import cv2
 import numpy as np
 
-from paradex.calibration.utils import load_camparam
-from paradex.utils.path import shared_dir
+from paradex.utils.path import rsc_path, shared_dir
 from paradex.visualization.robot import RobotModule
-from paradex.robot.inspire import inspire_action_to_qpos_dof12, inspire_f1_action_to_qpos_dof6
 from paradex.utils.load_data import load_series, resample_to
 from paradex.image.grid import make_image_grid
 from paradex.image.undistort import precomute_undistort_map, apply_undistort_map
-from paradex.object.utils import load_object_mesh, apply_transform
-from paradex.robot.utils import get_robot_urdf_path
-from paradex.image.projection import BatchRenderer
+
+
+def load_capture_camparam(ep_root: str):
+    """Load only the per-episode camera fields needed for projection."""
+    cam_param_dir = os.path.join(ep_root, "cam_param")
+    with open(os.path.join(cam_param_dir, "intrinsics.json"), "r", encoding="utf-8") as f:
+        intrinsic_data = json.load(f)
+    with open(os.path.join(cam_param_dir, "extrinsics.json"), "r", encoding="utf-8") as f:
+        extrinsic_data = json.load(f)
+
+    intrinsic = {}
+    for serial, values in intrinsic_data.items():
+        intrinsic[serial] = {
+            "original_intrinsics": np.asarray(values["original_intrinsics"], dtype=float).reshape(3, 3),
+            "intrinsics_undistort": np.asarray(values["intrinsics_undistort"], dtype=float).reshape(3, 3),
+            "dist_params": np.asarray(values["dist_params"], dtype=float),
+            "height": int(values["height"]),
+            "width": int(values["width"]),
+        }
+    extrinsic = {
+        serial: np.asarray(values, dtype=float).reshape(3, 4)
+        for serial, values in extrinsic_data.items()
+    }
+    return intrinsic, extrinsic
+
+
+def robotiq_2f85_state_to_qpos(hand_state: np.ndarray) -> np.ndarray:
+    """Convert the recorded Robotiq state to the URDF's actuated knuckle joint."""
+    hand_state = np.asarray(hand_state, dtype=float)
+    if hand_state.ndim == 1:
+        hand_state = hand_state[:, None]
+    if hand_state.ndim != 2 or hand_state.shape[1] != 1:
+        raise ValueError(f"Robotiq 2F-85 hand state must be [N,1], got {hand_state.shape}")
+    return np.clip(hand_state, 0.0, 0.8)
+
+
+def resolve_episode_root(
+    capture_root: str, object_name: str, capture_ep: str, hand_name: str = None
+) -> str:
+    """Resolve an episode path from an absolute path or shared-data-relative root."""
+    if capture_root is None:
+        if hand_name is None:
+            raise ValueError("hand_name is required when capture_root is not provided")
+        return os.path.join(
+            shared_dir, "capture", "eccv2026", hand_name, object_name, str(capture_ep)
+        )
+    root = os.path.abspath(os.path.expanduser(capture_root))
+    if os.path.isdir(os.path.join(root, "raw")):
+        return root
+    if os.path.isabs(os.path.expanduser(capture_root)):
+        return os.path.join(root, object_name, str(capture_ep))
+    return os.path.join(shared_dir, "capture", capture_root, object_name, str(capture_ep))
+
+
+def resolve_robot_urdf_path(arm: str, hand: str) -> str:
+    if arm == "xarm" and hand in ("robotiq_2f85", "robotiq_2f_85"):
+        return os.path.join(rsc_path, "robot", "xarm_robotiq_2f_85.urdf")
+
+    from paradex.robot.utils import get_robot_urdf_path
+
+    return get_robot_urdf_path(arm, hand)
 
 
 KISTAR_JOINT_ENCODER_LIMITS = np.array(
@@ -201,12 +258,12 @@ def project_robot_and_object(
     arm_time_offset,
     hand_time_offset,
 ):
-    ep_root = os.path.join(shared_dir, "capture", capture_root, object, str(capture_ep))
+    ep_root = resolve_episode_root(capture_root, object, capture_ep, hand)
     raw_root = os.path.join(ep_root, "raw")
     arm_dir = os.path.join(raw_root, "arm")
     hand_dir = os.path.join(raw_root, "hand")
 
-    intrinsic, extrinsic_from_camparam = load_camparam(ep_root)
+    intrinsic, extrinsic_from_camparam = load_capture_camparam(ep_root)
     # c2r is robot->world in this pipeline; invert to get world->robot.
     c2r = np.load(os.path.join(ep_root, "C2R.npy"))
     robot_from_world = np.linalg.inv(c2r)
@@ -254,11 +311,17 @@ def project_robot_and_object(
         hand_action = resample_to(hand_time, hand_action, arm_time)
 
         if hand == "inspire":
+            from paradex.robot.inspire import inspire_action_to_qpos_dof12
+
             hand_qpos = inspire_action_to_qpos_dof12(hand_action)
         elif hand == "inspire_f1":
+            from paradex.robot.inspire import inspire_f1_action_to_qpos_dof6
+
             hand_qpos = inspire_f1_action_to_qpos_dof6(hand_action)
         elif hand == "kistar":
             hand_qpos = kistar_encoder_to_rad(hand_action)
+        elif hand in ("robotiq_2f85", "robotiq_2f_85"):
+            hand_qpos = robotiq_2f85_state_to_qpos(hand_action)
         else:
             hand_qpos = hand_action
 
@@ -276,7 +339,7 @@ def project_robot_and_object(
             video_frame_ids = np.arange(1, full_qpos.shape[0] + 1, dtype=int)
             qpos_video = full_qpos
 
-        urdf_path = get_robot_urdf_path(arm, hand)
+        urdf_path = resolve_robot_urdf_path(arm, hand)
         robot = RobotModule(urdf_path)
         robot_dof = robot.get_num_joints()
         robot.update_cfg(full_qpos[0, :robot_dof])
@@ -302,6 +365,8 @@ def project_robot_and_object(
             "left_middle_": "middle",
             "left_ring_": "ring",
             "left_little_": "pinky",
+            "robotiq_85_left_": "left_gripper",
+            "robotiq_85_right_": "right_gripper",
         }
         finger_colors = {
             "thumb": (255, 140, 0),
@@ -309,6 +374,8 @@ def project_robot_and_object(
             "middle": (0, 255, 100),
             "ring": (255, 0, 200),
             "pinky": (255, 220, 0),
+            "left_gripper": (0, 200, 255),
+            "right_gripper": (255, 140, 0),
         }
     else:
         ts_dir = os.path.join(raw_root, "timestamps")
@@ -319,6 +386,8 @@ def project_robot_and_object(
             video_frame_ids = np.load(frame_id_path)
 
     if project_object:
+        from paradex.object.utils import apply_transform, load_object_mesh
+
         obj_traj_path = os.path.join(ep_root, "object_tracking_result", "obj_T_frames.npz")
         obj_traj_raw = load_object_world_trajectory_npz(obj_traj_path)
         print(f"Loaded object trajectory with {obj_traj_raw.shape[0]} frames from {obj_traj_path}")
@@ -347,12 +416,9 @@ def project_robot_and_object(
 
     if qpos_video is not None:
         total_frames = qpos_video.shape[0]
-        print("aaaaa")
     elif video_frame_ids is not None:
         total_frames = len(video_frame_ids)
-        print("bbbbb")
     else:
-        print("ccccc")
         if not video_num_frames:
             raise ValueError("Cannot infer frames: no videos available.")
         valid_counts = [n for n in video_num_frames.values() if n > 0]
@@ -401,6 +467,8 @@ def project_robot_and_object(
         cam_info[cam_id] = {"extr": cam_from_robot[:3, :], "width": width, "height": height}
         _, mapx, mapy = precomute_undistort_map(intr)
         undistort_maps[cam_id] = (mapx, mapy)
+
+    from paradex.image.projection import BatchRenderer
 
     renderer = BatchRenderer(intrinsic, render_extrinsics)
 
@@ -564,11 +632,24 @@ def project_robot_and_object(
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--arm", type=str, default="xarm")
-    parser.add_argument("--hand", type=str, default="inspire_f1")
+    parser.add_argument(
+        "--hand",
+        type=str,
+        default="inspire_f1",
+        help="Hand model, including robotiq_2f85.",
+    )
     parser.add_argument("--object", type=str, required=True)
     parser.add_argument("--ep", type=str, default="0")
     parser.add_argument("--object-mesh-name", type=str)
-    parser.add_argument("--capture-root", type=str, default="eccv2026/inspire_f1", help="Capture root directory name.")
+    parser.add_argument(
+        "--capture-root",
+        type=str,
+        default=None,
+        help=(
+            "Episode directory containing raw/, hand-level directory containing "
+            "<object>/<ep>, or a path relative to shared_data/capture."
+        ),
+    )
     parser.add_argument("--project-object", action="store_true", help="Project the tracked object mesh in addition to the robot.")
     parser.add_argument("--project-robot", action="store_true", help="Project the robot mesh.")
     parser.add_argument("--start-frame", type=int, default=0, help="Start frame index (inclusive).")
@@ -584,8 +665,7 @@ def main():
     parser.add_argument("--hand-time-offset", type=float, default=0.0, help="Shift hand timestamps by this many seconds (positive delays hand).")
     args = parser.parse_args()
 
-    if args.object_mesh_name == None:
-        object_mesh_name = args.object
+    object_mesh_name = args.object_mesh_name or args.object
 
     project_robot_and_object(
         arm=args.arm,

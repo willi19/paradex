@@ -128,6 +128,7 @@ Every `src/<app>/` leaf dir has a `CLAUDE.md` (orientation for you) + `README.md
 | Capture images/video/stream | [`src/capture/camera/`](src/capture/camera/CLAUDE.md) | Main-PC `*_remote.py` drives capture-PC daemons in [`src/camera/`](src/camera/CLAUDE.md). |
 | Run camera daemons on capture PCs | [`src/camera/`](src/camera/CLAUDE.md) | `server_daemon.py` must be up before any orchestrator connects. |
 | Capture robot demos (teleop/teaching) | [`src/capture/robot/`](src/capture/robot/CLAUDE.md) | XSens teleop or manual xArm teaching. |
+| **Control the Franka FR3** | [`docs/franka.md`](docs/franka.md) | **Start the daemon first: `./cpp/franka_daemon/run_daemon.sh`** (runs C++ daemon in Docker, ZMQ :5555/:5556). Needs RT kernel — see the NVIDIA workaround in that doc. `validate_franka.py` **moves the arm**. |
 | Build a labeled dataset | [`src/dataset_acquisition/`](src/dataset_acquisition/CLAUDE.md) | Pick the pipeline (graphics/motion_blur/hri/miyungpa/object_turntable); built on `CaptureSession`. |
 | Post-process captured data | [`src/process/`](src/process/CLAUDE.md) | `miyungpa` (sync+overlay+contact), `object_turntable` (COLMAP). Some files have known bugs — see their docs. |
 | Estimate 6D object pose | [`src/object6d/`](src/object6d/CLAUDE.md) | LoFTR/template matching; needs external `_object_6d_tracking`. |
@@ -147,6 +148,8 @@ Generated API reference (Sphinx): [`docs/index.html`](docs/index.html). Project 
 - `system/current/` is a symlink to the active system config (paradex1, paradex2, etc.)
 - Typo in source: `dataset_acqusition` (missing 'i') — this is the actual directory/module name, do NOT "fix" it
 - Robot hands: Allegro (ROS2/rclpy), Inspire (direct IP socket)
-- Robot arms: XArm (SDK), Franka (Pinocchio)
+- Robot arms: XArm (SDK, direct), **Franka FR3 (C++ daemon in Docker + ZMQ — NOT a direct SDK call)**
+  - Daemon must be running before any Python client: `./cpp/franka_daemon/run_daemon.sh`
+  - Full setup incl. RT-kernel/NVIDIA workaround: [`docs/franka.md`](docs/franka.md)
 - All color params in visualization are **0.0-1.0 float RGB** (or RGBA with alpha)
 - Quaternion convention in viser: **wxyz** order. Convert from scipy: `quat_xyzw[[3,0,1,2]]`

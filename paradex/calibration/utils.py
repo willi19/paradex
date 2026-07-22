@@ -114,3 +114,8 @@ def get_cammtx(intrinsic, extrinsic):
 
 def get_handeye_calib_traj(arm_name: str):
     return os.path.join(config_dir, "hecalib", arm_name)
+
+
+# Flange link the hand-eye transform is solved against, per arm. xarm URDFs end at
+# link6; franka (FR3) ends at fr3_link8 and has no link6 at all.
+EEF_LINK = {"xarm": "link6", "franka": "fr3_link8"}

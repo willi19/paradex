@@ -1,14 +1,32 @@
-"""Franka FR3 teaching mode - hand-guide the robot and save keyposes.
+"""Franka FR3 teaching - record keyposes while you pose the arm by hand.
+
+This script NEVER commands the robot. It only reads the FCI state stream and writes
+a pose on `c`, so you are free to move the arm however you like — jogging from Desk,
+hand-guiding, whatever. Nothing here can fight you for control.
 
 Usage:
-    # 1. Start daemon in Docker first
-    # 2. Run:
-    python franka_teaching.py --save_path /path/to/save
-    python franka_teaching.py --save_path /path/to/save --host 172.16.1.11
+    # 1. Set the Desk mode you want to pose the arm in.
+    # 2. Start the daemon:  ./cpp/franka_daemon/run_daemon.sh
+    # 3. Run:
+    python franka_teaching.py --save_path /path/to/save --host 127.0.0.1
 
     # Commands (type and press Enter):
     #   c  - save current pose (qpos + EE pose)
     #   q  - quit
+
+Writes `<idx>_qpos.npy` (7,) and `<idx>_pose.npy` (4,4) per `c`. Re-running resumes
+after the highest existing index; delete the .npy files to start over.
+
+⚠️ Set the Desk mode BEFORE starting the daemon, and don't switch while it runs.
+   Switching modes kills the daemon's libfranka session: `ping` still answers (that
+   is just the daemon's own ZMQ socket) but the state stream dies and the log fills
+   with `[STREAM] Error: Net Exception`. get_data() then returns None and `c` saves
+   nothing. Restart the daemon after any mode change.
+
+Note: this script used to call `setGuidingMode` to free the arm itself. That does not
+work on this rig — it returns "success" while the arm stays locked (measured: 0.0 deg
+over three tries), because it only selects which axes are free *once guiding is
+engaged*, and engaging it in Execution mode needs the X4 External Enabling Device.
 """
 
 import os
@@ -50,21 +68,36 @@ if not fc.ping():
     sys.exit(1)
 print("[OK] Connected")
 
-# Enable guiding mode (all axes free)
-print("Enabling guiding mode...")
-resp = fc.set_guiding_mode([True, True, True, True, True, True], nullspace=True)
-if resp.get("type") == "error":
-    print(f"FAIL: {resp.get('message')}")
-    fc.end()
-    sys.exit(1)
-print("[OK] Guiding mode ON - move robot by hand")
+# The state stream must be live, or `c` silently saves nothing. It dies when the
+# Desk mode is switched after the daemon started (see the module docstring).
+if fc.get_data() is None:
+    time.sleep(1.0)                      # allow for a slow ZMQ SUB join
+    if fc.get_data() is None:
+        print("FAIL: no state from the daemon (ping works, but the stream is dead).")
+        print("      Restart it: ./cpp/franka_daemon/run_daemon.sh")
+        print("      Check its log for '[STREAM] Error: Net Exception'.")
+        fc.end()
+        sys.exit(1)
+
+print("Pose the arm however you like (Desk jogging / hand-guiding).")
+print("This script only reads — it never commands the robot.")
 print()
 print("Commands:")
 print("  c + Enter  = save current pose")
 print("  q + Enter  = quit")
 print()
 
+# Resume after existing poses instead of overwriting them from 0. Overwriting
+# only the first N would leave a mix of old and new waypoints in one trajectory.
 idx = 0
+if args.save_path is not None:
+    existing = [int(f.split('_')[0]) for f in os.listdir(args.save_path) if '_qpos' in f]
+    if existing:
+        idx = max(existing) + 1
+        print(f"[resume] {len(existing)} pose(s) already saved — continuing from {idx}")
+        print(f"         (delete {args.save_path}/*.npy to start over)")
+        print()
+
 try:
     while not stop_event.is_set():
         if save_event.is_set() and args.save_path is not None:
@@ -96,11 +129,8 @@ try:
 except KeyboardInterrupt:
     print("\nInterrupted by user.")
 
-# Disable guiding mode: move to current position
-print("Disabling guiding mode...")
-data = fc.get_data()
-if data is not None:
-    fc.move(data["qpos"], speed_scale=0.1)
-
+stop_event.set()
+# Nothing to undo: we never took control of the arm, so we must not command it
+# on the way out either — Desk still owns it.
 fc.end()
 print(f"Teaching session ended. {idx} poses saved.")

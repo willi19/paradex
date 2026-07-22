@@ -1,3 +1,4 @@
+import os
 import tkinter as tk
 import time
 import numpy as np
@@ -5,6 +6,12 @@ from threading import Thread
 from scipy.spatial.transform import Rotation
 from collections import deque
 from enum import Enum
+
+_CART_BUTTONS = frozenset([
+    'X+', 'X-', 'Y+', 'Y-', 'Z+', 'Z-',
+    'Roll+', 'Roll-', 'Pitch+', 'Pitch-', 'Yaw+', 'Yaw-',
+])
+
 
 class WaypointType(Enum):
     JOINT = 'joint'
@@ -38,11 +45,32 @@ class Waypoint:
         self.reached = False
 
 class RobotGUIController:
-    def __init__(self, robot_controller, hand_controller=None):
+    def __init__(self, robot_controller, hand_controller=None,
+                 jog_only=False, save_path=None,
+                 urdf_path=None, eef_link=None):
+        """
+        Args:
+            jog_only: keep the window open with an empty waypoint queue. The normal
+                mode exits as soon as the queue drains, which would close the window
+                immediately when it is used purely as a jog panel.
+            save_path: enables a "Save Pose" button writing `<idx>_qpos.npy` (DOF,)
+                and `<idx>_pose.npy` (4,4), the same layout `*_teaching.py` produces
+                and `src/calibration/handeye/capture.py` replays. Resumes after any
+                existing indices.
+            urdf_path, eef_link: enable Jacobian-based cartesian jogging. The daemon's
+                cartesian velocity stream bounds the *twist's* acceleration but not the
+                resulting joint accelerations, so near a limit or singularity a mild
+                cartesian rate demands a joint jerk and the motion aborts with
+                "cartesian_motion_generator_joint_acceleration_discontinuity". With a
+                URDF we instead map the twist to joint velocities ourselves (damped
+                least squares) and use the well-behaved joint velocity stream.
+        """
         print(">>> Initializing Robot GUI Controller...")
 
         self.robot = robot_controller
         self.hand = hand_controller
+        self.jog_only = jog_only
+        self.save_path = save_path
 
         # Auto-detect DOF from robot controller
         data = self.robot.get_data()
@@ -60,11 +88,70 @@ class RobotGUIController:
         # Check if robot has guiding mode (Franka)
         self.has_guiding = hasattr(self.robot, 'set_guiding_mode')
 
+        # Franka's move() is blocking (is_servo is ignored), so per-tick position
+        # commands stutter. Jog it with the streaming velocity interface instead.
+        self.jog_by_velocity = (hasattr(self.robot, 'set_joint_velocity')
+                                and hasattr(self.robot, 'stop_streaming'))
+        self._velocity_streaming = False
+        # In streaming mode the daemon keeps applying the last setpoint, so the
+        # command only needs to go out when it changes. Re-sending every 10 ms tick
+        # makes jogging stutter — each send is a blocking ZMQ round trip.
+        self._last_jog_cmd = None
+
         # Control parameters
         self.joint_vel_limit = 0.06  # rad per tick
         self.cart_vel_limit = 1.0    # mm per tick
         self.rot_vel_limit = 0.01    # rad per tick
         self.hand_vel_limit = 0.05  # per tick
+        self.tick_s = 0.01           # _control_loop period
+
+        # Jog speeds for the streaming-velocity path. Deliberately NOT derived from
+        # the per-tick limits above (those are xArm servo increments; /tick_s would
+        # give 6 rad/s, past the FR3 joint limit). Hand-jog pace, tune if sluggish.
+        self.jog_joint_vel = 0.25    # rad/s
+        self.jog_cart_vel = 0.02     # m/s (2 cm/s)
+        self.jog_rot_vel = 0.15      # rad/s (~9 deg/s)
+        # Roll/Pitch/Yaw about the tool's own axes rather than the robot base's.
+        self.rotate_in_tool_frame = True
+
+        # Every send is a blocking ZMQ round trip, so what makes motion smooth is
+        # sending FEW commands and letting the daemon's 1 kHz loop interpolate (it
+        # rate-limits each setpoint change at 10 rad/s^2 per joint / 5 m/s^2 linear).
+        # A held jog button is therefore one command, and a slider target is a constant
+        # velocity plus a stop — not a per-tick recomputed setpoint.
+        self.jog_send_deadband = 0.02   # skip a send if the setpoint barely changed
+        self._jog_kind = None           # 'j' | 'c' — which stream is open
+        self._jog_vec = None            # last commanded setpoint
+
+        self._joint_limits = self._resolve_joint_limits()
+
+        # Jacobian-based cartesian jogging (see docstring).
+        self._robot_wrapper = None
+        self._eef_link_id = None
+        self.dls_damping = 0.05         # damps joint speed blow-up near singularities
+        self.jog_joint_vel_max = 0.8    # rad/s ceiling for jacobian-resolved jogging
+        if urdf_path is not None and eef_link is not None:
+            try:
+                from paradex.robot.robot_wrapper import RobotWrapper
+                self._robot_wrapper = RobotWrapper(urdf_path)
+                self._eef_link_id = self._robot_wrapper.get_link_index(eef_link)
+                print(f">>> Cartesian jog via Jacobian on '{eef_link}'")
+            except Exception as e:
+                print(f">>> Jacobian cartesian jog unavailable ({e}); "
+                      "falling back to the daemon's cartesian velocity stream")
+                self._robot_wrapper = None
+
+        # Slider / arrow-key joint targeting. The control loop drives the arm toward
+        # `_joint_target` with the same ramped velocity stream the jog buttons use,
+        # so a slider drag is smooth instead of a burst of blocking position moves.
+        self._joint_sliders = []
+        self._joint_entries = []
+        self._joint_target = None       # None = not tracking, follow the robot
+        self._selected_joint = 0
+        self.slider_step_deg = 1.0      # arrow-key increment
+        self.slider_approach_band = 0.25  # rad; start easing off inside this
+        self.slider_vel = 0.6           # rad/s cap while tracking a target
+        self.slider_tol = 0.004         # rad; stop tracking inside this
 
         # Waypoint system
         self.waypoint_queue = deque()
@@ -97,6 +184,11 @@ class RobotGUIController:
         self._build_manual_control_frame()
 
         # Exit
+        self._build_slider_panel()
+
+        if self.save_path is not None:
+            self._build_save_panel()
+
         tk.Button(self.root, text="Exit", width=20, bg="red", fg="white",
                   command=self._on_exit).pack(pady=10)
 
@@ -133,24 +225,8 @@ class RobotGUIController:
                               font=("Arial", 12))
         frame.pack(pady=10, padx=10, fill="both")
 
-        # Joint control
-        joint_frame = tk.Frame(frame)
-        joint_frame.pack(side=tk.LEFT, padx=10)
-        tk.Label(joint_frame, text=f"Joint Control ({self.arm_dof}DOF)",
-                 font=("Arial", 10, "bold")).pack()
-
-        for i in range(self.arm_dof):
-            btn_frame = tk.Frame(joint_frame)
-            btn_frame.pack()
-
-            for sign, text in [(-1, f"J{i}-"), (1, f"J{i}+")]:
-
-                btn = tk.Button(btn_frame, text=text, width=6)
-                btn_name = f"joint_{i}_{sign}"
-                self.button_states[btn_name] = False
-                btn.bind('<ButtonPress-1>', lambda e, n=btn_name: self._on_button_press(n))
-                btn.bind('<ButtonRelease-1>', lambda e, n=btn_name: self._on_button_release(n))
-                btn.pack(side=tk.LEFT)
+        # No joint jog buttons — the Joint Sliders panel covers joint-space motion,
+        # and having both fighting over the same velocity stream caused conflicts.
 
         # Cartesian control
         cart_frame = tk.Frame(frame)
@@ -226,14 +302,23 @@ class RobotGUIController:
             self._update_status()
             self._ui_dirty = False
 
-        self._ui_pump_id = self.root.after(100, self._ui_pump)
+        # While the user is not driving them, sliders mirror the arm — so taking over
+        # never starts from a stale value and jerks the robot.
+        if self._joint_target is None and self._joint_sliders:
+            data = self.robot.get_data()
+            if data is not None:
+                self._sync_sliders(data['qpos'])
 
-    # ==================== BUTTON HANDLERS ====================
+        self._ui_pump_id = self.root.after(100, self._ui_pump)
 
     def _on_button_press(self, button_name):
         self.button_states[button_name] = True
         if self._is_manual_button(button_name):
             self.manual_override = True
+            # Cartesian jogging and slider tracking both drive the same velocity
+            # stream. Leaving a stale joint target set would yank the arm back to it
+            # the moment the button is released.
+            self._joint_target = None
 
     def _on_button_release(self, button_name):
         self.button_states[button_name] = False
@@ -242,8 +327,7 @@ class RobotGUIController:
 
     def _is_manual_button(self, button_name):
         """Check if button is a manual control button"""
-        return (button_name.startswith('joint_') or
-                button_name.startswith('hand_') or
+        return (button_name.startswith('hand_') or
                 button_name.startswith('gripper_') or
                 button_name in ['X+','X-','Y+','Y-','Z+','Z-',
                             'Roll+','Roll-','Pitch+','Pitch-','Yaw+','Yaw-'])
@@ -410,21 +494,185 @@ class RobotGUIController:
 
     # ==================== MANUAL CONTROL ====================
 
+    def _wait_for_standstill(self, tol=0.02, timeout=2.0):
+        """Block until the arm has actually stopped (or we give up)."""
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            data = self.robot.get_data()
+            if data is None:
+                return
+            qvel = data.get('qvel')
+            if qvel is None or np.abs(qvel).max() < tol:
+                return
+            time.sleep(0.02)
+
+    def _twist_to_dq(self, twist):
+        """Resolve a base-frame twist to joint velocities (damped least squares).
+
+        Returns None when no URDF was supplied, leaving the caller to fall back to the
+        daemon's cartesian stream.
+
+        Why this exists: that stream rate-limits the *twist*, not the joint motion it
+        implies. Near a limit or singularity a mild cartesian rate needs a joint jerk,
+        libfranka aborts with "..._joint_acceleration_discontinuity", the stream is
+        torn down and reopened — and each of those cycles is a visible stutter. The
+        joint velocity stream has no such failure mode. Damping trades a little
+        accuracy near singularities for bounded joint speed.
+        """
+        if self._robot_wrapper is None or self._eef_link_id is None:
+            return None
+
+        data = self.robot.get_data()
+        if data is None:
+            return None
+
+        try:
+            J = self._robot_wrapper.compute_single_link_local_jacobian(
+                data['qpos'], self._eef_link_id)
+
+            # That Jacobian is expressed in the LOCAL (end-effector) frame, while
+            # `twist` is given in base axes — feeding it in directly sends the arm off
+            # in the wrong direction. Rotate the request into the EE frame first.
+            R = data['position'][:3, :3]
+            twist_local = np.concatenate([R.T @ twist[:3], R.T @ twist[3:]])
+
+            lam = self.dls_damping
+            dq = J.T @ np.linalg.solve(J @ J.T + (lam ** 2) * np.eye(6), twist_local)
+        except Exception as e:
+            print(f"[jog] jacobian failed ({e}); using the cartesian stream")
+            return None
+
+        # Keep the slowest-but-safe interpretation: scale the whole vector rather than
+        # clipping per joint, so the motion direction is preserved.
+        peak = np.abs(dq).max()
+        if peak > self.jog_joint_vel_max:
+            dq = dq * (self.jog_joint_vel_max / peak)
+        return dq
+
+    def _stream_jog(self, kind, target):
+        """Send a streaming velocity setpoint.
+
+        No client-side ramping: the daemon's 1 kHz control callback already rate-limits
+        every setpoint change (10 rad/s^2 per joint, 5 m/s^2 linear) and starts each
+        stream from zero. Ramping here as well produced the stutter — the ramp emitted
+        a command per control tick, each a blocking ZMQ round trip, so the arm got the
+        acceleration in coarse jumps instead of the daemon's smooth 1 kHz interpolation.
+
+        Sending only on change matters though: `duration_ms=0` is streaming mode, where
+        the daemon holds the last setpoint until it is replaced or the stream stops.
+        """
+        target = np.asarray(target, dtype=float)
+
+        if self._jog_kind != kind or self._jog_vec is None:
+            # The daemon runs one control loop at a time, and stop_streaming only
+            # *starts* a ramp-down. Opening the next stream while the arm is still
+            # coasting gives "Motion finished commanded, but the robot is still
+            # moving!" and an immediate reflex abort — so stop, then wait for standstill.
+            if self._velocity_streaming and self._jog_kind is not None:
+                self.robot.stop_streaming()
+                self._velocity_streaming = False
+                self._wait_for_standstill()
+            self._jog_kind = kind
+            self._jog_vec = np.zeros_like(target)
+
+        # Skip near-duplicate setpoints. Without this a proportional controller (the
+        # slider tracker) emits a slightly different velocity every tick, turning the
+        # motion into a series of blocking round trips — the stutter.
+        if (self._last_jog_cmd is not None and self._last_jog_cmd[0] == kind
+                and np.all(np.abs(target - self._last_jog_cmd[1]) <
+                           self.jog_send_deadband * max(1.0, np.abs(target).max()))
+                and np.any(target) == np.any(self._last_jog_cmd[1])):
+            self._jog_vec = target
+            return
+
+        self._jog_vec = target
+        cmd = (kind, target.copy())
+
+        if kind == 'j':
+            resp = self.robot.set_joint_velocity(target, duration_ms=0)
+        else:
+            resp = self.robot.set_cartesian_velocity(target, duration_ms=0)
+
+        # A reflex kills the daemon's stream thread AND latches the robot into an
+        # error state, where every later command is refused — that is what makes
+        # jogging appear to die permanently after one abort. Clear it, and forget the
+        # last setpoint so the next command is actually sent instead of being skipped
+        # as a duplicate.
+        if isinstance(resp, dict) and resp.get("type") == "error":
+            print(f"[jog] stream error: {resp.get('message')}")
+            self._jog_vec = np.zeros_like(target)
+            self._last_jog_cmd = None
+            self._velocity_streaming = False
+            self._jog_kind = None
+            recover = getattr(self.robot, 'error_recovery', None)
+            if callable(recover):
+                recover()
+            return
+
+        self._last_jog_cmd = cmd
+        self._velocity_streaming = True
+
+    def _track_joint_target(self):
+        """Drive the arm toward the slider target.
+
+        Constant velocity toward the target, decelerating only over the last stretch,
+        rather than a pure proportional law. A proportional velocity changes every
+        tick, and every change costs a blocking round trip — that is what made slider
+        motion stutter. Here the setpoint is flat for most of the travel, so the
+        deadband in `_stream_jog` collapses it to a couple of sends.
+        """
+        if not self.jog_by_velocity:
+            # xArm servo mode takes position targets directly.
+            self.robot.move(self._joint_target, is_servo=True)
+            return
+
+        data = self.robot.get_data()
+        if data is None:
+            return
+
+        error = self._joint_target - data['qpos']
+        if np.abs(error).max() < self.slider_tol:
+            if self._velocity_streaming:
+                self._brake_jog()
+            return
+
+        # Full speed until close, then scale down so it settles instead of overshooting.
+        approach = min(1.0, np.abs(error).max() / self.slider_approach_band)
+        vel = self.slider_vel * approach * error / max(np.abs(error).max(), 1e-9)
+        self._stream_jog('j', vel)
+
+    def _brake_jog(self):
+        """Command zero velocity, and only stop the stream once the arm has stopped.
+
+        `stop_streaming` makes the daemon return MotionFinished as soon as its own
+        commanded velocity reaches zero, but the arm lags that by a few ms. Ending the
+        motion while it is still moving gives "Motion finished commanded, but the robot
+        is still moving!" and a reflex abort — so wait for real standstill first.
+        """
+        if self._jog_kind is None or self._jog_vec is None:
+            self._velocity_streaming = False
+            return
+
+        self._stream_jog(self._jog_kind, np.zeros_like(self._jog_vec))
+
+        data = self.robot.get_data()
+        qvel = None if data is None else data.get('qvel')
+        if qvel is not None and np.abs(qvel).max() > 0.02:
+            return          # still coasting; hold the zero setpoint and re-check
+
+        self.robot.stop_streaming()
+        self._velocity_streaming = False
+        self._last_jog_cmd = None
+        self._jog_kind = None
+        self._jog_vec = None
+
     def _execute_manual_control(self, pressed_buttons):
-        joint_pressed = [b for b in pressed_buttons if b.startswith('joint_')]
-        if joint_pressed:
-            current_qpos = self.robot.get_data()['qpos'].copy()
-            delta = np.zeros(self.arm_dof)
-
-            for btn in joint_pressed:
-                _, j, s = btn.split('_')
-                joint_idx = int(j)
-                sign = int(s)
-                if joint_idx < self.arm_dof:
-                    delta[joint_idx] = sign * self.joint_vel_limit
-
-            if np.any(delta != 0):
-                self.robot.move(current_qpos + delta, is_servo=True)
+        # A velocity stream keeps running at the last setpoint until told otherwise,
+        # so release of the last jog button has to ramp it down. Checked before the
+        # per-axis handling below, which is what (re)starts it.
+        if self._velocity_streaming and not any(
+                b in _CART_BUTTONS for b in pressed_buttons):
+            self._brake_jog()
 
         cart_map = {
             'X+': ('t', 0, 1), 'X-': ('t', 0, -1),
@@ -449,14 +697,36 @@ class RobotGUIController:
                     r_delta[axis] = sign * self.rot_vel_limit
 
             if np.any(t_delta != 0) or np.any(r_delta != 0):
-                current_pose[:3, 3] += t_delta / 1000.0
+                if self.jog_by_velocity:
+                    omega = np.sign(r_delta) * self.jog_rot_vel
+                    if self.rotate_in_tool_frame and np.any(omega):
+                        # libfranka's CartesianVelocities twist is expressed in the
+                        # BASE frame, so Roll/Pitch/Yaw would spin the tool about the
+                        # robot's axes — unintuitive when posing an end effector.
+                        # Rotate the requested tool-frame rate into base coordinates.
+                        omega = current_pose[:3, :3] @ omega
+                    twist = np.concatenate([
+                        np.sign(t_delta) * self.jog_cart_vel,
+                        omega,
+                    ])
 
-                if np.any(r_delta != 0):
-                    current_rot = Rotation.from_matrix(current_pose[:3, :3])
-                    delta_rot = Rotation.from_euler('xyz', r_delta)
-                    current_pose[:3, :3] = (current_rot * delta_rot).as_matrix()
+                    # Prefer resolving the twist to joint velocities ourselves — the
+                    # daemon's cartesian stream keeps aborting on reflexes here, and
+                    # every abort/restart is a visible hitch.
+                    dq = self._twist_to_dq(twist)
+                    if dq is not None:
+                        self._stream_jog('j', dq)
+                    else:
+                        self._stream_jog('c', twist)
+                else:
+                    current_pose[:3, 3] += t_delta / 1000.0
 
-                self.robot.move(current_pose, is_servo=True)
+                    if np.any(r_delta != 0):
+                        current_rot = Rotation.from_matrix(current_pose[:3, :3])
+                        delta_rot = Rotation.from_euler('xyz', r_delta)
+                        current_pose[:3, :3] = (current_rot * delta_rot).as_matrix()
+
+                    self.robot.move(current_pose, is_servo=True)
 
         # Gripper (Franka)
         if self.has_gripper:
@@ -490,8 +760,14 @@ class RobotGUIController:
             pressed_buttons = [n for n, s in self.button_states.items() if s]
 
             if self.manual_override:
-                print("Manual override active")
                 self._execute_manual_control(pressed_buttons)
+            elif self._joint_target is not None:
+                self._track_joint_target()
+            elif self._velocity_streaming:
+                # manual_override drops the instant the last button is released, so
+                # the brake ramp has to live out here — inside _execute_manual_control
+                # it would never run and the arm would coast at the last velocity.
+                self._brake_jog()
             elif self.auto_execute:
                 if self.current_waypoint is not None and self._is_waypoint_done(self.current_waypoint):
                     print(f"Waypoint '{self.current_waypoint.name}' completed.")
@@ -505,15 +781,222 @@ class RobotGUIController:
                 if self.current_waypoint is not None:
                     self._execute_waypoint(self.current_waypoint)
 
-            if self.current_waypoint is None and len(self.waypoint_queue) == 0:
+            if (not self.jog_only
+                    and self.current_waypoint is None and len(self.waypoint_queue) == 0):
                 self.root.after(0, self._on_exit)
                 return
 
             time.sleep(0.01)
 
+    def _build_slider_panel(self):
+        """One slider per joint, plus arrow-key nudging of the selected joint.
+
+        Sliders follow the robot until you touch one; from then on the control loop
+        drives the arm to the slider values. Release tracking with "Follow robot".
+        """
+        frame = tk.LabelFrame(self.root, text="Joint Sliders  (click a joint, then Up/Down)",
+                              font=("Arial", 12))
+        frame.pack(pady=6, padx=10, fill="both")
+
+        for i in range(self.arm_dof):
+            row = tk.Frame(frame)
+            row.pack(fill="x")
+
+            label = tk.Label(row, text=f"J{i+1}", width=4, font=("Courier", 10, "bold"))
+            label.pack(side=tk.LEFT)
+
+            lo, hi = self._joint_limits[i]
+            # No `command=` callback: tk fires it for programmatic .set() too, and it
+            # arrives through the event queue, so a sync could not be told apart from
+            # a drag by value or by flag — the arm kept snapping back to a stale angle.
+            # Mouse bindings only ever fire for real user interaction.
+            slider = tk.Scale(row, from_=np.degrees(lo), to=np.degrees(hi),
+                              resolution=0.5, orient=tk.HORIZONTAL, length=380)
+            slider.pack(side=tk.LEFT, fill="x", expand=True)
+            slider.bind('<Button-1>', lambda e, j=i: self._select_joint(j))
+            slider.bind('<B1-Motion>', lambda e, j=i: self._on_slider_drag(j))
+            slider.bind('<ButtonRelease-1>', lambda e, j=i: self._on_slider_drag(j))
+            label.bind('<Button-1>', lambda e, j=i: self._select_joint(j))
+            self._joint_sliders.append(slider)
+
+            # Type an exact angle and press Enter.
+            entry = tk.Entry(row, width=8, justify=tk.RIGHT)
+            entry.pack(side=tk.LEFT, padx=4)
+            entry.bind('<Return>', lambda e, j=i: self._on_entry(j))
+            self._joint_entries.append(entry)
+
+            tk.Label(row, text="deg", font=("Arial", 8)).pack(side=tk.LEFT)
+
+        btn_row = tk.Frame(frame)
+        btn_row.pack(pady=4)
+        tk.Button(btn_row, text="Follow robot", width=14,
+                  command=self._release_tracking).pack(side=tk.LEFT, padx=4)
+        self._sel_label = tk.Label(btn_row, text="selected: J1", font=("Arial", 10))
+        self._sel_label.pack(side=tk.LEFT, padx=8)
+
+        self.root.bind('<Up>', lambda e: self._nudge_joint(+1))
+        self.root.bind('<Down>', lambda e: self._nudge_joint(-1))
+        self.root.bind('<Left>', lambda e: self._select_joint(
+            (self._selected_joint - 1) % self.arm_dof))
+        self.root.bind('<Right>', lambda e: self._select_joint(
+            (self._selected_joint + 1) % self.arm_dof))
+        self.root.focus_set()
+
+    def _select_joint(self, j):
+        self._selected_joint = j
+        self._sel_label.config(text=f"selected: J{j+1}")
+        for i, s in enumerate(self._joint_sliders):
+            s.config(troughcolor='lightyellow' if i == j else 'lightgray')
+
+    def _on_slider_drag(self, j):
+        """User dragged slider `j` — bound to mouse events, so never fires for a sync."""
+        self._select_joint(j)
+        self._begin_tracking()
+        if self._joint_target is None:
+            return
+
+        deg = float(self._joint_sliders[j].get())
+        self._joint_target[j] = np.radians(deg)
+        self._set_entry(j, deg)
+
+    def _on_entry(self, j):
+        """Enter in a joint's entry box: go to that exact angle (degrees)."""
+        try:
+            deg = float(self._joint_entries[j].get())
+        except ValueError:
+            self._joint_entries[j].config(bg='mistyrose')
+            return
+        self._joint_entries[j].config(bg='white')
+
+        lo, hi = self._joint_limits[j]
+        self._select_joint(j)
+        self._begin_tracking()
+        if self._joint_target is None:
+            return
+
+        self._joint_target[j] = float(np.clip(np.radians(deg), lo, hi))
+        self._sync_sliders(self._joint_target)
+
+    def _nudge_joint(self, direction):
+        j = self._selected_joint
+        self._begin_tracking()
+        if self._joint_target is None:
+            return
+
+        lo, hi = self._joint_limits[j]
+        target = self._joint_target[j] + direction * np.radians(self.slider_step_deg)
+        self._joint_target[j] = float(np.clip(target, lo, hi))
+        self._sync_sliders(self._joint_target)
+
+    def _begin_tracking(self):
+        """Seed the target from the live pose the first time the user takes over."""
+        if self._joint_target is not None:
+            return
+        data = self.robot.get_data()
+        if data is not None:
+            self._joint_target = data['qpos'].copy()
+
+    def _release_tracking(self):
+        self._joint_target = None
+
+    def _set_entry(self, j, deg):
+        """Write a value into joint j's entry box, unless it is being typed into."""
+        entry = self._joint_entries[j]
+        if self.root.focus_get() is entry:
+            return
+        entry.delete(0, tk.END)
+        entry.insert(0, f"{deg:.1f}")
+
+    def _sync_sliders(self, qpos):
+        for i, s in enumerate(self._joint_sliders):
+            deg = round(float(np.degrees(qpos[i])), 1)
+            s.set(deg)
+            self._set_entry(i, deg)
+
+    def _resolve_joint_limits(self):
+        """Per-joint (lower, upper) in rad.
+
+        Read from the robot if it exposes them. The shipped `franka.urdf` is not a
+        safe source: it caps fr3_joint5 at ±2.48 rad while the real arm reaches
+        -2.87 (measured), so URDF-derived margins read as negative on valid poses.
+        Falls back to FR3 datasheet values. Treat the margins as advisory: real poses
+        have been observed ~0.07 rad outside the nominal fr3_joint5 range, so a small
+        negative margin means "at the edge", not "impossible".
+        """
+        getter = getattr(self.robot, 'get_joint_limits', None)
+        if callable(getter):
+            try:
+                limits = getter()
+                if limits is not None and len(limits) == self.arm_dof:
+                    return [tuple(v) for v in limits]
+            except Exception:
+                pass
+
+        if self.arm_dof == 7:      # FR3 datasheet
+            return [(-2.7437, 2.7437), (-1.7837, 1.7837), (-2.9007, 2.9007),
+                    (-3.0421, -0.1518), (-2.8065, 2.8065), (0.5445, 4.5169),
+                    (-3.0159, 3.0159)]
+        return [(-np.pi, np.pi)] * self.arm_dof
+
+    def _build_save_panel(self):
+        os.makedirs(self.save_path, exist_ok=True)
+
+        # Continue after existing waypoints; overwriting only the first N would mix
+        # old and new poses into one trajectory.
+        existing = [int(f.split('_')[0]) for f in os.listdir(self.save_path)
+                    if '_qpos' in f]
+        self._save_idx = max(existing) + 1 if existing else 0
+
+        frame = tk.LabelFrame(self.root, text="Teach: Save Pose", font=("Arial", 12))
+        frame.pack(pady=10, padx=10, fill="both")
+
+        tk.Button(frame, text="Save Pose", width=20, bg="lightgreen",
+                  font=("Arial", 11, "bold"), command=self._save_pose).pack(pady=4)
+
+        # A single retracted pose the replay can route through when two waypoints are
+        # far apart, so the arm does not sweep the board along the floor.
+        tk.Button(frame, text="Save VIA (safe transit)", width=20, bg="lightyellow",
+                  command=self._save_via_pose).pack(pady=2)
+
+        self._save_label = tk.Label(frame, text=f"Saved: {self._save_idx} pose(s)",
+                                    font=("Arial", 10))
+        self._save_label.pack()
+        tk.Label(frame, text=self.save_path, font=("Arial", 8), fg="gray").pack()
+
+    def _save_via_pose(self):
+        """Save the current pose as `via_qpos.npy` (not part of the waypoint list)."""
+        data = self.robot.get_data()
+        if data is None:
+            self._save_label.config(text="No robot state — is the daemon alive?", fg="red")
+            return
+
+        np.save(os.path.join(self.save_path, 'via_qpos.npy'), data['qpos'])
+        print("Saved via pose (safe transit)")
+        self._save_label.config(text=f"Saved: {self._save_idx} pose(s)  + via", fg="black")
+
+    def _save_pose(self):
+        data = self.robot.get_data()
+        if data is None:
+            self._save_label.config(text="No robot state — is the daemon alive?", fg="red")
+            return
+
+        qpos = data['qpos']
+        pose = data['position']
+        np.save(os.path.join(self.save_path, f'{self._save_idx}_qpos.npy'), qpos)
+        np.save(os.path.join(self.save_path, f'{self._save_idx}_pose.npy'), pose)
+        print(f"Saved pose {self._save_idx}: "
+              f"EE=[{pose[0,3]:.3f}, {pose[1,3]:.3f}, {pose[2,3]:.3f}]")
+
+        self._save_idx += 1
+        self._save_label.config(text=f"Saved: {self._save_idx} pose(s)", fg="black")
+
     def _on_exit(self):
         print("Exiting...")
         self.running = False
+        if self._velocity_streaming:
+            self.robot.stop_streaming()
+            self._velocity_streaming = False
+            self._last_jog_cmd = None
         self.root.destroy()
 
     def run(self):

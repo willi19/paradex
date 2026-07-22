@@ -1,3 +1,4 @@
+import json
 import os
 import cv2
 import argparse
@@ -7,7 +8,7 @@ from copy import deepcopy
 
 from paradex.utils.file_io import find_latest_directory
 
-from paradex.calibration.utils import handeye_calib_path, load_camparam
+from paradex.calibration.utils import handeye_calib_path, load_camparam, EEF_LINK
 from paradex.calibration.Tsai_Lenz import solve_ax_xb, solve_axb_cpu    
 from paradex.robot.utils import get_robot_urdf_path
 from paradex.robot.robot_wrapper import RobotWrapper
@@ -64,13 +65,14 @@ def compute_fk(name, arm):
     index_list = sorted(os.listdir(root_dir))
 
     robot_wrapper = RobotWrapper(get_robot_urdf_path(arm_name=arm))
+    eef_link = EEF_LINK[arm]
 
     for index in index_list:
         if os.path.exists(os.path.join(root_dir, index, "eef_fk.npy")):
             continue
-        
+
         qpos = np.load(os.path.join(root_dir, index, "qpos.npy"))
-        eef = robot_wrapper.compute_forward_kinematics(qpos, link_list=["link6"])['link6']
+        eef = robot_wrapper.compute_forward_kinematics(qpos, link_list=[eef_link])[eef_link]
         np.save(os.path.join(root_dir, index, "eef_fk.npy"), eef)
 
 def _floor_board_id_range(floor_board_key="3"):
@@ -215,7 +217,9 @@ def debug(name, arm):
                 
 parser = argparse.ArgumentParser()
 parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
-parser.add_argument("--arm", type=str, default="xarm", help="Name of the robot arm.")
+parser.add_argument("--arm", type=str, default=None,
+                    help="Robot arm. Defaults to the one recorded in the capture's "
+                         "0/meta.json, falling back to xarm for older captures.")
 
 args = parser.parse_args()
 if args.name is None:
@@ -223,6 +227,19 @@ if args.name is None:
 
 name = args.name
 root_path = os.path.join(handeye_calib_path, name)
+
+# Solving against the wrong arm silently produces a bogus C2R (wrong URDF, wrong
+# flange link), so take the arm from the capture itself unless overridden.
+if args.arm is None:
+    meta_path = os.path.join(root_path, "0", "meta.json")
+    if os.path.exists(meta_path):
+        with open(meta_path) as f:
+            args.arm = json.load(f)["arm"]
+        print(f"[meta] arm = {args.arm} (from {meta_path})")
+    else:
+        args.arm = "xarm"
+        print(f"[meta] no meta.json in this capture — assuming arm = xarm")
+
 index_list = os.listdir(root_path)
 intrinsic, extrinsic = load_camparam(os.path.join(root_path, "0"))
 

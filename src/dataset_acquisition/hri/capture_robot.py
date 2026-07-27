@@ -23,7 +23,7 @@ camera_pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--device', choices=['xsens', 'occulus'], default="xsens")
+parser.add_argument('--device', choices=['xsens', 'occulus', 'vive'], default="xsens")
 parser.add_argument('--hand-side', choices=['right', 'left', 'bimanual'], default="right")
 camera_group = parser.add_mutually_exclusive_group()
 camera_group.add_argument('--camera', dest='camera', action='store_true')
@@ -37,7 +37,7 @@ parser.set_defaults(camera=True)
 parser.add_argument('--arm', type=str, default="xarm",
                     help="Arm controller name. Use 'none' (or empty) to disable arm control.")
 parser.add_argument('--hand', type=str, default="inspire_f1",
-                    help="Hand controller/retargetor name. Use 'wuji' for optimization, 'wuji_direct' for direct mapping, or 'wuji_hybrid' for opt thumb + direct fingers.")
+                    help="Hand controller/retargetor name. Use 'none' for arm-only teleop, 'wuji' for optimization, 'wuji_direct' for direct mapping, or 'wuji_hybrid' for opt thumb + direct fingers.")
 parser.add_argument('--capture_root', type=str, default="eccv2026/allegro_v5")
 parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--tactile', action="store_true")

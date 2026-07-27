@@ -54,6 +54,12 @@ class CaptureSession():
         hand_left = _normalize_optional_name(hand_left)
         hand_right = _normalize_optional_name(hand_right)
 
+        if teleop == "vive" and hand_side != "right":
+            raise ValueError(
+                "VIVE teleop currently supports only "
+                "unimanual --hand-side right."
+            )
+
         if realsense:
             from paradex.io.camera_system.realsense_controller import realsense_controller
             self.realsense = realsense_controller()
@@ -142,7 +148,12 @@ class CaptureSession():
                 # if arm == "openarm":
                 from paradex.io.teleop.xsens.receiver import XSensReceiver
                 self.teleop_device = XSensReceiver(**network_info["xsens"]["param"])
-                
+            elif teleop == "vive":
+                from paradex.io.teleop.vive.receiver import ViveManusROSReceiver
+                self.teleop_device = ViveManusROSReceiver()
+            else:
+                raise ValueError(f"Unsupported teleop device: {teleop}")
+
             # elif teleop == "occulus":
             #     from paradex.io.teleop.oculus.receiver import OculusReceiver
             #     self.teleop_device = OculusReceiver()
@@ -384,7 +395,15 @@ class CaptureSession():
                     time.sleep(0.01)
                     continue
 
-                state = self.state_extractor.get_state(data[self.hand_side_opposite])
+                if hasattr(self.teleop_device, "get_state"):
+                    state = self.teleop_device.get_state()
+                    if state is None:
+                        time.sleep(0.01)
+                        continue
+                else:
+                    state = self.state_extractor.get_state(
+                        data[self.hand_side_opposite]
+                    )
 
                 if self.save_path is not None:
                     self.state_hist.append(state)

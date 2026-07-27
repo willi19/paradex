@@ -1097,17 +1097,25 @@ class ViserRobotModule():
             mesh.apply_scale(self._scale)
             mesh.apply_transform(T_parent_child)
 
-            vertices = mesh.vertices
-            faces = mesh.faces
-            color = np.array(mesh.visual.vertex_colors[0, :3])
-            self._meshes[name] = (self._target.scene.add_mesh_simple(
-                name, vertices, faces, color=color,
-                cast_shadow=True, receive_shadow=True
-            ))
-            # self._meshes[name] = self._target.scene.add_mesh_trimesh(
-            #     name=name,
-            #     mesh=mesh
-            # )
+            # Textured meshes (e.g. the ChArUco cube) must go through add_mesh_trimesh
+            # to keep their image; add_mesh_simple only carries a single base color.
+            has_texture = (
+                isinstance(mesh.visual, trimesh.visual.TextureVisuals)
+                and getattr(mesh.visual, "uv", None) is not None
+                and getattr(getattr(mesh.visual, "material", None), "image", None) is not None
+            )
+            if has_texture:
+                self._meshes[name] = self._target.scene.add_mesh_trimesh(
+                    name=name, mesh=mesh
+                )
+            else:
+                vertices = mesh.vertices
+                faces = mesh.faces
+                color = _mesh_base_color(mesh)
+                self._meshes[name] = (self._target.scene.add_mesh_simple(
+                    name, vertices, faces, color=color,
+                    cast_shadow=True, receive_shadow=True
+                ))
         return root_frame
     
     def get_link_vertices(self, link_name: str = None) -> Dict[str, np.ndarray]:
@@ -1203,6 +1211,28 @@ class ViserRobotModule():
         # else:
         #     assert_never(mesh_color_override)
         
+def _mesh_base_color(mesh) -> "np.ndarray":
+    """One flat RGB colour for a trimesh, whatever visual type it carries.
+
+    ``TextureVisuals`` (e.g. the FR3's textured .dae links) has no
+    ``vertex_colors``; converting it bakes the texture/material down to per-vertex
+    colours. Falls back to neutral grey when neither is available.
+    """
+    visual = getattr(mesh, "visual", None)
+    candidates = [visual, getattr(visual, "to_color", lambda: None)()]
+    for v in candidates:
+        for attr in ("vertex_colors", "main_color"):
+            try:
+                col = np.asarray(getattr(v, attr))
+            except Exception:
+                continue
+            if col.ndim == 2 and len(col):      # per-vertex RGBA
+                return col[0][:3]
+            if col.ndim == 1 and col.size >= 3:  # single flat RGB(A)
+                return col[:3]
+    return np.array([180, 180, 180])
+
+
 def _viser_name_from_frame(
     scene: Scene,
     frame_name: str,

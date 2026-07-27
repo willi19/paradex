@@ -700,7 +700,7 @@ def robotiq_2f85(hand_pose_frame: Dict[str, np.ndarray]):
     if not np.isfinite(pinch_distance):
         return None
 
-    closed_distance = 0.025
+    closed_distance = 0.04
     open_distance = 0.100
     close_value = (open_distance - pinch_distance) / (open_distance - closed_distance)
     close_value = float(np.clip(close_value, 0.0, 1.0))

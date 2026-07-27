@@ -661,7 +661,7 @@ def main():
     parser.add_argument("--output-type", type=str, choices=["video", "grid"], default="grid", help="Output overlaid result as videos (per camera) or as tiled grid images per frame.")
     parser.add_argument("--grid-scale", type=float, default=0.25, help="Downscale factor for saved grid frames before writing PNG (e.g., 0.5 halves width/height).")
     parser.add_argument("--frame-offset", type=int, default=0, help="Shift overlay target video frames by this offset.")
-    parser.add_argument("--arm-time-offset", type=float, default=0.09, help="Shift arm timestamps by this many seconds (positive delays arm).")
+    parser.add_argument("--arm-time-offset", type=float, default=0.0, help="Shift arm timestamps by this many seconds (positive delays arm).")
     parser.add_argument("--hand-time-offset", type=float, default=0.0, help="Shift hand timestamps by this many seconds (positive delays hand).")
     args = parser.parse_args()
 

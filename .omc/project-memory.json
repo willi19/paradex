@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "lastScanned": 1784188658405,
+  "lastScanned": 1785117363847,
   "projectRoot": "/home/temp_id/paradex",
   "techStack": {
     "languages": [
@@ -46,7 +46,7 @@
       "path": "__pycache__",
       "purpose": null,
       "fileCount": 2,
-      "lastAccessed": 1784188658401,
+      "lastAccessed": 1785117363842,
       "keyFiles": [
         "setup.cpython-38.pyc",
         "tmp30.cpython-312.pyc"
@@ -56,7 +56,7 @@
       "path": "bodex",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1784188658403,
+      "lastAccessed": 1785117363843,
       "keyFiles": [
         "scale010_grasp.npy"
       ]
@@ -65,7 +65,7 @@
       "path": "colmap",
       "purpose": null,
       "fileCount": 9,
-      "lastAccessed": 1784188658403,
+      "lastAccessed": 1785117363844,
       "keyFiles": [
         "CHANGELOG.txt",
         "CMakeLists.txt",
@@ -78,7 +78,7 @@
       "path": "curobo",
       "purpose": null,
       "fileCount": 12,
-      "lastAccessed": 1784188658403,
+      "lastAccessed": 1785117363844,
       "keyFiles": [
         "CHANGELOG.md",
         "CODEOWNERS",
@@ -91,14 +91,14 @@
       "path": "data",
       "purpose": "Data files",
       "fileCount": 0,
-      "lastAccessed": 1784188658403,
+      "lastAccessed": 1785117363844,
       "keyFiles": []
     },
     "docs": {
       "path": "docs",
       "purpose": "Documentation",
       "fileCount": 10,
-      "lastAccessed": 1784188658403,
+      "lastAccessed": 1785117363844,
       "keyFiles": [
         "Makefile",
         "conf.py",
@@ -111,7 +111,7 @@
       "path": "jisoo_test",
       "purpose": null,
       "fileCount": 4,
-      "lastAccessed": 1784188658403,
+      "lastAccessed": 1785117363844,
       "keyFiles": [
         "gui_controller.py",
         "test_insys.py",
@@ -123,14 +123,14 @@
       "path": "lookup",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1784188658403,
+      "lastAccessed": 1785117363844,
       "keyFiles": []
     },
     "paradex": {
       "path": "paradex",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1784188658403,
+      "lastAccessed": 1785117363845,
       "keyFiles": [
         "__init__.py"
       ]
@@ -139,7 +139,7 @@
       "path": "paradex.egg-info",
       "purpose": null,
       "fileCount": 5,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363845,
       "keyFiles": [
         "PKG-INFO",
         "SOURCES.txt",
@@ -152,7 +152,7 @@
       "path": "rendered",
       "purpose": null,
       "fileCount": 341,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363845,
       "keyFiles": [
         "00007.jpeg",
         "00062.jpeg",
@@ -165,7 +165,7 @@
       "path": "rendered_video",
       "purpose": null,
       "fileCount": 36,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363845,
       "keyFiles": [
         "bbasket.zip",
         "book_no_filter_vs_filter.mp4",
@@ -178,14 +178,14 @@
       "path": "rsc",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363845,
       "keyFiles": []
     },
     "script": {
       "path": "script",
       "purpose": null,
       "fileCount": 8,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363845,
       "keyFiles": [
         "allegro.txt",
         "allegro_ros2.txt",
@@ -198,14 +198,14 @@
       "path": "src",
       "purpose": "Source code",
       "fileCount": 0,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363845,
       "keyFiles": []
     },
     "system": {
       "path": "system",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363846,
       "keyFiles": [
         "README.md"
       ]
@@ -214,7 +214,7 @@
       "path": "systemd",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363846,
       "keyFiles": [
         "paradex-camera-agent@.service"
       ]
@@ -222,25 +222,28 @@
     "tests": {
       "path": "tests",
       "purpose": "Test files",
-      "fileCount": 2,
-      "lastAccessed": 1784188658404,
+      "fileCount": 6,
+      "lastAccessed": 1785117363846,
       "keyFiles": [
         "test_aravis_gstreamer_capture.py",
-        "test_aravis_timestamp.py"
+        "test_aravis_timestamp.py",
+        "test_capture_bimanual_state.py",
+        "test_extrinsic_validation.py",
+        "test_signal_generator.py"
       ]
     },
     "thirdparty": {
       "path": "thirdparty",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363846,
       "keyFiles": []
     },
     "tmp": {
       "path": "tmp",
       "purpose": null,
       "fileCount": 27,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363846,
       "keyFiles": [
         "add_frame_no.py",
         "change.py",
@@ -252,10 +255,11 @@
     "tools": {
       "path": "tools",
       "purpose": null,
-      "fileCount": 4,
-      "lastAccessed": 1784188658404,
+      "fileCount": 6,
+      "lastAccessed": 1785117363846,
       "keyFiles": [
         "make_random_video_grid.py",
+        "monitor_streamdeck_pedal.py",
         "run_inspire_f1_ethercat.py",
         "sample_one_video_per_videos_dir.py",
         "urdf_viser_visualizer.py"
@@ -265,28 +269,28 @@
       "path": "xarm_hecalib_compare_20260403_024512",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363846,
       "keyFiles": []
     },
     "xarm_hecalib_compare_20260403_024521": {
       "path": "xarm_hecalib_compare_20260403_024521",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363846,
       "keyFiles": []
     },
     "xarm_hecalib_compare_20260403_024528": {
       "path": "xarm_hecalib_compare_20260403_024528",
       "purpose": null,
       "fileCount": 0,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363846,
       "keyFiles": []
     },
     "xarm_hecalib_compare_20260403_024533": {
       "path": "xarm_hecalib_compare_20260403_024533",
       "purpose": null,
       "fileCount": 45,
-      "lastAccessed": 1784188658404,
+      "lastAccessed": 1785117363846,
       "keyFiles": [
         "00_compare.npz",
         "01_compare.npz",
@@ -299,7 +303,7 @@
       "path": "xarm_hecalib_compare_20260403_024619",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1784188658405,
+      "lastAccessed": 1785117363846,
       "keyFiles": [
         "failures.txt"
       ]
@@ -308,7 +312,7 @@
       "path": "xarm_hecalib_compare_sdk_20260403_025002",
       "purpose": null,
       "fileCount": 1,
-      "lastAccessed": 1784188658405,
+      "lastAccessed": 1785117363846,
       "keyFiles": [
         "failures.txt"
       ]

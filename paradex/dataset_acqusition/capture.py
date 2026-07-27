@@ -330,11 +330,19 @@ class CaptureSession():
         if self.human_tactile is not None:
             self.human_tactile.close()
     
-    def teleop(self, session_events=None, state_policy="gesture_control", loop_callback=None):
+    def teleop(
+        self,
+        session_events=None,
+        state_policy="gesture_control",
+        loop_callback=None,
+        bimanual_state_provider=None,
+    ):
         if self.teleop_device is None:
             raise ValueError("No teleop device initialized.")
         if state_policy not in ["gesture_control", "keyboard_control"]:
             raise ValueError(f"Unknown state_policy: {state_policy}")
+        if bimanual_state_provider is not None and self.hand_side != "Bimanual":
+            raise ValueError("bimanual_state_provider requires hand_side='bimanual'.")
 
         if session_events is None:
             session_events = self.events
@@ -443,17 +451,34 @@ class CaptureSession():
                     time.sleep(0.01)
                     continue
 
-                wrist_pose_left, wrist_pose_right, hand_action_left, hand_action_right = self.retargetor.get_action(data)
+                state = 0 if bimanual_state_provider is None else bimanual_state_provider()
+                if state not in (0, 1):
+                    raise ValueError(f"Bimanual state provider returned invalid state: {state}")
 
-                if self.arm_left is not None:
-                    self.arm_left.move(wrist_pose_left.copy())
-                if self.arm_right is not None:
-                    self.arm_right.move(wrist_pose_right.copy())
-                if self.hand_left is not None and hand_action_left is not None:
-                    self.hand_left.move(hand_action_left)
-                if self.hand_right is not None and hand_action_right is not None:
+                if self.save_path is not None:
+                    self.state_hist.append(state)
+                    self.state_time.append(time.time())
 
-                    self.hand_right.move(hand_action_right)
+                if loop_callback is not None:
+                    try:
+                        loop_callback(self)
+                    except Exception as exc:
+                        print(f"teleop loop_callback failed: {exc}")
+                        loop_callback = None
+
+                if state == 0:
+                    wrist_pose_left, wrist_pose_right, hand_action_left, hand_action_right = self.retargetor.get_action(data)
+
+                    if self.arm_left is not None:
+                        self.arm_left.move(wrist_pose_left.copy())
+                    if self.arm_right is not None:
+                        self.arm_right.move(wrist_pose_right.copy())
+                    if self.hand_left is not None and hand_action_left is not None:
+                        self.hand_left.move(hand_action_left)
+                    if self.hand_right is not None and hand_action_right is not None:
+                        self.hand_right.move(hand_action_right)
+                else:
+                    self.retargetor.stop()
 
                 if session_events is not None:
                     if self.save_path is None and session_events["save"].is_set():

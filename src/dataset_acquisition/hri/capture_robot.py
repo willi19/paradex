@@ -1,5 +1,6 @@
 import os
 import argparse
+import atexit
 import json
 import time
 import numpy as np
@@ -15,6 +16,7 @@ from paradex.utils.file_io import find_latest_index
 from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.utils.system import get_pc_list
 from paradex.io.robot_controller.inspire_f1_tactile_plotter import InspireF1RealtimeTactilePlotter
+from paradex.io.streamdeck_pedal import MiddlePedalState
 
 EXCLUDED_PCS = {}
 camera_pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
@@ -22,7 +24,16 @@ camera_pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
 parser = argparse.ArgumentParser()
 
 parser.add_argument('--device', choices=['xsens', 'occulus'], default="xsens")
-parser.add_argument('--camera', type=str, default=True)
+parser.add_argument('--hand-side', choices=['right', 'left', 'bimanual'], default="right")
+camera_group = parser.add_mutually_exclusive_group()
+camera_group.add_argument('--camera', dest='camera', action='store_true')
+camera_group.add_argument(
+    '--no-camera',
+    dest='camera',
+    action='store_false',
+    help='Disable remote cameras, sync generator, and timestamp monitor.',
+)
+parser.set_defaults(camera=True)
 parser.add_argument('--arm', type=str, default="xarm",
                     help="Arm controller name. Use 'none' (or empty) to disable arm control.")
 parser.add_argument('--hand', type=str, default="inspire_f1",
@@ -89,24 +100,37 @@ def wait_for_grasp_result():
 
     return "n"
 
-cs = CaptureSession(
-    camera=args.camera,
-    realsense=False,
-    arm=args.arm,
-    hand=args.hand,
-    teleop=args.device,
-    hand_side = "right",
-    events=events,
-    tactile=args.tactile,
-    ip=args.ip,
-    camera_pc_list=camera_pc_list,
-    arm_kwargs={"servo_api": args.xarm_servo_api} if args.arm == "xarm" else None,
-    hand_scale=args.hand_scale,
-)
+pedal_state = MiddlePedalState() if args.hand_side == "bimanual" else None
+if pedal_state is not None:
+    atexit.register(pedal_state.close)
+
+try:
+    cs = CaptureSession(
+        camera=args.camera,
+        realsense=False,
+        arm=args.arm,
+        hand=args.hand,
+        teleop=args.device,
+        hand_side=args.hand_side,
+        events=events,
+        tactile=args.tactile,
+        ip=args.ip,
+        camera_pc_list=camera_pc_list,
+        arm_kwargs={"servo_api": args.xarm_servo_api} if args.arm == "xarm" else None,
+        hand_scale=args.hand_scale,
+    )
+except Exception:
+    if pedal_state is not None:
+        pedal_state.close()
+    raise
+
+bimanual_state_provider = pedal_state.get_state if pedal_state is not None else None
 
 tactile_plotter = None
 if args.visualize_tactile_realtime:
-    if args.hand != "inspire_f1":
+    if args.hand_side == "bimanual":
+        print("Realtime tactile visualization is not supported in bimanual mode. Ignoring option.")
+    elif args.hand != "inspire_f1":
         print("Realtime tactile visualization is only supported for inspire_f1. Ignoring option.")
     elif not args.tactile:
         print("Realtime tactile visualization requires --tactile. Ignoring option.")
@@ -123,7 +147,11 @@ success_count = 0
 fail_count = 0
 
 while not exit_event.is_set():
-    state = cs.teleop(session_events=events, state_policy="keyboard_control")
+    state = cs.teleop(
+        session_events=events,
+        state_policy="keyboard_control",
+        bimanual_state_provider=bimanual_state_provider,
+    )
 
     if state == "exit":
         break
@@ -141,7 +169,11 @@ while not exit_event.is_set():
     print("Capturing index:", last_idx)
     
     
-    state = cs.teleop(session_events=events, state_policy="keyboard_control")
+    state = cs.teleop(
+        session_events=events,
+        state_policy="keyboard_control",
+        bimanual_state_provider=bimanual_state_provider,
+    )
     cs.stop()
     print("Stopped recording session:", name)
 
@@ -202,5 +234,7 @@ while not exit_event.is_set():
 
 print("Exiting teleoperation recording.")
 cs.end()
+if pedal_state is not None:
+    pedal_state.close()
 if tactile_plotter is not None:
     tactile_plotter.close()

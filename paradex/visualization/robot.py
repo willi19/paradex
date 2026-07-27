@@ -44,7 +44,8 @@ class RobotModule():
             return
         arr = np.asarray(cfg).reshape(-1)
         if arr.shape[0] == self.num_joints:
-            cfg_map = {name: float(val) for name, val in zip(self.joint_names, arr)}
+            # yourdfpy expects scalar values with NumPy's ``.item()`` method.
+            cfg_map = {name: val for name, val in zip(self.joint_names, arr)}
             self.urdf.update_cfg(cfg_map)
             return
         # Fallback: allow callers that pass "all joints" format.

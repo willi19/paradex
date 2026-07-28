@@ -43,8 +43,11 @@ def check_pushed(branch):
     """
     ok = True
 
-    dirty = _sh("git status --porcelain --untracked-files=all").stdout.strip().splitlines()
-    # Only source matters; build artifacts and submodule pointers are noise here.
+    # --ignore-submodules=all: a submodule pointer/worktree diff is not code the
+    # capture PCs would receive, and it otherwise blocks every pull forever.
+    dirty = _sh("git status --porcelain --untracked-files=all "
+                "--ignore-submodules=all").stdout.strip().splitlines()
+    # Build artifacts are noise too.
     dirty = [l for l in dirty if not l.split(maxsplit=1)[-1].startswith(("paradex.egg-info/",))]
     if dirty:
         print(f"[warn] {len(dirty)} uncommitted change(s) in the working tree — capture PCs "

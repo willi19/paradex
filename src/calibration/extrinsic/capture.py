@@ -10,7 +10,7 @@ from paradex.io.camera_system.remote_camera_controller import remote_camera_cont
 from paradex.io.capture_pc.ssh import run_script
 from paradex.io.capture_pc.data_sender import DataCollector
 from paradex.io.capture_pc.command_sender import CommandSender
-from paradex.image.merge import merge_image
+from paradex.image.merge import merge_image, fit_to_screen, get_screen_size
 from paradex.image.overlay import overlay_mask
 from paradex.calibration.utils import extrinsic_dir
 from paradex.image.aruco import draw_charuco
@@ -24,15 +24,20 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--stream_scale", type=int, default=4,
                     help="Preview downscale on the capture PCs: 4 = 512x384/cam (default), "
                          "8 = the old 256x192. Lower = bigger picture, more bandwidth.")
-parser.add_argument("--width", type=int, default=1600,
-                    help="Total width of the merged preview window in pixels. The window is "
-                         "resizable, so this is just the starting size.")
+parser.add_argument("--width", type=int, default=None,
+                    help="Total width of the merged preview in pixels (default: fit the screen).")
+parser.add_argument("--margin", type=float, default=0.95,
+                    help="Fraction of the screen the preview may occupy when auto-fitting.")
 args = parser.parse_args()
 
-# Resizable window: drag it to whatever size suits the screen instead of being
-# stuck with whatever the merged canvas happens to be.
+SCREEN_W, SCREEN_H = get_screen_size()
+# Compose at screen width, then letterbox the finished grid to the screen: the
+# limiting dimension decides, so the aspect ratio is never stretched.
+CANVAS_W = args.width or SCREEN_W
+print(f"[extrinsic] screen {SCREEN_W}x{SCREEN_H} -> canvas width {CANVAS_W}")
+
+# Resizable window so it can still be dragged smaller.
 cv2.namedWindow("Merged Stream", cv2.WINDOW_NORMAL)
-cv2.resizeWindow("Merged Stream", args.width, int(args.width * 0.62))
 
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
@@ -158,7 +163,7 @@ while True:
             if corners.shape[0] > 0:
                 draw_charuco(display_dict[serial_num], corners, BOARD_COLORS[1], 1, -1)
 
-        merged_image = merge_image(display_dict, img_text, canvas_width=args.width)
+        merged_image = merge_image(display_dict, img_text, canvas_width=CANVAS_W)
         if waiting_save:
             cv2.putText(merged_image, "Saving...", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
@@ -176,7 +181,10 @@ while True:
                     (10, merged_image.shape[0] - 12), cv2.FONT_HERSHEY_SIMPLEX,
                     0.6, (0, 0, 255), 2, cv2.LINE_AA)
 
-        cv2.imshow("Merged Stream", merged_image)
+        # Letterbox to the screen: whichever dimension runs out first sets the
+        # scale, so nothing is stretched and nothing spills off-screen.
+        cv2.imshow("Merged Stream", fit_to_screen(merged_image, margin=args.margin,
+                                                  screen=(SCREEN_W, SCREEN_H)))
         key = cv2.waitKey(1)
 
     else:

@@ -1,6 +1,62 @@
 import math
+import subprocess
 import cv2
 import numpy as np
+
+_screen_size = None
+
+
+def get_screen_size(default=(1920, 1080)):
+    """Return ``(width, height)`` of the primary display, cached after the first call.
+
+    Tries Tk (stdlib, works under X11 and Wayland's Xwayland), then ``xrandr``,
+    then falls back to ``default`` on a headless box.
+    """
+    global _screen_size
+    if _screen_size is not None:
+        return _screen_size
+
+    try:
+        import tkinter
+        root = tkinter.Tk()
+        root.withdraw()
+        size = (root.winfo_screenwidth(), root.winfo_screenheight())
+        root.destroy()
+        if size[0] > 0 and size[1] > 0:
+            _screen_size = size
+            return _screen_size
+    except Exception:
+        pass
+
+    try:
+        out = subprocess.run(["xrandr"], capture_output=True, text=True, timeout=2).stdout
+        for line in out.splitlines():
+            if " connected" in line and "x" in line:
+                for tok in line.split():
+                    if "x" in tok and tok.split("x")[0].isdigit():
+                        w, h = tok.split("+")[0].split("x")
+                        _screen_size = (int(w), int(h))
+                        return _screen_size
+    except Exception:
+        pass
+
+    _screen_size = default
+    return _screen_size
+
+
+def fit_to_screen(image, margin=0.95, screen=None):
+    """Scale ``image`` to the largest size that still fits the screen, aspect kept.
+
+    The limiting dimension wins (letterboxed, never stretched), so a wide grid is
+    bounded by screen width and a tall one by screen height.
+    """
+    sw, sh = screen or get_screen_size()
+    h, w = image.shape[:2]
+    scale = min(sw * margin / w, sh * margin / h)
+    if abs(scale - 1.0) < 0.02:
+        return image
+    interp = cv2.INTER_AREA if scale < 1 else cv2.INTER_LINEAR
+    return cv2.resize(image, (max(1, int(w * scale)), max(1, int(h * scale))), interpolation=interp)
 
 def get_optimal_font_scale(text, target_width, font=cv2.FONT_HERSHEY_SIMPLEX, thickness=2):
     """텍스트가 target_width에 맞는 최적의 font scale 찾기"""

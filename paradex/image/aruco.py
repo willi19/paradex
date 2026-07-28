@@ -199,6 +199,11 @@ def merge_charuco_detection(detection_list):
 
     for b_id, det in detection_list.items():
         ck = det["checkerCorner"]
+        # A board not seen in this frame comes back as a 1-D empty array, which would
+        # break np.concatenate against the (N, 2|3) arrays of the boards that were
+        # seen. Skip it — this is common when several boards share the scene.
+        if len(ck) == 0:
+            continue
         ids = det["checkerIDs"] + offset_map[b_id]
 
         corners_all.append(ck)

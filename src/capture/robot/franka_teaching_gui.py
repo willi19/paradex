@@ -58,9 +58,20 @@ if arm.get_data() is None:
 # command is silently refused — clear it before the GUI comes up.
 arm.error_recovery()
 
+# "Check Board" button: snapshot the cameras and count EE-board 3D corners. Optional —
+# needs capture-PC daemons up. If the import/capture stack is unavailable the button is
+# simply omitted rather than blocking teaching.
+board_check_fn = None
+try:
+    sys.path.insert(0, os.path.join(_PARADEX_ROOT, "src", "validate", "calibration"))
+    from check_board_now import count_board_corners
+    board_check_fn = count_board_corners
+except Exception as e:
+    print(f">>> Check Board button disabled ({e})")
+
 rgc = RobotGUIController(arm, jog_only=True, save_path=args.save_path,
                          urdf_path=get_robot_urdf_path(arm_name="franka"),
-                         eef_link=EEF_LINK)
+                         eef_link=EEF_LINK, board_check_fn=board_check_fn)
 rgc.run()
 
 arm.end()

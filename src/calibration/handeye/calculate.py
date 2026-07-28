@@ -21,7 +21,14 @@ def undistort_and_detect_charuco(name):
     img_dict = None
     root_dir = os.path.join(handeye_calib_path, name)
     index_list = sorted(os.listdir(root_dir))
-    
+
+    # Camera params are saved only under pose 0/cam_param. Load them once and inject
+    # into every pose. Previously they were picked up implicitly by from_path on the
+    # first processed pose — but if pose 0 was already done (charuco_3d present) it got
+    # `continue`d, so the params were never loaded and every remaining pose triangulated
+    # to zero corners ("board not detected") on any re-run.
+    intrinsic, extrinsic = load_camparam(os.path.join(root_dir, "0"))
+
     for index in tqdm.tqdm(index_list, desc="Undistort and detect charuco"):
         print(f"Processing index {index}...")
         if os.path.exists(os.path.join(root_dir, index, "charuco_3d_ids.npy")) and \
@@ -32,12 +39,13 @@ def undistort_and_detect_charuco(name):
         #     len(os.listdir(os.path.join(root_dir, index, "undistort", "images"))) == \
         #     len(os.listdir(os.path.join(root_dir, index, "images"))):
         #     continue
-        
+
         os.makedirs(os.path.join(root_dir, index, "undistort", "images"), exist_ok=True)
         if img_dict is None:
             img_dict = ImageDict.from_path(os.path.join(root_dir, index))
         else:
             img_dict.update_path(os.path.join(root_dir, index))
+        img_dict.set_camparam(intrinsic, extrinsic)
             
         undistort_img_dict = img_dict.undistort(save_path=os.path.join(root_dir, index, "undistort"))
         
@@ -106,32 +114,47 @@ def compute_motion(name):
     eef_list = [np.load(os.path.join(root_dir, index, "eef_fk.npy")) for index in index_list]
 
     excluded_range = _floor_board_id_range("1")
-    charuco_id_list = []
-    charuco_cor_list = []
-    for index in index_list:
+
+    # Only the non-floor (EE-mounted) board carries the robot's motion. Poses where it
+    # is barely visible can't contribute a relative motion, so keep just the poses that
+    # see enough of it and pair consecutively among those. A rigid fit needs >=3 shared
+    # points; require a small margin.
+    MIN_EE_MARKERS = 4
+    valid = []   # (original_index_position, ids, corners)
+    for i, index in enumerate(index_list):
         ids, cors = _load_filtered_charuco(root_dir, index, excluded_range)
-        charuco_id_list.append(ids)
-        charuco_cor_list.append(cors)
-    
-    for i in range(1, len(index_list)):
-        eef = eef_list[i]
-        eef_prev = eef_list[i-1]
+        if len(ids) >= MIN_EE_MARKERS:
+            valid.append((i, ids, cors))
+        else:
+            print(f"[motion] skip pose {index}: only {len(ids)} EE-board markers "
+                  f"(< {MIN_EE_MARKERS})")
 
-        motion_wrt_robot.append(eef_prev @ np.linalg.inv(eef)) #M1 R1 R2 M2
-        
-        ids = charuco_id_list[i]
-        ids_prev = charuco_id_list[i-1]
-        
+    if len(valid) < 3:
+        raise RuntimeError(
+            f"Only {len(valid)} poses see the EE board well enough — hand-eye needs "
+            "several. Re-capture with the EE board visible to the cameras at every pose.")
+
+    for k in range(1, len(valid)):
+        i, ids, cors = valid[k]
+        j, ids_prev, cors_prev = valid[k-1]
+
         common_idx, common_idx_prev = find_common_indices(ids, ids_prev)
+        if common_idx is None or len(common_idx) < 3:
+            n = 0 if common_idx is None else len(common_idx)
+            print(f"[motion] skip pair {index_list[j]}->{index_list[i]}: "
+                  f"only {n} shared EE markers")
+            continue
 
-        cam_cor = charuco_cor_list[i][common_idx]
-        cam_cor_prev = charuco_cor_list[i-1][common_idx_prev]
-        motion_wrt_cam.append(SOLVE_XA_B(cam_cor, cam_cor_prev)) #M1 C1  C2 M2
-        # print(np.linalg.norm((eef_prev - eef)[:3, 3]), np.linalg.norm(np.mean(cam_cor - cam_cor_prev, axis=0)))
-        # import pdb; pdb.set_trace()
+        cam_cor = cors[common_idx]
+        cam_cor_prev = cors_prev[common_idx_prev]
+
+        motion_wrt_cam.append(SOLVE_XA_B(cam_cor, cam_cor_prev))        #M1 C1  C2 M2
+        motion_wrt_robot.append(eef_list[j] @ np.linalg.inv(eef_list[i]))  #M1 R1 R2 M2
+
         err = cam_cor_prev - (motion_wrt_cam[-1][:3, :3] @ cam_cor.T).T - motion_wrt_cam[-1][:3, 3]
-        print(f"Motion {i-1}->{i} cam points fitting error: {np.mean(np.linalg.norm(err, axis=1))*1000:.2f} mm")
-    
+        print(f"Motion {index_list[j]}->{index_list[i]} cam points fitting error: "
+              f"{np.mean(np.linalg.norm(err, axis=1))*1000:.2f} mm")
+
     return motion_wrt_cam, motion_wrt_robot
 
 def debug(name, arm):
@@ -249,15 +272,18 @@ motion_wrt_cam, motion_wrt_robot = compute_motion(name)
 robot_wrt_cam = solve_ax_xb(motion_wrt_cam, motion_wrt_robot, verbose=True) 
 cam_wrt_robot = np.linalg.inv(robot_wrt_cam)
 
-for i in range(len(index_list)-1):
+trans_errors = []
+for i in range(len(motion_wrt_cam)):
     diff = (motion_wrt_cam[i] @ robot_wrt_cam) - (robot_wrt_cam @ motion_wrt_robot[i])
     trans_error = np.linalg.norm(diff[:3, 3]) * 1000
+    trans_errors.append(trans_error)
+    print(f"Motion {i}: AX=XB residual trans={trans_error:.2f}mm")
+if trans_errors:
+    print(f"[C2R] mean residual {np.mean(trans_errors):.2f}mm over {len(trans_errors)} motions")
 
-    # Rotation error (degrees)
-    R_error = diff[:3, :3]
-    angle_error = 0#np.arccos((np.trace(R_error) - 1) / 2) * 180 / np.pi
-    print(f"Motion {i}: trans={trans_error:.2f}mm, rot={angle_error:.2f}deg")
-    
-np.save(os.path.join(root_path, index_list[0], "C2R.npy"), robot_wrt_cam)
+# Save under "0" (not index_list[0], which is unsorted os.listdir order); debug() and
+# load_current_C2R read from the sorted-first index, which is "0".
+np.save(os.path.join(root_path, "0", "C2R.npy"), robot_wrt_cam)
+print(f"[C2R] saved to {os.path.join(root_path, '0', 'C2R.npy')}")
 
 debug(name, args.arm)

@@ -47,7 +47,8 @@ class Waypoint:
 class RobotGUIController:
     def __init__(self, robot_controller, hand_controller=None,
                  jog_only=False, save_path=None,
-                 urdf_path=None, eef_link=None):
+                 urdf_path=None, eef_link=None, board_check_fn=None,
+                 goto_poses=None):
         """
         Args:
             jog_only: keep the window open with an empty waypoint queue. The normal
@@ -64,6 +65,15 @@ class RobotGUIController:
                 "cartesian_motion_generator_joint_acceleration_discontinuity". With a
                 URDF we instead map the twist to joint velocities ourselves (damped
                 least squares) and use the well-behaved joint velocity stream.
+            board_check_fn: optional callable returning (floor_corners, ee_corners).
+                Adds a "Check Board" button that captures the cameras at the current
+                pose and reports whether the EE board triangulates — so a hand-eye pose
+                can be validated before saving it. Kept as a callback so this module
+                stays camera-agnostic.
+            goto_poses: optional {name: qpos} dict. Adds a hold-to-move button per pose:
+                the arm advances toward that qpos ONLY while the button is held and
+                stops the instant it is released (dead-man). Lets you drive to a known
+                pose under full control instead of committing to an autonomous move.
         """
         print(">>> Initializing Robot GUI Controller...")
 
@@ -71,6 +81,9 @@ class RobotGUIController:
         self.hand = hand_controller
         self.jog_only = jog_only
         self.save_path = save_path
+        self.board_check_fn = board_check_fn
+        self.board_check_min = 6      # EE corners for a PASS
+        self.goto_poses = goto_poses or {}
 
         # Auto-detect DOF from robot controller
         data = self.robot.get_data()
@@ -122,6 +135,7 @@ class RobotGUIController:
         self.jog_send_deadband = 0.02   # skip a send if the setpoint barely changed
         self._jog_kind = None           # 'j' | 'c' — which stream is open
         self._jog_vec = None            # last commanded setpoint
+        self._brake_settle = 0          # consecutive still-ticks before ending a stream
 
         self._joint_limits = self._resolve_joint_limits()
 
@@ -147,10 +161,14 @@ class RobotGUIController:
         self._joint_sliders = []
         self._joint_entries = []
         self._joint_target = None       # None = not tracking, follow the robot
+        self._goto_vel = None           # flag: hold-to-move goto is active
+        self._goto_unit = None          # fixed direction (farthest joint = 1)
+        self._goto_speed = 0.0          # current ramped speed (rad/s of farthest joint)
+        self.goto_accel = 1.5           # rad/s^2 ramp — under the daemon's 10 limit
         self._selected_joint = 0
         self.slider_step_deg = 1.0      # arrow-key increment
         self.slider_approach_band = 0.25  # rad; start easing off inside this
-        self.slider_vel = 0.6           # rad/s cap while tracking a target
+        self.slider_vel = 0.4           # rad/s cap while tracking a target
         self.slider_tol = 0.004         # rad; stop tracking inside this
 
         # Waypoint system
@@ -174,14 +192,19 @@ class RobotGUIController:
         self.root.title("Robot Waypoint Controller")
         self.root.geometry("700x1000")
 
-        tk.Label(self.root, text="Robot Waypoint Controller",
-                 font=("Arial", 16, "bold")).pack(pady=10)
+        title = "Robot Jog / Teach" if self.jog_only else "Robot Waypoint Controller"
+        tk.Label(self.root, text=title, font=("Arial", 16, "bold")).pack(pady=10)
 
-        # Status
-        self._build_status_frame()
+        # Waypoint queue is only meaningful for the autonomous-execution mode; in
+        # jog-only use the queue is always empty, so the panel is just noise.
+        if not self.jog_only:
+            self._build_status_frame()
 
         # Manual control
         self._build_manual_control_frame()
+
+        if self.goto_poses:
+            self._build_goto_panel()
 
         # Exit
         self._build_slider_panel()
@@ -382,6 +405,8 @@ class RobotGUIController:
         print("Queue cleared")
 
     def _update_status(self):
+        if self.jog_only:      # no status panel built in jog-only mode
+            return
         queue_size = len(self.waypoint_queue)
         self.queue_label.config(text=f"Queue: {queue_size} waypoints")
 
@@ -549,7 +574,7 @@ class RobotGUIController:
             dq = dq * (self.jog_joint_vel_max / peak)
         return dq
 
-    def _stream_jog(self, kind, target):
+    def _stream_jog(self, kind, target, force=False):
         """Send a streaming velocity setpoint.
 
         No client-side ramping: the daemon's 1 kHz control callback already rate-limits
@@ -575,10 +600,12 @@ class RobotGUIController:
             self._jog_kind = kind
             self._jog_vec = np.zeros_like(target)
 
-        # Skip near-duplicate setpoints. Without this a proportional controller (the
-        # slider tracker) emits a slightly different velocity every tick, turning the
-        # motion into a series of blocking round trips — the stutter.
-        if (self._last_jog_cmd is not None and self._last_jog_cmd[0] == kind
+        # Skip near-duplicate setpoints UNLESS force=True. The deadband avoids
+        # redundant sends for held jog buttons, but a reflex can silently kill the
+        # daemon's stream thread (async error, not seen in the reply), and then a
+        # skipped resend leaves the arm stopped mid-move. Callers that run every tick
+        # (the target tracker) pass force=True so a dead stream is re-primed next tick.
+        if (not force and self._last_jog_cmd is not None and self._last_jog_cmd[0] == kind
                 and np.all(np.abs(target - self._last_jog_cmd[1]) <
                            self.jog_send_deadband * max(1.0, np.abs(target).max()))
                 and np.any(target) == np.any(self._last_jog_cmd[1])):
@@ -634,37 +661,54 @@ class RobotGUIController:
         if np.abs(error).max() < self.slider_tol:
             if self._velocity_streaming:
                 self._brake_jog()
+            self._goto_vel = None
             return
 
-        # Full speed until close, then scale down so it settles instead of overshooting.
-        approach = min(1.0, np.abs(error).max() / self.slider_approach_band)
-        vel = self.slider_vel * approach * error / max(np.abs(error).max(), 1e-9)
-        self._stream_jog('j', vel)
+        if self._goto_vel is not None:
+            # goto: move along a FIXED direction with a trapezoidal speed profile we
+            # ramp ourselves. Jumping straight to full speed makes the daemon step its
+            # acceleration (infinite jerk) and franka aborts with velocity/acceleration
+            # discontinuity; ramping at goto_accel (well under the daemon's own limit)
+            # keeps start and stop smooth. Direction is constant so it never wobbles.
+            dist = np.abs(error).max()
+            # Done only once BOTH inside the tolerance band AND slow — braking from a
+            # nonzero speed is the jerk that trips the reflex, so keep decelerating
+            # until the speed is small, then stop.
+            if dist < self.slider_tol and self._goto_speed < 0.03:
+                self._brake_jog()
+                self._goto_vel = None
+                return
+            # Speed cap easing to zero at the tol band (v = sqrt(2*a*(dist-tol))): a
+            # smooth deceleration curve, no on/off braking that oscillates. Capped at
+            # cruise speed; the per-tick accel limit ramps the START gently too.
+            remain = max(dist - self.slider_tol, 0.0)
+            v_cap = min(self.slider_vel, float(np.sqrt(2 * self.goto_accel * remain)))
+            step = self.goto_accel * self.tick_s
+            self._goto_speed += float(np.clip(v_cap - self._goto_speed, -step, step))
+            vel = self._goto_unit * self._goto_speed
+            self._stream_jog('j', vel, force=True)
+        else:
+            # slider/entry: the target moves in real time, so track the live error.
+            # force=True re-primes the stream every tick in case a reflex killed it.
+            approach = min(1.0, np.abs(error).max() / self.slider_approach_band)
+            vel = self.slider_vel * approach * error / max(np.abs(error).max(), 1e-9)
+            self._stream_jog('j', vel, force=True)
 
     def _brake_jog(self):
-        """Command zero velocity, and only stop the stream once the arm has stopped.
+        """Hold zero velocity WITHOUT ending the stream.
 
-        `stop_streaming` makes the daemon return MotionFinished as soon as its own
-        commanded velocity reaches zero, but the arm lags that by a few ms. Ending the
-        motion while it is still moving gives "Motion finished commanded, but the robot
-        is still moving!" and a reflex abort — so wait for real standstill first.
+        `stop_streaming` makes the daemon return MotionFinished, and if the arm is even
+        slightly moving at that instant franka aborts with a velocity discontinuity —
+        which tore the stream down and made every stop-and-go stutter. Commanding zero
+        velocity already halts the arm (the daemon holds the last setpoint), so we keep
+        the stream open at zero and only actually end it on a mode switch or on exit,
+        by which point the arm is already stopped.
         """
         if self._jog_kind is None or self._jog_vec is None:
             self._velocity_streaming = False
             return
 
         self._stream_jog(self._jog_kind, np.zeros_like(self._jog_vec))
-
-        data = self.robot.get_data()
-        qvel = None if data is None else data.get('qvel')
-        if qvel is not None and np.abs(qvel).max() > 0.02:
-            return          # still coasting; hold the zero setpoint and re-check
-
-        self.robot.stop_streaming()
-        self._velocity_streaming = False
-        self._last_jog_cmd = None
-        self._jog_kind = None
-        self._jog_vec = None
 
     def _execute_manual_control(self, pressed_buttons):
         # A velocity stream keeps running at the last setpoint until told otherwise,
@@ -890,6 +934,8 @@ class RobotGUIController:
 
     def _begin_tracking(self):
         """Seed the target from the live pose the first time the user takes over."""
+        # Slider/entry/nudge want live-error following, not a fixed goto velocity.
+        self._goto_vel = None
         if self._joint_target is not None:
             return
         data = self.robot.get_data()
@@ -898,6 +944,47 @@ class RobotGUIController:
 
     def _release_tracking(self):
         self._joint_target = None
+
+    def _build_goto_panel(self):
+        frame = tk.LabelFrame(self.root, text="Go To Pose  (HOLD button to move, release to stop)",
+                              font=("Arial", 12))
+        frame.pack(pady=6, padx=10, fill="both")
+
+        for name, qpos in self.goto_poses.items():
+            q = np.asarray(qpos, dtype=float)
+            if q.shape[0] != self.arm_dof:
+                print(f"[goto] skip '{name}': {q.shape[0]} dof != arm {self.arm_dof}")
+                continue
+            btn = tk.Button(frame, text=f"HOLD → {name}", width=24, bg="khaki")
+            btn.bind('<ButtonPress-1>', lambda e, tq=q: self._goto_press(tq))
+            btn.bind('<ButtonRelease-1>', lambda e: self._goto_release())
+            btn.pack(pady=2)
+
+        tk.Label(frame, text="release the button (or Follow robot) to stop instantly",
+                 font=("Arial", 8), fg="gray").pack()
+
+    def _goto_press(self, target_qpos):
+        # Fix the direction (unit vector, scaled so the farthest joint is 1) and start
+        # from zero speed; _track_joint_target ramps the speed up/down trapezoidally.
+        self.manual_override = False
+        data = self.robot.get_data()
+        if data is None:
+            return
+        target = target_qpos.copy()
+        delta = target - data['qpos']
+        dmax = np.abs(delta).max()
+        if dmax < self.slider_tol:
+            return
+        self._goto_unit = delta / dmax      # farthest joint moves at goto speed
+        self._goto_speed = 0.0
+        self._goto_vel = True               # flag: goto mode active
+        self._joint_target = target
+
+    def _goto_release(self):
+        # Drop the target; the control loop then brakes the stream to a stop.
+        self._joint_target = None
+        self._goto_vel = None
+        self._goto_speed = 0.0
 
     def _set_entry(self, j, deg):
         """Write a value into joint j's entry box, unless it is being typed into."""
@@ -950,6 +1037,13 @@ class RobotGUIController:
         frame = tk.LabelFrame(self.root, text="Teach: Save Pose", font=("Arial", 12))
         frame.pack(pady=10, padx=10, fill="both")
 
+        # Validate the pose against the cameras before committing it.
+        if self.board_check_fn is not None:
+            tk.Button(frame, text="Check Board", width=20, bg="lightblue",
+                      command=self._on_check_board).pack(pady=2)
+            self._board_label = tk.Label(frame, text="(not checked)", font=("Arial", 10))
+            self._board_label.pack()
+
         tk.Button(frame, text="Save Pose", width=20, bg="lightgreen",
                   font=("Arial", 11, "bold"), command=self._save_pose).pack(pady=4)
 
@@ -962,6 +1056,23 @@ class RobotGUIController:
                                     font=("Arial", 10))
         self._save_label.pack()
         tk.Label(frame, text=self.save_path, font=("Arial", 8), fg="gray").pack()
+
+    def _on_check_board(self):
+        # Camera capture takes a few seconds and blocks — run it off the UI thread so
+        # the window stays responsive, then post the result back on the UI thread.
+        self._board_label.config(text="capturing...", fg="black")
+
+        def work():
+            try:
+                floor, ee = self.board_check_fn()
+                ok = ee >= self.board_check_min
+                msg = f"floor {floor} | EE {ee}  ->  {'PASS' if ok else 'FAIL (turn board)'}"
+                color = "darkgreen" if ok else "red"
+            except Exception as e:
+                msg, color = f"check failed: {e}", "red"
+            self.root.after(0, lambda: self._board_label.config(text=msg, fg=color))
+
+        Thread(target=work, daemon=True).start()
 
     def _save_via_pose(self):
         """Save the current pose as `via_qpos.npy` (not part of the waypoint list)."""

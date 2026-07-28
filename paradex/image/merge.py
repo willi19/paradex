@@ -59,11 +59,19 @@ def fit_to_screen(image, margin=0.95, screen=None):
     return cv2.resize(image, (max(1, int(w * scale)), max(1, int(h * scale))), interpolation=interp)
 
 def get_optimal_font_scale(text, target_width, font=cv2.FONT_HERSHEY_SIMPLEX, thickness=2):
-    """텍스트가 target_width에 맞는 최적의 font scale 찾기"""
+    """텍스트가 target_width에 맞는 최적의 font scale 찾기.
+
+    Small tiles could not fit their caption even at the old 0.3 floor, so the text
+    ran off the edge. Go down to 0.12 before giving up.
+    """
     for scale in np.arange(0.3, 3.0, 0.1):
         text_size = cv2.getTextSize(text, font, scale, thickness)[0]
         if text_size[0] > target_width:
-            return max(0.3, scale - 0.1)  # 한 단계 작게
+            fitted = max(0.12, scale - 0.1)
+            # Shrink past the floor when even the smallest step overflows.
+            while fitted > 0.12 and cv2.getTextSize(text, font, fitted, thickness)[0][0] > target_width:
+                fitted -= 0.04
+            return round(fitted, 2)
     return 3.0
 
 def merge_image(image_dict, image_text={}, put_text=True, canvas_width=2048):
@@ -115,12 +123,15 @@ def merge_image(image_dict, image_text={}, put_text=True, canvas_width=2048):
         img = image_dict[img_name].copy()
 
         if put_text:
-            target_width = int(img.shape[1] * 0.5)
-            thickness = max(1, img.shape[1] // 500)
+            # Build the WHOLE caption before sizing it. Fitting the scale to the
+            # serial alone and then appending the frame counter is what pushed the
+            # text past the tile edge.
             txt = f"{img_name}"
-            font_scale = get_optimal_font_scale(txt, target_width, thickness=thickness)
             if img_name in image_text:
                 txt += f" {image_text[img_name]}"
+            target_width = int(img.shape[1] * 0.92) - 20
+            thickness = max(1, img.shape[1] // 500)
+            font_scale = get_optimal_font_scale(txt, target_width, thickness=thickness)
             text_x = 10
             text_y = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX,
                                      font_scale, thickness)[0][1] + 10

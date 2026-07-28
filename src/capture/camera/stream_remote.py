@@ -105,11 +105,18 @@ while not exit_event.is_set():
         # that reached this display. cam low  -> camera/GigE link is the limit.
         # cam high, shown low -> capture-PC client or transport is the limit.
         n_pc_live = sum(1 for s in stats.values() if s['recv'] > 0)
-        cv2.putText(merged_image,
-                    f"pc {n_pc_live}/{len(stats)} | cam {cam_fps:.1f} fps | "
-                    f"shown {fps_per_cam:.1f} fps | tx {lat:.0f} ms | drops {drops}",
-                    (10, merged_image.shape[0] - 12), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6, (0, 0, 255), 2, cv2.LINE_AA)
+        hud = (f"pc {n_pc_live}/{len(stats)} | cam {cam_fps:.1f} fps | "
+               f"shown {fps_per_cam:.1f} fps | tx {lat:.0f} ms | drops {drops}")
+        # Size and place from the measured text so it can't run off the canvas.
+        hud_scale = max(0.5, min(1.1, merged_image.shape[1] / 1800))
+        hud_th = max(1, int(round(hud_scale * 2)))
+        (hud_w, hud_h), _ = cv2.getTextSize(hud, cv2.FONT_HERSHEY_SIMPLEX, hud_scale, hud_th)
+        hud_x = max(10, merged_image.shape[1] - hud_w - 14)
+        hud_y = merged_image.shape[0] - max(10, hud_h // 2)
+        cv2.putText(merged_image, hud, (hud_x, hud_y), cv2.FONT_HERSHEY_SIMPLEX,
+                    hud_scale, (0, 0, 0), hud_th + 3, cv2.LINE_AA)
+        cv2.putText(merged_image, hud, (hud_x, hud_y), cv2.FONT_HERSHEY_SIMPLEX,
+                    hud_scale, (0, 0, 255), hud_th, cv2.LINE_AA)
         cv2.imshow("Merged Stream", merged_image)
         dirty = False
         cv2.waitKey(1)

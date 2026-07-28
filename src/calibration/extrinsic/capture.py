@@ -96,7 +96,9 @@ while True:
 
                 if image is not None:
                     img_dict[item_name] = image
-                    img_text[item_name] = f"{frame_id} | n={saved_count.get(item_name, 0)}"
+                    # Per-camera save counts made every caption long enough to clip;
+                    # the count is a rig-wide number, so it lives in the HUD now.
+                    img_text[item_name] = str(frame_id)
                     arrivals.append(time.time())
                     dirty = True
 
@@ -121,27 +123,37 @@ while True:
 
     if not img_dict:
         waited = time.time() - start_ts
-        blank_image = np.ones((640, 1100, 3), dtype=np.uint8)*255
-        cv2.putText(blank_image, f"Waiting for stream... {waited:.0f}s", (40, 90),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
         st = dc.get_stats()
         live = [pc for pc, s in st.items() if s['recv'] > 0]
-        cv2.putText(blank_image, f"capture PCs sending: {len(live)}/{len(st)}  {live}", (40, 140),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
+
+        head = [(f"Waiting for stream... {waited:.0f}s", 1.0, (0, 0, 0)),
+                (f"capture PCs sending: {len(live)}/{len(st)}  {live}", 0.6, (0, 0, 0))]
+        # Silence here is almost always the capture-PC client dying at launch;
+        # run_script sends its stdout to /dev/null, so it fails invisibly.
+        body = [] if waited <= 5 else [(t, 0.55, (0, 0, 180)) for t in [
+            "Nothing arriving. Most likely client.py failed to start on the capture PCs:",
+            "  1. capture PCs run their own checkout - did they pull this version?",
+            "     git commit + push, then: python src/util/git_pull.py",
+            "  2. see the real error:",
+            "     run_script('python src/calibration/extrinsic/client.py', ['capture1'], log=True)",
+            "     then read ~/test.log on that PC",
+            "  3. camera daemon down -> python src/camera/reset_cameras.py",
+        ]]
+        lines = head + body
+        # Size the canvas from the text instead of hoping 1100px is enough.
+        pad = 40
+        widths = [cv2.getTextSize(t, cv2.FONT_HERSHEY_SIMPLEX, s, 1)[0][0] for t, s, _ in lines]
+        blank_w = max(600, max(widths) + pad * 2)
+        blank_h = 110 + 34 * len(body) + (60 if body else 0)
+        blank_image = np.ones((blank_h, blank_w, 3), dtype=np.uint8) * 255
+        cv2.putText(blank_image, lines[0][0], (pad, 55),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 0), 2, cv2.LINE_AA)
+        cv2.putText(blank_image, lines[1][0], (pad, 95),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1, cv2.LINE_AA)
+        for i, (line, sc, col) in enumerate(body):
+            cv2.putText(blank_image, line, (pad, 145 + i * 34),
+                        cv2.FONT_HERSHEY_SIMPLEX, sc, col, 1, cv2.LINE_AA)
         if waited > 5:
-            # Silence here is almost always the capture-PC client dying at launch;
-            # run_script sends its stdout to /dev/null, so it fails invisibly.
-            for i, line in enumerate([
-                "Nothing arriving. Most likely client.py failed to start on the capture PCs:",
-                "  1. capture PCs run their own checkout - did they pull this version?",
-                "     git commit + push, then: python src/util/git_pull.py",
-                "  2. see the real error:",
-                "     run_script('python src/calibration/extrinsic/client.py', ['capture1'], log=True)",
-                "     then read ~/test.log on that PC",
-                "  3. camera daemon down -> python src/camera/reset_cameras.py",
-            ]):
-                cv2.putText(blank_image, line, (40, 210 + i * 34),
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 180), 1, cv2.LINE_AA)
             if not printed_hint:
                 printed_hint = True
                 print("[extrinsic] no stream after 5s — see the hints on the window; "
@@ -173,13 +185,23 @@ while True:
         stats = dc.get_stats()
         lat = max([s['latency_ms'] for s in stats.values()], default=0.0)
         drops = sum(s['drops'] for s in stats.values())
+        # A camera that missed a capture is what the per-tile n= used to reveal;
+        # report it as one number instead: how many cameras are behind.
+        behind = sum(1 for s in display_dict if saved_count.get(s, 0) < save_num)
         # Slow because frames aren't produced (capture-PC detect/camera fps) or
         # because they arrive late (transport)? This line separates the two.
-        cv2.putText(merged_image,
-                    f"{len(arrivals) / 2.0 / max(1, len(display_dict)):.1f} fps/cam | "
-                    f"tx {lat:.0f} ms | drops {drops}",
-                    (10, merged_image.shape[0] - 12), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.6, (0, 0, 255), 2, cv2.LINE_AA)
+        hud = (f"saved {save_num}" + (f" (cams behind: {behind})" if behind else "") +
+               f" | {len(arrivals) / 2.0 / max(1, len(display_dict)):.1f} fps/cam | "
+               f"tx {lat:.0f} ms | drops {drops}")
+        hud_scale = max(0.5, min(1.1, merged_image.shape[1] / 1800))
+        hud_th = max(1, int(round(hud_scale * 2)))
+        (hud_w, hud_h), _ = cv2.getTextSize(hud, cv2.FONT_HERSHEY_SIMPLEX, hud_scale, hud_th)
+        hud_x = max(10, merged_image.shape[1] - hud_w - 14)   # right-aligned, never clipped
+        hud_y = merged_image.shape[0] - max(10, hud_h // 2)
+        cv2.putText(merged_image, hud, (hud_x, hud_y), cv2.FONT_HERSHEY_SIMPLEX,
+                    hud_scale, (0, 0, 0), hud_th + 3, cv2.LINE_AA)
+        cv2.putText(merged_image, hud, (hud_x, hud_y), cv2.FONT_HERSHEY_SIMPLEX,
+                    hud_scale, (0, 0, 255), hud_th, cv2.LINE_AA)
 
         # Letterbox to the screen: whichever dimension runs out first sets the
         # scale, so nothing is stretched and nothing spills off-screen.

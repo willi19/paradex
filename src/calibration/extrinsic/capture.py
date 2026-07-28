@@ -1,3 +1,4 @@
+import argparse
 from collections import deque
 from threading import Event
 import time
@@ -19,10 +20,18 @@ BOARD_COLORS = [
     (0, 255, 0)
 ]
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--stream_scale", type=int, default=4,
+                    help="Preview downscale on the capture PCs: 4 = 512x384/cam (default), "
+                         "8 = the old 256x192. Lower = bigger picture, more bandwidth.")
+parser.add_argument("--width", type=int, default=2560,
+                    help="Total width of the merged preview window in pixels.")
+args = parser.parse_args()
+
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
 
-run_script("python src/calibration/extrinsic/client.py")
+run_script(f"python src/calibration/extrinsic/client.py --stream_scale {args.stream_scale}")
 
 rcc = remote_camera_controller("extrinsic_calibration")
 dc = DataCollector()
@@ -46,6 +55,8 @@ last_seen = {}      # item_name -> frame_id already decoded/drawn
 dirty = True        # only re-decode + re-merge when something actually changed
 arrivals = deque()  # timestamps of newly-arrived preview frames (for the fps HUD)
 merged_image = None
+start_ts = time.time()
+printed_hint = False
 
 while True:
     waiting_save = False
@@ -88,15 +99,42 @@ while True:
             last_seen[item_name] = frame_id
             corners = np.frombuffer(data, dtype=np.float32).reshape(-1, 2)
             if serial_num not in saved_corner_img:
-                saved_corner_img[serial_num] = np.zeros((1536 // 8, 2048 // 8, 3), dtype=np.uint8)
+                # Accumulator lives in preview pixels, so it must match whatever
+                # downscale the capture PC is streaming at (it rides in the meta).
+                ds = item_data.get('downscale', 8)
+                saved_corner_img[serial_num] = np.zeros((1536 // ds, 2048 // ds, 3), dtype=np.uint8)
                 saved_corner_mask[serial_num] = np.zeros((0, 2), dtype=np.int32)
 
             cur_state[serial_num] = (corners, frame_id)
             dirty = True
 
     if not img_dict:
-        blank_image = np.ones((600, 800, 3), dtype=np.uint8)*255
-        cv2.putText(blank_image, "Waiting for stream...", (50, 300), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+        waited = time.time() - start_ts
+        blank_image = np.ones((640, 1100, 3), dtype=np.uint8)*255
+        cv2.putText(blank_image, f"Waiting for stream... {waited:.0f}s", (40, 90),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 0), 2)
+        st = dc.get_stats()
+        live = [pc for pc, s in st.items() if s['recv'] > 0]
+        cv2.putText(blank_image, f"capture PCs sending: {len(live)}/{len(st)}  {live}", (40, 140),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 0), 1)
+        if waited > 5:
+            # Silence here is almost always the capture-PC client dying at launch;
+            # run_script sends its stdout to /dev/null, so it fails invisibly.
+            for i, line in enumerate([
+                "Nothing arriving. Most likely client.py failed to start on the capture PCs:",
+                "  1. capture PCs run their own checkout - did they pull this version?",
+                "     git commit + push, then: python src/util/git_pull.py",
+                "  2. see the real error:",
+                "     run_script('python src/calibration/extrinsic/client.py', ['capture1'], log=True)",
+                "     then read ~/test.log on that PC",
+                "  3. camera daemon down -> python src/camera/reset_cameras.py",
+            ]):
+                cv2.putText(blank_image, line, (40, 210 + i * 34),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 180), 1, cv2.LINE_AA)
+            if not printed_hint:
+                printed_hint = True
+                print("[extrinsic] no stream after 5s — see the hints on the window; "
+                      "check that capture PCs pulled this version of client.py")
         cv2.imshow("Merged Stream", blank_image)
         key = cv2.waitKey(1)
 
@@ -114,7 +152,7 @@ while True:
             if corners.shape[0] > 0:
                 draw_charuco(display_dict[serial_num], corners, BOARD_COLORS[1], 1, -1)
 
-        merged_image = merge_image(display_dict, img_text)
+        merged_image = merge_image(display_dict, img_text, canvas_width=args.width)
         if waiting_save:
             cv2.putText(merged_image, "Saving...", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 

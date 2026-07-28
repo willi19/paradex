@@ -26,7 +26,11 @@ stop_event = Event()
 listen_keyboard({"q":exit_event})
 
 rcc.arm(syncMode=False, fps=10)
-rcc.set_stream(True)
+# A PC whose sink command failed streams nothing; surface it here instead of
+# leaving a silently missing quarter of the rig on screen.
+sink_reply = rcc.set_stream(True)
+print(f"[stream] set_stream replies: {sink_reply}")
+print(f"[stream] rcc status: {rcc.get_status()}")
 
 img_dict = {}
 img_text = {}
@@ -35,9 +39,23 @@ last_seen = {}      # serial -> frame_id already decoded
 arrivals = deque()  # arrival timestamps of new frames, for the fps readout
 cam_frames = deque()  # (ts, frame_id delta) — how many frames the CAMERA produced
 dirty = False
+last_report = 0.0     # per-PC arrival report cadence
 
 while not exit_event.is_set():
     all_data = dc.get_data()
+
+    # Which capture PCs are actually feeding us? A silent PC means its daemon or
+    # stream_client isn't running / isn't armed — not a display problem.
+    now_report = time.time()
+    if now_report - last_report > 2.0:
+        last_report = now_report
+        st = dc.get_stats()
+        live = [pc for pc, s in st.items() if s['recv'] > 0]
+        silent = [pc for pc, s in st.items() if s['recv'] == 0]
+        print(f"[pc] {len(live)}/{len(st)} sending | " +
+              " ".join(f"{pc}:{s['recv']}" for pc, s in st.items()) +
+              (f" | SILENT: {silent}" if silent else ""))
+
     for item_name, item_data in all_data.items():
         # Only process image type data
         if item_data.get('type') != 'image':
@@ -86,9 +104,10 @@ while not exit_event.is_set():
         # cam = frames the camera actually produced (frame_id rate); shown = frames
         # that reached this display. cam low  -> camera/GigE link is the limit.
         # cam high, shown low -> capture-PC client or transport is the limit.
+        n_pc_live = sum(1 for s in stats.values() if s['recv'] > 0)
         cv2.putText(merged_image,
-                    f"cam {cam_fps:.1f} fps | shown {fps_per_cam:.1f} fps | "
-                    f"tx {lat:.0f} ms | drops {drops}",
+                    f"pc {n_pc_live}/{len(stats)} | cam {cam_fps:.1f} fps | "
+                    f"shown {fps_per_cam:.1f} fps | tx {lat:.0f} ms | drops {drops}",
                     (10, merged_image.shape[0] - 12), cv2.FONT_HERSHEY_SIMPLEX,
                     0.6, (0, 0, 255), 2, cv2.LINE_AA)
         cv2.imshow("Merged Stream", merged_image)

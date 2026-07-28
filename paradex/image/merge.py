@@ -10,7 +10,7 @@ def get_optimal_font_scale(text, target_width, font=cv2.FONT_HERSHEY_SIMPLEX, th
             return max(0.3, scale - 0.1)  # 한 단계 작게
     return 3.0
 
-def merge_image(image_dict, image_text={}, put_text=True):
+def merge_image(image_dict, image_text={}, put_text=True, canvas_width=2048):
     """Tile a multi-camera image dict into one labeled near-square grid.
 
     Cameras are laid out in sorted-serial order; each tile is captioned with its
@@ -25,6 +25,10 @@ def merge_image(image_dict, image_text={}, put_text=True):
         ``{serial: str}`` extra caption appended after the serial.
     put_text : bool
         Draw the serial/caption overlay when True.
+    canvas_width : int
+        Target width of the whole grid in pixels. Tiles are never upscaled past
+        their source, so raising this only helps when the incoming previews are
+        themselves bigger (see the stream downscale factor on the capture-PC side).
 
     Returns
     -------
@@ -44,7 +48,7 @@ def merge_image(image_dict, image_text={}, put_text=True):
     src_h, src_w = image_dict[name_list[0]].shape[:2]
     # Don't upscale past the source: preview streams arrive already downscaled (/8),
     # and blowing them back up to a fixed 2048/cols only adds blur.
-    new_W = min(2048 // grid_cols, src_w)
+    new_W = min(canvas_width // grid_cols, src_w)
     new_H = max(1, round(new_W * src_h / src_w))
 
     canvas_h = new_H * grid_rows + border_px * (grid_rows - 1)

@@ -46,12 +46,17 @@ parser.add_argument("--preview_scale", type=int, default=2,
 parser.add_argument("--boards", type=str, default=None,
                     help="Comma-separated board ids to detect (default: all in charuco_info.json). "
                          "Each board is a full detection pass — drop unused ones to go faster.")
+parser.add_argument("--stream_scale", type=int, default=4,
+                    help="Downscale factor of the preview sent to the main PC (bigger display = "
+                         "smaller factor). 4 = 512x384/cam (~30 kB JPEG); 8 = 256x192.")
 args = parser.parse_args()
 
 PREVIEW_SCALE = max(1, args.preview_scale)
 PREVIEW_PERIOD = 0.0 if args.preview_fps <= 0 else 1.0 / args.preview_fps
 BOARD_IDS = [b.strip() for b in args.boards.split(",")] if args.boards else None
-STREAM_DOWNSCALE = 8  # main PC expects previews + corners at 1/8 of full res
+# Preview + corner coordinates are both sent at 1/STREAM_DOWNSCALE of full res; the
+# factor rides along in the metadata so the main PC never has to assume it.
+STREAM_DOWNSCALE = max(1, args.stream_scale)
 
 dp = DataPublisher(port=1234, name="camera_stream")
 
@@ -175,6 +180,7 @@ while not exit_event.is_set():
             'frame_id': res["frame_id"],
             'save_id': save_id[res["name"]],
             'shape': res["shape"],
+            'downscale': STREAM_DOWNSCALE,
             'data_index': len(binary_data),
         })
         binary_data.append(res["jpeg"])
@@ -184,6 +190,7 @@ while not exit_event.is_set():
             'name': res["name"] + "_corners",
             'frame_id': res["frame_id"],
             'data_index': len(binary_data),
+            'downscale': STREAM_DOWNSCALE,
             'shape': (res["n_corners"], 2),
         })
         binary_data.append(res["corners"])

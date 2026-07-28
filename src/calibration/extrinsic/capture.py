@@ -24,9 +24,15 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--stream_scale", type=int, default=4,
                     help="Preview downscale on the capture PCs: 4 = 512x384/cam (default), "
                          "8 = the old 256x192. Lower = bigger picture, more bandwidth.")
-parser.add_argument("--width", type=int, default=2560,
-                    help="Total width of the merged preview window in pixels.")
+parser.add_argument("--width", type=int, default=1600,
+                    help="Total width of the merged preview window in pixels. The window is "
+                         "resizable, so this is just the starting size.")
 args = parser.parse_args()
+
+# Resizable window: drag it to whatever size suits the screen instead of being
+# stuck with whatever the merged canvas happens to be.
+cv2.namedWindow("Merged Stream", cv2.WINDOW_NORMAL)
+cv2.resizeWindow("Merged Stream", args.width, int(args.width * 0.62))
 
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)

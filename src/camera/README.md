@@ -62,8 +62,17 @@ python src/camera/reset_cameras.py --pc_list capture1 capture2
 python src/camera/reset_cameras.py --no_restart
 ```
 
-After changing daemon-side code (`camera_server_daemon.py`, `camera_loader.py`,
-`camera.py`, `pyspin.py`), update and restart the daemon on every capture PC.
+Capture PCs run their own `~/paradex` checkout, so main-PC edits reach them only
+after a pull:
+
+```bash
+python src/util/update_capture_pc.py              # git pull on every capture PC
+python src/util/update_capture_pc.py --restart    # + kill/relaunch server_daemon.py
+```
+
+Per-run `*_client.py` scripts pick up the pull on their next launch. Daemon-side
+code (`camera_server_daemon.py`, `camera_loader.py`, `camera.py`, `pyspin.py`)
+needs `--restart`. `reset_cameras.py` only kills/relaunches; it does not pull.
 
 ## Related
 

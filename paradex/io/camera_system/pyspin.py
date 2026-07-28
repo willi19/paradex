@@ -292,10 +292,20 @@ class PyspinCamera():
 
         frame_data = {"pc_time":time.time(), "frameID": pImageRaw.GetFrameID()}
         
-        if frame_data['frameID'] % 1 == 0:
+        # Debug heartbeat only. This runs in the acquisition hot loop for every
+        # camera, so printing per frame (it was `% 1`) put terminal/log I/O in the
+        # path of every grab and dragged the live stream down.
+        if frame_data['frameID'] % 300 == 0:
             print(f"Frame ID: {frame_data['frameID']}", self.serial_num, time.time() - self.init_time)
         if pImageRaw.IsIncomplete() or pImageRaw.GetWidth() == 0 or pImageRaw.GetHeight() == 0:
             if pImageRaw.IsIncomplete():
+                # Incomplete frames mean the GigE link couldn't deliver the payload —
+                # the usual cause of a stream that runs at a fraction of the set fps.
+                # Count them so the rate is visible instead of one line per frame.
+                self._incomplete_count = getattr(self, '_incomplete_count', 0) + 1
+                if self._incomplete_count % 30 == 1:
+                    logger.warning(f"{self.serial_num} incomplete frames: {self._incomplete_count} "
+                                   f"(status {pImageRaw.GetImageStatus()}) — check link bandwidth/packet size")
                 logger.info(f"Image incomplete with image status {pImageRaw.GetImageStatus()}")
             else:
                 logger.info("Image has zero width or height")
@@ -347,9 +357,15 @@ class PyspinCamera():
             self.syncMode = syncMode
             self._configureTrigger()
             
-        if ((not syncMode and syncMode != self.syncMode) or (frame_rate is not None and frame_rate != self.frame_rate)) and (not syncMode):
+        if not syncMode:
+            # Always (re)apply free-run config. Skipping it when the *value* of
+            # AcquisitionFrameRate already matched was a trap: the rate node can
+            # read back the requested fps while AcquisitionFrameRateEnable is off,
+            # in which case the camera free-runs at its maximum rate, saturates the
+            # GigE link with 4 cameras, and the stream collapses to a few fps of
+            # incomplete frames. TriggerMode=Off lives in here too.
             logger.info("Configuring camera for free-run mode.")
-            self.frame_rate = frame_rate
+            self.frame_rate = frame_rate if frame_rate is not None else self.frame_rate
             self._configureFrameRate()
         
         if gain is not None and gain != self.gain:
@@ -544,6 +560,17 @@ class PyspinCamera():
         if self.frame_rate is not None:
             framerate = self._get_node(self.nodeMap, "AcquisitionFrameRate", "float", readable=True, writable=True)
             self._set_node_value(framerate, "float", self.frame_rate)
+
+        # What the camera will *actually* deliver after exposure/bandwidth limits.
+        # If this comes back far below the requested fps, the link — not the
+        # software — is the bottleneck.
+        try:
+            resulting = self._get_node(self.nodeMap, "AcquisitionResultingFrameRate",
+                                       "float", readable=True, writable=False)
+            logger.info(f"{self.serial_num} free-run: requested {self.frame_rate} fps, "
+                        f"resulting {resulting.GetValue():.2f} fps")
+        except Exception:
+            pass
 
     def _configureTrigger(self) -> None:
         """configure camera trigger settings for hardware synchronization."""

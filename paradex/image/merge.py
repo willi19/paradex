@@ -33,53 +33,51 @@ def merge_image(image_dict, image_text={}, put_text=True):
     """
     name_list = sorted(list(image_dict.keys()))
     num_images = len(name_list)
-    
+
     grid_cols = math.ceil(math.sqrt(num_images))
     grid_rows = math.ceil(num_images / grid_cols)
     border_px = 10
-    
-    new_W = 2048 // grid_cols
-    new_H = 1536 // grid_rows
-    
-    grid_image = np.ones((1536+border_px*(grid_rows-1), new_W*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
+
+    # Keep the source aspect ratio: derive the tile height from the tile width using
+    # the actual frame shape, instead of dividing W and H independently (which squashed
+    # a 4:3 frame into a near-square tile). Total canvas width stays ~2048.
+    src_h, src_w = image_dict[name_list[0]].shape[:2]
+    # Don't upscale past the source: preview streams arrive already downscaled (/8),
+    # and blowing them back up to a fixed 2048/cols only adds blur.
+    new_W = min(2048 // grid_cols, src_w)
+    new_H = max(1, round(new_W * src_h / src_w))
+
+    canvas_h = new_H * grid_rows + border_px * (grid_rows - 1)
+    canvas_w = new_W * grid_cols + border_px * (grid_cols - 1)
+    grid_image = np.ones((canvas_h, canvas_w, 3), dtype=np.uint8) * 255
 
     for idx, img_name in enumerate(name_list):
         img = image_dict[img_name].copy()
-        
-        # 텍스트 준비
-        
-        # 이미지 너비의 90%에 맞는 font scale 자동 계산
-        
+
         if put_text:
             target_width = int(img.shape[1] * 0.5)
-            thickness = max(1, img.shape[1] // 500)  # 이미지 크기에 비례하는 두께
+            thickness = max(1, img.shape[1] // 500)
             txt = f"{img_name}"
             font_scale = get_optimal_font_scale(txt, target_width, thickness=thickness)
             if img_name in image_text:
                 txt += f" {image_text[img_name]}"
-            # 텍스트 크기 계산
-            text_size = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX, font_scale, thickness)[0]
             text_x = 10
-            text_y = text_size[1] + 10  # 텍스트 높이 + 여백
-            
-            # 텍스트 배경 (가독성 향상)
-            cv2.rectangle(img, 
-                        (text_x - 5, text_y - text_size[1] - 5),
-                        (text_x + text_size[0] + 5, text_y + 5),
-                        (0, 0, 0), -1)
-            
-            # 텍스트 그리기
-            cv2.putText(img, txt, (text_x, text_y), 
-                    cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 0), thickness)
-            
-        # 리사이즈 및 배치
-        resized_img = cv2.resize(img, (new_W, new_H))
-        
+            text_y = cv2.getTextSize(txt, cv2.FONT_HERSHEY_SIMPLEX,
+                                     font_scale, thickness)[0][1] + 10
+
+            # Outlined text (dark border + bright fill) instead of a filled black box:
+            # readable over any background without covering the image behind it.
+            cv2.putText(img, txt, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX,
+                        font_scale, (0, 0, 0), thickness + 3, cv2.LINE_AA)
+            cv2.putText(img, txt, (text_x, text_y), cv2.FONT_HERSHEY_SIMPLEX,
+                        font_scale, (255, 255, 0), thickness, cv2.LINE_AA)
+
+        resized_img = cv2.resize(img, (new_W, new_H), interpolation=cv2.INTER_AREA)
+
         r_idx = idx // grid_cols
         c_idx = idx % grid_cols
-
         r_start = r_idx * (new_H + border_px)
         c_start = c_idx * (new_W + border_px)
-        grid_image[r_start:r_start+resized_img.shape[0], c_start:c_start+resized_img.shape[1]] = resized_img
-    
+        grid_image[r_start:r_start+new_H, c_start:c_start+new_W] = resized_img
+
     return grid_image

@@ -355,6 +355,9 @@ if __name__ == "__main__":
     err_dict = debug(name)
     with open(os.path.join(extrinsic_dir, name, index_list[0], " reproj_error.txt"), 'w') as f:
         for serial_num, proj in err_dict.items():
+            if len(proj) == 0:
+                f.write(f"{serial_num} : NO VALID KEYPOINTS\n")
+                continue
             f.write(f"{serial_num} : mean {np.mean(proj)}, max{np.max(proj)} \n")
     
     new_name = find_latest_directory(extrinsic_dir)
@@ -367,6 +370,9 @@ if __name__ == "__main__":
     
     with open(os.path.join(extrinsic_dir, new_name, index_list[0], " reproj_error.txt"), 'w') as f:
         for serial_num, proj in err_dict.items():
+            if len(proj) == 0:
+                f.write(f"{serial_num} : NO VALID KEYPOINTS\n")
+                continue
             f.write(f"{serial_num} : mean {np.mean(proj)}, max{np.max(proj)} \n")
     
     intrinsics, extrinsics = load_colmap_camparam(os.path.join(extrinsic_dir, new_name, index_list[0], "colmap"))

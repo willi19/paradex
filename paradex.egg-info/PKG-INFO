@@ -7,8 +7,11 @@ Author: Mingi Choi
 Author-email: willi19@snu.ac.kr
 Requires-Python: >=3.8
 Description-Content-Type: text/markdown
+Requires-Dist: pyzmq
+Requires-Dist: msgpack
 Dynamic: author
 Dynamic: author-email
 Dynamic: description-content-type
+Dynamic: requires-dist
 Dynamic: requires-python
 Dynamic: summary

@@ -1,3 +1,4 @@
+from collections import deque
 from threading import Event
 import time
 import cv2
@@ -30,32 +31,72 @@ rcc.set_stream(True)
 img_dict = {}
 img_text = {}
 
-while not exit_event.is_set():        
+last_seen = {}      # serial -> frame_id already decoded
+arrivals = deque()  # arrival timestamps of new frames, for the fps readout
+cam_frames = deque()  # (ts, frame_id delta) — how many frames the CAMERA produced
+dirty = False
+
+while not exit_event.is_set():
     all_data = dc.get_data()
-    print(all_data.keys())
     for item_name, item_data in all_data.items():
         # Only process image type data
         if item_data.get('type') != 'image':
             continue
-        
+
         image_bytes = item_data.get('data')
         frame_id = item_data.get('frame_id', 0)
-        
+
+        # The collector conflates to the newest item per name, so the same frame
+        # comes back every iteration until a new one lands. Decoding + re-merging
+        # it again is pure waste and it starves the display loop.
+        prev_id = last_seen.get(item_name)
+        if prev_id == frame_id:
+            continue
+        if prev_id is not None and frame_id > prev_id:
+            # frame_id is the camera's own counter: its rate is what the camera
+            # actually produced, independent of how many previews reached us.
+            cam_frames.append((time.time(), frame_id - prev_id))
+        last_seen[item_name] = frame_id
+
         if image_bytes:
             # Decode JPEG
             nparr = np.frombuffer(image_bytes, np.uint8)
             image = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            
+
             if image is not None:
                 img_dict[item_name] = image
                 img_text[item_name] = str(frame_id)
+                arrivals.append(time.time())
+                dirty = True
 
-    if img_dict:
+    if dirty and img_dict:
+        now = time.time()
+        while arrivals and now - arrivals[0] > 2.0:
+            arrivals.popleft()
+        while cam_frames and now - cam_frames[0][0] > 2.0:
+            cam_frames.popleft()
+        n_cam = max(1, len(img_dict))
+        fps_per_cam = len(arrivals) / 2.0 / n_cam
+        cam_fps = sum(d for _, d in cam_frames) / 2.0 / n_cam
+        stats = dc.get_stats()
+        lat = max([s['latency_ms'] for s in stats.values()], default=0.0)
+        drops = sum(s['drops'] for s in stats.values())
+
         merged_image = merge_image(img_dict, img_text)
-        cv2.imshow("Merged Stream", merged_image)      
-        cv2.waitKey(1)  
-        time.sleep(0.01)
-    
+        # cam = frames the camera actually produced (frame_id rate); shown = frames
+        # that reached this display. cam low  -> camera/GigE link is the limit.
+        # cam high, shown low -> capture-PC client or transport is the limit.
+        cv2.putText(merged_image,
+                    f"cam {cam_fps:.1f} fps | shown {fps_per_cam:.1f} fps | "
+                    f"tx {lat:.0f} ms | drops {drops}",
+                    (10, merged_image.shape[0] - 12), cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6, (0, 0, 255), 2, cv2.LINE_AA)
+        cv2.imshow("Merged Stream", merged_image)
+        dirty = False
+        cv2.waitKey(1)
+    else:
+        cv2.waitKey(5)
+
 print("Stopping capture...")
 
 # Cleanup

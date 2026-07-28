@@ -17,16 +17,19 @@ reader = MultiCameraReader()
 last_frame_ids = {name: 0 for name in reader.camera_names}
 
 while not exit_event.is_set():
-    # Get images from all cameras
-    images_data = reader.get_images(copy=True)
-    
+    # copy=False: this polls at ~100 Hz, and copying every camera's full-res frame
+    # (≈9 MB each) on every poll burned memory bandwidth for frames that were
+    # usually not even new. Downscale straight out of shared memory instead.
+    images_data = reader.get_images(copy=False)
+
     meta_data = []
     binary_data = []
-    
+
     for camera_name, (image, frame_id) in images_data.items():
         # Only send if we have a new frame
         if frame_id > last_frame_ids[camera_name] and frame_id > 0:
-            image = cv2.resize(image, (image.shape[1]//8, image.shape[0]//8))
+            image = cv2.resize(image, (image.shape[1]//8, image.shape[0]//8),
+                               interpolation=cv2.INTER_AREA)
             encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 85]
             success, encoded_image = cv2.imencode('.jpg', image, encode_param)
             

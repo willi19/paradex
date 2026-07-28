@@ -3,6 +3,9 @@
 ## Purpose
 Standalone operational utilities. Four unrelated subgroups; each has its own `CLAUDE.md`. Read the relevant subdir doc before editing.
 
+## Files
+- `update_capture_pc.py` — main-PC tool: `git fetch` + hard reset each capture PC's `~/paradex` to `origin/<branch>`, reporting the commit each PC landed on. Use after editing capture-PC code — they run their own checkout. Pulls from **origin**, so it aborts when the local branch has unpushed commits (`--force` overrides). Per-run `*_client.py` scripts pick the new code up on their next `run_script` launch; `--restart` additionally kills/relaunches `server_daemon.py` (only needed for daemon-side camera code) and prints the surviving process count. Kill/relaunch without pulling is `src/camera/reset_cameras.py`.
+
 ## Subdirectories
 - `marker/` — ChArUco board PDF generator (`generate_charuco.py`, no paradex deps). Outputs to `outputs/` in CWD.
 - `register_object/` — `box.py` / `pringles.py`: build `marker_offset` `.npy` tables via `ImageDict` triangulation; output under `{shared_dir}/RSS2026_Mingi/marker_offset/<obj>/`.

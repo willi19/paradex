@@ -2,6 +2,26 @@
 
 Assorted standalone utilities for the Paradex pipeline: calibration-board printing, object marker registration, robot URDF/visualization helpers, and a distributed video-processing monitor. Each subdirectory is independent.
 
+## Scripts
+| Script | Purpose |
+|--------|---------|
+| [`update_capture_pc.py`](update_capture_pc.py) | Pull the latest code onto every capture PC. Run after editing capture-PC code — they use their own `~/paradex` checkout, so main-PC edits do nothing until they pull. |
+
+```bash
+python src/util/update_capture_pc.py                    # pull origin/<current branch> on all capture PCs
+python src/util/update_capture_pc.py --branch main
+python src/util/update_capture_pc.py --pc_list capture1 capture3
+python src/util/update_capture_pc.py --restart          # also kill/relaunch server_daemon.py
+python src/util/update_capture_pc.py --force            # skip the unpushed-commit check
+```
+
+`*_client.py` scripts are launched per run over SSH, so they pick up the new code
+on the next run. Only long-lived `server_daemon.py` needs `--restart`.
+
+Pull is `git fetch` + `git reset --hard origin/<branch>` + `git clean -fd` on the
+capture PC, so **push first** — it takes what's on origin, not your working tree.
+Kill/relaunch without pulling is [`src/camera/reset_cameras.py`](../camera/reset_cameras.py).
+
 ## Subdirectories
 | Directory | Purpose | Entry point |
 |-----------|---------|-------------|

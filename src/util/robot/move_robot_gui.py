@@ -34,8 +34,19 @@ FRANKA_HOME = np.array([0.0, -0.785, 0.0, -2.356, 0.0, 1.571, 0.785])
 
 def build_goto_poses(arm, poses_dir):
     poses = {}
-    if arm == "franka":
-        poses["HOME"] = FRANKA_HOME
+
+    # Prefer a rig-specific HOME saved from the live arm (home_qpos.npy in poses_dir);
+    # fall back to franka's datasheet ready pose. Save one with:
+    #   np.save('<poses_dir>/home_qpos.npy', arm.get_data()['qpos'])
+    home = None
+    if poses_dir:
+        home_path = os.path.join(poses_dir, "home_qpos.npy")
+        if os.path.exists(home_path):
+            home = np.load(home_path)
+    if home is None and arm == "franka":
+        home = FRANKA_HOME
+    if home is not None:
+        poses["HOME"] = home
 
     # Optionally expose the first taught trajectory pose, so you can pre-position the
     # arm at the capture's start point (avoids the long first jump).

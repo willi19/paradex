@@ -113,7 +113,7 @@ def check_boardinfo_valid(boardinfo):
         assert len(missing) == 0, f"Missing fields {missing} for board {b}"
 
 
-def detect_charuco(img):
+def detect_charuco(img, board_ids=None):
     """Detect ChArUco board corners in a single image, per board.
 
     Runs every board's cached ``CharucoDetector`` (from ``charuco_info.json``) and
@@ -122,7 +122,12 @@ def detect_charuco(img):
     Parameters
     ----------
     img : numpy.ndarray
-        Input image.
+        Input image. A single-channel (grayscale) image is ~10% faster than BGR and
+        detects identically — ``detectBoard`` converts internally anyway.
+    board_ids : list[str], optional
+        Restrict detection to these board ids. Each board costs a full detection
+        pass over the image, so dropping boards that aren't in the scene is a
+        direct speedup (relevant for live previews). Default: every configured board.
 
     Returns
     -------
@@ -132,8 +137,10 @@ def detect_charuco(img):
     """
     detection_results = {}
     detector = get_charuco_detector()
-    
+
     for b_id, det in detector.items():
+        if board_ids is not None and b_id not in board_ids:
+            continue
         checkerCorner, checkerIDs, _, _ = det.detectBoard(img)
 
         if checkerIDs is None or len(checkerIDs) == 0:

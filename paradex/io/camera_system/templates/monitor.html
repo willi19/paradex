@@ -75,6 +75,7 @@
     .lock { font-size: 0.82em; font-weight: 700; padding: 4px 11px; border-radius: 999px; }
     .lock.held { background: #2a1c3d; color: #c58bff; border: 1px solid #4a2f6e; }
     .lock.free { background: #1c2027; color: #6b7280; border: 1px solid #2b2f37; }
+    .lock.orphan { background: #3a2a15; color: #ffb866; border: 1px solid #7a5520; }
     .count { font-size: 0.78em; font-weight: 700; padding: 3px 9px; border-radius: 5px; background: #1c2530; color: #7cb8ff; }
     .count.bad { background: #3a1418; color: #ff7a7a; }
     .pc-header .count { margin-left: 4px; }
@@ -144,7 +145,23 @@
       return cam.state;
     }
 
+    // The 1s refresh rebuilds the whole grid, which wipes any text the user is
+    // dragging over — that's why selecting/copying was impossible, not CSS.
+    // Pause redraws while a selection exists (and while the mouse is down).
+    let dragging = false;
+    document.addEventListener('mousedown', () => { dragging = true; });
+    document.addEventListener('mouseup', () => { dragging = false; });
+    function selectionActive() {
+      const sel = window.getSelection();
+      return dragging || (sel && !sel.isCollapsed && sel.toString().length > 0);
+    }
+
     async function update() {
+      if (selectionActive()) {
+        document.getElementById('foot').textContent =
+          'paused — text selected (click empty space to resume live updates)';
+        return;
+      }
       let data;
       try { data = await (await fetch('/api/status')).json(); }
       catch (e) { document.getElementById('foot').textContent = 'connection lost'; return; }
@@ -166,12 +183,14 @@
         if (!up) problems.push({ pc, cam: '—', msg: 'daemon DOWN (not responding to ping)' });
 
         let rows = '';
+        const states = [];   // effState is stateful (stall ticks) — call it once per cam
         if (!cams.length) {
           rows = '<div class="no-cam">no cameras</div>';
         } else {
           cams.forEach(cam => {
             camTotal++;
             const st = effState(pc, cam);
+            states.push(st);
             if (st === 'ERROR') { errN++; problems.push({ pc, cam: cam.name, msg: cam.error || 'ERROR' }); }
             if (st === 'STALLED') { stallN++; problems.push({ pc, cam: cam.name, msg: 'no new frames (stalled)' }); }
             const pulse = st === 'CAPTURING' ? ' pulse' : '';
@@ -200,9 +219,17 @@
         if (countBad) problems.push({ pc, cam: '—', msg: `only ${det}/${exp} cameras detected` });
         const countStr = (exp != null) ? `${det != null ? det : cams.length}/${exp} cams` : `${cams.length} cams`;
 
-        const lockBadge = held
-          ? `<span class="lock held" title="holds the lock">🔒 ${controller}</span>`
-          : `<span class="lock free">🔓 free</span>`;
+        // Cameras acquiring with nobody holding the lock = orphaned acquisition
+        // (controller crashed / released while the hardware kept grabbing).
+        const acquiring = states.some(s => s === 'CAPTURING' || s === 'STARTING');
+        const orphan = acquiring && !held;
+        if (orphan) problems.push({ pc, cam: '—', msg: 'acquiring with NO controller (orphaned) — nobody owns these cameras' });
+
+        const lockBadge = orphan
+          ? `<span class="lock orphan" title="cameras acquiring with no controller">⚠ acquiring — NO OWNER</span>`
+          : held
+            ? `<span class="lock held" title="controller holding the lock">🔒 owner: ${controller}${acquiring ? ' · acquiring' : ''}</span>`
+            : `<span class="lock free">🔓 free</span>`;
 
         const card = document.createElement('div');
         card.className = 'pc-card' + (up ? '' : ' down');

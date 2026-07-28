@@ -188,6 +188,13 @@ class camera_server_daemon:
                 if errs:
                     detail = {name: msg for name, (msg, tb) in errs.items()}
                     logger.warning(f"start: {len(errs)} camera(s) failed to arm: {detail}")
+                    # The cameras that DID arm are acquiring right now. Reporting
+                    # running=False left them grabbing with nobody tracking them:
+                    # the dead-man release skips its stop() when running is False,
+                    # so the controller was cleared while acquisition kept going —
+                    # an ownerless "acquire" nobody asked for. Track the truth.
+                    self.cameras_running = cmd.get('mode') == "acquire"
+                    payload["running"] = self.cameras_running
                     payload.update({"status": "error", "msg": f"start: camera errors: {detail}"})
                     return payload
                 # "acquire" = armed continuously (sinks toggled via the 'sink'
@@ -306,9 +313,12 @@ class camera_server_daemon:
                     last_act = self.last_action
                     mode = self.last_mode
                     running = self.cameras_running
-                    if running:
-                        self.camera_loader.stop()
-                        self.cameras_running = False
+                    # Stop unconditionally: any camera left acquiring past the
+                    # dead-man release has no owner, and `stop` is a no-op for
+                    # cameras that aren't running. Trusting the flag alone is how
+                    # ownerless acquisition survived a controller crash.
+                    self.camera_loader.stop()
+                    self.cameras_running = False
                     self.current_controller = None
                     self.last_mode = None
                     logger.info(

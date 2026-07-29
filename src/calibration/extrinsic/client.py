@@ -4,6 +4,7 @@ from threading import Event
 import os
 import numpy as np
 
+from paradex.io.camera_system.camera_daemon_reader import CameraDaemonReader
 from paradex.io.camera_system.camera_reader import MultiCameraReader
 from paradex.io.capture_pc.data_sender import DataPublisher
 from paradex.io.capture_pc.command_sender import CommandReceiver
@@ -17,7 +18,12 @@ exit_event = Event()
 save_event = Event()
 cr = CommandReceiver(event_dict={"exit": exit_event, "save": save_event}, port=6890)
 
-reader = MultiCameraReader()
+daemon_reader = CameraDaemonReader("127.0.0.1")
+reader = (
+    daemon_reader
+    if daemon_reader.backend.startswith("aravis")
+    else MultiCameraReader()
+)
 last_frame_ids = {name: 0 for name in reader.camera_names}
 last_frame_dict = {name: None for name in reader.camera_names}
 

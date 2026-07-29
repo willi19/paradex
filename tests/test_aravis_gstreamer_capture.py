@@ -69,6 +69,9 @@ class FakeCamera:
     def wait_for_first_frame(self, timeout_seconds=None):
         self.calls.append(("wait_for_first_frame", timeout_seconds))
 
+    def save_image(self):
+        self.calls.append(("save_image",))
+
     def end(self):
         self.calls.append(("end",))
 
@@ -108,6 +111,9 @@ class FakeLoader:
 
     def get_preview(self, serial):
         return b"\xff\xd8preview\xff\xd9" if serial == "cam-a" else None
+
+    def get_frame(self, serial):
+        return (23, b"\xff\xd8frame\xff\xd9") if serial == "cam a" else None
 
 
 class FakeTwoPhaseLoader(FakeLoader):
@@ -518,6 +524,47 @@ class AravisCaptureTests(unittest.TestCase):
         self.assertEqual(handler.wfile.getvalue(), b"\xff\xd8preview\xff\xd9")
         server.close()
 
+    def test_frame_http_api_returns_cached_full_resolution_jpeg_with_frame_id(self):
+        class FakeHTTPServer:
+            def __init__(self, address, handler):
+                self.server_port = address[1]
+                self.handler = handler
+
+            def serve_forever(self):
+                return
+
+            def shutdown(self):
+                return
+
+            def server_close(self):
+                return
+
+        loader = FakeLoader()
+        server = camera_server_daemon(
+            loader=loader,
+            start_threads=False,
+            preview_port=0,
+        )
+        with patch(
+            "paradex.io.camera_system.camera_server_daemon.ThreadingHTTPServer",
+            FakeHTTPServer,
+        ):
+            server._start_preview_server()
+        handler = server._preview_server.handler.__new__(server._preview_server.handler)
+        handler.path = "/frame/cam%20a"
+        handler.wfile = io.BytesIO()
+        handler.send_response = MagicMock()
+        handler.send_header = MagicMock()
+        handler.end_headers = MagicMock()
+
+        handler.do_GET()
+
+        handler.send_response.assert_called_once_with(200)
+        handler.send_header.assert_any_call("Content-Type", "image/jpeg")
+        handler.send_header.assert_any_call("X-Frame-Id", "23")
+        self.assertEqual(handler.wfile.getvalue(), b"\xff\xd8frame\xff\xd9")
+        server.close()
+
     def test_session_teardown_retains_prepared_aravis_hardware(self):
         camera = AravisGStreamerCamera(
             "cam-a", camera_config={"cam-a": {}}, device_id="device-a"
@@ -561,6 +608,58 @@ class AravisCaptureTests(unittest.TestCase):
         camera._drain_aravis_output()
 
         self.assertEqual(stream.returned, ["old-a", "old-b"])
+
+    def test_encoded_frame_cache_keeps_full_resolution_jpeg_and_matching_frame_id(self):
+        camera = AravisGStreamerCamera(
+            "cam-a", camera_config={"cam-a": {}}, device_id="device-a"
+        )
+
+        camera._update_encoded_frame(b"\xff\xd8first\xff\xd9")
+        camera._update_encoded_frame(b"\xff\xd8second\xff\xd9")
+
+        self.assertEqual(camera.get_frame(), (2, b"\xff\xd8second\xff\xd9"))
+        self.assertEqual(camera.get_status()["frame_id"], 2)
+
+    def test_prepare_hardware_reuses_same_config_and_reconfigures_changed_free_run_stream(self):
+        camera = AravisGStreamerCamera(
+            "cam-a", camera_config={"cam-a": {}}, device_id="device-a"
+        )
+        camera._aravis = object()
+        camera._aravis_camera = object()
+        camera._aravis_stream = object()
+        camera._fps = 30
+        camera._sync_mode = True
+        camera._hardware_fps = 30
+        camera._hardware_sync_mode = True
+
+        camera.prepare_hardware(30, True)
+
+        self.assertEqual(camera._fps, 30)
+        self.assertTrue(camera._sync_mode)
+
+        new_aravis = object()
+        new_session = object()
+
+        def teardown(release_hardware=False):
+            if release_hardware:
+                camera._aravis = None
+                camera._aravis_camera = None
+                camera._aravis_stream = None
+                camera._hardware_fps = None
+                camera._hardware_sync_mode = None
+
+        with patch.object(camera, "_teardown_pipeline", side_effect=teardown) as teardown_mock, patch.object(
+            camera, "_configure_camera", return_value=(new_aravis, new_session)
+        ) as configure, patch.object(camera, "_create_aravis_stream") as create_stream:
+            camera.prepare_hardware(10, False)
+
+        teardown_mock.assert_called_once_with(release_hardware=True)
+        configure.assert_called_once_with(10, False)
+        create_stream.assert_called_once_with()
+        self.assertIs(camera._aravis, new_aravis)
+        self.assertIs(camera._aravis_camera, new_session)
+        self.assertEqual(camera._hardware_fps, 10)
+        self.assertFalse(camera._hardware_sync_mode)
 
     def test_hardware_sync_configuration_matches_paraoffice_feature_order(self):
         device = object()
@@ -767,15 +866,94 @@ class AravisCaptureTests(unittest.TestCase):
         self.assertEqual(output.getvalue().count("serial=cam-a: 17 frames"), 1)
         self.assertEqual(output.getvalue().count("Total captured frames: 17"), 1)
 
-    def test_loader_rejects_pyspin_only_shared_memory_modes(self):
+    def test_loader_supports_stream_mode_without_save_path(self):
         loader = AravisGStreamerCameraLoader(
             serial_list=["cam-a"],
             camera_factory=FakeCamera,
             reconcile_addresses=False,
         )
 
-        with self.assertRaisesRegex(AravisGStreamerError, "pyspin agent"):
-            loader.start("stream", False, fps=30)
+        loader.start("stream", False, fps=30)
+
+        self.assertIn(("prepare", "stream", False, None, 30), loader.cameralist[0].calls)
+        self.assertIn(("request_playing",), loader.cameralist[0].calls)
+        self.assertIn(("confirm_playing",), loader.cameralist[0].calls)
+
+    def test_loader_image_mode_saves_one_png_per_camera(self):
+        loader = AravisGStreamerCameraLoader(
+            serial_list=["cam-a"],
+            camera_factory=FakeCamera,
+            reconcile_addresses=False,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch(
+            "paradex.io.camera_system.aravis_gstreamer.home_path", temp_dir
+        ):
+            loader.start("image", False, "shared/calibration/step-0", 30)
+
+        expected_path = str(
+            Path(temp_dir)
+            / "shared/calibration/step-0/images/cam-a.png"
+        )
+        self.assertIn(
+            ("prepare", "image", False, expected_path, 30),
+            loader.cameralist[0].calls,
+        )
+        self.assertIn(("save_image",), loader.cameralist[0].calls)
+
+    def test_stream_stop_does_not_wait_for_avi_eos(self):
+        class FakePipeline:
+            def __init__(self):
+                self.states = []
+
+            def get_bus(self):
+                raise AssertionError("stream mode must not wait for EOS")
+
+            def set_state(self, state):
+                self.states.append(state)
+
+        class FakeAppsrc:
+            def __init__(self):
+                self.signals = []
+
+            def emit(self, signal):
+                self.signals.append(signal)
+
+        class FakeCameraSession:
+            def __init__(self):
+                self.stopped = False
+
+            def stop_acquisition(self):
+                self.stopped = True
+
+        class FakeGst:
+            SECOND = 1
+
+            class State:
+                NULL = "NULL"
+
+            class MessageType:
+                EOS = 1
+                ERROR = 2
+
+        camera = AravisGStreamerCamera(
+            "cam-a", camera_config={"cam-a": {}}, device_id="device-a"
+        )
+        pipeline = FakePipeline()
+        appsrc = FakeAppsrc()
+        session = FakeCameraSession()
+        camera._pipeline = pipeline
+        camera._appsrc = appsrc
+        camera._aravis_camera = session
+        camera._gst = FakeGst
+        camera._mode = "stream"
+        camera._state = "CAPTURING"
+
+        camera.stop()
+
+        self.assertEqual(appsrc.signals, ["end-of-stream"])
+        self.assertTrue(session.stopped)
+        self.assertEqual(pipeline.states, ["NULL"])
 
     def test_server_reports_ready_only_after_loader_start_returns(self):
         loader = FakeLoader()
@@ -826,6 +1004,46 @@ class AravisCaptureTests(unittest.TestCase):
             )
             self.assertEqual(start, {"status": "ok", "msg": "ready"})
             self.assertEqual(loader.calls[-1], ("activate",))
+        finally:
+            server.close()
+
+    def test_server_yields_idle_frame_stream_to_session_and_restores_it_on_end(self):
+        loader = FakeTwoPhaseLoader()
+        server = camera_server_daemon(backend="aravis", loader=loader, start_threads=False)
+        try:
+            server._start_idle_stream()
+            self.assertEqual(
+                loader.calls,
+                [("start", "stream", False, None, 30)],
+            )
+
+            server.execute_command({"action": "register", "controller_name": "main"})
+            prepare = server.execute_command(
+                {
+                    "action": "prepare",
+                    "controller_name": "main",
+                    "mode": "video",
+                    "syncMode": True,
+                    "save_path": "session/raw",
+                    "fps": 30,
+                }
+            )
+            self.assertEqual(prepare, {"status": "ok", "msg": "prepared"})
+            self.assertEqual(loader.calls[-2:], [
+                ("stop",),
+                ("prepare", "video", True, "session/raw", 30),
+            ])
+
+            server.execute_command({"action": "start", "controller_name": "main"})
+            server.execute_command({"action": "stop", "controller_name": "main"})
+            end = server.execute_command({"action": "end", "controller_name": "main"})
+
+            self.assertEqual(end, {"status": "ok", "msg": "ended"})
+            self.assertEqual(
+                loader.calls[-1],
+                ("start", "stream", False, None, 30),
+            )
+            self.assertTrue(server._idle_stream_active)
         finally:
             server.close()
 

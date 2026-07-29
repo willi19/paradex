@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 import os
 
-from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
 from paradex.io.capture_pc.ssh import run_script
 from paradex.io.capture_pc.data_sender import DataCollector
 from paradex.io.capture_pc.command_sender import CommandSender
@@ -24,9 +23,6 @@ BOARD_COLORS = [
 
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
-
-rcc = remote_camera_controller("extrinsic_calibration", pc_list=pc_list)
-rcc.start("stream", False, fps=30)
 
 run_script("python src/calibration/extrinsic/client.py", pc_list=pc_list, log=True)
 
@@ -124,8 +120,6 @@ while True:
 print("Stopping capture...")
 
 # Cleanup
-rcc.stop()
-rcc.end()
 dc.end()
 cs.end()
 

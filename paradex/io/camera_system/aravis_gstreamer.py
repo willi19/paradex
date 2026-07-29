@@ -235,12 +235,15 @@ class AravisGStreamerCamera:
         self._mode: Optional[str] = None
         self._fps: Optional[int] = None
         self._sync_mode: Optional[bool] = None
+        self._hardware_fps: Optional[int] = None
+        self._hardware_sync_mode: Optional[bool] = None
         self._save_path: Optional[str] = None
         self._started_at: Optional[float] = None
         self._frame_count = 0
         self._frame_count_lock = threading.Lock()
         self._preview_lock = threading.Lock()
         self._latest_preview: Optional[bytes] = None
+        self._latest_frame: Optional[Tuple[int, bytes]] = None
 
     def _camera_values(self, fps: int) -> Tuple[float, float]:
         values = self.camera_config.get(self.name, {})
@@ -352,9 +355,12 @@ class AravisGStreamerCamera:
                 "Could not access encoded frame-count pad for {}".format(self.name)
             )
 
-        def count_frame(_pad, _info):
-            with self._frame_count_lock:
-                self._frame_count += 1
+        def count_frame(_pad, info):
+            buffer = info.get_buffer()
+            jpeg = None
+            if buffer is not None:
+                jpeg = bytes(buffer.extract_dup(0, buffer.get_size()))
+            self._update_encoded_frame(jpeg)
             return Gst.PadProbeReturn.OK
 
         encoded_pad.add_probe(Gst.PadProbeType.BUFFER, count_frame)
@@ -465,6 +471,18 @@ class AravisGStreamerCamera:
         with self._preview_lock:
             return self._latest_preview
 
+    def get_frame(self) -> Optional[Tuple[int, bytes]]:
+        """Return the newest full-resolution encoded JPEG and frame id."""
+
+        with self._frame_count_lock:
+            return self._latest_frame
+
+    def _update_encoded_frame(self, jpeg: Optional[bytes]) -> None:
+        with self._frame_count_lock:
+            self._frame_count += 1
+            if jpeg is not None:
+                self._latest_frame = (self._frame_count, jpeg)
+
     def _create_aravis_stream(self) -> None:
         assert self._aravis is not None
         assert self._aravis_camera is not None
@@ -485,20 +503,32 @@ class AravisGStreamerCamera:
         )
         self._aravis_stream = stream
 
+    def _set_session_acquisition_mode(self, mode: str) -> None:
+        assert self._aravis is not None
+        assert self._aravis_camera is not None
+        acquisition_mode = (
+            self._aravis.AcquisitionMode.SINGLE_FRAME
+            if mode == "image"
+            else self._aravis.AcquisitionMode.CONTINUOUS
+        )
+        self._aravis_camera.set_acquisition_mode(acquisition_mode)
+
     def prepare_hardware(self, fps: int = 30, sync_mode: bool = True) -> None:
         """Configure and retain the camera/stream for the daemon lifetime."""
 
         with self._lock:
             if self._aravis_camera is not None and self._aravis_stream is not None:
-                return
+                if self._hardware_fps == fps and self._hardware_sync_mode == sync_mode:
+                    return
+                self._teardown_pipeline(release_hardware=True)
             self._state = "PREPARING_HARDWARE"
             try:
                 self._aravis, self._aravis_camera = self._configure_camera(
                     fps, sync_mode
                 )
                 self._create_aravis_stream()
-                self._fps = fps
-                self._sync_mode = sync_mode
+                self._hardware_fps = fps
+                self._hardware_sync_mode = sync_mode
                 self._state = "PREPARED"
             except Exception as exc:
                 self._last_error = str(exc)
@@ -588,13 +618,15 @@ class AravisGStreamerCamera:
         configure/build phase and avoids racing Camera.new() across cameras.
         """
 
-        if mode != "video":
+        if mode not in ("video", "stream", "image"):
             raise AravisGStreamerError(
-                "Aravis/GStreamer backend is the CaptureSession video backend; "
+                "Aravis/GStreamer backend supports video, stream, or image mode; "
                 "use the pyspin agent for {!r} mode".format(mode)
             )
-        if not save_path:
-            raise AravisGStreamerError("A save path is required for video mode")
+        if mode in ("video", "image") and not save_path:
+            raise AravisGStreamerError(
+                "A save path is required for {} mode".format(mode)
+            )
 
         with self._lock:
             if self._pipeline is not None:
@@ -610,9 +642,15 @@ class AravisGStreamerCamera:
                 self._frame_count = 0
             with self._preview_lock:
                 self._latest_preview = None
+            with self._frame_count_lock:
+                self._latest_frame = None
             try:
                 self.prepare_hardware(fps, sync_mode)
-                self._pipeline = self._build_pipeline(save_path, fps, sync_mode)
+                self._set_session_acquisition_mode(mode)
+                pipeline_save_path = save_path if mode == "video" else None
+                self._pipeline = self._build_pipeline(
+                    pipeline_save_path, fps, sync_mode
+                )
                 self._state = "PREPARED"
             except Exception as exc:
                 self._last_error = str(exc)
@@ -703,6 +741,32 @@ class AravisGStreamerCamera:
             )
         )
 
+    def save_image(self) -> None:
+        """Persist the first frame of an image session as a PNG."""
+
+        self.wait_for_first_frame()
+        frame = self.get_frame()
+        if frame is None or not self._save_path:
+            raise AravisGStreamerError(
+                "Camera {} has no frame or image save path".format(self.name)
+            )
+        _frame_id, jpeg = frame
+        import cv2
+        import numpy as np
+
+        image = cv2.imdecode(np.frombuffer(jpeg, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if image is None:
+            raise AravisGStreamerError(
+                "Camera {} returned an invalid JPEG".format(self.name)
+            )
+        Path(self._save_path).parent.mkdir(parents=True, exist_ok=True)
+        if not cv2.imwrite(self._save_path, image):
+            raise AravisGStreamerError(
+                "Could not save camera {} image to {}".format(
+                    self.name, self._save_path
+                )
+            )
+
     def _teardown_pipeline(self, release_hardware: bool = False) -> None:
         self._stream_stop.set()
         if self._aravis_camera is not None:
@@ -722,6 +786,8 @@ class AravisGStreamerCamera:
             self._aravis_stream = None
             self._aravis_camera = None
             self._aravis = None
+            self._hardware_fps = None
+            self._hardware_sync_mode = None
 
     def stop(self) -> None:
         with self._lock:
@@ -746,18 +812,20 @@ class AravisGStreamerCamera:
                     self._aravis_camera.stop_acquisition()
                 if self._stream_thread is not None:
                     self._stream_thread.join(timeout=2.0)
-                self._appsrc.emit("end-of-stream")
-                message = self._pipeline.get_bus().timed_pop_filtered(
-                    int(self.settings.eos_timeout_seconds * self._gst.SECOND),
-                    self._gst.MessageType.EOS | self._gst.MessageType.ERROR,
-                )
-                if message is None:
-                    raise AravisGStreamerError("Timed out finalizing AVI for {}".format(self.name))
-                if message.type == self._gst.MessageType.ERROR:
-                    error, debug = message.parse_error()
-                    raise AravisGStreamerError(
-                        "GStreamer failed while finalizing {}: {} ({})".format(self.name, error, debug)
+                if self._appsrc is not None:
+                    self._appsrc.emit("end-of-stream")
+                if self._mode == "video":
+                    message = self._pipeline.get_bus().timed_pop_filtered(
+                        int(self.settings.eos_timeout_seconds * self._gst.SECOND),
+                        self._gst.MessageType.EOS | self._gst.MessageType.ERROR,
                     )
+                    if message is None:
+                        raise AravisGStreamerError("Timed out finalizing AVI for {}".format(self.name))
+                    if message.type == self._gst.MessageType.ERROR:
+                        error, debug = message.parse_error()
+                        raise AravisGStreamerError(
+                            "GStreamer failed while finalizing {}: {} ({})".format(self.name, error, debug)
+                        )
                 self._state = "PREPARED"
             except Exception as exc:
                 self._last_error = str(exc)
@@ -886,8 +954,19 @@ class AravisGStreamerCameraLoader:
                 directory.mkdir(parents=True, exist_ok=True)
                 paths.append(str(directory / "{}.avi".format(camera.name)))
             return paths
+        if mode == "stream":
+            return [None] * len(self.cameralist)
+        if mode == "image":
+            if save_path is None:
+                raise AravisGStreamerError("save_path is required for image capture")
+            directory = Path(home_path) / save_path / "images"
+            directory.mkdir(parents=True, exist_ok=True)
+            return [
+                str(directory / "{}.png".format(camera.name))
+                for camera in self.cameralist
+            ]
         raise AravisGStreamerError(
-            "Aravis/GStreamer backend is limited to CaptureSession video mode; "
+            "Aravis/GStreamer backend supports video, stream, or image mode; "
             "use the pyspin agent for {!r} mode".format(mode)
         )
 
@@ -913,6 +992,7 @@ class AravisGStreamerCameraLoader:
 
     def prepare(self, mode: str, syncMode: bool, save_path: Optional[str] = None, fps: int = 30) -> None:
         paths = self._save_paths(mode, save_path)
+        self._mode = mode
         print("[Info] Preparing Aravis/GStreamer cameras: {}".format(self.camera_names))
         try:
             # Configure/build sequentially using the exact device ids that
@@ -945,6 +1025,11 @@ class AravisGStreamerCameraLoader:
             for camera in self.cameralist:
                 camera.confirm_playing()
             self._capture_active = True
+            if self._mode == "image":
+                self._parallel(
+                    lambda camera, _path: camera.save_image(),
+                    [None] * len(self.cameralist),
+                )
         except Exception:
             for camera in self.cameralist:
                 try:
@@ -952,8 +1037,11 @@ class AravisGStreamerCameraLoader:
                 except Exception:
                     log.exception("Failed to roll back camera %s", camera.name)
             raise
-        print("[Info] All Aravis/GStreamer cameras ARMED and waiting for UTG.")
-        log.info("All Aravis/GStreamer cameras ARMED: %s", self.camera_names)
+        if self._mode == "image":
+            print("[Info] One image saved from every Aravis camera.")
+        else:
+            print("[Info] All Aravis/GStreamer cameras ARMED and waiting for UTG.")
+            log.info("All Aravis/GStreamer cameras ARMED: %s", self.camera_names)
 
     def start(self, mode: str, syncMode: bool, save_path: Optional[str] = None, fps: int = 30) -> None:
         """Compatibility path; distributed callers use prepare then activate."""
@@ -1013,6 +1101,13 @@ class AravisGStreamerCameraLoader:
         for camera in self.cameralist:
             if camera.name == str(serial):
                 return camera.get_preview()
+        return None
+
+    def get_frame(self, serial: str) -> Optional[Tuple[int, bytes]]:
+        for camera in self.cameralist:
+            if camera.name == str(serial):
+                get_frame = getattr(camera, "get_frame", None)
+                return get_frame() if get_frame is not None else None
         return None
 
     def get_all_errors(self) -> Dict[str, Tuple[Optional[str], Optional[str]]]:

@@ -48,6 +48,7 @@ class camera_server_daemon:
         self._close_lock = threading.Lock()
         self._camera_lock = threading.RLock()
         self._preview_server = None
+        self._idle_stream_active = False
 
         if start_threads:
             self._start_threads()
@@ -64,6 +65,7 @@ class camera_server_daemon:
         raise ValueError("Unknown camera backend {!r}; use pyspin or aravis-gstreamer".format(backend))
 
     def _start_threads(self):
+        self._start_idle_stream()
         for target in (self.pingpong_thread, self.monitor_thread, self.command_thread):
             thread = threading.Thread(target=target, daemon=True)
             thread.start()
@@ -109,6 +111,22 @@ class camera_server_daemon:
                     self.end_headers()
                     self.wfile.write(jpeg)
                     return
+                if path.startswith("/frame/"):
+                    serial = unquote(path[len("/frame/") :])
+                    get_frame = getattr(daemon.camera_loader, "get_frame", None)
+                    frame = get_frame(serial) if get_frame is not None else None
+                    if frame is None:
+                        self._send_json(404, {"error": "frame unavailable", "serial": serial})
+                        return
+                    frame_id, jpeg = frame
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/jpeg")
+                    self.send_header("Content-Length", str(len(jpeg)))
+                    self.send_header("X-Frame-Id", str(frame_id))
+                    self.send_header("Cache-Control", "no-store")
+                    self.end_headers()
+                    self.wfile.write(jpeg)
+                    return
                 self._send_json(404, {"error": "not found"})
 
             def log_message(self, _format, *_args):
@@ -124,11 +142,37 @@ class camera_server_daemon:
         self._threads.append(thread)
         print("[Info] Preview image API listening on port {}.".format(self.preview_port))
 
+    def _uses_aravis_backend(self):
+        normalized = self.backend.lower().replace("_", "-")
+        return normalized in ("aravis", "aravis-gstreamer")
+
+    def _start_idle_stream(self):
+        """Keep Aravis frames available on the HTTP port between sessions."""
+
+        if (
+            not self._uses_aravis_backend()
+            or self._idle_stream_active
+            or self._shutdown_event.is_set()
+        ):
+            return
+        self.camera_loader.start("stream", False, None, 30)
+        self._idle_stream_active = True
+        self.state = "idle"
+        print("[Info] Aravis idle frame stream is active.")
+
+    def _stop_idle_stream(self):
+        if not self._idle_stream_active:
+            return
+        self.camera_loader.stop()
+        self._idle_stream_active = False
+
     def reload_cameras(self):
         with self._camera_lock:
+            self._stop_idle_stream()
             self.camera_loader.end()
             time.sleep(1)
             self.camera_loader = self._loader_factory()
+            self._start_idle_stream()
         print("[Info] {} camera loader reloaded.".format(self.backend))
 
     def close(self):
@@ -211,9 +255,10 @@ class camera_server_daemon:
         try:
             if action == "prepare":
                 self.state = "preparing"
-                prepare = getattr(self.camera_loader, "prepare", None)
-                if prepare is not None:
-                    with self._camera_lock:
+                with self._camera_lock:
+                    self._stop_idle_stream()
+                    prepare = getattr(self.camera_loader, "prepare", None)
+                    if prepare is not None:
                         prepare(
                             cmd.get("mode"),
                             cmd.get("syncMode"),
@@ -257,12 +302,14 @@ class camera_server_daemon:
                         abort()
                     else:
                         self.camera_loader.stop()
+                    self._start_idle_stream()
                 self.state = "idle"
                 return {"status": "ok", "msg": "aborted"}
             if action == "end":
                 with self._camera_lock:
                     self.camera_loader.stop()
-                self.current_controller = None
+                    self.current_controller = None
+                    self._start_idle_stream()
                 self.state = "idle"
                 return {"status": "ok", "msg": "ended"}
             if action == "heartbeat":
@@ -309,6 +356,13 @@ class camera_server_daemon:
                         except Exception:
                             traceback.print_exc()
                         self.current_controller = None
+                        try:
+                            with self._camera_lock:
+                                self._start_idle_stream()
+                        except Exception:
+                            traceback.print_exc()
+                            self.state = "error"
+                            continue
                         self.state = "idle"
                         print("[Error] Command socket timeout. Camera loader stopped and controller released.")
                 except Exception as exc:

@@ -18,10 +18,76 @@ from paradex.calibration.utils import save_current_camparam, save_current_C2R
 from paradex.utils.system import network_info
 
 
+_VIVE_MAX_LINEAR_SPEED_M_S = 0.70
+_VIVE_MAX_ANGULAR_SPEED_DEG_S = 240.0
+_VIVE_POSITION_MARGIN_M = 0.003
+_VIVE_ROTATION_MARGIN_DEG = 1.5
+_VIVE_MAX_COMMAND_DT_S = 0.05
+
+
 def _normalize_optional_name(name):
     if name is not None and isinstance(name, str) and name.strip().lower() in ("", "none", "null"):
         return None
     return name
+
+
+class _PoseCommandLimiter:
+    def __init__(self, initial_pose, timestamp):
+        self.last_sent_pose = np.asarray(initial_pose, dtype=float).copy()
+        self.last_raw_pose = self.last_sent_pose.copy()
+        self.last_sample_time = float(timestamp)
+        self.rejected_count = 0
+
+    def filter(self, candidate_pose, timestamp):
+        candidate_pose = np.asarray(candidate_pose, dtype=float)
+        timestamp = float(timestamp)
+        dt = min(
+            max(timestamp - self.last_sample_time, 0.0),
+            _VIVE_MAX_COMMAND_DT_S,
+        )
+        self.last_sample_time = timestamp
+
+        translation_delta = np.linalg.norm(
+            candidate_pose[:3, 3] - self.last_raw_pose[:3, 3]
+        )
+        relative_rotation = (
+            self.last_raw_pose[:3, :3].T @ candidate_pose[:3, :3]
+        )
+        cosine = np.clip(
+            (np.trace(relative_rotation) - 1.0) / 2.0,
+            -1.0,
+            1.0,
+        )
+        rotation_delta_deg = np.degrees(np.arccos(cosine))
+
+        translation_limit = (
+            _VIVE_MAX_LINEAR_SPEED_M_S * dt + _VIVE_POSITION_MARGIN_M
+        )
+        rotation_limit_deg = (
+            _VIVE_MAX_ANGULAR_SPEED_DEG_S * dt
+            + _VIVE_ROTATION_MARGIN_DEG
+        )
+        accepted = (
+            np.isfinite(candidate_pose).all()
+            and translation_delta <= translation_limit
+            and rotation_delta_deg <= rotation_limit_deg
+        )
+        if accepted:
+            filtered_pose = self.last_sent_pose.copy()
+            filtered_pose[:3, 3] += (
+                candidate_pose[:3, 3] - self.last_raw_pose[:3, 3]
+            )
+            filtered_pose[:3, :3] = (
+                self.last_sent_pose[:3, :3] @ relative_rotation
+            )
+            self.last_sent_pose = filtered_pose
+            self.rejected_count = 0
+        else:
+            filtered_pose = None
+            self.rejected_count += 1
+
+        self.last_raw_pose = candidate_pose.copy()
+        return filtered_pose, translation_delta, rotation_delta_deg
 
 
 class CaptureSession():
@@ -54,10 +120,9 @@ class CaptureSession():
         hand_left = _normalize_optional_name(hand_left)
         hand_right = _normalize_optional_name(hand_right)
 
-        if teleop == "vive" and hand_side != "right":
+        if teleop == "vive" and hand_side not in ("right", "bimanual"):
             raise ValueError(
-                "VIVE teleop currently supports only "
-                "unimanual --hand-side right."
+                "VIVE teleop supports --hand-side right or bimanual."
             )
 
         if realsense:
@@ -87,6 +152,7 @@ class CaptureSession():
             raise ValueError("Not supported hand side")
 
         self.events = events
+        self.teleop_name = teleop
 
         if hand_side == "right":
             self.hand_side = "Right"
@@ -150,7 +216,7 @@ class CaptureSession():
                 self.teleop_device = XSensReceiver(**network_info["xsens"]["param"])
             elif teleop == "vive":
                 from paradex.io.teleop.vive.receiver import ViveManusROSReceiver
-                self.teleop_device = ViveManusROSReceiver()
+                self.teleop_device = ViveManusROSReceiver(hand_side=hand_side)
             else:
                 raise ValueError(f"Unsupported teleop device: {teleop}")
 
@@ -165,6 +231,7 @@ class CaptureSession():
                     hand_name_left=self.hand_name_left,
                     hand_name_right=self.hand_name_right,
                     hand_scale=hand_scale,
+                    teleop_name=teleop,
                 )
                 self.state_extractor = HandStateExtractor()
 
@@ -374,6 +441,43 @@ class CaptureSession():
             home_pose = self.arm.get_data()["position"] if self.arm is not None else np.eye(4)
 
         self.retargetor.start(home_pose)
+        vive_arm_limiters = {}
+        if getattr(self, "teleop_name", None) == "vive":
+            limiter_start_time = time.monotonic()
+            if self.hand_side == "Bimanual":
+                vive_arm_limiters = {
+                    side: _PoseCommandLimiter(
+                        home_pose[side],
+                        limiter_start_time,
+                    )
+                    for side in ("Left", "Right")
+                }
+            elif self.arm is not None:
+                vive_arm_limiters[self.hand_side] = _PoseCommandLimiter(
+                    home_pose,
+                    limiter_start_time,
+                )
+
+        def move_arm_if_safe(side, arm_controller, wrist_pose):
+            if arm_controller is None:
+                return
+            limiter = vive_arm_limiters.get(side)
+            if limiter is None:
+                arm_controller.move(wrist_pose.copy())
+                return
+
+            filtered_pose, translation_delta, rotation_delta_deg = limiter.filter(
+                wrist_pose,
+                time.monotonic(),
+            )
+            if filtered_pose is not None:
+                arm_controller.move(filtered_pose)
+            elif limiter.rejected_count == 1 or limiter.rejected_count % 100 == 0:
+                print(
+                    f"Rejected {side} VIVE arm command: "
+                    f"translation={translation_delta * 1000.0:.1f} mm, "
+                    f"rotation={rotation_delta_deg:.1f} deg"
+                )
 
         while True:
             if session_events is not None and session_events["exit"].is_set():
@@ -421,8 +525,7 @@ class CaptureSession():
                     if self.hand is not None:
                         self.hand.move(hand_action)
 
-                    if self.arm is not None:
-                        self.arm.move(wrist_pose.copy())
+                    move_arm_if_safe(self.hand_side, self.arm, wrist_pose)
 
                 if state == 1:   
                     self.retargetor.stop()
@@ -488,10 +591,8 @@ class CaptureSession():
                 if state == 0:
                     wrist_pose_left, wrist_pose_right, hand_action_left, hand_action_right = self.retargetor.get_action(data)
 
-                    if self.arm_left is not None:
-                        self.arm_left.move(wrist_pose_left.copy())
-                    if self.arm_right is not None:
-                        self.arm_right.move(wrist_pose_right.copy())
+                    move_arm_if_safe("Left", self.arm_left, wrist_pose_left)
+                    move_arm_if_safe("Right", self.arm_right, wrist_pose_right)
                     if self.hand_left is not None and hand_action_left is not None:
                         self.hand_left.move(hand_action_left)
                     if self.hand_right is not None and hand_action_right is not None:

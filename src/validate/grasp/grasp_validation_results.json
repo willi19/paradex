@@ -1,0 +1,1400 @@
+{
+  "schema_version": 2,
+  "complete": false,
+  "started_at_utc": "2026-07-29T11:23:30.620608+00:00",
+  "updated_at_utc": "2026-07-29T11:28:31.313005+00:00",
+  "source_data_policy": "read-only",
+  "assumptions": {
+    "robot_self_collision": "absent_and_not_evaluated"
+  },
+  "mesh_root": "/home/temp_id/shared_data/mesh_new",
+  "capture_root": "/home/temp_id/shared_data/capture/eccv2026/v0",
+  "source_hands": [
+    "allegro_v5",
+    "human",
+    "inspire_dftp",
+    "inspire_f1"
+  ],
+  "thresholds": {
+    "max_frames": 120,
+    "contact_distance_m": 0.01,
+    "min_contact_fingers": 2,
+    "min_grasp_frames": 10,
+    "max_contact_gap_samples": 1,
+    "min_object_motion_m": 0.01,
+    "max_relative_translation_m": 0.05,
+    "max_relative_rotation_deg": 45.0,
+    "max_object_linear_speed_m_s": 2.0,
+    "max_object_angular_speed_deg_s": 720.0,
+    "joint_limit_tolerance_rad": 0.001,
+    "joint_velocity_scale": 1.2,
+    "surface_sample_count": 6000
+  },
+  "summary": {
+    "total_discovered": 2104,
+    "completed": 21,
+    "pending": 2083,
+    "valid": 13,
+    "invalid": 8,
+    "error": 0,
+    "by_hand": {
+      "allegro_v5": {
+        "completed": 21,
+        "valid": 13,
+        "invalid": 8,
+        "error": 0
+      },
+      "human": {
+        "completed": 0,
+        "valid": 0,
+        "invalid": 0,
+        "error": 0
+      },
+      "inspire_dftp": {
+        "completed": 0,
+        "valid": 0,
+        "invalid": 0,
+        "error": 0
+      },
+      "inspire_f1": {
+        "completed": 0,
+        "valid": 0,
+        "invalid": 0,
+        "error": 0
+      }
+    }
+  },
+  "results": [
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "apple",
+      "episode": 3,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/3",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.802410265998333,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "apple",
+        "episode": 3,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "apple",
+          "episode": 3,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/3",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/apple/apple.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/3/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/3/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/3/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/3/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/3/C2R.npy"
+        },
+        "frame_count": 444,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 167,
+          "end_frame": 297,
+          "start_sample": 45,
+          "end_sample": 80,
+          "sampled_frame_count": 36
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 2.5381070610351784e-05,
+          "grasp_frame_span": 131,
+          "grasp_duration_s": 3.962684154510498,
+          "max_relative_translation_m": 0.030717450953492504,
+          "max_relative_rotation_deg": 35.48545736710381,
+          "object_motion_during_grasp_m": 0.08509752386122492,
+          "max_object_linear_speed_m_s": 0.21015011108358292,
+          "max_object_angular_speed_deg_s": 228.43654053932835
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "apple",
+      "episode": 4,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/4",
+      "status": "invalid",
+      "valid": false,
+      "elapsed_seconds": 13.6480603240052,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "apple",
+        "episode": 4,
+        "valid": false,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "apple",
+          "episode": 4,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/4",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/apple/apple.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/4/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/4/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/4/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/4/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/4/C2R.npy"
+        },
+        "frame_count": 404,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 159,
+          "end_frame": 277,
+          "start_sample": 47,
+          "end_sample": 82,
+          "sampled_frame_count": 36
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 4.495170040679162e-05,
+          "grasp_frame_span": 119,
+          "grasp_duration_s": 3.6053543090820312,
+          "max_relative_translation_m": 0.03025617963063403,
+          "max_relative_rotation_deg": 62.08203415525741,
+          "object_motion_during_grasp_m": 0.07694278224615131,
+          "max_object_linear_speed_m_s": 0.16238347401652198,
+          "max_object_angular_speed_deg_s": 299.298412274199
+        },
+        "issues": [
+          {
+            "code": "OBJECT_SLIP_ROTATION",
+            "message": "object rotation relative to the palm/wrist is too large",
+            "frame": 270,
+            "value": 62.08203415525741,
+            "threshold": 45.0
+          }
+        ],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "apple",
+      "episode": 5,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/5",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.694309869999415,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "apple",
+        "episode": 5,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "apple",
+          "episode": 5,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/5",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/apple/apple.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/5/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/5/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/5/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/5/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/5/C2R.npy"
+        },
+        "frame_count": 442,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 137,
+          "end_frame": 300,
+          "start_sample": 37,
+          "end_sample": 81,
+          "sampled_frame_count": 45
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 3,
+          "min_hand_object_distance_m": 1.724158652351018e-05,
+          "grasp_frame_span": 164,
+          "grasp_duration_s": 4.962378740310669,
+          "max_relative_translation_m": 0.027499089684786877,
+          "max_relative_rotation_deg": 40.81958758693572,
+          "object_motion_during_grasp_m": 0.08691644477849511,
+          "max_object_linear_speed_m_s": 0.15009483845793792,
+          "max_object_angular_speed_deg_s": 204.73753734229868
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "apple",
+      "episode": 6,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/6",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.618781450000824,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "apple",
+        "episode": 6,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "apple",
+          "episode": 6,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/6",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/apple/apple.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/6/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/6/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/6/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/6/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/6/C2R.npy"
+        },
+        "frame_count": 392,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 141,
+          "end_frame": 262,
+          "start_sample": 43,
+          "end_sample": 80,
+          "sampled_frame_count": 38
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 4.159299325649627e-05,
+          "grasp_frame_span": 122,
+          "grasp_duration_s": 3.687114715576172,
+          "max_relative_translation_m": 0.02222255469281807,
+          "max_relative_rotation_deg": 33.19978810762897,
+          "object_motion_during_grasp_m": 0.11126693667731784,
+          "max_object_linear_speed_m_s": 0.15767519489037596,
+          "max_object_angular_speed_deg_s": 196.7455714946234
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "apple",
+      "episode": 7,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/7",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.664805540000089,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "apple",
+        "episode": 7,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "apple",
+          "episode": 7,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/7",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/apple/apple.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/7/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/7/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/7/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/7/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/apple/7/C2R.npy"
+        },
+        "frame_count": 417,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 150,
+          "end_frame": 283,
+          "start_sample": 43,
+          "end_sample": 81,
+          "sampled_frame_count": 39
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 2.3664777784846032e-05,
+          "grasp_frame_span": 134,
+          "grasp_duration_s": 4.04646897315979,
+          "max_relative_translation_m": 0.01735282524555113,
+          "max_relative_rotation_deg": 39.292888997589884,
+          "object_motion_during_grasp_m": 0.08824139685436272,
+          "max_object_linear_speed_m_s": 0.152207630729721,
+          "max_object_angular_speed_deg_s": 211.21556044008523
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "attached_container",
+      "episode": 0,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/0",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.37738079400151,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "attached_container",
+        "episode": 0,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "attached_container",
+          "episode": 0,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/0",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/attached_container/attached_container.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/0/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/0/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/0/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/0/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/0/C2R.npy"
+        },
+        "frame_count": 527,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 287,
+          "end_frame": 402,
+          "start_sample": 65,
+          "end_sample": 91,
+          "sampled_frame_count": 27
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 3.75418376444874e-05,
+          "grasp_frame_span": 116,
+          "grasp_duration_s": 3.4956889152526855,
+          "max_relative_translation_m": 0.03894555908023006,
+          "max_relative_rotation_deg": 24.242544758359426,
+          "object_motion_during_grasp_m": 0.09769211776175286,
+          "max_object_linear_speed_m_s": 0.13383921072197963,
+          "max_object_angular_speed_deg_s": 66.90968635623766
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "attached_container",
+      "episode": 1,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/1",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.442949203992612,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "attached_container",
+        "episode": 1,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "attached_container",
+          "episode": 1,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/1",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/attached_container/attached_container.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/1/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/1/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/1/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/1/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/1/C2R.npy"
+        },
+        "frame_count": 457,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 141,
+          "end_frame": 306,
+          "start_sample": 37,
+          "end_sample": 80,
+          "sampled_frame_count": 44
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 5.042574492226777e-05,
+          "grasp_frame_span": 166,
+          "grasp_duration_s": 5.0289905071258545,
+          "max_relative_translation_m": 0.04176671125740545,
+          "max_relative_rotation_deg": 28.187637877815657,
+          "object_motion_during_grasp_m": 0.06841812751332134,
+          "max_object_linear_speed_m_s": 0.1313912157558291,
+          "max_object_angular_speed_deg_s": 108.37412597172373
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "attached_container",
+      "episode": 2,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/2",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.423328336997656,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "attached_container",
+        "episode": 2,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "attached_container",
+          "episode": 2,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/2",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/attached_container/attached_container.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/2/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/2/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/2/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/2/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/2/C2R.npy"
+        },
+        "frame_count": 431,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 151,
+          "end_frame": 303,
+          "start_sample": 42,
+          "end_sample": 84,
+          "sampled_frame_count": 43
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 9.141544165824117e-05,
+          "grasp_frame_span": 153,
+          "grasp_duration_s": 4.634554862976074,
+          "max_relative_translation_m": 0.046748571129950574,
+          "max_relative_rotation_deg": 32.77327938567023,
+          "object_motion_during_grasp_m": 0.08513915107941121,
+          "max_object_linear_speed_m_s": 0.13233077141348767,
+          "max_object_angular_speed_deg_s": 35.25563736403716
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "attached_container",
+      "episode": 3,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/3",
+      "status": "invalid",
+      "valid": false,
+      "elapsed_seconds": 13.677494650997687,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "attached_container",
+        "episode": 3,
+        "valid": false,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "attached_container",
+          "episode": 3,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/3",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/attached_container/attached_container.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/3/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/3/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/3/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/3/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/3/C2R.npy"
+        },
+        "frame_count": 511,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 257,
+          "end_frame": 364,
+          "start_sample": 60,
+          "end_sample": 85,
+          "sampled_frame_count": 26
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 6.69396209852817e-05,
+          "grasp_frame_span": 108,
+          "grasp_duration_s": 3.2529401779174805,
+          "max_relative_translation_m": 0.0651603689526542,
+          "max_relative_rotation_deg": 62.91657556445792,
+          "object_motion_during_grasp_m": 0.0629789814036755,
+          "max_object_linear_speed_m_s": 0.1934464479984862,
+          "max_object_angular_speed_deg_s": 219.73070744955731
+        },
+        "issues": [
+          {
+            "code": "OBJECT_SLIP_TRANSLATION",
+            "message": "object translation relative to the palm/wrist is too large",
+            "frame": 287,
+            "value": 0.0651603689526542,
+            "threshold": 0.05
+          },
+          {
+            "code": "OBJECT_SLIP_ROTATION",
+            "message": "object rotation relative to the palm/wrist is too large",
+            "frame": 287,
+            "value": 62.91657556445792,
+            "threshold": 45.0
+          }
+        ],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "attached_container",
+      "episode": 4,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/4",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.652423882987932,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "attached_container",
+        "episode": 4,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "attached_container",
+          "episode": 4,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/4",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/attached_container/attached_container.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/4/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/4/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/4/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/4/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/attached_container/4/C2R.npy"
+        },
+        "frame_count": 477,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 200,
+          "end_frame": 328,
+          "start_sample": 50,
+          "end_sample": 82,
+          "sampled_frame_count": 33
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 6.331347020559539e-05,
+          "grasp_frame_span": 129,
+          "grasp_duration_s": 3.8890230655670166,
+          "max_relative_translation_m": 0.04401326758972346,
+          "max_relative_rotation_deg": 43.93208252545828,
+          "object_motion_during_grasp_m": 0.09991880466736838,
+          "max_object_linear_speed_m_s": 0.22805624924541612,
+          "max_object_angular_speed_deg_s": 135.48993366020565
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "baby_beaker",
+      "episode": 0,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/0",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.494904993989621,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "baby_beaker",
+        "episode": 0,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "baby_beaker",
+          "episode": 0,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/0",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/baby_beaker/baby_beaker.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/0/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/0/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/0/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/0/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/0/C2R.npy"
+        },
+        "frame_count": 412,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 138,
+          "end_frame": 272,
+          "start_sample": 40,
+          "end_sample": 79,
+          "sampled_frame_count": 40
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 7.337993750209927e-05,
+          "grasp_frame_span": 135,
+          "grasp_duration_s": 4.0918920040130615,
+          "max_relative_translation_m": 0.03580181978652915,
+          "max_relative_rotation_deg": 16.672977177629512,
+          "object_motion_during_grasp_m": 0.08278006595371556,
+          "max_object_linear_speed_m_s": 0.1627002061039726,
+          "max_object_angular_speed_deg_s": 122.69286824900733
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "baby_beaker",
+      "episode": 1,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/1",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.746979928997462,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "baby_beaker",
+        "episode": 1,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "baby_beaker",
+          "episode": 1,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/1",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/baby_beaker/baby_beaker.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/1/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/1/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/1/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/1/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/1/C2R.npy"
+        },
+        "frame_count": 521,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 192,
+          "end_frame": 388,
+          "start_sample": 44,
+          "end_sample": 89,
+          "sampled_frame_count": 46
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 3.888249250109863e-05,
+          "grasp_frame_span": 197,
+          "grasp_duration_s": 5.960477352142334,
+          "max_relative_translation_m": 0.0432290262554338,
+          "max_relative_rotation_deg": 29.58437531681056,
+          "object_motion_during_grasp_m": 0.10809997270300288,
+          "max_object_linear_speed_m_s": 0.2179232999884633,
+          "max_object_angular_speed_deg_s": 128.92013255723143
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "baby_beaker",
+      "episode": 2,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/2",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.796383016000618,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "baby_beaker",
+        "episode": 2,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "baby_beaker",
+          "episode": 2,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/2",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/baby_beaker/baby_beaker.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/2/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/2/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/2/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/2/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/2/C2R.npy"
+        },
+        "frame_count": 477,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 212,
+          "end_frame": 336,
+          "start_sample": 53,
+          "end_sample": 84,
+          "sampled_frame_count": 32
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 2.323802218587411e-05,
+          "grasp_frame_span": 125,
+          "grasp_duration_s": 3.767059326171875,
+          "max_relative_translation_m": 0.02923307818740889,
+          "max_relative_rotation_deg": 16.83132765925203,
+          "object_motion_during_grasp_m": 0.10155692013646764,
+          "max_object_linear_speed_m_s": 0.20349067331053888,
+          "max_object_angular_speed_deg_s": 76.62534482289638
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "baby_beaker",
+      "episode": 3,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/3",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.585425935991225,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "baby_beaker",
+        "episode": 3,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "baby_beaker",
+          "episode": 3,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/3",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/baby_beaker/baby_beaker.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/3/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/3/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/3/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/3/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/3/C2R.npy"
+        },
+        "frame_count": 390,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 160,
+          "end_frame": 254,
+          "start_sample": 49,
+          "end_sample": 78,
+          "sampled_frame_count": 30
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 3,
+          "min_hand_object_distance_m": 4.12219647802574e-05,
+          "grasp_frame_span": 95,
+          "grasp_duration_s": 2.863003969192505,
+          "max_relative_translation_m": 0.01677325305777377,
+          "max_relative_rotation_deg": 18.644300177249868,
+          "object_motion_during_grasp_m": 0.09350240554179146,
+          "max_object_linear_speed_m_s": 0.12214700460815324,
+          "max_object_angular_speed_deg_s": 83.38684807872312
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "baby_beaker",
+      "episode": 4,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/4",
+      "status": "valid",
+      "valid": true,
+      "elapsed_seconds": 13.954487233990221,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "baby_beaker",
+        "episode": 4,
+        "valid": true,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "baby_beaker",
+          "episode": 4,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/4",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/baby_beaker/baby_beaker.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/4/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/4/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/4/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/4/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/baby_beaker/4/C2R.npy"
+        },
+        "frame_count": 482,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 198,
+          "end_frame": 323,
+          "start_sample": 49,
+          "end_sample": 80,
+          "sampled_frame_count": 32
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 3,
+          "min_hand_object_distance_m": 6.579025366002059e-05,
+          "grasp_frame_span": 126,
+          "grasp_duration_s": 3.8080220222473145,
+          "max_relative_translation_m": 0.04423772528287746,
+          "max_relative_rotation_deg": 36.838960361707905,
+          "object_motion_during_grasp_m": 0.10908294355581816,
+          "max_object_linear_speed_m_s": 0.26237381663244935,
+          "max_object_angular_speed_deg_s": 208.46208847853524
+        },
+        "issues": [],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "balloon_whisk",
+      "episode": 0,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/0",
+      "status": "invalid",
+      "valid": false,
+      "elapsed_seconds": 13.943333792005433,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "balloon_whisk",
+        "episode": 0,
+        "valid": false,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "balloon_whisk",
+          "episode": 0,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/0",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/balloon_whisk/balloon_whisk.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/0/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/0/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/0/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/0/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/0/C2R.npy"
+        },
+        "frame_count": 1045,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 149,
+          "end_frame": 482,
+          "start_sample": 17,
+          "end_sample": 55,
+          "sampled_frame_count": 39
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 6.197704389626655e-05,
+          "grasp_frame_span": 334,
+          "grasp_duration_s": 10.06116771697998,
+          "max_relative_translation_m": 0.07129018864903618,
+          "max_relative_rotation_deg": 91.14145331647731,
+          "object_motion_during_grasp_m": 0.14762761381375358,
+          "max_object_linear_speed_m_s": 0.4643226649348087,
+          "max_object_angular_speed_deg_s": 453.7829893292382
+        },
+        "issues": [
+          {
+            "code": "JOINT_LIMIT",
+            "message": "joint_12_0 is outside [0, 1.78] rad",
+            "frame": 377,
+            "value": 1.7918705962388417,
+            "threshold": null
+          },
+          {
+            "code": "OBJECT_SLIP_TRANSLATION",
+            "message": "object translation relative to the palm/wrist is too large",
+            "frame": 307,
+            "value": 0.07129018864903618,
+            "threshold": 0.05
+          },
+          {
+            "code": "OBJECT_SLIP_ROTATION",
+            "message": "object rotation relative to the palm/wrist is too large",
+            "frame": 324,
+            "value": 91.14145331647731,
+            "threshold": 45.0
+          }
+        ],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "balloon_whisk",
+      "episode": 1,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/1",
+      "status": "invalid",
+      "valid": false,
+      "elapsed_seconds": 14.856269022013294,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "balloon_whisk",
+        "episode": 1,
+        "valid": false,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "balloon_whisk",
+          "episode": 1,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/1",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/balloon_whisk/balloon_whisk.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/1/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/1/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/1/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/1/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/1/C2R.npy"
+        },
+        "frame_count": 1116,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 852,
+          "end_frame": 965,
+          "start_sample": 91,
+          "end_sample": 103,
+          "sampled_frame_count": 13
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 6.858251151085687e-05,
+          "grasp_frame_span": 114,
+          "grasp_duration_s": 3.4133715629577637,
+          "max_relative_translation_m": 0.05877580715036954,
+          "max_relative_rotation_deg": 41.95175915687652,
+          "object_motion_during_grasp_m": 0.16997974338068117,
+          "max_object_linear_speed_m_s": 0.20829796388686886,
+          "max_object_angular_speed_deg_s": 144.01387970699528
+        },
+        "issues": [
+          {
+            "code": "JOINT_LIMIT",
+            "message": "joint_12_0 is outside [0, 1.78] rad",
+            "frame": 422,
+            "value": 1.7924523147205085,
+            "threshold": null
+          },
+          {
+            "code": "OBJECT_SLIP_TRANSLATION",
+            "message": "object translation relative to the palm/wrist is too large",
+            "frame": 899,
+            "value": 0.05877580715036954,
+            "threshold": 0.05
+          }
+        ],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "balloon_whisk",
+      "episode": 2,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/2",
+      "status": "invalid",
+      "valid": false,
+      "elapsed_seconds": 14.515172393003013,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "balloon_whisk",
+        "episode": 2,
+        "valid": false,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "balloon_whisk",
+          "episode": 2,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/2",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/balloon_whisk/balloon_whisk.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/2/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/2/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/2/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/2/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/2/C2R.npy"
+        },
+        "frame_count": 1191,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 850,
+          "end_frame": 980,
+          "start_sample": 85,
+          "end_sample": 98,
+          "sampled_frame_count": 14
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 8.431080750866055e-05,
+          "grasp_frame_span": 131,
+          "grasp_duration_s": 3.923004627227783,
+          "max_relative_translation_m": 0.0356601814170485,
+          "max_relative_rotation_deg": 35.51259722556088,
+          "object_motion_during_grasp_m": 0.11972840814566972,
+          "max_object_linear_speed_m_s": 0.1879086118828972,
+          "max_object_angular_speed_deg_s": 112.59651422316922
+        },
+        "issues": [
+          {
+            "code": "JOINT_LIMIT",
+            "message": "joint_12_0 is outside [0, 1.78] rad",
+            "frame": 341,
+            "value": 1.7812502992910952,
+            "threshold": null
+          }
+        ],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "balloon_whisk",
+      "episode": 3,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/3",
+      "status": "invalid",
+      "valid": false,
+      "elapsed_seconds": 14.140369939996162,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "balloon_whisk",
+        "episode": 3,
+        "valid": false,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "balloon_whisk",
+          "episode": 3,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/3",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/balloon_whisk/balloon_whisk.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/3/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/3/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/3/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/3/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/3/C2R.npy"
+        },
+        "frame_count": 435,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 175,
+          "end_frame": 291,
+          "start_sample": 48,
+          "end_sample": 80,
+          "sampled_frame_count": 33
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 5.0828102954455916e-05,
+          "grasp_frame_span": 117,
+          "grasp_duration_s": 3.5332369804382324,
+          "max_relative_translation_m": 0.05128741789293105,
+          "max_relative_rotation_deg": 124.53548133526864,
+          "object_motion_during_grasp_m": 0.1320700087216451,
+          "max_object_linear_speed_m_s": 0.19370240780324455,
+          "max_object_angular_speed_deg_s": 330.8684622520544
+        },
+        "issues": [
+          {
+            "code": "OBJECT_SLIP_TRANSLATION",
+            "message": "object translation relative to the palm/wrist is too large",
+            "frame": 291,
+            "value": 0.05128741789293105,
+            "threshold": 0.05
+          },
+          {
+            "code": "OBJECT_SLIP_ROTATION",
+            "message": "object rotation relative to the palm/wrist is too large",
+            "frame": 291,
+            "value": 124.53548133526864,
+            "threshold": 45.0
+          }
+        ],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "balloon_whisk",
+      "episode": 6,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/6",
+      "status": "invalid",
+      "valid": false,
+      "elapsed_seconds": 13.908713577999151,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "balloon_whisk",
+        "episode": 6,
+        "valid": false,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "balloon_whisk",
+          "episode": 6,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/6",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/balloon_whisk/balloon_whisk.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/6/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/6/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/6/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/6/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/balloon_whisk/6/C2R.npy"
+        },
+        "frame_count": 1012,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 654,
+          "end_frame": 849,
+          "start_sample": 77,
+          "end_sample": 100,
+          "sampled_frame_count": 24
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 0.00011549399225574713,
+          "grasp_frame_span": 196,
+          "grasp_duration_s": 5.8885178565979,
+          "max_relative_translation_m": 0.14838434119326877,
+          "max_relative_rotation_deg": 104.70574162192958,
+          "object_motion_during_grasp_m": 0.35639642785094705,
+          "max_object_linear_speed_m_s": 0.3191080830377392,
+          "max_object_angular_speed_deg_s": 193.17832028533638
+        },
+        "issues": [
+          {
+            "code": "JOINT_LIMIT",
+            "message": "joint_12_0 is outside [0, 1.78] rad",
+            "frame": 299,
+            "value": 1.782141363162114,
+            "threshold": null
+          },
+          {
+            "code": "OBJECT_SLIP_TRANSLATION",
+            "message": "object translation relative to the palm/wrist is too large",
+            "frame": 807,
+            "value": 0.14838434119326877,
+            "threshold": 0.05
+          },
+          {
+            "code": "OBJECT_SLIP_ROTATION",
+            "message": "object rotation relative to the palm/wrist is too large",
+            "frame": 815,
+            "value": 104.70574162192958,
+            "threshold": 45.0
+          }
+        ],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    },
+    {
+      "source_hand": "allegro_v5",
+      "validator_hand": "allegro",
+      "object": "bamboo_basket",
+      "episode": 0,
+      "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/bamboo_basket/0",
+      "status": "invalid",
+      "valid": false,
+      "elapsed_seconds": 13.35584011899482,
+      "report": {
+        "kind": "robot",
+        "hand": "allegro",
+        "object": "bamboo_basket",
+        "episode": 0,
+        "valid": false,
+        "inputs": {
+          "kind": "robot",
+          "hand": "allegro",
+          "object_name": "bamboo_basket",
+          "episode": 0,
+          "episode_root": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/bamboo_basket/0",
+          "object_mesh": "/home/temp_id/shared_data/mesh_new/bamboo_basket/bamboo_basket.obj",
+          "object_poses": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/bamboo_basket/0/object_6d_pose_v2.npz",
+          "hand_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/bamboo_basket/0/raw/hand",
+          "arm_trajectory": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/bamboo_basket/0/raw/arm",
+          "camera_timestamps": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/bamboo_basket/0/raw/timestamps/timestamp.npy",
+          "camera_to_robot": "/home/temp_id/shared_data/capture/eccv2026/v0/allegro_v5/bamboo_basket/0/C2R.npy"
+        },
+        "frame_count": 423,
+        "sampled_frame_count": 120,
+        "contact_phase": {
+          "start_frame": 134,
+          "end_frame": 290,
+          "start_sample": 38,
+          "end_sample": 82,
+          "sampled_frame_count": 45
+        },
+        "metrics": {
+          "contact_distance_m": 0.01,
+          "max_contact_fingers": 4,
+          "min_hand_object_distance_m": 8.521807553249371e-05,
+          "grasp_frame_span": 157,
+          "grasp_duration_s": 4.751174688339233,
+          "max_relative_translation_m": 0.06817807379610225,
+          "max_relative_rotation_deg": 22.22845304470643,
+          "object_motion_during_grasp_m": 0.09741170844120346,
+          "max_object_linear_speed_m_s": 0.22616961590490264,
+          "max_object_angular_speed_deg_s": 88.41481161455391
+        },
+        "issues": [
+          {
+            "code": "OBJECT_SLIP_TRANSLATION",
+            "message": "object translation relative to the palm/wrist is too large",
+            "frame": 230,
+            "value": 0.06817807379610225,
+            "threshold": 0.05
+          }
+        ],
+        "notes": [
+          "Mesh distances use deterministic surface samples; they are an approximation, not exact continuous collision detection.",
+          "All dataset inputs are opened read-only; reports exist only in memory/stdout.",
+          "allegro robot qpos is arm position + converted hand state, independently interpolated to the camera time span; object poses use inv(C2R) @ camera_pose.",
+          "Robot self-collision is assumed absent and is not evaluated."
+        ]
+      }
+    }
+  ]
+}

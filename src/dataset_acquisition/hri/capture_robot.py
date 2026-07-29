@@ -23,7 +23,7 @@ camera_pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('--device', choices=['xsens', 'occulus', 'vive'], default="xsens")
+parser.add_argument('--device', choices=['xsens', 'occulus', 'vive'], default="vive")
 parser.add_argument('--hand-side', choices=['right', 'left', 'bimanual'], default="right")
 camera_group = parser.add_mutually_exclusive_group()
 camera_group.add_argument('--camera', dest='camera', action='store_true')

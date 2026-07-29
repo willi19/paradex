@@ -42,8 +42,10 @@ def _resolve_hand(name, is_right=True, scale=1.0):
 
 class Retargetor(): # Input is only from Xsens
     def __init__(self, arm_name=None, hand_name=None, hand_side="Right",
-                 hand_name_left=None, hand_name_right=None, hand_scale=1.0):
+                 hand_name_left=None, hand_name_right=None, hand_scale=1.0,
+                 teleop_name=None):
         self.arm_name = arm_name
+        self.teleop_name = teleop_name
         self.hand_name = hand_name
         self.hand_name_left = hand_name_left
         self.hand_name_right = hand_name_right
@@ -82,9 +84,14 @@ class Retargetor(): # Input is only from Xsens
 
         if self.hand_side == "Bimanual":
             if self.arm_name is not None:
+                wrist_key_prefix = (
+                    self.arm_name + "_vive"
+                    if self.teleop_name == "vive"
+                    else self.arm_name
+                )
                 self.device2wrist = {
-                    "Left": DEVICE2WRIST[self.arm_name + "_Left"].copy(),
-                    "Right": DEVICE2WRIST[self.arm_name + "_Right"].copy(),
+                    "Left": DEVICE2WRIST[wrist_key_prefix + "_Left"].copy(),
+                    "Right": DEVICE2WRIST[wrist_key_prefix + "_Right"].copy(),
                 }
                 self.device2global = DEVICE2GLOBAL[self.arm_name].copy()
             else:
@@ -96,7 +103,14 @@ class Retargetor(): # Input is only from Xsens
                 }
                 self.device2global = np.eye(4)
         elif self.arm_name is not None:
-            self.device2wrist = DEVICE2WRIST[self.arm_name + "_" + hand_side].copy()
+            wrist_key_prefix = (
+                self.arm_name + "_vive"
+                if self.teleop_name == "vive"
+                else self.arm_name
+            )
+            self.device2wrist = DEVICE2WRIST[
+                wrist_key_prefix + "_" + hand_side
+            ].copy()
             self.device2global = DEVICE2GLOBAL[self.arm_name].copy()
         else:
             self.device2wrist = DEVICE2WRIST[self.hand_name].copy()

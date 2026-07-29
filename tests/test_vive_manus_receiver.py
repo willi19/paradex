@@ -1,8 +1,10 @@
+import json
 from types import SimpleNamespace
 import time
 from threading import Event, Lock
 
 import numpy as np
+import pytest
 
 from paradex.io.teleop.vive.receiver import (
     _canonical_joint_name,
@@ -124,23 +126,23 @@ def _axis_rotation(axis, angle):
     )
 
 
-def test_vive_mount_rotation_keeps_up_axis_and_reverses_other_axes():
+def test_vive_mount_rotation_preserves_existing_right_hand_correction():
     initial = np.eye(4)
     initial[:3, 3] = [0.4, -0.2, 1.1]
     corrected_initial = apply_vive_tracker_mount_rotation(initial)
 
     np.testing.assert_allclose(corrected_initial[:3, 3], initial[:3, 3])
-    for axis, expected_sign in (("x", -1.0), ("y", 1.0), ("z", -1.0)):
+    np.testing.assert_allclose(
+        corrected_initial[:3, :3],
+        np.diag([-1.0, -1.0, -1.0]),
+    )
+    for axis in ("x", "y", "z"):
         current = initial.copy()
         current[:3, :3] = _axis_rotation(axis, 0.2)
         corrected_current = apply_vive_tracker_mount_rotation(current)
-        relative = (
-            corrected_initial[:3, :3].T
-            @ corrected_current[:3, :3]
-        )
         np.testing.assert_allclose(
-            relative,
-            _axis_rotation(axis, expected_sign * 0.2),
+            corrected_current[:3, :3],
+            current[:3, :3] @ np.diag([-1.0, -1.0, -1.0]),
             atol=1.0e-8,
         )
 
@@ -204,20 +206,31 @@ def test_frames_feed_existing_right_hand_and_left_state_retargetors():
     assert state in (0, 1, 2, 3)
 
 
-def make_receiver_without_ros(sample_age=0.0):
+def make_receiver_without_ros(sample_age=0.0, hand_side="right"):
     receiver = ViveManusROSReceiver.__new__(ViveManusROSReceiver)
+    receiver.hand_side = hand_side
+    receiver.vive_right_topic = "/vive_trackers/right_hand/pose"
+    receiver.vive_left_topic = "/vive_trackers/left_hand/pose"
+    receiver.manus_topics = ("/manus_glove_0", "/manus_glove_1")
     receiver.lock = Lock()
     receiver.save_event = Event()
     receiver.data = None
     receiver.max_age_s = 0.25
     receiver._vive_right = np.eye(4)
+    receiver._vive_left = np.eye(4)
+    receiver._vive_left[:3, 3] = [-0.4, 0.2, 1.1]
     receiver._manus_frames = {
         "Left": manus_message_to_frame(make_manus_message("Left")),
         "Right": manus_message_to_frame(make_manus_message("Right")),
     }
     timestamp = time.monotonic() - sample_age
     receiver._vive_right_time = timestamp
+    receiver._vive_left_time = timestamp
     receiver._manus_times = {"Left": timestamp, "Right": timestamp}
+    receiver._vive_frame_id = "world"
+    receiver._vive_left_frame_id = "world"
+    receiver._manus_glove_ids = {"Left": 41, "Right": 42}
+    receiver.save_path = None
     return receiver
 
 
@@ -229,11 +242,81 @@ def test_get_data_fuses_fresh_right_vive_and_both_manus_hands():
     np.testing.assert_allclose(data["Right"]["wrist"], np.eye(4))
 
 
+def test_get_data_fuses_each_manus_hand_with_its_bimanual_vive_tracker():
+    receiver = make_receiver_without_ros(hand_side="bimanual")
+    source_left = receiver._manus_frames["Left"]
+    source_right = receiver._manus_frames["Right"]
+
+    data = receiver.get_data()
+
+    np.testing.assert_allclose(data["Left"]["wrist"], receiver._vive_left)
+    np.testing.assert_allclose(data["Right"]["wrist"], receiver._vive_right)
+    for side, source in (("Left", source_left), ("Right", source_right)):
+        expected_relative = (
+            np.linalg.inv(source["wrist"]) @ source["index_distal"]
+        )
+        actual_relative = (
+            np.linalg.inv(data[side]["wrist"]) @ data[side]["index_distal"]
+        )
+        np.testing.assert_allclose(actual_relative, expected_relative)
+
+
 def test_get_data_suppresses_commands_when_any_input_is_stale():
     data = make_receiver_without_ros(sample_age=1.0).get_data()
 
     assert data["Left"] is None
     assert data["Right"] is None
+
+
+@pytest.mark.parametrize(
+    "source",
+    ("vive_left", "vive_right", "manus_left", "manus_right"),
+)
+def test_bimanual_get_data_suppresses_both_sides_when_one_input_is_stale(source):
+    receiver = make_receiver_without_ros(hand_side="bimanual")
+    stale_time = time.monotonic() - 1.0
+    if source == "vive_left":
+        receiver._vive_left_time = stale_time
+    elif source == "vive_right":
+        receiver._vive_right_time = stale_time
+    elif source == "manus_left":
+        receiver._manus_times["Left"] = stale_time
+    else:
+        receiver._manus_times["Right"] = stale_time
+
+    data = receiver.get_data()
+
+    assert data["Left"] is None
+    assert data["Right"] is None
+
+
+def test_unimanual_right_does_not_require_a_left_vive_tracker():
+    receiver = make_receiver_without_ros(hand_side="right")
+    receiver._vive_left = None
+    receiver._vive_left_time = None
+
+    data = receiver.get_data()
+
+    assert data["Left"] is not None
+    assert data["Right"] is not None
+
+
+def test_bimanual_recording_saves_both_vive_timestamps_and_metadata(tmp_path):
+    receiver = make_receiver_without_ros(hand_side="bimanual")
+    save_path = tmp_path / "teleop"
+
+    receiver.start(save_path)
+    receiver.get_data()
+    receiver.stop()
+
+    assert np.load(save_path / "vive_left_time.npy").shape == (1,)
+    assert np.load(save_path / "vive_right_time.npy").shape == (1,)
+    with open(save_path / "metadata.json") as stream:
+        metadata = json.load(stream)
+    assert metadata["mode"] == "vive_manus_bimanual"
+    assert metadata["vive_left_topic"] == "/vive_trackers/left_hand/pose"
+    assert metadata["vive_right_topic"] == "/vive_trackers/right_hand/pose"
+    assert metadata["vive_left_frame_id"] == "world"
 
 
 def test_left_manus_ergonomics_produces_pause_and_go_states():

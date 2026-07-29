@@ -1,6 +1,7 @@
 import json
 import os
 import time
+from functools import partial
 from threading import Event, Lock, Thread
 
 import numpy as np
@@ -38,7 +39,7 @@ _FINGER_CHAINS = {
         for finger in ("index", "middle", "ring", "pinky")
     },
 }
-_VIVE_TRACKER_TO_WRIST_ROTATION = np.diag([-1.0, -1.0, -1.0])
+_VIVE_TRACKER_TO_WRIST_ROTATION = np.diag([-1.0, -1.0, 1.0])
 
 
 def pose_to_matrix(pose, allow_invalid_orientation=False):
@@ -229,13 +230,15 @@ def _pause_state_from_ergonomics(ergonomics, straight_threshold=40.0):
 
 
 class ViveManusROSReceiver:
-    """Fuse a right VIVE wrist with MANUS hands using ROS 2 topics."""
+    """Fuse VIVE wrist trackers with MANUS hands using ROS 2 topics."""
 
     def __init__(
         self,
         vive_right_topic="/vive_trackers/right_hand/pose",
         manus_topics=("/manus_glove_0", "/manus_glove_1"),
         max_age_s=0.25,
+        hand_side="right",
+        vive_left_topic="/vive_trackers/left_hand/pose",
     ):
         try:
             import rclpy
@@ -249,7 +252,14 @@ class ViveManusROSReceiver:
                 "Source /home/temp_id/vive-teleop/ros2_ws/install/setup.bash first."
             ) from exc
 
+        self.hand_side = str(hand_side).strip().lower()
+        if self.hand_side not in ("right", "bimanual"):
+            raise ValueError(
+                "VIVE teleop supports hand_side='right' or 'bimanual'."
+            )
+
         self.vive_right_topic = str(vive_right_topic)
+        self.vive_left_topic = str(vive_left_topic)
         self.manus_topics = tuple(str(topic) for topic in manus_topics)
         self.max_age_s = float(max_age_s)
         if not np.isfinite(self.max_age_s) or self.max_age_s <= 0:
@@ -267,6 +277,9 @@ class ViveManusROSReceiver:
         self._vive_right = None
         self._vive_right_time = None
         self._vive_frame_id = None
+        self._vive_left = None
+        self._vive_left_time = None
+        self._vive_left_frame_id = None
         self._manus_frames = {"Left": None, "Right": None}
         self._manus_times = {"Left": None, "Right": None}
         self._manus_glove_ids = {"Left": None, "Right": None}
@@ -282,10 +295,19 @@ class ViveManusROSReceiver:
             self.node.create_subscription(
                 PoseStamped,
                 self.vive_right_topic,
-                self._vive_callback,
+                partial(self._vive_callback, side="Right"),
                 qos_profile_sensor_data,
             )
         ]
+        if self.hand_side == "bimanual":
+            self.subscriptions.append(
+                self.node.create_subscription(
+                    PoseStamped,
+                    self.vive_left_topic,
+                    partial(self._vive_callback, side="Left"),
+                    qos_profile_sensor_data,
+                )
+            )
         for topic in self.manus_topics:
             self.subscriptions.append(
                 self.node.create_subscription(
@@ -300,10 +322,14 @@ class ViveManusROSReceiver:
 
         self.spin_thread = Thread(target=self._spin, daemon=True)
         self.spin_thread.start()
+        wrist_topics = f"right wrist={self.vive_right_topic}"
+        if self.hand_side == "bimanual":
+            wrist_topics = (
+                f"left wrist={self.vive_left_topic}, {wrist_topics}"
+            )
         self.node.get_logger().info(
-            "VIVE/MANUS teleop: "
-            f"right wrist={self.vive_right_topic}, "
-            f"gloves={', '.join(self.manus_topics)}"
+            f"VIVE/MANUS teleop ({self.hand_side}): "
+            f"{wrist_topics}, gloves={', '.join(self.manus_topics)}"
         )
 
     def _spin(self):
@@ -314,19 +340,30 @@ class ViveManusROSReceiver:
                 self.node.get_logger().error(f"ROS 2 spin failed: {exc}")
                 self.error_event.set()
 
-    def _vive_callback(self, message):
+    def _vive_callback(self, message, side):
         try:
             transform = apply_vive_tracker_mount_rotation(
                 pose_to_matrix(message.pose)
             )
         except (AttributeError, TypeError, ValueError) as exc:
-            self.node.get_logger().warning(f"Ignoring invalid VIVE pose: {exc}")
+            self.node.get_logger().warning(
+                f"Ignoring invalid {side} VIVE pose: {exc}"
+            )
             return
 
         with self.lock:
-            self._vive_right = transform
-            self._vive_right_time = time.monotonic()
-            self._vive_frame_id = str(message.header.frame_id)
+            timestamp = time.monotonic()
+            frame_id = str(message.header.frame_id)
+            if side == "Right":
+                self._vive_right = transform
+                self._vive_right_time = timestamp
+                self._vive_frame_id = frame_id
+            elif side == "Left":
+                self._vive_left = transform
+                self._vive_left_time = timestamp
+                self._vive_left_frame_id = frame_id
+            else:
+                raise ValueError(f"Unsupported VIVE tracker side: {side}")
 
     def _manus_callback(self, message, source_topic):
         side = str(message.side).strip().lower().capitalize()
@@ -358,11 +395,13 @@ class ViveManusROSReceiver:
         now_monotonic = time.monotonic()
         now_wall = time.time()
         with self.lock:
-            timestamps = (
+            timestamps = [
                 self._vive_right_time,
                 self._manus_times["Right"],
                 self._manus_times["Left"],
-            )
+            ]
+            if self.hand_side == "bimanual":
+                timestamps.append(self._vive_left_time)
             ready = all(timestamp is not None for timestamp in timestamps)
             fresh = ready and all(
                 now_monotonic - timestamp <= self.max_age_s
@@ -372,6 +411,11 @@ class ViveManusROSReceiver:
                 return {"Left": None, "Right": None, "time": now_wall}
 
             vive_right = self._vive_right.copy()
+            vive_left = (
+                self._vive_left.copy()
+                if self.hand_side == "bimanual"
+                else None
+            )
             right_manus = _copy_frame(self._manus_frames["Right"])
             left_manus = _copy_frame(self._manus_frames["Left"])
             source_times = {
@@ -379,10 +423,17 @@ class ViveManusROSReceiver:
                 "manus_right": self._manus_times["Right"],
                 "manus_left": self._manus_times["Left"],
             }
+            if self.hand_side == "bimanual":
+                source_times["vive_left"] = self._vive_left_time
 
         right_frame = reparent_frame(right_manus, vive_right)
+        left_frame = (
+            reparent_frame(left_manus, vive_left)
+            if self.hand_side == "bimanual"
+            else left_manus
+        )
         result = {
-            "Left": left_manus,
+            "Left": left_frame,
             "Right": right_frame,
             "time": now_wall,
         }
@@ -391,11 +442,15 @@ class ViveManusROSReceiver:
             with self.lock:
                 if self.data is not None:
                     self.data["time"].append(now_wall)
-                    self.data["Left"].append(_copy_frame(left_manus))
+                    self.data["Left"].append(_copy_frame(left_frame))
                     self.data["Right"].append(_copy_frame(right_frame))
                     self.data["vive_right_time"].append(source_times["vive_right"])
                     self.data["manus_right_time"].append(source_times["manus_right"])
                     self.data["manus_left_time"].append(source_times["manus_left"])
+                    if self.hand_side == "bimanual":
+                        self.data["vive_left_time"].append(
+                            source_times["vive_left"]
+                        )
 
         return result
 
@@ -414,6 +469,8 @@ class ViveManusROSReceiver:
                 "manus_right_time": [],
                 "manus_left_time": [],
             }
+            if self.hand_side == "bimanual":
+                self.data["vive_left_time"] = []
             self.save_event.set()
 
     def stop(self):
@@ -422,13 +479,24 @@ class ViveManusROSReceiver:
             save_path = self.save_path
             data = self.data
             metadata = {
-                "mode": "vive_manus_unimanual_right",
+                "mode": (
+                    "vive_manus_bimanual"
+                    if self.hand_side == "bimanual"
+                    else "vive_manus_unimanual_right"
+                ),
                 "vive_right_topic": self.vive_right_topic,
                 "manus_topics": list(self.manus_topics),
                 "vive_frame_id": self._vive_frame_id,
                 "manus_glove_ids": self._manus_glove_ids.copy(),
                 "max_age_s": self.max_age_s,
             }
+            if self.hand_side == "bimanual":
+                metadata.update(
+                    {
+                        "vive_left_topic": self.vive_left_topic,
+                        "vive_left_frame_id": self._vive_left_frame_id,
+                    }
+                )
             self.save_path = None
             self.data = None
 
@@ -444,7 +512,14 @@ class ViveManusROSReceiver:
             os.path.join(save_path, "right.npy"),
             np.asarray(data["Right"], dtype=object),
         )
-        for name in ("vive_right_time", "manus_right_time", "manus_left_time"):
+        timestamp_names = [
+            "vive_right_time",
+            "manus_right_time",
+            "manus_left_time",
+        ]
+        if self.hand_side == "bimanual":
+            timestamp_names.append("vive_left_time")
+        for name in timestamp_names:
             np.save(os.path.join(save_path, f"{name}.npy"), np.asarray(data[name]))
         with open(os.path.join(save_path, "metadata.json"), "w") as stream:
             json.dump(metadata, stream, indent=2)

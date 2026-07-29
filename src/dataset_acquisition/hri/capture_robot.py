@@ -38,7 +38,7 @@ parser.add_argument('--arm', type=str, default="xarm",
                     help="Arm controller name. Use 'none' (or empty) to disable arm control.")
 parser.add_argument('--hand', type=str, default="inspire_f1",
                     help="Hand controller/retargetor name. Use 'wuji' for optimization, 'wuji_direct' for direct mapping, or 'wuji_hybrid' for opt thumb + direct fingers.")
-parser.add_argument('--capture_root', type=str, default="eccv2026/allegro_v5")
+parser.add_argument('--capture_root', type=str, default="eccv2026/robotiq_2f85")
 parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--tactile', action="store_true")
 parser.add_argument('--ip', action="store_true")

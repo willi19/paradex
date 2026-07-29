@@ -19,7 +19,9 @@ paradex/
 ## Quick Start
 
 ### Validation
-[To be added]
+
+- [Grasp sequence validation](docs/grasp_sequence_validation.md): synchronized
+  robot/hand mesh, parameter trajectory, object mesh, and object 6D trajectory.
 
 ### Calibration
 Required sequence: `intrinsic → extrinsic → handeye_calibration`  

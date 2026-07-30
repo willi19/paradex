@@ -23,10 +23,14 @@ DEVICE2WRIST = {
                         [1, 0, 0, 0],
                         [0, 0, 0, 1]]), # fix this to connector latter, This is where connector is from global wrist
     
-    "inspire":np.array([[1, 0 ,0 ,0],
-                        [0, 0, -1, 0.025],
-                        [0, 1, 0, 0],
-                        [0, 0, 0, 1]]),
+    # Hand is mounted reversed on this rig, so rotate it 180 deg about the wrist
+    # (arm) axis. Original (before flip):
+    #   [[1,0,0,0],[0,0,-1,0.025],[0,1,0,0],[0,0,0,1]]
+    # Left-multiplied by Rz(180) = diag(-1,-1,1) — flip about the wrist z (arm) axis.
+    "inspire":np.array([[-1, 0 , 0, 0],
+                        [ 0, 0, 1, -0.025],
+                        [ 0, 1, 0, 0],
+                        [ 0, 0, 0, 1]]),
     
     "xsens_left":np.array([[1, 0, 0, 0], 
                              [0, -1, 0, 0],

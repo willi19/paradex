@@ -1,8 +1,9 @@
 import argparse
 import numpy as np
 import os
-from paradex.utils.file_io import get_robot_urdf_path, rsc_path
-from paradex.geometry.coordinate import DEVICE2WRIST
+from paradex.robot.utils import get_robot_urdf_path
+from paradex.utils.path import rsc_path
+from paradex.transforms.coordinate import DEVICE2WRIST
 from scipy.spatial.transform import Rotation as R
 from paradex.robot import RobotWrapper
 from paradex.robot.urdf import generate_urdf

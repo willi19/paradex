@@ -191,12 +191,27 @@ class TimestampMonitor():
                 return
                 
     def run(self):
-        self.connect_camera()
-        
+        try:
+            self.connect_camera()
+        except Exception as e:
+            # A missing/misconfigured sync camera (e.g. "wrong subnet [-1015]") must not
+            # take down the whole capture — the timestamp feed is optional. Log it, flag
+            # it, and unblock anyone waiting on the connection event, then exit cleanly.
+            logger.error(f"TimestampMonitor '{self.name}': camera connect failed "
+                         f"({e}); continuing WITHOUT sync timestamps")
+            self.last_error = e
+            self.last_traceback = traceback.format_exc()
+            self.camera = None
+            self.event["error"].set()
+            self.event["connection"].set()
+            # stop() blocks on this; without it a later stop() would hang forever.
+            self.event["stop"].set()
+            return
+
         while not self.event["exit"].is_set(): # we should maintain the connection until exit
             if self.event["start"].is_set(): # Start data acquisition
                 self.continuous_acquire()
-                
+
             time.sleep(0.001)
-                    
+
         self.release()

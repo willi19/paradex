@@ -128,7 +128,9 @@ def serve_jobs(jobs: List[Job], process_fn: Callable, num_workers: int = 4,
 # --------------------------------------------------------------------------- #
 def run_distributed(worker_cmd: str, pc_list: Optional[List[str]] = None,
                     port: int = DEFAULT_PORT, log: bool = True,
-                    poll_interval: float = 1.0, timeout: Optional[float] = None) -> dict:
+                    poll_interval: float = 1.0, timeout: Optional[float] = None,
+                    web_port: Optional[int] = None, console: bool = True,
+                    linger: float = 0.0) -> dict:
     """Launch ``worker_cmd`` on every capture PC and aggregate status until done.
 
     Args:
@@ -139,6 +141,12 @@ def run_distributed(worker_cmd: str, pc_list: Optional[List[str]] = None,
         log:         write remote stdout to ``test.log`` on each PC (see run_script).
         poll_interval: dashboard refresh / poll seconds.
         timeout:     give up after this many seconds (None = wait indefinitely).
+        web_port:    also serve the browser dashboard here (see
+                     :mod:`paradex.process.web`); ``None`` = console only.
+        console:     print the console dashboard (turn off when using ``web_port``
+                     and you want a quiet terminal).
+        linger:      keep the web dashboard up this many seconds after all PCs
+                     finish, so you can read the final numbers.
 
     Returns the final aggregated ``{job_id_or_sentinel: item}`` mapping.
     """
@@ -148,13 +156,19 @@ def run_distributed(worker_cmd: str, pc_list: Optional[List[str]] = None,
     # Subscribe before workers start publishing (ZMQ PUB drops messages with no peer).
     time.sleep(0.3)
 
+    web = None
+    if web_port is not None:
+        from paradex.process.web import serve_progress
+        web = serve_progress(collector, pc_list, port=web_port, title=worker_cmd)
+
     run_script(worker_cmd, pc_list=pc_list, log=log)
 
     start = time.monotonic()
     try:
         while True:
             data = collector.get_data()
-            _print_dashboard(data, pc_list)
+            if console:
+                _print_dashboard(data, pc_list)
             if _all_finished(data, pc_list):
                 print("\n[paradex.process] all PCs finished.")
                 break
@@ -162,8 +176,17 @@ def run_distributed(worker_cmd: str, pc_list: Optional[List[str]] = None,
                 print("\n[paradex.process] timeout reached; stopping monitor.")
                 break
             time.sleep(poll_interval)
+        if web is not None and linger > 0:
+            print(f"[paradex.process] dashboard stays up {int(linger)}s "
+                  f"(http://localhost:{web_port}) — Ctrl-C to exit now.")
+            try:
+                time.sleep(linger)
+            except KeyboardInterrupt:
+                pass
         return collector.get_data()
     finally:
+        if web is not None:
+            web.stop()
         collector.end()
 
 

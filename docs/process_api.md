@@ -79,7 +79,7 @@ driven by the `paradex.process` batch framework — one `Job` per raw video.
 | Symbol | Location | Description |
 |--------|----------|-------------|
 | `discover()` / `process(job, ctx)` | `src/util/upload_video/worker.py` | Capture-PC worker: `discover()` returns one `Job` per local raw `.avi`; `process` calls `undistort_raw_video` **unchanged**, forwarding its `progress_dict` updates into `ctx.status(frame=, total=)` via a `_CtxProgress` adapter. Launched with `serve_jobs` (no `shard` — data is local per PC). |
-| `run_distributed(worker_cmd)` | `src/util/upload_video/main.py` | Main-PC orchestrator: SSH-launch the worker on every capture PC and print the shared `paradex.process` console dashboard (per-PC counts, per-video frame/ETA, rig ETA). |
+| `run_distributed(worker_cmd)` | `src/util/upload_video/main.py` | Main-PC orchestrator: SSH-launch the worker on every capture PC and show the shared `paradex.process` dashboard (per-PC counts, per-video frame/ETA, rig ETA) — console, and with `web_port=`/`--web` a browser page too. |
 
 The framework API itself (`Job`, `Ctx`, `serve_jobs`, `run_distributed`, `shard`) is
 documented under `agent_docs/process/`. The `DataPublisher`/`DataCollector` transport

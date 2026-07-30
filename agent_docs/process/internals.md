@@ -130,7 +130,18 @@ distributed layer only wires its `on_update` hook to ZMQ and reuses SSH launch.
   subscriber), then `run_script(worker_cmd, pc_list, log)` SSH-launches the worker on every PC.
   Polls `collector.get_data()` every `poll_interval`, prints `_print_dashboard`, returns the
   aggregated `{job_id_or_sentinel: item}` when `_all_finished` (every PC's sentinel `finished`) or
-  `timeout`. `collector.end()` in `finally`.
+  `timeout`. `collector.end()` in `finally`. `web_port=` additionally starts a
+  `ProgressWebServer` (below) on the same collector; `console=False` skips `_print_dashboard`;
+  `linger=` sleeps that long before tearing the web server down.
+- **`paradex/process/web.py`** — the browser view, stdlib only (`ThreadingHTTPServer`, daemon
+  thread, `log_message` silenced so it doesn't corrupt the console table). `build_snapshot(data,
+  pc_list)` reshapes a collector snapshot into `{pcs, jobs, summary}`: it splits sentinels from
+  jobs the same way `_print_dashboard` does, recomputes `elapsed` live via `_live_elapsed`
+  (a job's stamped `elapsed` freezes between publishes), sorts rows
+  processing→failed→pending→completed→skipped, and derives the same max-of-still-working rig ETA.
+  The page is an embedded string with `__TITLE__` substituted at serve time and polls
+  `/api/progress` every 1 s — deliberately **no** CDN tags (the old Flask monitor's socket.io CDN
+  script made the page blank on the offline rig) and **no** write endpoints.
 - **`_print_dashboard`** renders a **rig-wide ETA** (max of the still-working PCs' sentinel `eta`s —
   PCs run in parallel, so the slowest bounds the batch), a per-PC `flag {counts} of total [ETA …]`
   line, and **live per-job `fmt_job` lines** (frame-of-N + ETA) for whatever is currently
@@ -151,7 +162,8 @@ conda env on each PC (see `run_script`).
 from paradex.process.processor import Job, Ctx, Processor, run_jobs, Skip
 try:
     from paradex.process.distributed import serve_jobs, run_distributed, shard
-    __all__ = [... , "serve_jobs", "run_distributed", "shard"]
+    from paradex.process.web import serve_progress
+    __all__ = [... , "serve_jobs", "run_distributed", "shard", "serve_progress"]
 except Exception:          # zmq / pc config missing
     __all__ = ["Job", "Ctx", "Processor", "run_jobs", "Skip"]
 ```

@@ -105,6 +105,7 @@ flowchart TB
     subgraph Main["Main PC"]
       RD["run_distributed<br/>(paradex.process)"] --> COL["DataCollector<br/>(ZMQ 1234)"]
       RD --> DASH["console dashboard<br/>(per-PC counts + rig ETA)"]
+      RD --> WEB["web dashboard :8080<br/>(--web, paradex.process.web)"]
     end
     subgraph Cap["Capture PC (×6)"]
       W["worker.py<br/>serve_jobs(discover, process)"] --> URV["undistort_raw_video<br/>(per-video, worker Pool)"]
@@ -121,8 +122,12 @@ in `client.py` were removed).
 - **Main PC** (`src/util/upload_video/main.py`): calls
   `run_distributed("python src/util/upload_video/worker.py")` — SSH-launches the
   worker on every capture PC, aggregates their ZMQ status via a `DataCollector`, and
-  prints the shared `paradex.process` console dashboard (per-PC counts, per-video
-  frame progress, and a rig-wide ETA) until all PCs finish.
+  shows the shared `paradex.process` dashboard (per-PC counts, per-video frame
+  progress, and a rig-wide ETA) until all PCs finish. `--web` additionally serves
+  that same status as a browser page on `http://<main-pc>:8080` (`--web-port` to
+  move it, `--quiet` for web-only); it is stdlib `http.server` polling
+  `/api/progress` once a second, with no Flask and no CDN assets so it works on the
+  offline rig.
 - **Capture PC** (`src/util/upload_video/worker.py`): a `paradex.process` worker.
   `discover()` returns one `Job` per local raw `.avi`; `process(job, ctx)` calls
   `undistort_raw_video` **unchanged**, forwarding its per-frame `progress_dict`
@@ -184,7 +189,8 @@ safely re-run (idempotent skip / partial-file reprocess in §3).
 | `update_progress` | `paradex/video/raw_video_processor.py` | Safe read-modify-write of a `Manager.dict` entry. |
 | `util.py` converters | `paradex/video/util.py` | Standalone CPU `libx264` encode/convert helpers (off the main path). |
 | `worker.py` (`discover`/`process`) | `src/util/upload_video/worker.py` | Capture-PC `paradex.process` worker: one Job per raw video; reuses `undistort_raw_video` via a `_CtxProgress` adapter, no `shard`. |
-| `main.py` (`run_distributed`) | `src/util/upload_video/main.py` | Main-PC orchestrator: SSH-launch workers, aggregate ZMQ status, print the shared console dashboard. |
+| `main.py` (`run_distributed`) | `src/util/upload_video/main.py` | Main-PC orchestrator: SSH-launch workers, aggregate ZMQ status, show the shared console and/or web dashboard (`--web`). |
+| `build_snapshot` / `ProgressWebServer` | `paradex/process/web.py` | Reshape the collector snapshot into JSON and serve the browser dashboard (`/`, `/api/progress`). |
 
 ---
 
@@ -199,6 +205,7 @@ safely re-run (idempotent skip / partial-file reprocess in §3).
 | NAS upload | `paradex/utils/upload_file.py` (`rsync_copy`) |
 | ZMQ transport | `paradex/io/capture_pc/data_sender.py` (`DataPublisher` / `DataCollector`) |
 | Distributed framework | `paradex/process/` (`run_distributed`, `serve_jobs`) |
+| Web dashboard | `paradex/process/web.py` (`serve_progress`, `build_snapshot`) |
 | Main-PC orchestrator | `src/util/upload_video/main.py` |
 | Capture-PC worker | `src/util/upload_video/worker.py` |
 | Single-PC entry (retained `RawVideoProcessor`) | `src/validate/upload_raw_video/upload_local.py` |

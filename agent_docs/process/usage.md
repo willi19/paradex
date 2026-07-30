@@ -112,12 +112,19 @@ serve_jobs(shard(discover()), process, num_workers=4)   # pattern A: shard share
 # main.py, runs on the MAIN PC:
 from paradex.process import run_distributed
 run_distributed("python src/process/template/worker.py")   # SSH-launches workers, live dashboard
+run_distributed("python .../worker.py", web_port=8080)     # + browser dashboard, console=False to quiet it
 ```
 
 `serve_jobs` is a drop-in for `run_jobs` that also publishes live status to the main PC over ZMQ.
 `run_distributed` SSH-launches `worker_cmd` on every capture PC (`pc_list=` to subset, `timeout=`
 to bound), aggregates a dashboard, and returns when every PC reports finished. Push the latest
 code to workers first (`from paradex.io.capture_pc.ssh import git_pull; git_pull("branch")`).
+
+**Browser dashboard** — `web_port=N` also serves the same aggregated status at
+`http://<main-pc>:N` (`paradex.process.web`, stdlib `http.server` + a 1 s poll of
+`/api/progress`; no Flask, no CDN assets, so it works offline). `console=False` silences the
+terminal table; `linger=SECONDS` keeps the page up after all PCs finish. Standalone (you own the
+collector): `serve_progress(collector, pc_list, port=8080)` → `.stop()`.
 
 ## Monitoring
 

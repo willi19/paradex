@@ -41,7 +41,8 @@ from paradex.process.processor import Job, Ctx, Processor, run_jobs, Skip
 # so single-machine use never fails if those aren't available.
 try:
     from paradex.process.distributed import serve_jobs, run_distributed, shard
+    from paradex.process.web import serve_progress
     __all__ = ["Job", "Ctx", "Processor", "run_jobs", "Skip",
-               "serve_jobs", "run_distributed", "shard"]
+               "serve_jobs", "run_distributed", "shard", "serve_progress"]
 except Exception:  # pragma: no cover - zmq / pc config missing
     __all__ = ["Job", "Ctx", "Processor", "run_jobs", "Skip"]

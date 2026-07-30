@@ -137,7 +137,7 @@ Every `src/<app>/` leaf dir has a `CLAUDE.md` (orientation for you) + `README.md
 | Make charuco boards | [`src/util/marker/`](src/util/marker/CLAUDE.md) | Printable A4 PDFs. |
 | Register an object's markers | [`src/util/register_object/`](src/util/register_object/CLAUDE.md) | Produces `marker_offset` table for 6D pose. |
 | Merge/replay/visualize a robot URDF | [`src/util/robot/`](src/util/robot/CLAUDE.md) | URDF merge, Viser replay. |
-| Upload/undistort raw video | [`src/util/upload_video/`](src/util/upload_video/CLAUDE.md) | Distributed; dashboard on main PC. |
+| Upload/undistort raw video | [`src/util/upload_video/`](src/util/upload_video/CLAUDE.md) | Distributed; console dashboard on main PC, `--web` for the browser page (:8080). |
 
 Full application index: [`src/README.md`](src/README.md) / [`src/CLAUDE.md`](src/CLAUDE.md).
 Generated API reference (Sphinx): [`docs/index.html`](docs/index.html). Project landing page: [`index.html`](index.html).

@@ -55,8 +55,10 @@ if __name__ == "__main__":
     rcc = remote_camera_controller("handeye_calibration")
     save_current_camparam(os.path.join(root_dir, "0"))
     traj_dir = get_handeye_calib_traj(args.arm)
+    # Waypoints are the numbered `<n>_qpos.npy`; special poses (via_/home_) share the
+    # dir but aren't part of the trajectory and don't start with a digit.
     file_list = [file_name for file_name in os.listdir(traj_dir)
-                 if "_qpos" in file_name and not file_name.startswith("via")]
+                 if "_qpos" in file_name and file_name.split("_")[0].isdigit()]
     file_list.sort(key=lambda x: int(x.split("_")[0]))
 
     # A big joint jump between waypoints is swept through blindly — a wrist flip can

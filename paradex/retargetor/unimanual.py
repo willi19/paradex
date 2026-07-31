@@ -16,6 +16,7 @@ from paradex.retargetor.hand_regargetor import (
 
 _HAND_RETARGETORS = {
     "inspire": inspire,
+    "inspire_dftp": inspire,
     "allegro": allegro,
     "inspire_f1": inspire_f1,
     "kistar": kistar,
@@ -35,6 +36,8 @@ def _resolve_hand(name, is_right=True, scale=1.0):
     fn = _HAND_RETARGETORS[name]
     if name in ("wuji", "wuji_direct", "wuji_hybrid"):
         return partial(fn, is_right=is_right, scale=scale)
+    if name in ("inspire", "inspire_dftp"):
+        return partial(fn, is_right=is_right)
     if name == "inspire_f1":
         return partial(fn, is_right=is_right)
     return fn
@@ -143,15 +146,55 @@ class Retargetor(): # Input is only from Xsens
 
             rt_left = self.hand_retargetor.get("Left")
             rt_right = self.hand_retargetor.get("Right")
-            hand_action_left = rt_left(data["Left"]) if rt_left is not None else None
-            hand_action_right = rt_right(data["Right"]) if rt_right is not None else None
+            ergonomics = data.get("ergonomics", {})
+            left_name = self.hand_name_left or self.hand_name
+            right_name = self.hand_name_right or self.hand_name
+            left_kwargs = (
+                {"ergonomics": ergonomics.get("Left")}
+                if left_name in ("inspire", "inspire_dftp")
+                else {}
+            )
+            right_kwargs = (
+                {"ergonomics": ergonomics.get("Right")}
+                if right_name in ("inspire", "inspire_dftp")
+                else {}
+            )
+            hand_action_left = (
+                rt_left(data["Left"], **left_kwargs)
+                if rt_left is not None
+                else None
+            )
+            hand_action_right = (
+                rt_right(data["Right"], **right_kwargs)
+                if rt_right is not None
+                else None
+            )
+
+            if (
+                left_name in ("inspire", "inspire_dftp")
+                and hand_action_left[5] >= 600.0
+            ):
+                hand_action_left[4] = 1000.0
+            if (
+                right_name in ("inspire", "inspire_dftp")
+                and hand_action_right[5] >= 600.0
+            ):
+                hand_action_right[4] = 1000.0
 
             return arm_action_left, arm_action_right, hand_action_left, hand_action_right
         else:
             arm_action = self._compute_wrist_pose(self.hand_side, data)
 
             if self.hand_retargetor is not None:
-                hand_action = self.hand_retargetor(data[self.hand_side])
+                kwargs = {}
+                if self.hand_name in ("inspire", "inspire_dftp"):
+                    kwargs["ergonomics"] = data.get("ergonomics", {}).get(
+                        self.hand_side
+                    )
+                hand_action = self.hand_retargetor(
+                    data[self.hand_side],
+                    **kwargs,
+                )
             else:
                 hand_action = None
 

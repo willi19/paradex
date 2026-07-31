@@ -535,7 +535,89 @@ def allegro(hand_pose_frame):
 
     return allegro_angles
 
-def inspire(hand_pose_frame):
+_INSPIRE_FINGER_ANGLE_RANGE_DEG = 176.7 - 19.0
+_INSPIRE_THUMB_BEND_RANGE_DEG = 53.6 - (-13.0)
+_INSPIRE_THUMB_ROTATE_RANGE_DEG = 165.0 - 90.0
+_INSPIRE_THUMB_EXTRA_BEND_GAIN = 3.0
+_INSPIRE_THUMB_EXTRA_BEND_COMMAND = -500.0
+_INSPIRE_THUMB_SECONDARY_GAIN = 0.8
+
+
+def _open_to_closed_command(flexion_deg, range_deg):
+    normalized = np.clip(float(flexion_deg) / float(range_deg), 0.0, 1.0)
+    return (1.0 - normalized) * 1000.0
+
+
+def inspire_from_manus_ergonomics(ergonomics):
+    """Map MANUS ergonomic angles to RH56 ANGLE_SET register order."""
+    required = []
+    for finger in ("Pinky", "Ring", "Middle", "Index"):
+        required.extend(
+            (
+                f"{finger}MCPStretch",
+                f"{finger}PIPStretch",
+                f"{finger}DIPStretch",
+            )
+        )
+    required.extend(("ThumbMCPStretch", "ThumbMCPSpread"))
+    missing = [name for name in required if name not in ergonomics]
+    if missing:
+        raise ValueError(
+            "MANUS ergonomics is missing Inspire inputs: "
+            + ", ".join(missing)
+        )
+
+    command = np.zeros(6, dtype=np.float64)
+    for index, finger in enumerate(("Pinky", "Ring", "Middle", "Index")):
+        flexion = sum(
+            float(ergonomics[f"{finger}{joint}Stretch"])
+            for joint in ("MCP", "PIP", "DIP")
+        )
+        command[index] = _open_to_closed_command(
+            flexion,
+            _INSPIRE_FINGER_ANGLE_RANGE_DEG,
+        )
+
+    command[4] = np.clip(
+        (
+            np.clip(
+                float(ergonomics["ThumbMCPSpread"])
+                / _INSPIRE_THUMB_ROTATE_RANGE_DEG,
+                0.0,
+                1.0,
+            )
+            * 1000.0
+            * _INSPIRE_THUMB_EXTRA_BEND_GAIN
+        )
+        + _INSPIRE_THUMB_EXTRA_BEND_COMMAND,
+        0.0,
+        1000.0,
+    )
+    command[5] = np.clip(
+        (
+            (
+                1000.0
+                - _open_to_closed_command(
+                    ergonomics["ThumbMCPStretch"],
+                    _INSPIRE_THUMB_BEND_RANGE_DEG,
+                )
+            )
+            * _INSPIRE_THUMB_SECONDARY_GAIN
+        ),
+        0.0,
+        1000.0,
+    )
+    return command
+
+
+def inspire(
+    hand_pose_frame,
+    is_right=True,
+    ergonomics=None,
+):
+    if ergonomics is not None:
+        return inspire_from_manus_ergonomics(ergonomics)
+
     inspire_angles = np.zeros(6)
 
     for i, finger_name in enumerate(["thumb", "index", "middle", "ring", "pinky"]):
@@ -558,13 +640,18 @@ def inspire(hand_pose_frame):
             tip_direction  = tip_direction / np.linalg.norm(tip_direction)
             tip_direction[1] *= -1
             tip_direction[2] *= -1
-            if tip_direction[0] > 0:
+            thumb_forward = (
+                tip_direction[0] > 0
+                if is_right
+                else tip_direction[0] < 0
+            )
+            if thumb_forward:
                 inspire_angles[5] = 1000 - np.arctan(-tip_direction[2] / abs(tip_direction[0])) / np.pi * 2000
                 inspire_angles[4] = np.arccos(-tip_direction[1]) * 2000 - 1000 # no divide by pi for better range
             else:
                 inspire_angles[5] = 0
-                inspire_angles[4] = np.arcsin(-tip_direction[2]) / np.pi * 2000  * 3.8 - 1000
-    # print(inspire_angles)
+                thumb_scale = 3.8 if is_right else 3.5
+                inspire_angles[4] = np.arcsin(-tip_direction[2]) / np.pi * 2000 * thumb_scale - 1000
     return inspire_angles
 
 def inspire_f1_deprecated(hand_pose_frame):

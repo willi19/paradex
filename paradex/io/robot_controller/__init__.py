@@ -16,11 +16,25 @@ def get_arm(arm_name, **kwargs):
         from .openarm_state_receiver import OpenArmStateReceiver
         return OpenArmStateReceiver()
 
-def get_hand(hand_name, tactile = False, ip = False, hand_side="right"):
-    if hand_name == "inspire":
+def get_hand(
+    hand_name,
+    tactile=False,
+    ip=False,
+    hand_side="right",
+    interface=None,
+    host=None,
+):
+    if hand_name in ("inspire", "inspire_dftp"):
         if ip:
             from .deprecated.inspire_controller_ip import InspireControllerIP
-            return InspireControllerIP(**network_info["inspire_ip"]["param"], tactile=tactile)
+            params = dict(network_info["inspire_ip"]["param"])
+            if host is not None:
+                params["ip"] = host
+            return InspireControllerIP(
+                **params,
+                tactile=tactile,
+                interface=interface,
+            )
         else:
             from .inspire_controller import InspireController
             return InspireController(**network_info["inspire_usb"]["param"], tactile=tactile)

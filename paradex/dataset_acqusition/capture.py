@@ -105,7 +105,9 @@ class CaptureSession():
         events=None,
         realsense=False,
         arm_kwargs=None,
+        hand_kwargs=None,
         camera_pc_list=None,
+        timestamp=True,
         hand_scale=1.0,
         human_tactile=False,
         human_tactile_port="/dev/ttyUSB0",
@@ -137,10 +139,11 @@ class CaptureSession():
         if camera:
             self.camera = remote_camera_controller(name="dataset_acquisition", pc_list=camera_pc_list)
             self.sync_generator = UTGE900(**network_info["signal_generator"]["param"])
-            # if arm is not None or hand is not None:
-            self.timestamp_monitor = TimestampMonitor(**network_info["timestamp"]["param"])
-            # else:
-            #     self.timestamp_monitor = None
+            self.timestamp_monitor = (
+                TimestampMonitor(**network_info["timestamp"]["param"])
+                if timestamp
+                else None
+            )
         else:
             self.camera = None
             self.timestamp_monitor = None
@@ -186,16 +189,42 @@ class CaptureSession():
         self.hand_name = None
         self.hand_name_left = None
         self.hand_name_right = None
+        hand_kwargs = {} if hand_kwargs is None else dict(hand_kwargs)
 
         if self.hand_side == "Bimanual":
             left_name = hand_left if hand_left is not None else hand
             right_name = hand_right if hand_right is not None else hand
+            shared_hand_kwargs = {
+                key: value
+                for key, value in hand_kwargs.items()
+                if key not in ("left", "right")
+            }
+            left_hand_kwargs = {
+                **shared_hand_kwargs,
+                **hand_kwargs.get("left", {}),
+            }
+            right_hand_kwargs = {
+                **shared_hand_kwargs,
+                **hand_kwargs.get("right", {}),
+            }
             if left_name is not None:
                 self.hand_name_left = left_name
-                self.hand_left = get_hand(hand_name=left_name, tactile=tactile, ip=ip, hand_side="left")
+                self.hand_left = get_hand(
+                    hand_name=left_name,
+                    tactile=tactile,
+                    ip=ip,
+                    hand_side="left",
+                    **left_hand_kwargs,
+                )
             if right_name is not None:
                 self.hand_name_right = right_name
-                self.hand_right = get_hand(hand_name=right_name, tactile=tactile, ip=ip, hand_side="right")
+                self.hand_right = get_hand(
+                    hand_name=right_name,
+                    tactile=tactile,
+                    ip=ip,
+                    hand_side="right",
+                    **right_hand_kwargs,
+                )
         else:
             if hand is not None:
                 self.hand_name = hand
@@ -204,6 +233,7 @@ class CaptureSession():
                     tactile=tactile,
                     ip=ip,
                     hand_side=self.hand_side.lower(),
+                    **hand_kwargs,
                 )
 
         

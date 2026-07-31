@@ -95,6 +95,12 @@ class CameraLoader:
         for camera in self.cameralist:
             status_list.append(camera.get_status())
         return status_list
+
+    def get_frame(self, serial):
+        for camera in self.cameralist:
+            if camera.name == str(serial):
+                return camera.get_frame()
+        return None
     
     def get_all_errors(self):
         """모든 카메라의 에러 정보 반환"""

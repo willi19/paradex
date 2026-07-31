@@ -107,7 +107,7 @@ class Camera():
         self.write_flag = np.ndarray(
             (1,), dtype=np.uint8, buffer=self.write_flag_shm.buf
         )
-        self.write_flag[0] = 0
+        self.clear_shared_memory()
     
     def release_shared_memory(self):
         self.image_array_a = None
@@ -363,6 +363,25 @@ class Camera():
 
     def get_frame_id(self):
         return self.last_frame_id
+
+    def get_frame(self):
+        """Return the newest streamed frame as a JPEG for the daemon HTTP API."""
+        if getattr(self, "mode", None) not in ["stream", "full"]:
+            return None
+
+        if self.write_flag[0] == 0:
+            image = self.image_array_b.copy()
+            frame_id = int(self.fid_array_b[0])
+        else:
+            image = self.image_array_a.copy()
+            frame_id = int(self.fid_array_a[0])
+
+        if frame_id <= 0:
+            return None
+        success, encoded = cv2.imencode(".jpg", image)
+        if not success:
+            raise RuntimeError(f"Could not encode frame from camera {self.name}")
+        return frame_id, encoded.tobytes()
 
     def get_status(self):
         return {

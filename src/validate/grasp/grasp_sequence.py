@@ -6,8 +6,8 @@ Examples:
     python src/validate/grasp/grasp_sequence.py apple 0 human --pretty
     python src/validate/grasp/grasp_sequence.py apple 0 inspire --pretty
 
-The command intentionally has no output-file option.  It reads the source
-dataset and writes only to stdout.
+The command reads source data without modifying it and prints the JSON report
+to stdout. Frame projection is currently excluded from validation.
 """
 
 from __future__ import annotations
@@ -53,63 +53,46 @@ def build_parser() -> argparse.ArgumentParser:
         help="hand/capture type (allegro_v5 and inspire_dftp are aliases)",
     )
     parser.add_argument(
-        "--max-frames",
-        type=int,
-        default=120,
-        help="maximum number of uniformly sampled frames per validation",
-    )
-    parser.add_argument(
-        "--contact-distance",
-        type=float,
-        default=0.01,
-        metavar="METERS",
-        help="maximum fingertip-to-object distance counted as contact",
-    )
-    parser.add_argument(
-        "--min-contact-fingers",
-        type=int,
-        default=2,
-        help="minimum simultaneous fingertip contacts during grasp",
-    )
-    parser.add_argument(
-        "--min-grasp-frames",
-        type=int,
-        default=10,
-        help="minimum original-frame span of the inferred grasp phase",
-    )
-    parser.add_argument(
-        "--min-object-motion",
-        type=float,
-        default=0.01,
-        metavar="METERS",
-        help="minimum object displacement during the grasp phase",
-    )
-    parser.add_argument(
-        "--min-contact-loss-samples",
-        type=int,
-        default=2,
-        help="consecutive sampled no-contact frames required to classify loss",
-    )
-    parser.add_argument(
-        "--gravity-min-observation",
-        type=float,
-        default=0.1,
-        metavar="SECONDS",
-        help="minimum post-contact-loss duration needed for a gravity verdict",
-    )
-    parser.add_argument(
-        "--gravity-min-displacement",
-        type=float,
-        default=0.005,
-        metavar="METERS",
-        help="minimum post-loss displacement along gravity accepted as falling",
-    )
-    parser.add_argument(
-        "--gravity-min-velocity-change",
+        "--max-pregrasp-translation",
         type=float,
         default=0.05,
-        metavar="M/S",
-        help="minimum increase in gravity-axis velocity accepted as falling",
+        metavar="METERS",
+        help="maximum object translation before persistent grasp onset",
+    )
+    parser.add_argument(
+        "--max-pregrasp-rotation",
+        type=float,
+        default=120.0,
+        metavar="DEGREES",
+        help="maximum object rotation before persistent grasp onset",
+    )
+    parser.add_argument(
+        "--pregrasp-grace-frames",
+        type=int,
+        default=15,
+        metavar="FRAMES",
+        help="frames immediately before grasp onset excluded from this check",
+    )
+    parser.add_argument(
+        "--max-object-position-jump",
+        type=float,
+        default=0.1,
+        metavar="METERS",
+        help="absolute frame-to-frame translation jump limit",
+    )
+    parser.add_argument(
+        "--object-jump-local-factor",
+        type=float,
+        default=8.0,
+        metavar="FACTOR",
+        help="required jump ratio over neighboring frame displacement",
+    )
+    parser.add_argument(
+        "--object-jump-window",
+        type=int,
+        default=5,
+        metavar="FRAMES",
+        help="neighboring displacement window on each side of a jump",
     )
     parser.add_argument(
         "--pretty", action="store_true", help="indent the stdout JSON report"
@@ -126,12 +109,6 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_CAPTURE_ROOT,
         help=argparse.SUPPRESS,
     )
-    parser.add_argument(
-        "--robot-urdf",
-        type=Path,
-        default=None,
-        help=argparse.SUPPRESS,
-    )
     return parser
 
 
@@ -139,17 +116,12 @@ def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     try:
         thresholds = ValidationThresholds(
-            max_frames=args.max_frames,
-            contact_distance_m=args.contact_distance,
-            min_contact_fingers=args.min_contact_fingers,
-            min_grasp_frames=args.min_grasp_frames,
-            min_contact_loss_samples=args.min_contact_loss_samples,
-            min_object_motion_m=args.min_object_motion,
-            min_gravity_observation_s=args.gravity_min_observation,
-            min_gravity_displacement_m=args.gravity_min_displacement,
-            min_gravity_velocity_change_m_s=(
-                args.gravity_min_velocity_change
-            ),
+            max_pregrasp_translation_m=args.max_pregrasp_translation,
+            max_pregrasp_rotation_deg=args.max_pregrasp_rotation,
+            pregrasp_grace_frames=args.pregrasp_grace_frames,
+            max_object_position_jump_m=args.max_object_position_jump,
+            object_jump_local_factor=args.object_jump_local_factor,
+            object_jump_window_frames=args.object_jump_window,
         )
         report = validate_dataset_episode(
             args.object,
@@ -158,7 +130,6 @@ def main(argv: list[str] | None = None) -> int:
             thresholds=thresholds,
             mesh_root=args.mesh_root,
             capture_root=args.capture_root,
-            robot_urdf=args.robot_urdf,
         )
     except (FileNotFoundError, DatasetFormatError, ValueError) as exc:
         print(

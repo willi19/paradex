@@ -10,6 +10,8 @@ from paradex.io.camera_system.camera_daemon_reader import (
     CameraDaemonReaderError,
     MultiCameraDaemonReader,
 )
+from paradex.io.camera_system.camera import Camera
+from paradex.io.camera_system.camera_loader import CameraLoader
 
 
 class FakeResponse:
@@ -85,6 +87,29 @@ class CameraDaemonReaderTests(unittest.TestCase):
 
         self.assertEqual(frames["cam-a"][1], 3)
         self.assertEqual(frames["cam-b"][1], 5)
+
+    def test_pyspin_loader_exposes_latest_stream_frame_as_jpeg(self):
+        camera = Camera.__new__(Camera)
+        camera.name = "cam-a"
+        camera.mode = "stream"
+        camera.write_flag = np.array([1], dtype=np.uint8)
+        camera.image_array_a = np.full((6, 8, 3), 127, dtype=np.uint8)
+        camera.image_array_b = np.zeros((6, 8, 3), dtype=np.uint8)
+        camera.fid_array_a = np.array([42], dtype=np.int64)
+        camera.fid_array_b = np.array([41], dtype=np.int64)
+
+        loader = CameraLoader.__new__(CameraLoader)
+        loader.cameralist = [camera]
+
+        frame_id, jpeg = loader.get_frame("cam-a")
+        decoded = cv2.imdecode(np.frombuffer(jpeg, dtype=np.uint8), cv2.IMREAD_COLOR)
+
+        self.assertEqual(frame_id, 42)
+        self.assertEqual(decoded.shape, (6, 8, 3))
+        self.assertIsNone(loader.get_frame("missing"))
+
+        camera.fid_array_a[0] = 0
+        self.assertIsNone(loader.get_frame("cam-a"))
 
 
 if __name__ == "__main__":

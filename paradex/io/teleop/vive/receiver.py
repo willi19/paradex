@@ -201,6 +201,17 @@ def manus_message_to_frame(message):
     return frame
 
 
+def manus_ergonomics_to_dict(ergonomics):
+    """Copy finite MANUS ergonomics angles into a name-to-degrees mapping."""
+    values = {}
+    for item in ergonomics:
+        name = str(item.type)
+        value = float(item.value)
+        if np.isfinite(value):
+            values[name] = value
+    return values
+
+
 def reparent_frame(frame, wrist):
     """Place MANUS wrist-relative finger transforms under a VIVE wrist."""
     source_wrist_inv = np.linalg.inv(frame["wrist"])
@@ -281,6 +292,7 @@ class ViveManusROSReceiver:
         self._vive_left_time = None
         self._vive_left_frame_id = None
         self._manus_frames = {"Left": None, "Right": None}
+        self._manus_ergonomics = {"Left": None, "Right": None}
         self._manus_times = {"Left": None, "Right": None}
         self._manus_glove_ids = {"Left": None, "Right": None}
         self._pause_state = None
@@ -384,6 +396,9 @@ class ViveManusROSReceiver:
 
         with self.lock:
             self._manus_frames[side] = frame
+            self._manus_ergonomics[side] = manus_ergonomics_to_dict(
+                message.ergonomics
+            )
             self._manus_times[side] = time.monotonic()
             self._manus_glove_ids[side] = int(message.glove_id)
             if side == "Left":
@@ -418,6 +433,10 @@ class ViveManusROSReceiver:
             )
             right_manus = _copy_frame(self._manus_frames["Right"])
             left_manus = _copy_frame(self._manus_frames["Left"])
+            ergonomics = {
+                side: self._manus_ergonomics[side].copy()
+                for side in ("Left", "Right")
+            }
             source_times = {
                 "vive_right": self._vive_right_time,
                 "manus_right": self._manus_times["Right"],
@@ -435,6 +454,7 @@ class ViveManusROSReceiver:
         result = {
             "Left": left_frame,
             "Right": right_frame,
+            "ergonomics": ergonomics,
             "time": now_wall,
         }
 

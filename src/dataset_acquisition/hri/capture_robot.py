@@ -34,6 +34,13 @@ camera_group.add_argument(
     help='Disable remote cameras, sync generator, and timestamp monitor.',
 )
 parser.set_defaults(camera=True)
+parser.add_argument(
+    '--no-timestamp',
+    dest='timestamp',
+    action='store_false',
+    help='Disable the timestamp monitor connection.',
+)
+parser.set_defaults(timestamp=True)
 parser.add_argument('--arm', type=str, default="xarm",
                     help="Arm controller name. Use 'none' (or empty) to disable arm control.")
 parser.add_argument('--hand', type=str, default="inspire_f1",
@@ -42,6 +49,26 @@ parser.add_argument('--capture_root', type=str, default="eccv2026/allegro_v5")
 parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--tactile', action="store_true")
 parser.add_argument('--ip', action="store_true")
+parser.add_argument(
+    '--inspire-right-interface',
+    default='enp8s0f1',
+    help='Network interface for the right Inspire Modbus TCP hand.',
+)
+parser.add_argument(
+    '--inspire-right-ip',
+    default='192.168.11.211',
+    help='IP address for the right Inspire Modbus TCP hand.',
+)
+parser.add_argument(
+    '--inspire-left-interface',
+    default='enp8s0f2',
+    help='Network interface for the left Inspire Modbus TCP hand.',
+)
+parser.add_argument(
+    '--inspire-left-ip',
+    default='192.168.11.210',
+    help='IP address for the left Inspire Modbus TCP hand.',
+)
 parser.add_argument('--visualize-tactile-realtime', action="store_true")
 parser.add_argument('--xarm-servo-api', choices=["cartesian_aa", "angle_j"], default="cartesian_aa")
 parser.add_argument(
@@ -104,6 +131,28 @@ pedal_state = MiddlePedalState() if args.hand_side == "bimanual" else None
 if pedal_state is not None:
     atexit.register(pedal_state.close)
 
+inspire_bimanual = (
+    args.hand in ("inspire", "inspire_dftp")
+    and args.hand_side == "bimanual"
+)
+hand_kwargs = None
+if inspire_bimanual:
+    hand_kwargs = {
+        "right": {
+            "interface": args.inspire_right_interface,
+            "host": args.inspire_right_ip,
+        },
+        "left": {
+            "interface": args.inspire_left_interface,
+            "host": args.inspire_left_ip,
+        },
+    }
+    print(
+        "Bimanual Inspire Modbus TCP: "
+        f"right={args.inspire_right_ip} via {args.inspire_right_interface}, "
+        f"left={args.inspire_left_ip} via {args.inspire_left_interface}"
+    )
+
 try:
     cs = CaptureSession(
         camera=args.camera,
@@ -114,7 +163,9 @@ try:
         hand_side=args.hand_side,
         events=events,
         tactile=args.tactile,
-        ip=args.ip,
+        ip=args.ip or inspire_bimanual,
+        hand_kwargs=hand_kwargs,
+        timestamp=args.timestamp,
         camera_pc_list=camera_pc_list,
         arm_kwargs={"servo_api": args.xarm_servo_api} if args.arm == "xarm" else None,
         hand_scale=args.hand_scale,

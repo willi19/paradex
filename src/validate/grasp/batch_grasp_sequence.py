@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Validate every grasp episode for the supported ECCV 2026 hand sources.
 
-The source dataset is read-only.  A single JSON result is written atomically to
-an explicitly selected path outside the mesh and capture roots.
+The source dataset is read-only. A single JSON result is written atomically to
+an explicitly selected path outside the mesh and capture roots. Frame
+projection is excluded, so no image output is produced.
 """
 
 from __future__ import annotations
@@ -210,15 +211,17 @@ def _summary(
     total_jobs: int,
     source_hands: Iterable[str],
 ) -> dict[str, Any]:
-    def contact_loss_count(
+    def issue_count(
         selected_results: Iterable[dict[str, Any]],
-        kind: str,
+        code: str,
     ) -> int:
-        count = 0
-        for result in selected_results:
-            event = result.get("report", {}).get("contact_loss_event") or {}
-            count += event.get("kind") == kind
-        return count
+        return sum(
+            any(
+                issue.get("code") == code
+                for issue in result.get("report", {}).get("issues", [])
+            )
+            for result in selected_results
+        )
 
     by_hand: dict[str, dict[str, int]] = {}
     for source in source_hands:
@@ -230,14 +233,29 @@ def _summary(
             "valid": sum(item["status"] == "valid" for item in source_results),
             "invalid": sum(item["status"] == "invalid" for item in source_results),
             "error": sum(item["status"] == "error" for item in source_results),
-            "tracking_error": contact_loss_count(
-                source_results, "tracking_error"
+            "gravity_or_floor_mismatch": (
+                issue_count(
+                    source_results,
+                    "OBJECT_POST_CONTACT_GRAVITY_INCONSISTENT",
+                )
+                + issue_count(
+                    source_results,
+                    "OBJECT_DID_NOT_REACH_INFERRED_FLOOR",
+                )
             ),
-            "normal_post_loss_motion": contact_loss_count(
-                source_results, "normal_motion"
+            "object_position_jump": issue_count(
+                source_results, "OBJECT_POSITION_JUMP"
             ),
-            "insufficient_post_loss_observation": contact_loss_count(
-                source_results, "insufficient_observation"
+            "excessive_pregrasp_motion": sum(
+                any(
+                    issue.get("code")
+                    in {
+                        "OBJECT_PRE_GRASP_TRANSLATION_EXCESSIVE",
+                        "OBJECT_PRE_GRASP_ROTATION_EXCESSIVE",
+                    }
+                    for issue in result.get("report", {}).get("issues", [])
+                )
+                for result in source_results
             ),
         }
     return {
@@ -247,12 +265,29 @@ def _summary(
         "valid": sum(item["status"] == "valid" for item in results),
         "invalid": sum(item["status"] == "invalid" for item in results),
         "error": sum(item["status"] == "error" for item in results),
-        "tracking_error": contact_loss_count(results, "tracking_error"),
-        "normal_post_loss_motion": contact_loss_count(
-            results, "normal_motion"
+        "gravity_or_floor_mismatch": (
+            issue_count(
+                results,
+                "OBJECT_POST_CONTACT_GRAVITY_INCONSISTENT",
+            )
+            + issue_count(
+                results,
+                "OBJECT_DID_NOT_REACH_INFERRED_FLOOR",
+            )
         ),
-        "insufficient_post_loss_observation": contact_loss_count(
-            results, "insufficient_observation"
+        "object_position_jump": issue_count(
+            results, "OBJECT_POSITION_JUMP"
+        ),
+        "excessive_pregrasp_motion": sum(
+            any(
+                issue.get("code")
+                in {
+                    "OBJECT_PRE_GRASP_TRANSLATION_EXCESSIVE",
+                    "OBJECT_PRE_GRASP_ROTATION_EXCESSIVE",
+                }
+                for issue in result.get("report", {}).get("issues", [])
+            )
+            for result in results
         ),
         "by_hand": by_hand,
     }
@@ -278,22 +313,72 @@ def _build_payload(
         ),
     )
     return {
-        "schema_version": 6,
+        "schema_version": 19,
         "complete": complete,
         "started_at_utc": started_at,
         "updated_at_utc": datetime.now(timezone.utc).isoformat(),
         "source_data_policy": "read-only",
-        "assumptions": {
-            "robot_self_collision": "absent_and_not_evaluated",
-        },
+        "validity_criterion": (
+            "pregrasp_motion_post_release_gravity_and_position_jump"
+        ),
         "excluded_validity_checks": [
             "OBJECT_SLIP_TRANSLATION",
             "OBJECT_SLIP_ROTATION",
+            "NO_STABLE_CONTACT_PHASE",
+            "GRASP_TOO_SHORT",
+            "OBJECT_NOT_MOVED",
+            "OBJECT_CAMERA_PROJECTION_MISMATCH",
+            "ROBOT_SELF_COLLISION",
+            "ROBOT_JOINT_LIMITS",
         ],
         "mesh_root": str(mesh_root),
         "capture_root": str(capture_root),
         "source_hands": source_hands,
-        "thresholds": asdict(thresholds),
+        "thresholds": {
+            "max_frames": thresholds.max_frames,
+            "contact_distance_m": thresholds.contact_distance_m,
+            "min_contact_fingers": thresholds.min_contact_fingers,
+            "min_grasp_frames": thresholds.min_grasp_frames,
+            "min_contact_loss_samples": thresholds.min_contact_loss_samples,
+            "min_gravity_observation_s": (
+                thresholds.min_gravity_observation_s
+            ),
+            "min_gravity_displacement_m": (
+                thresholds.min_gravity_displacement_m
+            ),
+            "min_gravity_velocity_change_m_s": (
+                thresholds.min_gravity_velocity_change_m_s
+            ),
+            "floor_contact_tolerance_m": (
+                thresholds.floor_contact_tolerance_m
+            ),
+            "max_unreached_floor_height_m": (
+                thresholds.max_unreached_floor_height_m
+            ),
+            "min_floor_contact_frames": thresholds.min_floor_contact_frames,
+            "floor_reach_grace_s": thresholds.floor_reach_grace_s,
+            "floor_fall_time_scale": thresholds.floor_fall_time_scale,
+            "max_pregrasp_translation_m": (
+                thresholds.max_pregrasp_translation_m
+            ),
+            "max_pregrasp_rotation_deg": (
+                thresholds.max_pregrasp_rotation_deg
+            ),
+            "pregrasp_baseline_frames": (
+                thresholds.pregrasp_baseline_frames
+            ),
+            "pregrasp_grace_frames": thresholds.pregrasp_grace_frames,
+            "max_object_position_jump_m": (
+                thresholds.max_object_position_jump_m
+            ),
+            "object_jump_local_factor": thresholds.object_jump_local_factor,
+            "object_jump_window_frames": (
+                thresholds.object_jump_window_frames
+            ),
+            "object_jump_baseline_floor_m": (
+                thresholds.object_jump_baseline_floor_m
+            ),
+        },
         "summary": _summary(ordered, total_jobs, source_hands),
         "results": ordered,
     }
@@ -337,24 +422,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="atomically refresh the same output file every N completed episodes",
     )
     parser.add_argument(
-        "--max-frames",
-        type=int,
-        default=120,
-        help="maximum uniformly sampled frames per episode",
-    )
-    parser.add_argument("--contact-distance", type=float, default=0.01)
-    parser.add_argument("--min-contact-fingers", type=int, default=2)
-    parser.add_argument("--min-grasp-frames", type=int, default=10)
-    parser.add_argument("--min-object-motion", type=float, default=0.01)
-    parser.add_argument("--min-contact-loss-samples", type=int, default=2)
-    parser.add_argument(
-        "--gravity-min-observation", type=float, default=0.1
+        "--max-pregrasp-translation", type=float, default=0.05
     )
     parser.add_argument(
-        "--gravity-min-displacement", type=float, default=0.005
+        "--max-pregrasp-rotation", type=float, default=120.0
     )
     parser.add_argument(
-        "--gravity-min-velocity-change", type=float, default=0.05
+        "--pregrasp-grace-frames", type=int, default=15
+    )
+    parser.add_argument(
+        "--max-object-position-jump", type=float, default=0.1
+    )
+    parser.add_argument(
+        "--object-jump-local-factor", type=float, default=8.0
+    )
+    parser.add_argument(
+        "--object-jump-window", type=int, default=5
     )
     parser.add_argument("--pretty", action="store_true")
     parser.add_argument(
@@ -389,17 +472,12 @@ def main(argv: list[str] | None = None) -> int:
                 f"output already exists; pass --overwrite to replace it: {output}"
             )
         thresholds = ValidationThresholds(
-            max_frames=args.max_frames,
-            contact_distance_m=args.contact_distance,
-            min_contact_fingers=args.min_contact_fingers,
-            min_grasp_frames=args.min_grasp_frames,
-            min_contact_loss_samples=args.min_contact_loss_samples,
-            min_object_motion_m=args.min_object_motion,
-            min_gravity_observation_s=args.gravity_min_observation,
-            min_gravity_displacement_m=args.gravity_min_displacement,
-            min_gravity_velocity_change_m_s=(
-                args.gravity_min_velocity_change
-            ),
+            max_pregrasp_translation_m=args.max_pregrasp_translation,
+            max_pregrasp_rotation_deg=args.max_pregrasp_rotation,
+            pregrasp_grace_frames=args.pregrasp_grace_frames,
+            max_object_position_jump_m=args.max_object_position_jump,
+            object_jump_local_factor=args.object_jump_local_factor,
+            object_jump_window_frames=args.object_jump_window,
         )
         jobs = discover_batch_jobs(args.capture_root, args.hands)
     except (FileNotFoundError, ValueError) as exc:

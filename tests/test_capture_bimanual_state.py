@@ -5,7 +5,11 @@ import pytest
 
 from paradex.dataset_acqusition import capture as capture_module
 from paradex.io.teleop.vive import receiver as vive_receiver_module
-from paradex.retargetor.unimanual import Retargetor
+from paradex.retargetor.hand_regargetor import (
+    inspire,
+    inspire_from_manus_ergonomics,
+)
+from paradex.retargetor.unimanual import Retargetor, _resolve_hand
 from paradex.transforms.coordinate import DEVICE2WRIST
 
 
@@ -153,6 +157,219 @@ def test_capture_session_routes_vive_bimanual_mode_to_receiver(monkeypatch):
     assert receiver_kwargs == {"hand_side": "bimanual"}
     assert session.arm_left is not None
     assert session.arm_right is not None
+
+
+def test_capture_session_routes_per_hand_network_interfaces(monkeypatch):
+    hand_calls = []
+
+    def fake_get_hand(**kwargs):
+        hand_calls.append(kwargs)
+        return FakeHand()
+
+    monkeypatch.setattr(capture_module, "get_hand", fake_get_hand)
+
+    session = capture_module.CaptureSession(
+        camera=False,
+        hand="inspire",
+        hand_side="bimanual",
+        ip=True,
+        hand_kwargs={
+            "right": {
+                "interface": "enp8s0f1",
+                "host": "192.168.11.211",
+            },
+            "left": {
+                "interface": "enp8s0f2",
+                "host": "192.168.11.210",
+            },
+        },
+    )
+
+    assert session.hand_left is not None
+    assert session.hand_right is not None
+    assert hand_calls == [
+        {
+            "hand_name": "inspire",
+            "tactile": False,
+            "ip": True,
+            "hand_side": "left",
+            "interface": "enp8s0f2",
+            "host": "192.168.11.210",
+        },
+        {
+            "hand_name": "inspire",
+            "tactile": False,
+            "ip": True,
+            "hand_side": "right",
+            "interface": "enp8s0f1",
+            "host": "192.168.11.211",
+        },
+    ]
+
+
+def test_capture_session_no_timestamp_skips_monitor_connection(monkeypatch):
+    class UnexpectedTimestampMonitor:
+        def __init__(self, **_kwargs):
+            raise AssertionError("TimestampMonitor must not be created")
+
+    monkeypatch.setattr(
+        capture_module,
+        "remote_camera_controller",
+        lambda **_kwargs: object(),
+    )
+    monkeypatch.setattr(capture_module, "UTGE900", lambda **_kwargs: object())
+    monkeypatch.setattr(
+        capture_module,
+        "TimestampMonitor",
+        UnexpectedTimestampMonitor,
+    )
+
+    session = capture_module.CaptureSession(
+        camera=True,
+        timestamp=False,
+    )
+
+    assert session.camera is not None
+    assert session.sync_generator is not None
+    assert session.timestamp_monitor is None
+
+
+def test_inspire_retargeting_uses_lefthand_branch_for_left_thumb():
+    pose = {"wrist": np.eye(4), "thumb_metacarpal": np.eye(4)}
+    for finger_name in ("thumb", "index", "middle", "ring", "pinky"):
+        distal = np.eye(4)
+        if finger_name == "thumb":
+            distal[:3, 3] = [1.0, 1.0, 1.0]
+        pose[f"{finger_name}_distal"] = distal
+
+    right_retargetor = _resolve_hand("inspire", is_right=True)
+    left_retargetor = _resolve_hand("inspire", is_right=False)
+    right_action = right_retargetor(pose)
+    left_action = left_retargetor(pose)
+
+    np.testing.assert_allclose(right_action, inspire(pose))
+    assert right_action[5] == pytest.approx(500.0)
+    assert left_action[5] == pytest.approx(0.0)
+    expected_left_thumb = (
+        np.arcsin(1.0 / np.sqrt(3.0)) / np.pi * 2000.0 * 3.5
+        - 1000.0
+    )
+    assert left_action[4] == pytest.approx(expected_left_thumb)
+
+
+def test_inspire_maps_manus_angles_to_rh56_register_order():
+    ergonomics = {}
+    flexions = {
+        "Pinky": 157.7,
+        "Ring": 0.0,
+        "Middle": 157.7 / 2.0,
+        "Index": 157.7 / 4.0,
+    }
+    for finger, total in flexions.items():
+        for joint in ("MCP", "PIP", "DIP"):
+            ergonomics[f"{finger}{joint}Stretch"] = total / 3.0
+    ergonomics["ThumbMCPStretch"] = 66.6 / 4.0
+    ergonomics["ThumbMCPSpread"] = 75.0 / 4.0
+
+    command = inspire_from_manus_ergonomics(ergonomics)
+
+    np.testing.assert_allclose(
+        command,
+        [0.0, 1000.0, 500.0, 750.0, 250.0, 200.0],
+    )
+
+
+def test_bimanual_inspire_retargetor_uses_manus_ergonomics():
+    ergonomics = {}
+    for finger in ("Pinky", "Ring", "Middle", "Index"):
+        for joint in ("MCP", "PIP", "DIP"):
+            ergonomics[f"{finger}{joint}Stretch"] = 0.0
+    ergonomics["ThumbMCPStretch"] = 0.0
+    ergonomics["ThumbMCPSpread"] = 0.0
+
+    retargetor = Retargetor(
+        hand_name="inspire",
+        hand_side="Bimanual",
+    )
+    retargetor.start({"Left": np.eye(4), "Right": np.eye(4)})
+    actions = retargetor.get_action(
+        {
+            "Left": {"wrist": np.eye(4)},
+            "Right": {"wrist": np.eye(4)},
+            "ergonomics": {
+                "Left": ergonomics,
+                "Right": ergonomics,
+            },
+        }
+    )
+
+    np.testing.assert_allclose(
+        actions[2],
+        [1000.0, 1000.0, 1000.0, 1000.0, 0.0, 0.0],
+    )
+    np.testing.assert_allclose(actions[3], actions[2])
+
+
+def test_bimanual_inspire_locks_thumb_four_when_both_thumb_five_are_high():
+    ergonomics = {}
+    for finger in ("Pinky", "Ring", "Middle", "Index"):
+        for joint in ("MCP", "PIP", "DIP"):
+            ergonomics[f"{finger}{joint}Stretch"] = 0.0
+    ergonomics["ThumbMCPStretch"] = 66.6
+    ergonomics["ThumbMCPSpread"] = 0.0
+
+    retargetor = Retargetor(
+        hand_name="inspire",
+        hand_side="Bimanual",
+    )
+    retargetor.start({"Left": np.eye(4), "Right": np.eye(4)})
+    actions = retargetor.get_action(
+        {
+            "Left": {"wrist": np.eye(4)},
+            "Right": {"wrist": np.eye(4)},
+            "ergonomics": {
+                "Left": ergonomics,
+                "Right": ergonomics,
+            },
+        }
+    )
+
+    assert actions[2][5] == pytest.approx(800.0)
+    assert actions[3][5] == pytest.approx(800.0)
+    assert actions[2][4] == pytest.approx(1000.0)
+    assert actions[3][4] == pytest.approx(1000.0)
+
+
+def test_bimanual_inspire_locks_thumb_four_independently_per_hand():
+    low = {}
+    for finger in ("Pinky", "Ring", "Middle", "Index"):
+        for joint in ("MCP", "PIP", "DIP"):
+            low[f"{finger}{joint}Stretch"] = 0.0
+    low["ThumbMCPStretch"] = 0.0
+    low["ThumbMCPSpread"] = 0.0
+    high = dict(low)
+    high["ThumbMCPStretch"] = 66.6
+
+    retargetor = Retargetor(
+        hand_name="inspire",
+        hand_side="Bimanual",
+    )
+    retargetor.start({"Left": np.eye(4), "Right": np.eye(4)})
+    actions = retargetor.get_action(
+        {
+            "Left": {"wrist": np.eye(4)},
+            "Right": {"wrist": np.eye(4)},
+            "ergonomics": {
+                "Left": high,
+                "Right": low,
+            },
+        }
+    )
+
+    assert actions[2][5] == pytest.approx(800.0)
+    assert actions[3][5] == pytest.approx(0.0)
+    assert actions[2][4] == pytest.approx(1000.0)
+    assert actions[3][4] == pytest.approx(0.0)
 
 
 def test_capture_session_rejects_vive_left_only_mode():

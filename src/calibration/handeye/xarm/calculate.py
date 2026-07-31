@@ -7,7 +7,11 @@ from copy import deepcopy
 
 from paradex.utils.file_io import find_latest_directory
 
-from paradex.calibration.utils import handeye_calib_path, load_camparam
+from paradex.calibration.utils import (
+    handeye_calib_bimanual_path,
+    handeye_calib_path,
+    load_camparam,
+)
 from paradex.calibration.Tsai_Lenz import solve_ax_xb, solve_axb_cpu    
 from paradex.robot.utils import get_robot_urdf_path
 from paradex.robot.robot_wrapper_deprecated import RobotWrapper
@@ -40,9 +44,8 @@ def _filter_images_for_calibration(images, intrinsics=None, extrinsics=None):
     return filtered
 
 
-def undistort_and_detect_charuco(name):
+def undistort_and_detect_charuco(root_dir):
     img_dict = None
-    root_dir = os.path.join(handeye_calib_path, name)
     index_list = sorted(os.listdir(root_dir))
     intrinsic, extrinsic = load_camparam(os.path.join(root_dir, "0"))
     
@@ -98,8 +101,7 @@ def undistort_and_detect_charuco(name):
         np.save(os.path.join(root_dir, index, "charuco_3d_ids.npy"), charuco_3d['checkerIDs'])
         np.save(os.path.join(root_dir, index, "charuco_3d_corners.npy"), charuco_3d['checkerCorner'])
 
-def compute_fk(name, arm):
-    root_dir = os.path.join(handeye_calib_path, name)
+def compute_fk(root_dir, arm):
     index_list = sorted(os.listdir(root_dir))
 
     robot_wrapper = RobotWrapper(get_robot_urdf_path(arm_name=arm))
@@ -133,11 +135,49 @@ def get_valid_indices(root_dir):
             print(f"Skipping index {index}: missing charuco detection files")
     return valid_indices
 
-def compute_motion(name):
+
+def validate_capture_directory(root_dir):
+    cam_param_dir = os.path.join(root_dir, "0", "cam_param")
+    required_cam_params = ("intrinsics.json", "extrinsics.json")
+    missing_cam_params = [
+        name
+        for name in required_cam_params
+        if not os.path.isfile(os.path.join(cam_param_dir, name))
+    ]
+    if missing_cam_params:
+        raise ValueError(
+            f"Incomplete calibration capture in {root_dir}: missing camera "
+            f"parameters {missing_cam_params}"
+        )
+
+    index_list = sorted(
+        name
+        for name in os.listdir(root_dir)
+        if name.isdigit() and os.path.isdir(os.path.join(root_dir, name))
+    )
+    if len(index_list) < 2:
+        raise ValueError(
+            f"Incomplete calibration capture in {root_dir}: "
+            f"need at least 2 captured steps, got {len(index_list)}"
+        )
+
+    for index in index_list:
+        index_path = os.path.join(root_dir, index)
+        missing = [
+            name
+            for name in ("qpos.npy", "eef.npy", "images")
+            if not os.path.exists(os.path.join(index_path, name))
+        ]
+        if missing:
+            raise ValueError(
+                f"Incomplete calibration capture at {index_path}: missing {missing}"
+            )
+
+
+def compute_motion(root_dir):
     motion_wrt_cam = []
     motion_wrt_robot = []
 
-    root_dir = os.path.join(handeye_calib_path, name)
     index_list = get_valid_indices(root_dir)
 
     if len(index_list) < 2:
@@ -169,12 +209,8 @@ def compute_motion(name):
     
     return motion_wrt_cam, motion_wrt_robot
 
-def debug(name, arm):
-    root_dir = os.path.join(handeye_calib_path, name)
-
+def debug(root_dir, arm, robot_wrt_cam_world):
     index_list = get_valid_indices(root_dir)
-
-    robot_wrt_cam_world = np.load(os.path.join(root_dir, index_list[0], "C2R.npy")) 
     marker_pos = {}
     
     rm = RobotModule(get_robot_urdf_path(arm_name=arm))
@@ -256,34 +292,71 @@ def debug(name, arm):
         
         overlay_img_dict.save(os.path.join(root_dir, index, "debug"))
                 
-parser = argparse.ArgumentParser()
-parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
-parser.add_argument("--arm", type=str, default="xarm", help="Name of the robot arm.")
+def calculate_sequence(root_path, arm, save_path):
+    validate_capture_directory(root_path)
+    undistort_and_detect_charuco(root_path)
+    compute_fk(root_path, arm)
+    motion_wrt_cam, motion_wrt_robot = compute_motion(root_path)
+    robot_wrt_cam_world = solve_ax_xb(
+        motion_wrt_cam,
+        motion_wrt_robot,
+        verbose=True,
+    )
 
-args = parser.parse_args()
-if args.name is None:
-    args.name = find_latest_directory(handeye_calib_path)
+    valid_index_list = get_valid_indices(root_path)
+    for i in range(len(valid_index_list) - 1):
+        diff = (
+            motion_wrt_cam[i] @ robot_wrt_cam_world
+            - robot_wrt_cam_world @ motion_wrt_robot[i]
+        )
+        trans_error = np.linalg.norm(diff[:3, 3]) * 1000
+        angle_error = 0
+        print(f"Motion {i}: trans={trans_error:.2f}mm, rot={angle_error:.2f}deg")
 
-name = args.name
-root_path = os.path.join(handeye_calib_path, name)
-intrinsic, extrinsic = load_camparam(os.path.join(root_path, "0"))
+    if save_path is None:
+        save_path = os.path.join(root_path, valid_index_list[0], "C2R.npy")
+    np.save(save_path, robot_wrt_cam_world)
+    print(f"Saved C2R to {save_path}")
+    debug(root_path, arm, robot_wrt_cam_world)
 
-undistort_and_detect_charuco(name)
-compute_fk(name, args.arm)
-motion_wrt_cam, motion_wrt_robot = compute_motion(name)
-robot_wrt_cam_world = solve_ax_xb(motion_wrt_cam, motion_wrt_robot, verbose=True)
-cam_world_wrt_robot = np.linalg.inv(robot_wrt_cam_world)
 
-valid_index_list = get_valid_indices(root_path)
-for i in range(len(valid_index_list)-1):
-    diff = (motion_wrt_cam[i] @ robot_wrt_cam_world) - (robot_wrt_cam_world @ motion_wrt_robot[i])
-    trans_error = np.linalg.norm(diff[:3, 3]) * 1000
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
+    parser.add_argument("--arm", type=str, default="xarm", help="Name of the robot arm.")
+    parser.add_argument(
+        "--bimanual",
+        action="store_true",
+        help="Calculate right and left C2R transforms from a bimanual session.",
+    )
+    args = parser.parse_args()
 
-    # Rotation error (degrees)
-    R_error = diff[:3, :3]
-    angle_error = 0#np.arccos((np.trace(R_error) - 1) / 2) * 180 / np.pi
-    print(f"Motion {i}: trans={trans_error:.2f}mm, rot={angle_error:.2f}deg")
+    base_dir = handeye_calib_bimanual_path if args.bimanual else handeye_calib_path
+    if args.name is None:
+        args.name = find_latest_directory(base_dir)
 
-np.save(os.path.join(root_path, valid_index_list[0], "C2R.npy"), robot_wrt_cam_world)
+    root_path = os.path.join(base_dir, args.name)
+    if args.bimanual:
+        side_paths = {}
+        for side, suffix in (("Right", "R"), ("Left", "L")):
+            side_path = os.path.join(root_path, side)
+            if not os.path.isdir(side_path):
+                raise FileNotFoundError(
+                    f"Missing {side} capture directory: {side_path}"
+                )
+            validate_capture_directory(side_path)
+            side_paths[side] = (side_path, suffix)
 
-debug(name, args.arm)
+        for side, (side_path, suffix) in side_paths.items():
+            print(f"Calculating {side} xArm calibration...")
+            calculate_sequence(
+                side_path,
+                args.arm,
+                os.path.join(root_path, f"C2R_{suffix}.npy"),
+            )
+    else:
+        calculate_sequence(root_path, args.arm, None)
+
+
+if __name__ == "__main__":
+    main()

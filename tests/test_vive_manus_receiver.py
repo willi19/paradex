@@ -9,6 +9,7 @@ import pytest
 from paradex.io.teleop.vive.receiver import (
     _canonical_joint_name,
     apply_vive_tracker_mount_rotation,
+    manus_ergonomics_to_dict,
     manus_message_to_frame,
     pose_to_matrix,
     reparent_frame,
@@ -223,6 +224,14 @@ def make_receiver_without_ros(sample_age=0.0, hand_side="right"):
         "Left": manus_message_to_frame(make_manus_message("Left")),
         "Right": manus_message_to_frame(make_manus_message("Right")),
     }
+    receiver._manus_ergonomics = {
+        "Left": manus_ergonomics_to_dict(
+            make_manus_message("Left").ergonomics
+        ),
+        "Right": manus_ergonomics_to_dict(
+            make_manus_message("Right").ergonomics
+        ),
+    }
     timestamp = time.monotonic() - sample_age
     receiver._vive_right_time = timestamp
     receiver._vive_left_time = timestamp
@@ -239,6 +248,7 @@ def test_get_data_fuses_fresh_right_vive_and_both_manus_hands():
 
     assert data["Left"] is not None
     assert data["Right"] is not None
+    assert data["ergonomics"]["Right"] is not None
     np.testing.assert_allclose(data["Right"]["wrist"], np.eye(4))
 
 

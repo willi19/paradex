@@ -1,6 +1,8 @@
+import socket
+import struct
 import time
+
 from pymodbus.client.sync import ModbusTcpClient  # pip3 install pymodbus==2.5.3
-import time
 
 import numpy as np
 from threading import Thread, Event, Lock
@@ -59,7 +61,7 @@ TACTILE_LAYOUT = {
 }
 
 class InspireControllerIP:
-    def __init__(self, ip, port, tactile=False):
+    def __init__(self, ip, port, tactile=False, interface=None):
         network_config = json.load(open(os.path.join(config_dir, "network.json"), "r"))
         # self.ip = network_config["inspire_ip"]["param"]["ip"]
         # self.port = network_config["inspire_ip"]["param"]["port"]
@@ -70,6 +72,7 @@ class InspireControllerIP:
         
         self.ip = ip
         self.port = port
+        self.interface = interface
 
         self.capture_path = None
         self.tactile = tactile
@@ -128,9 +131,31 @@ class InspireControllerIP:
         
     def open_modbus(self):
         client = ModbusTcpClient(self.ip, self.port)
-        client.connect()
+        if self.interface is None:
+            connected = client.connect()
+        else:
+            interface_index = socket.if_nametoindex(self.interface)
+            client.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            client.socket.settimeout(client.timeout)
+            client.socket.setsockopt(
+                socket.IPPROTO_IP,
+                50,  # Linux IP_UNICAST_IF
+                struct.pack("!I", interface_index),
+            )
+            try:
+                client.socket.connect((self.ip, self.port))
+                connected = True
+            except OSError:
+                client.close()
+                raise
+
+        if not connected:
+            location = f"{self.ip}:{self.port}"
+            if self.interface is not None:
+                location += f" via {self.interface}"
+            raise ConnectionError(f"Failed to connect to Inspire hand at {location}")
+
         self.inspire_node = client
-        return 
         
     def write_register(self, address, values):
         # Write to Modbus registers: provide the address and a list of values
@@ -297,6 +322,8 @@ class InspireControllerIP:
         
         if self.save_event.is_set():
             self.stop()
+
+        self.inspire_node.close()
         
         print("Inspire Exiting...")
 

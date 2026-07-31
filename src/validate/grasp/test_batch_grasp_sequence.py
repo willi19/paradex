@@ -48,20 +48,22 @@ def _make_human_episode(
 
     poses = np.repeat(np.eye(4)[None, ...], frame_count, axis=0)
     poses[:, 0, 3] = np.arange(frame_count) * 0.001
+    poses[:, 2, 3] = 1.0
     np.savez(
-        root / "object_6d_pose_v2.npz",
+        root / "object_6d_pose.npz",
         **{f"frame_{index}": pose for index, pose in enumerate(poses)},
     )
     np.save(root / "C2R.npy", np.eye(4))
 
     vertices = np.zeros((778, 3), dtype=float)
     vertices[:, 0] = 0.2
+    vertices[:, 2] = 1.0
     vertices[0:3] = np.array(
-        [[0.04, 0.0, 0.0], [0.04, 0.01, 0.0], [0.04, 0.0, 0.01]]
+        [[0.04, 0.0, 1.0], [0.04, 0.01, 1.0], [0.04, 0.0, 1.01]]
     )
-    vertices[744] = [0.04, 0.0, 0.0]
-    vertices[320] = [0.04, 0.01, 0.0]
-    vertices[443] = [0.04, -0.01, 0.0]
+    vertices[744] = [0.04, 0.0, 1.0]
+    vertices[320] = [0.04, 0.01, 1.0]
+    vertices[443] = [0.04, -0.01, 1.0]
     faces = np.asarray([[0, index, index + 1] for index in range(1, 777)])
 
     for frame in range(frame_count):
@@ -150,10 +152,6 @@ def test_batch_writes_one_file_and_preserves_source_data(tmp_path: Path) -> None
             str(capture_root),
             "--output",
             str(output),
-            "--max-frames",
-            "20",
-            "--contact-distance",
-            "0.02",
             "--checkpoint-every",
             "1",
             "--pretty",
@@ -163,23 +161,30 @@ def test_batch_writes_one_file_and_preserves_source_data(tmp_path: Path) -> None
     payload = json.loads(output.read_text(encoding="utf-8"))
     assert exit_code == 0
     assert payload["complete"] is True
-    assert payload["schema_version"] == 6
-    assert payload["assumptions"]["robot_self_collision"] == (
-        "absent_and_not_evaluated"
+    assert payload["schema_version"] == 19
+    assert payload["validity_criterion"] == (
+        "pregrasp_motion_post_release_gravity_and_position_jump"
     )
     assert payload["excluded_validity_checks"] == [
         "OBJECT_SLIP_TRANSLATION",
         "OBJECT_SLIP_ROTATION",
+        "NO_STABLE_CONTACT_PHASE",
+        "GRASP_TOO_SHORT",
+        "OBJECT_NOT_MOVED",
+        "OBJECT_CAMERA_PROJECTION_MISMATCH",
+        "ROBOT_SELF_COLLISION",
+        "ROBOT_JOINT_LIMITS",
     ]
-    assert "check_self_collision" not in payload["thresholds"]
-    assert "self_collision_distance_m" not in payload["thresholds"]
-    assert "max_relative_translation_m" not in payload["thresholds"]
-    assert "max_relative_rotation_deg" not in payload["thresholds"]
-    assert "max_tracking_linear_speed_m_s" not in payload["thresholds"]
-    assert "max_tracking_angular_speed_deg_s" not in payload["thresholds"]
-    assert payload["thresholds"]["min_gravity_observation_s"] == 0.1
-    assert payload["thresholds"]["min_gravity_displacement_m"] == 0.005
-    assert payload["thresholds"]["min_gravity_velocity_change_m_s"] == 0.05
+    assert payload["thresholds"]["max_object_position_jump_m"] == 0.1
+    assert payload["thresholds"]["min_contact_fingers"] == 1
+    assert payload["thresholds"]["max_pregrasp_translation_m"] == 0.05
+    assert payload["thresholds"]["max_pregrasp_rotation_deg"] == 120.0
+    assert payload["thresholds"]["pregrasp_baseline_frames"] == 15
+    assert payload["thresholds"]["pregrasp_grace_frames"] == 15
+    assert payload["thresholds"]["object_jump_local_factor"] == 8.0
+    assert payload["thresholds"]["object_jump_window_frames"] == 5
+    assert payload["thresholds"]["max_unreached_floor_height_m"] == 0.2
+    assert payload["thresholds"]["min_gravity_displacement_m"] == 0.010
     assert payload["summary"] == {
         "total_discovered": 2,
         "completed": 2,
@@ -187,18 +192,18 @@ def test_batch_writes_one_file_and_preserves_source_data(tmp_path: Path) -> None
         "valid": 1,
         "invalid": 0,
         "error": 1,
-        "tracking_error": 0,
-        "normal_post_loss_motion": 0,
-        "insufficient_post_loss_observation": 0,
+        "gravity_or_floor_mismatch": 0,
+        "object_position_jump": 0,
+        "excessive_pregrasp_motion": 0,
         "by_hand": {
             "human": {
                 "completed": 2,
                 "valid": 1,
                 "invalid": 0,
                 "error": 1,
-                "tracking_error": 0,
-                "normal_post_loss_motion": 0,
-                "insufficient_post_loss_observation": 0,
+                "gravity_or_floor_mismatch": 0,
+                "object_position_jump": 0,
+                "excessive_pregrasp_motion": 0,
             }
         },
     }

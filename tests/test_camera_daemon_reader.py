@@ -1,5 +1,7 @@
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 import cv2
@@ -110,6 +112,31 @@ class CameraDaemonReaderTests(unittest.TestCase):
 
         camera.fid_array_a[0] = 0
         self.assertIsNone(loader.get_frame("cam-a"))
+
+    def test_pyspin_loader_saves_stream_snapshot_on_capture_pc(self):
+        camera = Camera.__new__(Camera)
+        camera.name = "cam-a"
+        camera.mode = "stream"
+        camera.write_flag = np.array([1], dtype=np.uint8)
+        camera.image_array_a = np.full((6, 8, 3), 127, dtype=np.uint8)
+        camera.image_array_b = np.zeros((6, 8, 3), dtype=np.uint8)
+        camera.fid_array_a = np.array([42], dtype=np.int64)
+        camera.fid_array_b = np.array([41], dtype=np.int64)
+
+        loader = CameraLoader.__new__(CameraLoader)
+        loader.cameralist = [camera]
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch(
+            "paradex.io.camera_system.camera_loader.home_path",
+            temp_dir,
+        ):
+            loader.save_snapshot("shared/calibration/step-0")
+            saved = (
+                Path(temp_dir)
+                / "shared/calibration/step-0/images/cam-a.png"
+            )
+            self.assertTrue(saved.is_file())
+            self.assertEqual(cv2.imread(str(saved)).shape, (6, 8, 3))
 
 
 if __name__ == "__main__":

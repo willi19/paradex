@@ -21,7 +21,7 @@ def test_capture_bimanual_uses_right_then_left(monkeypatch, tmp_path):
         "src/calibration/handeye/xarm/capture.py",
     )
     calls = []
-    snapshotter = object()
+    rcc = None
 
     class FakeNow:
         @staticmethod
@@ -45,27 +45,14 @@ def test_capture_bimanual_uses_right_then_left(monkeypatch, tmp_path):
 
     monkeypatch.setattr(capture, "datetime", FakeDatetime)
     monkeypatch.setattr(capture, "handeye_calib_bimanual_path", str(tmp_path))
-    monkeypatch.setattr(
-        capture,
-        "remote_camera_controller",
-        lambda *_args, **_kwargs: FakeRcc(),
-    )
+    rcc = FakeRcc()
+    monkeypatch.setattr(capture, "remote_camera_controller", lambda *_args, **_kwargs: rcc)
     monkeypatch.setattr(
         capture,
         "capture_sequence",
-        lambda root, arm, ip, actual_snapshotter: calls.append(
-            (Path(root).name, arm, ip, actual_snapshotter)
+        lambda root, arm, ip, actual_rcc: calls.append(
+            (Path(root).name, arm, ip, actual_rcc)
         ),
-    )
-    monkeypatch.setattr(
-        capture,
-        "MultiCameraDaemonReader",
-        lambda _pc_list: object(),
-    )
-    monkeypatch.setattr(
-        capture,
-        "CameraSnapshotter",
-        lambda _reader: snapshotter,
     )
     monkeypatch.setattr(
         capture,
@@ -82,10 +69,10 @@ def test_capture_bimanual_uses_right_then_left(monkeypatch, tmp_path):
             "Right",
             "xarm",
             capture.network_info["xarm"]["param"]["ip"],
-            snapshotter,
+            rcc,
         ),
         ("wait",),
-        ("Left", "xarm", "192.168.1.196", snapshotter),
+        ("Left", "xarm", "192.168.1.196", rcc),
         ("rcc_stop",),
         ("rcc_end",),
     ]
@@ -105,38 +92,52 @@ def test_wait_for_left_arm_requires_y(monkeypatch):
     capture.wait_for_left_arm()
 
 
-def test_snapshotter_saves_only_fresh_daemon_frames(tmp_path):
+def test_capture_sequence_sends_remote_snapshot_path(monkeypatch, tmp_path):
     capture = load_script(
         "xarm_handeye_capture_snapshot_test",
         "src/calibration/handeye/xarm/capture.py",
     )
+    trajectory_dir = tmp_path / "trajectory"
+    trajectory_dir.mkdir()
+    np.save(trajectory_dir / "0_qpos.npy", np.eye(4))
+    calls = []
 
-    class FakeReader:
-        def __init__(self):
-            self.previous = []
+    class FakeController:
+        def move(self, action, is_servo):
+            calls.append(("move", action.shape, is_servo))
 
-        def wait_for_new_frames(self, last_frame_ids, timeout):
-            self.previous.append((dict(last_frame_ids), timeout))
-            frame_id = len(self.previous)
+        def get_data(self):
             return {
-                "cam-a": (
-                    np.full((4, 6, 3), frame_id, dtype=np.uint8),
-                    frame_id,
-                )
+                "position": np.eye(4),
+                "qpos": np.zeros(6),
             }
 
-    reader = FakeReader()
-    snapshotter = capture.CameraSnapshotter(reader)
+        def end(self, set_break):
+            calls.append(("end", set_break))
 
-    snapshotter.capture(str(tmp_path / "0"))
-    snapshotter.capture(str(tmp_path / "1"))
+    class FakeRcc:
+        def snapshot(self, save_path):
+            calls.append(("snapshot", save_path))
+            (tmp_path / "capture" / "0").mkdir(parents=True, exist_ok=True)
 
-    assert reader.previous == [
-        ({}, capture.FRAME_TIMEOUT_SECONDS),
-        ({"cam-a": 1}, capture.FRAME_TIMEOUT_SECONDS),
+    monkeypatch.setattr(capture, "create_controller", lambda *_args: FakeController())
+    monkeypatch.setattr(capture, "get_handeye_calib_traj", lambda _arm: str(trajectory_dir))
+    monkeypatch.setattr(capture, "save_current_camparam", lambda _path: None)
+    monkeypatch.setattr(capture.time, "sleep", lambda _seconds: None)
+    monkeypatch.setattr(capture, "remove_home", lambda path: f"remote/{Path(path).name}")
+
+    capture.capture_sequence(
+        str(tmp_path / "capture"),
+        "xarm",
+        "192.0.2.1",
+        FakeRcc(),
+    )
+
+    assert calls == [
+        ("move", (4, 4), False),
+        ("snapshot", "remote/0"),
+        ("end", False),
     ]
-    assert (tmp_path / "0" / "images" / "cam-a.png").is_file()
-    assert (tmp_path / "1" / "images" / "cam-a.png").is_file()
 
 
 def test_calculate_bimanual_saves_named_transforms(monkeypatch, tmp_path):

@@ -364,8 +364,7 @@ class Camera():
     def get_frame_id(self):
         return self.last_frame_id
 
-    def get_frame(self):
-        """Return the newest streamed frame as a JPEG for the daemon HTTP API."""
+    def get_latest_image(self):
         if getattr(self, "mode", None) not in ["stream", "full"]:
             return None
 
@@ -378,10 +377,27 @@ class Camera():
 
         if frame_id <= 0:
             return None
+        return image, frame_id
+
+    def get_frame(self):
+        """Return the newest streamed frame as a JPEG for the daemon HTTP API."""
+        latest = self.get_latest_image()
+        if latest is None:
+            return None
+        image, frame_id = latest
         success, encoded = cv2.imencode(".jpg", image)
         if not success:
             raise RuntimeError(f"Could not encode frame from camera {self.name}")
         return frame_id, encoded.tobytes()
+
+    def save_snapshot(self, save_path):
+        latest = self.get_latest_image()
+        if latest is None:
+            raise RuntimeError(f"Camera {self.name} has no streamed frame to save")
+        image, _frame_id = latest
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        if not cv2.imwrite(save_path, image):
+            raise RuntimeError(f"Could not save camera image to {save_path}")
 
     def get_status(self):
         return {

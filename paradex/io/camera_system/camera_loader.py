@@ -1,4 +1,4 @@
-from threading import Thread
+from threading import Lock, Thread
 import os
 import time
 
@@ -101,6 +101,33 @@ class CameraLoader:
             if camera.name == str(serial):
                 return camera.get_frame()
         return None
+
+    def save_snapshot(self, save_path):
+        if save_path is None:
+            raise ValueError("save_path is required for a camera snapshot")
+        image_dir = os.path.join(home_path, save_path, "images")
+        os.makedirs(image_dir, exist_ok=True)
+
+        errors = []
+        error_lock = Lock()
+
+        def save(camera):
+            try:
+                camera.save_snapshot(
+                    os.path.join(image_dir, f"{camera.name}.png")
+                )
+            except BaseException as exc:
+                with error_lock:
+                    errors.append((camera.name, exc))
+
+        threads = [Thread(target=save, args=(camera,)) for camera in self.cameralist]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        if errors:
+            messages = [f"{name}: {error}" for name, error in errors]
+            raise RuntimeError("; ".join(messages))
     
     def get_all_errors(self):
         """모든 카메라의 에러 정보 반환"""

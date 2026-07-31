@@ -38,6 +38,7 @@ class remote_camera_controller:
         self.start_event = threading.Event()
         self.prepare_event = threading.Event()
         self.stop_event = threading.Event()
+        self.snapshot_event = threading.Event()
         self.validate_event = threading.Event()
         self.abort_event = threading.Event()
         self.sending_event = threading.Event()
@@ -174,6 +175,10 @@ class remote_camera_controller:
     def stop(self):
         return self._request(self.stop_event)
 
+    def snapshot(self, save_path):
+        self.snapshot_save_path = save_path
+        return self._request(self.snapshot_event)
+
     def validate(self, timeout=5.0):
         self.validate_timeout = timeout
         return self._request(self.validate_event)
@@ -244,6 +249,13 @@ class remote_camera_controller:
                     action = "stop"
                     command = {"action": action}
                     self.stop_event.clear()
+                elif self.snapshot_event.is_set():
+                    action = "snapshot"
+                    command = {
+                        "action": action,
+                        "save_path": self.snapshot_save_path,
+                    }
+                    self.snapshot_event.clear()
                 elif self.validate_event.is_set():
                     action = "validate"
                     command = {"action": action, "timeout": self.validate_timeout}
@@ -254,7 +266,14 @@ class remote_camera_controller:
                     self.abort_event.clear()
 
                 response = self.send_command(command)
-                if action in ("prepare", "start", "stop", "validate", "abort"):
+                if action in (
+                    "prepare",
+                    "start",
+                    "stop",
+                    "snapshot",
+                    "validate",
+                    "abort",
+                ):
                     self._complete_command(action, response)
                 else:
                     failures = self._failed_responses(response)

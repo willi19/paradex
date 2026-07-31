@@ -72,6 +72,9 @@ class FakeCamera:
     def save_image(self):
         self.calls.append(("save_image",))
 
+    def save_snapshot(self, save_path):
+        self.calls.append(("save_snapshot", save_path))
+
     def end(self):
         self.calls.append(("end",))
 
@@ -114,6 +117,9 @@ class FakeLoader:
 
     def get_frame(self, serial):
         return (23, b"\xff\xd8frame\xff\xd9") if serial == "cam a" else None
+
+    def save_snapshot(self, save_path):
+        self.calls.append(("save_snapshot", save_path))
 
 
 class FakeTwoPhaseLoader(FakeLoader):
@@ -901,6 +907,27 @@ class AravisCaptureTests(unittest.TestCase):
         )
         self.assertIn(("save_image",), loader.cameralist[0].calls)
 
+    def test_loader_saves_stream_snapshot_on_capture_pc(self):
+        loader = AravisGStreamerCameraLoader(
+            serial_list=["cam-a"],
+            camera_factory=FakeCamera,
+            reconcile_addresses=False,
+        )
+
+        with tempfile.TemporaryDirectory() as temp_dir, patch(
+            "paradex.io.camera_system.aravis_gstreamer.home_path", temp_dir
+        ):
+            loader.save_snapshot("shared/calibration/step-0")
+
+        expected_path = str(
+            Path(temp_dir)
+            / "shared/calibration/step-0/images/cam-a.png"
+        )
+        self.assertIn(
+            ("save_snapshot", expected_path),
+            loader.cameralist[0].calls,
+        )
+
     def test_stream_stop_does_not_wait_for_avi_eos(self):
         class FakePipeline:
             def __init__(self):
@@ -975,6 +1002,29 @@ class AravisCaptureTests(unittest.TestCase):
             )
             self.assertEqual(response, {"status": "ok", "msg": "ready"})
             self.assertEqual(loader.calls, [("start", "video", True, "session/raw", 30)])
+        finally:
+            server.close()
+
+    def test_server_dispatches_snapshot_without_restarting_stream(self):
+        loader = FakeLoader()
+        server = camera_server_daemon(loader=loader, start_threads=False)
+        try:
+            server.execute_command({"action": "register", "controller_name": "main"})
+            response = server.execute_command(
+                {
+                    "action": "snapshot",
+                    "controller_name": "main",
+                    "save_path": "shared/calibration/step-0",
+                }
+            )
+            self.assertEqual(
+                response,
+                {"status": "ok", "msg": "snapshot saved"},
+            )
+            self.assertEqual(
+                loader.calls,
+                [("save_snapshot", "shared/calibration/step-0")],
+            )
         finally:
             server.close()
 

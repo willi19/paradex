@@ -291,6 +291,10 @@ class camera_server_daemon:
                     self.camera_loader.stop()
                 self.state = "idle"
                 return {"status": "ok", "msg": "stopped"}
+            if action == "snapshot":
+                with self._camera_lock:
+                    self.camera_loader.save_snapshot(cmd.get("save_path"))
+                return {"status": "ok", "msg": "snapshot saved"}
             if action == "validate":
                 with self._camera_lock:
                     self.camera_loader.wait_for_first_frames(cmd.get("timeout"))

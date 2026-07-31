@@ -1,11 +1,9 @@
 import argparse
 import os
-import cv2
 import numpy as np
 from datetime import datetime
 import time
 
-from paradex.io.camera_system.camera_daemon_reader import MultiCameraDaemonReader
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
 from paradex.calibration.utils import (
     get_handeye_calib_traj,
@@ -13,12 +11,12 @@ from paradex.calibration.utils import (
     handeye_calib_path,
     save_current_camparam,
 )
+from paradex.utils.file_io import remove_home
 from paradex.utils.system import network_info, get_pc_list
 
 EXCLUDED_PCS = {}
 pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
 LEFT_XARM_IP = "192.168.1.196"
-FRAME_TIMEOUT_SECONDS = 10.0
 
 
 def create_controller(arm, ip=None):
@@ -31,29 +29,7 @@ def create_controller(arm, ip=None):
     return XArmController(ip=ip or network_info["xarm"]["param"]["ip"])
 
 
-class CameraSnapshotter:
-    def __init__(self, reader):
-        self.reader = reader
-        self.last_frame_ids = {}
-
-    def capture(self, step_dir):
-        frames = self.reader.wait_for_new_frames(
-            self.last_frame_ids,
-            timeout=FRAME_TIMEOUT_SECONDS,
-        )
-        image_dir = os.path.join(step_dir, "images")
-        os.makedirs(image_dir, exist_ok=True)
-
-        for serial, (image, frame_id) in frames.items():
-            save_path = os.path.join(image_dir, f"{serial}.png")
-            if not cv2.imwrite(save_path, image):
-                raise RuntimeError(f"Could not save camera image to {save_path}")
-            self.last_frame_ids[serial] = frame_id
-
-        print(f"Saved {len(frames)} camera images to {image_dir}")
-
-
-def capture_sequence(root_dir, arm, ip, snapshotter):
+def capture_sequence(root_dir, arm, ip, rcc):
     controller = create_controller(arm, ip)
     try:
         save_current_camparam(os.path.join(root_dir, "0"))
@@ -72,7 +48,7 @@ def capture_sequence(root_dir, arm, ip, snapshotter):
             controller.move(action, is_servo=False)
             time.sleep(0.5)
 
-            snapshotter.capture(step_dir)
+            rcc.snapshot(remove_home(step_dir))
 
             robot_data = controller.get_data()
             np.save(os.path.join(step_dir, "robot.npy"), robot_data)
@@ -118,7 +94,6 @@ def main():
     try:
         rcc.start("stream", False, fps=30)
         stream_started = True
-        snapshotter = CameraSnapshotter(MultiCameraDaemonReader(pc_list))
 
         if args.bimanual:
             right_dir = os.path.join(root_dir, "Right")
@@ -129,17 +104,17 @@ def main():
                 right_dir,
                 args.arm,
                 network_info["xarm"]["param"]["ip"],
-                snapshotter,
+                rcc,
             )
             wait_for_left_arm()
             os.makedirs(left_dir, exist_ok=True)
-            capture_sequence(left_dir, args.arm, LEFT_XARM_IP, snapshotter)
+            capture_sequence(left_dir, args.arm, LEFT_XARM_IP, rcc)
         else:
             capture_sequence(
                 root_dir,
                 args.arm,
                 network_info["xarm"]["param"]["ip"],
-                snapshotter,
+                rcc,
             )
     finally:
         try:

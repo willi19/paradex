@@ -767,6 +767,31 @@ class AravisGStreamerCamera:
                 )
             )
 
+    def save_snapshot(self, save_path: str) -> None:
+        """Persist the latest frame while leaving the stream running."""
+
+        frame = self.get_frame()
+        if frame is None:
+            raise AravisGStreamerError(
+                "Camera {} has no streamed frame to save".format(self.name)
+            )
+        _frame_id, jpeg = frame
+        import cv2
+        import numpy as np
+
+        image = cv2.imdecode(np.frombuffer(jpeg, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if image is None:
+            raise AravisGStreamerError(
+                "Camera {} returned an invalid JPEG".format(self.name)
+            )
+        Path(save_path).parent.mkdir(parents=True, exist_ok=True)
+        if not cv2.imwrite(save_path, image):
+            raise AravisGStreamerError(
+                "Could not save camera {} image to {}".format(
+                    self.name, save_path
+                )
+            )
+
     def _teardown_pipeline(self, release_hardware: bool = False) -> None:
         self._stream_stop.set()
         if self._aravis_camera is not None:
@@ -1109,6 +1134,13 @@ class AravisGStreamerCameraLoader:
                 get_frame = getattr(camera, "get_frame", None)
                 return get_frame() if get_frame is not None else None
         return None
+
+    def save_snapshot(self, save_path: str) -> None:
+        paths = self._save_paths("image", save_path)
+        self._parallel(
+            lambda camera, path: camera.save_snapshot(path),
+            paths,
+        )
 
     def get_all_errors(self) -> Dict[str, Tuple[Optional[str], Optional[str]]]:
         errors = {}

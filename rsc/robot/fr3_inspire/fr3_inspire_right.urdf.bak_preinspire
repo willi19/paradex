@@ -212,7 +212,7 @@
   <joint name="flange_to_hand" type="fixed">
     <parent link="fr3_link8" />
     <child link="base_link" />
-    <origin xyz="0 0 0.04" rpy="-3.14159 0 -2.3562" />
+    <origin xyz="0 0 0.04" rpy="-3.14159 0 -0.7854" />
   </joint>
   <link name="base_link">
     <inertial>

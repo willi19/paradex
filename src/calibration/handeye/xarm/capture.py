@@ -12,11 +12,18 @@ from paradex.calibration.utils import (
     save_current_camparam,
 )
 from paradex.utils.file_io import remove_home
+from paradex.utils.path import shared_dir
 from paradex.utils.system import network_info, get_pc_list
 
 EXCLUDED_PCS = {}
 pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
 LEFT_XARM_IP = "192.168.1.196"
+BIMANUAL_POSE_SESSION = "20260803_125942"
+BIMANUAL_POSE_DIR = os.path.join(
+    shared_dir,
+    "handeye_pose_matching",
+    BIMANUAL_POSE_SESSION,
+)
 
 
 def create_controller(arm, ip=None):
@@ -29,21 +36,35 @@ def create_controller(arm, ip=None):
     return XArmController(ip=ip or network_info["xarm"]["param"]["ip"])
 
 
-def capture_sequence(root_dir, arm, ip, rcc):
+def capture_sequence(root_dir, arm, ip, rcc, trajectory_dir=None):
     controller = create_controller(arm, ip)
     try:
         save_current_camparam(os.path.join(root_dir, "0"))
+        if trajectory_dir is None:
+            trajectory_dir = get_handeye_calib_traj(arm)
         file_list = [
             file_name
-            for file_name in os.listdir(get_handeye_calib_traj(arm))
-            if "_qpos" in file_name
+            for file_name in os.listdir(trajectory_dir)
+            if file_name.endswith("_qpos.npy")
         ]
         file_list.sort(key=lambda x: int(x.split("_")[0]))
+        if not file_list:
+            raise FileNotFoundError(
+                f"No *_qpos.npy poses found in {trajectory_dir}"
+            )
 
         for idx, file_name in enumerate(file_list):
             print(f"Capturing step {idx} over {len(file_list)}...")
             step_dir = os.path.join(root_dir, str(idx))
-            action = np.load(os.path.join(get_handeye_calib_traj(arm), file_name))
+            action = np.asarray(
+                np.load(os.path.join(trajectory_dir, file_name)),
+                dtype=np.float64,
+            )
+            if action.shape != (6,) or not np.all(np.isfinite(action)):
+                raise ValueError(
+                    f"Invalid xArm qpos in {os.path.join(trajectory_dir, file_name)}: "
+                    f"expected finite shape (6,), got {action.shape}"
+                )
 
             controller.move(action, is_servo=False)
             time.sleep(0.5)
@@ -105,10 +126,21 @@ def main():
                 args.arm,
                 network_info["xarm"]["param"]["ip"],
                 rcc,
+                os.path.join(BIMANUAL_POSE_DIR, "Right"),
             )
+            rcc.stop()
+            stream_started = False
             wait_for_left_arm()
+            rcc.start("stream", False, fps=30)
+            stream_started = True
             os.makedirs(left_dir, exist_ok=True)
-            capture_sequence(left_dir, args.arm, LEFT_XARM_IP, rcc)
+            capture_sequence(
+                left_dir,
+                args.arm,
+                LEFT_XARM_IP,
+                rcc,
+                os.path.join(BIMANUAL_POSE_DIR, "Left"),
+            )
         else:
             capture_sequence(
                 root_dir,

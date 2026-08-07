@@ -316,15 +316,18 @@ class ImageDict:
                      for id in marker_2d}
         return marker_2d, marker_3d
 
-    def triangulate_charuco(self) -> Dict[str, np.ndarray]:
+    def triangulate_charuco(
+        self,
+        detections: Optional[Dict[str, Dict]] = None,
+    ) -> Dict[str, np.ndarray]:
         """Triangulate ChArUco corners from multiple views"""
         
         if 'proj_mtx' not in self._cache:
             self._cache['proj_mtx'] = get_cammtx(self.intrinsic, self.extrinsic)
             
-        result = self.apply(
-            func=detect_charuco
-        )
+        result = detections
+        if result is None:
+            result = self.apply(func=detect_charuco)
         
         charuco_2d = {}
         for serial, det_dict in result.items():

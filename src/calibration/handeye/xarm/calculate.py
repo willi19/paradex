@@ -3,6 +3,7 @@ import cv2
 import argparse
 import numpy as np
 import tqdm
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
 
 from paradex.utils.file_io import find_latest_directory
@@ -29,6 +30,7 @@ EXCLUDED_SERIALS = {
     # "23173282",
     # "22684210",
 }
+DEFAULT_CHARUCO_WORKERS = min(8, os.cpu_count() or 1)
 
 
 def _filter_images_for_calibration(images, intrinsics=None, extrinsics=None):
@@ -44,75 +46,96 @@ def _filter_images_for_calibration(images, intrinsics=None, extrinsics=None):
     return filtered
 
 
-def undistort_and_detect_charuco(root_dir):
+def _detect_charuco_images(img_dict, executor):
+    serials = list(img_dict.images)
+    detections = executor.map(
+        detect_charuco,
+        (img_dict.images[serial] for serial in serials),
+    )
+    return dict(zip(serials, detections))
+
+
+def undistort_and_detect_charuco(
+    root_dir,
+    charuco_workers=DEFAULT_CHARUCO_WORKERS,
+):
+    if charuco_workers < 1:
+        raise ValueError("charuco_workers must be at least 1")
+
     img_dict = None
     index_list = sorted(os.listdir(root_dir))
     intrinsic, extrinsic = load_camparam(os.path.join(root_dir, "0"))
-    
-    for index in tqdm.tqdm(index_list, desc="Undistort and detect charuco"):
-        print(f"Processing index {index}...")
-        if os.path.exists(os.path.join(root_dir, index, "charuco_3d_ids.npy")) and \
-           os.path.exists(os.path.join(root_dir, index, "charuco_3d_corners.npy")):
-            continue
 
-        if os.path.exists(os.path.join(root_dir, index, "undistort", "images")) and \
-            len(os.listdir(os.path.join(root_dir, index, "undistort", "images"))) == \
-            len(os.listdir(os.path.join(root_dir, index, "images"))):
-            continue
-        
-        os.makedirs(os.path.join(root_dir, index, "undistort", "images"), exist_ok=True)
-        if img_dict is None:
-            img_dict = ImageDict.from_path(os.path.join(root_dir, index))
-            img_dict.images = _filter_images_for_calibration(
-                img_dict.images, intrinsics=intrinsic, extrinsics=extrinsic
+    with ThreadPoolExecutor(max_workers=charuco_workers) as executor:
+        for index in tqdm.tqdm(index_list, desc="Undistort and detect charuco"):
+            print(f"Processing index {index}...")
+            if os.path.exists(os.path.join(root_dir, index, "charuco_3d_ids.npy")) and \
+               os.path.exists(os.path.join(root_dir, index, "charuco_3d_corners.npy")):
+                continue
+
+            if os.path.exists(os.path.join(root_dir, index, "undistort", "images")) and \
+                len(os.listdir(os.path.join(root_dir, index, "undistort", "images"))) == \
+                len(os.listdir(os.path.join(root_dir, index, "images"))):
+                continue
+
+            os.makedirs(os.path.join(root_dir, index, "undistort", "images"), exist_ok=True)
+            if img_dict is None:
+                img_dict = ImageDict.from_path(os.path.join(root_dir, index))
+                img_dict.images = _filter_images_for_calibration(
+                    img_dict.images, intrinsics=intrinsic, extrinsics=extrinsic
+                )
+                img_dict.set_camparam(intrinsic, extrinsic)
+            else:
+                img_dict.update_path(os.path.join(root_dir, index))
+                img_dict.images = _filter_images_for_calibration(
+                    img_dict.images, intrinsics=intrinsic, extrinsics=extrinsic
+                )
+            if len(img_dict.images) == 0:
+                print(f"No valid cameras after exclusion for index {index}, skipping.")
+                continue
+
+            print(f"Undistorting and detecting charuco for index {index}...")
+            undistort_img_dict = img_dict.undistort(save_path=os.path.join(root_dir, index, "undistort"))
+
+            charuco_2d = _detect_charuco_images(undistort_img_dict, executor)
+            charuco_3d = undistort_img_dict.triangulate_charuco(
+                detections=charuco_2d
             )
-            img_dict.set_camparam(intrinsic, extrinsic)
-        else:
-            img_dict.update_path(os.path.join(root_dir, index))
-            img_dict.images = _filter_images_for_calibration(
-                img_dict.images, intrinsics=intrinsic, extrinsics=extrinsic
-            )
-        if len(img_dict.images) == 0:
-            print(f"No valid cameras after exclusion for index {index}, skipping.")
-            continue
-        
-        print(f"Undistorting and detecting charuco for index {index}...")
-        # if index=='21' or '22':
-        #     print
-        undistort_img_dict = img_dict.undistort(save_path=os.path.join(root_dir, index, "undistort"))
-        
-        charuco_3d = undistort_img_dict.triangulate_charuco()
-        charuco_3d = merge_charuco_detection(charuco_3d)
-        
-        charuco_2d = undistort_img_dict.apply(detect_charuco, False)
-        detection = {}
-        for serial in charuco_2d:
-            detection[serial] = merge_charuco_detection(charuco_2d[serial])['checkerCorner']
-        
-        detectionDict = undistort_img_dict.draw_keypoint(detection, color=(0,255,0))
-        print(charuco_3d['checkerCorner'].shape)
-        if len(charuco_3d['checkerCorner'])==0:
-            print(f"No charuco corners detected for index {index}, skipping saving detections.")
-            continue
-        projected_dict = undistort_img_dict.project_pointcloud(charuco_3d['checkerCorner'])
-        detectionDict = detectionDict.draw_keypoint(projected_dict, color=(255,0,0))
-        detectionDict.save(os.path.join(root_dir, index, "detection"))
-        
-        np.save(os.path.join(root_dir, index, "charuco_3d_ids.npy"), charuco_3d['checkerIDs'])
-        np.save(os.path.join(root_dir, index, "charuco_3d_corners.npy"), charuco_3d['checkerCorner'])
+            charuco_3d = merge_charuco_detection(charuco_3d)
+
+            detection = {}
+            for serial in charuco_2d:
+                detection[serial] = merge_charuco_detection(charuco_2d[serial])['checkerCorner']
+
+            detectionDict = undistort_img_dict.draw_keypoint(detection, color=(0,255,0))
+            print(charuco_3d['checkerCorner'].shape)
+            if len(charuco_3d['checkerCorner'])==0:
+                print(f"No charuco corners detected for index {index}, skipping saving detections.")
+                continue
+            projected_dict = undistort_img_dict.project_pointcloud(charuco_3d['checkerCorner'])
+            detectionDict = detectionDict.draw_keypoint(projected_dict, color=(255,0,0))
+            detectionDict.save(os.path.join(root_dir, index, "detection"))
+
+            np.save(os.path.join(root_dir, index, "charuco_3d_ids.npy"), charuco_3d['checkerIDs'])
+            np.save(os.path.join(root_dir, index, "charuco_3d_corners.npy"), charuco_3d['checkerCorner'])
 
 def compute_fk(root_dir, arm):
-    index_list = sorted(os.listdir(root_dir))
+    index_list = sorted(
+        (
+            index
+            for index in os.listdir(root_dir)
+            if index.isdigit() and os.path.isdir(os.path.join(root_dir, index))
+        ),
+        key=int,
+    )
 
     robot_wrapper = RobotWrapper(get_robot_urdf_path(arm_name=arm))
 
     for index in index_list:
-        if os.path.exists(os.path.join(root_dir, index, "eef_fk.npy")):
-            continue
-        
         qpos = np.load(os.path.join(root_dir, index, "qpos.npy"))
         eef = robot_wrapper.compute_forward_kinematics(qpos, link_list=["link6"])['link6']
         np.save(os.path.join(root_dir, index, "eef_fk.npy"), eef)
+
 
 def get_valid_indices(root_dir):
     """Get indices that have valid charuco detection files with actual points."""
@@ -292,9 +315,14 @@ def debug(root_dir, arm, robot_wrt_cam_world):
         
         overlay_img_dict.save(os.path.join(root_dir, index, "debug"))
                 
-def calculate_sequence(root_path, arm, save_path):
+def calculate_sequence(
+    root_path,
+    arm,
+    save_path,
+    charuco_workers=DEFAULT_CHARUCO_WORKERS,
+):
     validate_capture_directory(root_path)
-    undistort_and_detect_charuco(root_path)
+    undistort_and_detect_charuco(root_path, charuco_workers)
     compute_fk(root_path, arm)
     motion_wrt_cam, motion_wrt_robot = compute_motion(root_path)
     robot_wrt_cam_world = solve_ax_xb(
@@ -320,6 +348,12 @@ def calculate_sequence(root_path, arm, save_path):
     debug(root_path, arm, robot_wrt_cam_world)
 
 
+def get_bimanual_arm_name(arm, side):
+    if arm == "xarm" and side == "Left":
+        return "xarm_left"
+    return arm
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--name", type=str, default=None, help="Name of the calibration directory.")
@@ -328,6 +362,12 @@ def main():
         "--bimanual",
         action="store_true",
         help="Calculate right and left C2R transforms from a bimanual session.",
+    )
+    parser.add_argument(
+        "--charuco-workers",
+        type=int,
+        default=DEFAULT_CHARUCO_WORKERS,
+        help="Number of camera images to process in parallel for ChArUco detection.",
     )
     args = parser.parse_args()
 
@@ -351,11 +391,12 @@ def main():
             print(f"Calculating {side} xArm calibration...")
             calculate_sequence(
                 side_path,
-                args.arm,
+                get_bimanual_arm_name(args.arm, side),
                 os.path.join(root_path, f"C2R_{suffix}.npy"),
+                args.charuco_workers,
             )
     else:
-        calculate_sequence(root_path, args.arm, None)
+        calculate_sequence(root_path, args.arm, None, args.charuco_workers)
 
 
 if __name__ == "__main__":

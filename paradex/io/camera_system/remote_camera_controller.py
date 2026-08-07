@@ -5,7 +5,6 @@ from __future__ import annotations
 import threading
 import time
 import zmq
-from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from typing import Dict
 
@@ -24,7 +23,11 @@ class remote_camera_controller:
     so its UTG900E is never enabled for a partial camera group.
     """
 
+    COMMAND_RESPONSE_SECONDS = 30.0
     COMMAND_WAIT_SECONDS = 35.0
+    INITIALIZATION_WAIT_SECONDS = 60.0
+    REGISTER_WAIT_SECONDS = 5.0
+    REGISTER_ATTEMPTS = 3
 
     def __init__(self, name, pc_list=None):
         self.name = "{}_{}".format(name, datetime.now().strftime("%Y%m%d_%H%M%S"))
@@ -79,7 +82,34 @@ class remote_camera_controller:
                 )
             )
 
-        responses = self.register()
+        responses = {}
+        for attempt in range(1, self.REGISTER_ATTEMPTS + 1):
+            responses = self.register()
+            failures = self._failed_responses(responses)
+            if not failures:
+                return
+            retryable = all(
+                message.startswith(("no response", "send failed", "receive failed"))
+                for message in failures.values()
+            )
+            if not retryable or attempt == self.REGISTER_ATTEMPTS:
+                break
+            print(
+                "Camera registration attempt {}/{} failed; retrying...".format(
+                    attempt, self.REGISTER_ATTEMPTS
+                )
+            )
+            for socket in self.command_sockets.values():
+                socket.close()
+            self.command_sockets = {}
+            time.sleep(0.5)
+            for pc in self.pc_list:
+                socket = self.ctx.socket(zmq.REQ)
+                socket.setsockopt(zmq.LINGER, 0)
+                socket.setsockopt(zmq.RCVTIMEO, 30000)
+                socket.setsockopt(zmq.SNDTIMEO, 10000)
+                socket.connect("tcp://{}:{}".format(get_pc_ip(pc), self.command_port))
+                self.command_sockets[pc] = socket
         self._raise_for_failed_response("register", responses)
 
     def check_server_alive(self, pc):
@@ -98,27 +128,73 @@ class remote_camera_controller:
         finally:
             socket.close()
 
-    def send_command(self, cmd):
-        """Send one command to every capture PC in parallel."""
+    def send_command(self, cmd, timeout_seconds=None):
+        """Send one command and collect replies without sharing ZMQ sockets.
+
+        ZeroMQ sockets are thread-affine.  All command sockets are created by
+        ``run`` and this method is normally called by that same thread, so use
+        one poller rather than handing the sockets to a thread pool.
+        """
 
         command = dict(cmd)
         command["controller_name"] = self.name
 
-        def send_one(pc, socket):
+        responses = {}
+        pending = {}
+        poller = zmq.Poller()
+        for pc, socket in self.command_sockets.items():
             try:
                 socket.send_json(command)
-                return pc, socket.recv_json()
+                poller.register(socket, zmq.POLLIN)
+                pending[socket] = pc
             except zmq.ZMQError as exc:
-                return pc, {"status": "error", "msg": "no response: {}".format(exc)}
+                responses[pc] = {
+                    "status": "error",
+                    "msg": "send failed: {}".format(exc),
+                }
 
-        if not self.command_sockets:
-            return {}
-        with ThreadPoolExecutor(max_workers=len(self.command_sockets)) as executor:
-            futures = [executor.submit(send_one, pc, socket) for pc, socket in self.command_sockets.items()]
-            return {pc: response for pc, response in (future.result() for future in futures)}
+        if timeout_seconds is None:
+            timeout_seconds = self.COMMAND_RESPONSE_SECONDS
+        deadline = time.monotonic() + float(timeout_seconds)
+        while pending:
+            remaining_ms = max(0, int((deadline - time.monotonic()) * 1000))
+            if remaining_ms == 0:
+                break
+            events = dict(poller.poll(remaining_ms))
+            if not events:
+                break
+            for socket, event in events.items():
+                if socket not in pending or not event & zmq.POLLIN:
+                    continue
+                pc = pending.pop(socket)
+                poller.unregister(socket)
+                try:
+                    responses[pc] = socket.recv_json(flags=zmq.NOBLOCK)
+                except zmq.ZMQError as exc:
+                    responses[pc] = {
+                        "status": "error",
+                        "msg": "receive failed: {}".format(exc),
+                    }
+
+        for socket, pc in pending.items():
+            poller.unregister(socket)
+            responses[pc] = {
+                "status": "error",
+                "msg": "no response within {:.1f}s".format(
+                    timeout_seconds
+                ),
+            }
+        return {
+            pc: responses[pc]
+            for pc in self.command_sockets
+            if pc in responses
+        }
 
     def register(self):
-        return self.send_command({"action": "register"})
+        return self.send_command(
+            {"action": "register"},
+            timeout_seconds=self.REGISTER_WAIT_SECONDS,
+        )
 
     @staticmethod
     def _failed_responses(responses):
@@ -135,12 +211,17 @@ class remote_camera_controller:
             raise RemoteCameraControllerError("{} failed: {}".format(action, failures))
 
     def _wait_until_initialized(self):
-        if not self.ready_event.wait(self.COMMAND_WAIT_SECONDS):
+        if not self.ready_event.wait(self.INITIALIZATION_WAIT_SECONDS):
             raise RemoteCameraControllerError("Timed out initializing remote camera controller")
         if self._initialization_error is not None:
             raise RemoteCameraControllerError(
                 "Remote camera controller initialization failed: {}".format(self._initialization_error)
             )
+
+    def wait_until_ready(self):
+        """Block until every configured capture PC accepted registration."""
+
+        self._wait_until_initialized()
 
     def _request(self, event):
         self._wait_until_initialized()

@@ -7,6 +7,7 @@ ArUco and CharUco marker detection module (optimized version)
 
 from cv2 import aruco
 from typing import Tuple, List, Dict
+import threading
 import numpy as np
 import cv2
 import json
@@ -39,7 +40,7 @@ boardinfo_dict = json.load(open(os.path.join(config_dir, "charuco_info.json"), "
 
 
 _aruco_detector_cache = {}
-_charuco_detector_cache = {}
+_charuco_detector_local = threading.local()
 _charuco_board_cache = {name:aruco.CharucoBoard(
                 (boardinfo["numX"], boardinfo["numY"]),
                 boardinfo["checkerLength"],
@@ -56,9 +57,14 @@ def get_aruco_detector(dict_type: str):
 
 
 def get_charuco_detector():
+    detector_cache = getattr(_charuco_detector_local, "cache", None)
+    if detector_cache is None:
+        detector_cache = {}
+        _charuco_detector_local.cache = detector_cache
+
     key_list = list(boardinfo_dict.keys())
     for key in key_list:
-        if key not in _charuco_detector_cache:
+        if key not in detector_cache:
             boardinfo = boardinfo_dict[key]
             check_boardinfo_valid({key: boardinfo})
             
@@ -76,8 +82,8 @@ def get_charuco_detector():
                 board.setLegacyPattern(False)
 
             _charuco_board_cache[key] = board
-            _charuco_detector_cache[key] = aruco.CharucoDetector(board)
-    return _charuco_detector_cache
+            detector_cache[key] = aruco.CharucoDetector(board)
+    return detector_cache
 
 # --------------------------------------------------------------
 

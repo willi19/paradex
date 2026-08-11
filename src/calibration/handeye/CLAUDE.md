@@ -20,7 +20,7 @@ Press `c` per pose, `q` to finish. The existing xarm set has 18 poses.
 
 ## Files
 - `capture.py` — Main PC. Builds `XArmController` from `network_info["xarm"]["param"]`, or `FrankaController(network_info["franka"])` with a `ping()` precheck; `remote_camera_controller("handeye_calibration")`. `save_current_camparam(<root>/0)`. Iterates `*_qpos` files from `get_handeye_calib_traj(arm)` (sorted by leading int): `controller.move(action, is_servo=False)`, `rcc.start("image", ...)/stop()`, save `robot.npy`, `eef.npy` (=robot_data["position"]), `qpos.npy` per idx. `--arm xarm|franka`.
-- `calculate.py` — Main PC, runs at import (no `if __name__`). `undistort_and_detect_charuco` (ImageDict undistort → triangulate_charuco → `charuco_3d_{ids,corners}.npy` + detection overlay), `compute_fk` (RobotWrapper FK on link6 → `eef_fk.npy`), `compute_motion` (relative eef + camera motions; `SOLVE_XA_B` for cam point fit; floor board id range "1" excluded via `_floor_board_id_range`), `solve_ax_xb(motion_wrt_cam, motion_wrt_robot)` → `robot_wrt_cam`, save `C2R.npy`. `debug` overlays robot mesh + reprojected markers and prints FK/marker stats.
+- `calculate.py` — Main PC, runs at import (no `if __name__`). `undistort_and_detect_charuco` (ImageDict undistort → triangulate_charuco → `charuco_3d_{ids,corners}.npy` + detection overlay), `compute_fk` (RobotWrapper FK on link6 → `eef_fk.npy`), `compute_motion` (relative eef + camera motions; `SOLVE_XA_B` for cam point fit; the `FLOOR_BOARD` corner range excluded via `_floor_board_id_range`), `solve_ax_xb(motion_wrt_cam, motion_wrt_robot)` → `robot_wrt_cam`, save `C2R.npy`. `debug` overlays robot mesh + reprojected markers and prints FK/marker stats.
 
 ## paradex modules used
 - `paradex.calibration.Tsai_Lenz.solve_ax_xb` — AX=XB hand-eye solve.
@@ -40,7 +40,7 @@ Trajectory `<n>_qpos*` → arm move + capture → `~/shared_data/handeye_calibra
 ## Gotchas
 - `capture.py` moves a real robot — run on Main PC with arm powered/clear.
 - `calculate.py` has NO `__main__` guard: importing it RUNS the full pipeline. Invoke only as a script.
-- Floor/static board id range is excluded (`_floor_board_id_range("1")`) from motion + debug; depends on `boardinfo_dict` ordering.
+- Floor/static board id range is excluded from motion + debug via `_floor_board_id_range()`, whose default is the module constant **`FLOOR_BOARD`** (currently `"11"` — the 10x7 6X6_250 board, marker ids 70-104). **Change `FLOOR_BOARD` whenever the floor board is swapped**; leaving it on the wrong board makes the solve treat static floor corners as EE-board motion. The global corner offsets it returns are recomputed from `boardinfo_dict` ordering, so adding boards to `charuco_info.json` shifts them automatically.
 - eef link comes from `EEF_LINK` in `calculate.py`: xarm → `link6`, franka → `fr3_link8` (FR3's flange; `link6` does not exist in `franka.urdf`). Add an entry when supporting a new arm.
 - franka's `network_info["franka"]` is a **plain IP string**, not a dict like xarm's — `network_info[arm]["name"]` breaks on it.
 - `FrankaController.end()` takes no args (xarm's takes a bool).

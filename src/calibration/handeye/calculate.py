@@ -83,7 +83,13 @@ def compute_fk(name, arm):
         eef = robot_wrapper.compute_forward_kinematics(qpos, link_list=[eef_link])[eef_link]
         np.save(os.path.join(root_dir, index, "eef_fk.npy"), eef)
 
-def _floor_board_id_range(floor_board_key="3"):
+# Board id (key in charuco_info.json) of the static board lying on the floor. Its
+# corners never move with the arm, so they must be excluded from the motion solve.
+# Update this when the floor board is swapped.
+FLOOR_BOARD = "11"          # 10x7, 6X6_250, marker ids 70-104
+
+
+def _floor_board_id_range(floor_board_key=FLOOR_BOARD):
     offset = 0
     for b_id, cfg in boardinfo_dict.items():
         n_corners = (cfg["numX"] - 1) * (cfg["numY"] - 1)
@@ -113,7 +119,7 @@ def compute_motion(name):
 
     eef_list = [np.load(os.path.join(root_dir, index, "eef_fk.npy")) for index in index_list]
 
-    excluded_range = _floor_board_id_range("1")
+    excluded_range = _floor_board_id_range()
 
     # Only the non-floor (EE-mounted) board carries the robot's motion. Poses where it
     # is barely visible can't contribute a relative motion, so keep just the poses that
@@ -169,7 +175,7 @@ def debug(name, arm):
     rm = RobotModule(get_robot_urdf_path(arm_name=arm))
     intrinsic, extrinsic = load_camparam(os.path.join(root_dir, "0"))
 
-    excluded_range = _floor_board_id_range("1")
+    excluded_range = _floor_board_id_range()
 
     for index in index_list:
         eef = np.load(os.path.join(root_dir, index, "eef_fk.npy"))

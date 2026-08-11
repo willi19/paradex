@@ -1,6 +1,7 @@
 import os
 import time
 import json
+import traceback
 import numpy as np
 import chime
 chime.theme('pokemon')
@@ -9,7 +10,9 @@ from paradex.io.camera_system.remote_camera_controller import remote_camera_cont
 from paradex.io.camera_system.signal_generator import UTGE900
 from paradex.io.camera_system.timestamp_monitor import TimestampMonitor
 from paradex.io.robot_controller import get_arm, get_hand
-from paradex.utils.path import shared_dir
+# Capture writes to FAST LOCAL disk (avoids slow NFS during 's'); collect_videos
+# later syncs this to the NAS. All in-file `shared_dir` uses now mean local.
+from paradex.utils.path import local_shared_dir as shared_dir
 from paradex.retargetor.state import HandStateExtractor
 from paradex.retargetor.unimanual import Retargetor
 from paradex.calibration.utils import save_current_camparam, save_current_C2R
@@ -17,8 +20,9 @@ from paradex.utils.system import network_info
 
 class CaptureSession():
     def __init__(self, camera=False, arm=None, hand=None, teleop=None, hand_ip=False,
+                 hand_side="right",
                  use_sync_gen=True, camera_fps=30, use_timestamp_monitor=True,
-                 translation_scale=1.0, camera_mode="full"):
+                 translation_scale=1.0, camera_mode="full", limit_wrist=True):
         if arm is None and hand is None and teleop is not None:
             raise ValueError("Teleop device requires at least one of arm or hand to be specified.")
 
@@ -58,12 +62,23 @@ class CaptureSession():
             if teleop == "xsens":
                 from paradex.io.teleop.xsens.receiver import XSensReceiver
                 self.teleop_device = XSensReceiver(**network_info["xsens"]["param"])
-            
+            elif teleop == "vive":
+                # VIVE wrist trackers + MANUS gloves, published on ROS 2 topics
+                # by the vive-teleop stack. get_data() emits the same named-pose
+                # contract Xsens uses, so Retargetor/HandStateExtractor below work
+                # unchanged. hand_side="right" => right hand teleops, left hand is
+                # the gesture-state channel; both gloves must be publishing.
+                from paradex.io.teleop.vive.receiver import ViveManusROSReceiver
+                self.teleop_device = ViveManusROSReceiver(hand_side=hand_side)
+            else:
+                raise ValueError(f"Unsupported teleop device: {teleop}")
+
             # elif teleop == "occulus":
             #     from paradex.io.teleop.oculus.receiver import OculusReceiver
             #     self.teleop_device = OculusReceiver()
             self.retargetor = Retargetor(arm_name=arm, hand_name=hand,
-                                         translation_scale=translation_scale)
+                                         translation_scale=translation_scale,
+                                         limit_wrist=limit_wrist)
             self.state_extractor = HandStateExtractor()
             
         else:
@@ -103,45 +118,128 @@ class CaptureSession():
                            "sync_gen": bool(self.sync_generator is not None)}, f)
         
     def stop(self):
+        _t0 = time.time()
+        _marks = []
+        _sp = self.save_path
+
+        def _lap(label):
+            nonlocal _t0
+            dt = time.time() - _t0
+            _marks.append((label, dt))
+            if dt > 0.05:
+                print(f"[stop] {label}: {dt:.2f}s")
+            _t0 = time.time()
+
+        # Fire the camera stop (avi flush ~sec) FIRST, non-blocking, so it runs
+        # while arm/hand/teleop data is saved below -- overlap instead of sum.
+        if self.camera is not None:
+            self.camera.request_stop()
+            _lap("camera.request_stop (async)")
+
+        # Each step is guarded so one component's failure (e.g. an inspire Modbus
+        # read glitch) doesn't abort the rest of stop() and lose the camera /
+        # teleop / calibration data too. Failures print a full traceback (loud,
+        # never silent) and stop() carries on.
+        def _step(label, fn):
+            try:
+                fn()
+            except Exception:
+                print(f"[stop] {label} FAILED (continuing so other data still saves):")
+                traceback.print_exc()
+            _lap(label)
+
         if self.arm is not None:
-            self.arm.stop()
+            _step("arm.stop", self.arm.stop)
         if self.hand is not None:
-            self.hand.stop()
-            
+            _step("hand.stop", self.hand.stop)
+
         if self.teleop_device is not None:
-            self.teleop_device.stop()
-            os.makedirs(os.path.join(shared_dir, self.save_path, "raw", "state"), exist_ok=True)
-            np.save(os.path.join(shared_dir, self.save_path, "raw", "state", "state_hist.npy"), np.array(self.state_hist))
-            np.save(os.path.join(shared_dir, self.save_path, "raw", "state", "state_time.npy"), np.array(self.state_time))
+            def _save_teleop_state():
+                self.teleop_device.stop()
+                os.makedirs(os.path.join(shared_dir, self.save_path, "raw", "state"), exist_ok=True)
+                np.save(os.path.join(shared_dir, self.save_path, "raw", "state", "state_hist.npy"), np.array(self.state_hist))
+                np.save(os.path.join(shared_dir, self.save_path, "raw", "state", "state_time.npy"), np.array(self.state_time))
+            _step("teleop.stop+state", _save_teleop_state)
 
         if self.camera is not None:
-            self.camera.stop()
+            _step("camera.stop (avi flush, waited)", self.camera.wait_stopped)
             if self.timestamp_monitor is not None:
-                self.timestamp_monitor.stop()
+                _step("timestamp_monitor.stop", self.timestamp_monitor.stop)
             if self.sync_generator is not None:
-                self.sync_generator.stop()
+                _step("sync_generator.stop", self.sync_generator.stop)
 
-            save_current_camparam(os.path.join(shared_dir, self.save_path))
-            save_current_C2R(os.path.join(shared_dir, self.save_path))
-        
+            _step("save_current_camparam",
+                  lambda: save_current_camparam(os.path.join(shared_dir, self.save_path)))
+            _step("save_current_C2R",
+                  lambda: save_current_C2R(os.path.join(shared_dir, self.save_path)))
+
+        total = sum(dt for _, dt in _marks)
+        print(f"[stop] TOTAL: {total:.2f}s")
+        try:
+            with open(os.path.join(shared_dir, _sp, "timing_stop.log"), "w") as f:
+                for label, dt in _marks:
+                    f.write(f"{label}\t{dt:.3f}\n")
+                f.write(f"TOTAL\t{total:.3f}\n")
+        except Exception as e:
+            print(f"[stop] timing log write failed: {e}")
+
+        self._last_save_path = _sp
         self.save_path = None
 
     def end(self):
+        _t0 = time.time()
+        _marks = []
+
+        def _lap(label):
+            nonlocal _t0
+            dt = time.time() - _t0
+            _marks.append((label, dt))
+            if dt > 0.05:
+                print(f"[end] {label}: {dt:.2f}s")
+            _t0 = time.time()
+
         if self.arm is not None:
             self.arm.end()
+            _lap("arm.end")
         if self.hand is not None:
             self.hand.end()
+            _lap("hand.end")
         if self.teleop_device is not None:
             self.teleop_device.end()
-        
+            _lap("teleop.end")
+
         if self.camera is not None:
             self.camera.end()
+            _lap("camera.end")
             if self.timestamp_monitor is not None:
                 self.timestamp_monitor.end()
+                _lap("timestamp_monitor.end")
             if self.sync_generator is not None:
                 self.sync_generator.end()
+                _lap("sync_generator.end")
+
+        total = sum(dt for _, dt in _marks)
+        print(f"[end] TOTAL: {total:.2f}s")
+        _sp = getattr(self, "_last_save_path", None)
+        if _sp:
+            try:
+                with open(os.path.join(shared_dir, _sp, "timing_end.log"), "w") as f:
+                    for label, dt in _marks:
+                        f.write(f"{label}\t{dt:.3f}\n")
+                    f.write(f"TOTAL\t{total:.3f}\n")
+            except Exception as e:
+                print(f"[end] timing log write failed: {e}")
     
-    def teleop(self, stop_event=None, exit_event=None, use_gesture_exit=True):
+    def _freeze_arm(self):
+        """Stop the arm exactly where it is when an episode ends, so it doesn't
+        coast to the last streamed servo target (j4/j5 rotating after 's')."""
+        if self.arm is not None and hasattr(self.arm, "hold"):
+            try:
+                self.arm.hold()
+            except Exception as exc:
+                print(f"[teleop] arm.hold failed: {exc}")
+
+    def teleop(self, stop_event=None, exit_event=None, use_gesture_exit=True, clutch=True):
         if self.teleop_device is None:
             raise ValueError("No teleop device initialized.")
 
@@ -149,29 +247,72 @@ class CaptureSession():
         exit_counter = 0
         stop_counter = 0
 
+        # The clutch/gesture channel is the LEFT glove. When clutch is off, stop
+        # gating teleop on the left glove being fresh, so a bad/NaN left glove
+        # (which otherwise makes get_data return None) can't stall right-hand
+        # control. With gesture-exit on, we still want the left glove.
+        if hasattr(self.teleop_device, "set_require_left_hand"):
+            self.teleop_device.set_require_left_hand(clutch or use_gesture_exit)
+
+        # Recover the arm from any error/protective-stop left by a previous
+        # episode and re-arm servo mode, otherwise arm.move() is silently
+        # ignored on the 2nd+ episode (looks like "robot doesn't move").
+        if self.arm is not None and hasattr(self.arm, "clear_error"):
+            try:
+                self.arm.clear_error()
+            except Exception as exc:
+                print(f"[teleop] arm.clear_error failed: {exc}")
+
         home_pose = self.arm.get_data()["position"] if self.arm is not None else np.eye(4)
 
         self.retargetor.start(home_pose)
 
+        _dbg_t = 0.0
+        _none_count = 0
         while True:
             if stop_event is not None and stop_event.is_set():
                 stop_event.clear()
+                self._freeze_arm()
                 chime.info(sync=True)
                 return "stop"
             if exit_event is not None and exit_event.is_set():
                 exit_event.clear()
+                self._freeze_arm()
                 chime.success(sync=True)
                 return "exit"
 
             data = self.teleop_device.get_data()
             if data["Right"] is None:
+                _none_count += 1
+                if _none_count == 1 or _none_count % 200 == 0:
+                    print(f"[teleop] no fresh data (get_data None x{_none_count}) — "
+                          f"check VIVE + BOTH MANUS publishers")
                 continue
-            state = self.state_extractor.get_state(data['Left'])
+            _none_count = 0
+            # Left frame may be None/absent when the left glove is ignored
+            # (clutch off) or bad; treat as neutral state 0 (no gesture).
+            left_data = data.get('Left')
+            state = self.state_extractor.get_state(left_data) if left_data is not None else 0
+            # Reliable clutch from MANUS ergonomics (left hand): OPEN -> pause,
+            # FIST/curled -> engage. Falls back to the geometric extractor.
+            left_state = self.teleop_device.get_state() if hasattr(self.teleop_device, "get_state") else None
+            if left_state is not None:
+                left_open = (left_state == 0)   # 0 = all fingers straight
+                src = "ergo"
+            else:
+                left_open = (state != 0)        # geometric: open hand -> state 1
+                src = "geom"
+            moving = (not clutch) or (not left_open)
+            if time.time() - _dbg_t > 1.0:
+                print(f"[teleop] left={'OPEN' if left_open else 'fist'}({src}) "
+                      f"clutch={'on' if clutch else 'OFF'} -> "
+                      f"{'MOVING (follows right hand)' if moving else 'PAUSED — make a FIST to move / OPEN to pause'}")
+                _dbg_t = time.time()
             if self.save_path is not None:
                 self.state_hist.append(state)
                 self.state_time.append(time.time())
 
-            if state == 0:
+            if moving:
                 wrist_pose, hand_action = self.retargetor.get_action(data)
                 if self.hand is not None:
                     self.hand.move(hand_action)
@@ -195,13 +336,15 @@ class CaptureSession():
                     exit_counter = 0
 
                 if exit_counter > 90:
+                    self._freeze_arm()
                     chime.success(sync=True)
                     return "exit"
                 if stop_counter > 90:
+                    self._freeze_arm()
                     chime.info(sync=True)
                     return "stop"
             else:
-                if state != 0:
+                if clutch and left_open:
                     self.retargetor.stop()
 
             time.sleep(0.01)

@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>GR00T finetune on xArm6 + Inspire — status report</title>
+<style>
+  :root {
+    --fg: #1a1a1a; --bg: #fafafa; --muted: #666; --accent: #0a66c2;
+    --good: #1b7e3a; --warn: #b56b00; --bad: #b03030; --done: #888;
+    --code-bg: #f0f2f5; --border: #d0d4d9;
+  }
+  html, body { background: var(--bg); color: var(--fg); }
+  body { font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+         max-width: 980px; margin: 24px auto; padding: 0 24px; }
+  h1 { font-size: 26px; margin: 0 0 6px; }
+  h2 { font-size: 20px; margin: 32px 0 8px; padding-bottom: 4px; border-bottom: 2px solid var(--border); }
+  h3 { font-size: 17px; margin: 22px 0 6px; }
+  code, pre { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--code-bg); padding: 10px 14px; border-radius: 4px;
+        border: 1px solid var(--border); overflow-x: auto; line-height: 1.45; }
+  pre code { background: transparent; padding: 0; }
+  .muted { color: var(--muted); }
+  .good { color: var(--good); }
+  .warn { color: var(--warn); }
+  .bad  { color: var(--bad); }
+  .done { color: var(--done); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px;
+           font-size: 11px; font-weight: 600; vertical-align: 1px; }
+  .badge.done { background: #e6e6e6; color: #555; }
+  .badge.running { background: #fef3c7; color: #92400e; }
+  .badge.pending { background: #e0e7ff; color: #3730a3; }
+  table { border-collapse: collapse; width: 100%; margin: 8px 0 16px; font-size: 14px; }
+  th, td { border: 1px solid var(--border); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #eef1f4; }
+  ol.phases > li { margin-bottom: 10px; }
+  .kv { display: grid; grid-template-columns: 200px 1fr; gap: 4px 12px; font-size: 14px; }
+  .kv b { color: var(--muted); font-weight: 500; }
+  details { background: #fff; border: 1px solid var(--border); border-radius: 4px; padding: 8px 12px; margin: 6px 0; }
+  summary { cursor: pointer; font-weight: 500; }
+  .step-title { font-weight: 600; color: var(--accent); }
+</style>
+</head>
+<body>
+
+<h1>GR00T N1.7 finetune on xArm6 + Inspire — status report</h1>
+<p class="muted">Last updated after Phase 7 VRAM probe succeeded on 1× A5000 with paged 8-bit Adam + gradient checkpointing. Phase 8 (real finetune) is the next action. Read top-down.</p>
+
+<h2>1. The goal</h2>
+<p>Finetune <code>nvidia/GR00T-N1.7-3B</code> (a 3B-parameter vision-language-action model) on a custom embodiment:
+<strong>xArm6 6-DOF arm + Inspire right hand</strong> performing the task <strong>"sweep the cutting board with the broom"</strong>, using ~30 teleop demonstrations already recorded under
+<code>/media/ssd1/sungjoo/copy_teleop_test/task/2_broom_sweep/</code>.</p>
+
+<p>Eventual deployment target: closed-loop rollout in <strong>Isaac Lab</strong> (separate container)
+with the trained policy served over ZMQ by <code>gr00t/eval/run_gr00t_server.py</code>.</p>
+
+<h2>2. Hard constraints (drive every decision)</h2>
+<table>
+  <tr><th>Constraint</th><th>Why</th><th>How it shaped the plan</th></tr>
+  <tr>
+    <td><strong>1–2× RTX A5000 (24 GB)</strong>; NVIDIA's stated minimum is 40 GB</td>
+    <td>Below the official spec</td>
+    <td>Phase 7 is an explicit VRAM probe before any committed training run.
+    Escalation table: shrink batch &rarr; shrink action horizon &rarr; gradient checkpointing &rarr; FSDP.
+    Plain DDP (<code>torchrun</code>) does NOT lower per-GPU VRAM — only FSDP does.</td>
+  </tr>
+  <tr>
+    <td><strong>Never alter original teleop data</strong></td>
+    <td>User directive</td>
+    <td>Container mounts <code>/data/teleop:ro</code>; all converter output lands in a fresh tree at
+    <code>/data/datasets/xarm_inspire_broom_v1/</code>.</td>
+  </tr>
+  <tr>
+    <td><strong>Small steps, fast fail, no fallbacks</strong></td>
+    <td>Catch problems early; avoid silent corruption</td>
+    <td>Every phase has one verifiable gate. The converter aborts on dimension drift,
+    fps drift, missing files, or &gt;5-frame video-count spread.</td>
+  </tr>
+  <tr>
+    <td><strong>Visual output at every step</strong></td>
+    <td>Manual verification beats trusting numbers</td>
+    <td>Wrote <code>scripts/inspect_teleop_episode.py</code> (Phase 1 schema check),
+    converter emits per-episode thumbnails + state/action curves,
+    <code>scripts/review_lerobot_dataset.py</code> does final dataset audit (Phase 5.5).</td>
+  </tr>
+</table>
+
+<h2>3. Decisions locked early</h2>
+<div class="kv">
+  <b>Action space</b><span>12-D joint-space (6 arm joints + 6 Inspire fingers).
+  Chose joint-space over EEF because (a) recorded data is qpos, (b) no IK layer needed at deploy.</span>
+
+  <b>Action representation</b><span><strong>RELATIVE</strong> for both arm and hand
+  (model predicts deltas from the current state). Goes hand-in-hand with the next-state-as-action choice (see below).</span>
+
+  <b>Action source</b><span><strong>next-state-as-action</strong>: <code>action[t] = state[t+1]</code>.
+  Sidesteps state vs action frame mismatch entirely. Recorded <code>arm/action_qpos.npy</code> would have needed
+  per-joint offset calibration; trivial-to-train delta loss is preferred.</span>
+
+  <b>Eval target</b><span>Isaac Lab in a <strong>separate Docker container</strong>.
+  GR00T container runs <code>run_gr00t_server.py</code>; Isaac Lab container runs the scene + ZMQ client.
+  This is the officially supported split — Isaac Sim ships embedded Python that collides with the gr00t venv.</span>
+
+  <b>Embodiment tag</b><span><code>EmbodimentTag.NEW_EMBODIMENT</code>.
+  Custom robots use this tag exclusively; the base 3B checkpoint refuses it
+  (zero-shot disallowed by design — finetune is the only path).</span>
+</div>
+
+<h2>4. Phase log</h2>
+
+<ol class="phases">
+
+<li>
+  <span class="step-title">Phase 0 — environment smoke test</span> <span class="badge done">done</span>
+  <p>Confirm the running container can import gr00t and see all 8 A5000s.</p>
+  <pre><code>python -c "import gr00t, torch; print(gr00t.__file__); print('cuda', torch.cuda.is_available(), torch.cuda.device_count())"
+# → /workspace/gr00t/__init__.py
+# → cuda True 8</code></pre>
+</li>
+
+<li>
+  <span class="step-title">Phase 1 — schema lock</span> <span class="badge done">done</span>
+  <p>One read-only inspector dumps shapes for every npy + mp4 in one episode and emits
+  a 4-camera × 3-timestamp montage and proprio curve plot. Tool:
+  <code>scripts/inspect_teleop_episode.py</code>.</p>
+  <p>Result for <code>2_broom_sweep/2026-05-15_22-55-25</code>:</p>
+  <pre><code>arm/position:    (1068, 6) float64   range  -1.14 .. 4.22   ← radians
+arm/action_qpos: (1068, 6) float64   range -178.29 .. 178.70 ← degrees
+hand/position:   (1068, 6) int64     range    0 .. 1000      ← Inspire raw units
+hand/action:     (1068, 6) int32     range    0 .. 1000
+videos:          4 × (2048 x 1536) at 30 fps, 1068 frames each</code></pre>
+  <p><strong>Locked dims:</strong> 12-D state, 12-D action, 4 cameras, 30 fps.</p>
+</li>
+
+<li>
+  <span class="step-title">Phase 2 — write &amp; validate converter</span> <span class="badge done">done</span>
+  <p>Tool: <code>scripts/convert_teleop_to_lerobot.py</code>. Three significant code iterations:</p>
+  <ol>
+    <li><strong>Unit mismatch:</strong> arm position is rad, arm action is deg. Initial heuristic
+        <code>max(|x|) &gt; π+0.1</code> was too eager — it flagged the rad <code>position</code>
+        (which legally reads 4.22 rad on the wrist) as degrees and shrank it by 57×.
+        Fixed threshold to <code>2π + 0.2 ≈ 6.5</code>: rotational joints never exceed ±2π,
+        so any value past that is definitely degrees.</li>
+    <li><strong>±180° wraparound:</strong> <code>np.unwrap(period=360.0)</code> before deg→rad
+        prevents 356° apparent jumps when a joint crosses the ±180° boundary.</li>
+    <li><strong>next-state-as-action:</strong> <code>--action-source next_state</code> (default)
+        replaces the recorded action stream with <code>state[t+1]</code>, last frame repeated.
+        This is what enabled clean training.</li>
+    <li><strong>Per-camera frame-count drift:</strong> cam3 had 896 frames vs others' 897 in one episode.
+        Naive trimming caused ffmpeg to seek past end-of-stream during thumbnail generation.
+        Fix: use <code>min(per-cam nframes)</code> as the master timeline, trim each video to that count,
+        and abort if spread &gt; 5 frames.</li>
+  </ol>
+  <p>The converter also (a) probes ffmpeg for fps/resolution, (b) interpolates arm + hand state/action onto the video frame grid via
+  <code>np.interp</code>, (c) writes a parquet per episode, (d) remuxes each mp4 (<code>-c copy</code>, ~10× faster than transcoding),
+  (e) writes meta/<code>info.json</code>, <code>episodes.jsonl</code>, <code>tasks.jsonl</code>, <code>modality.json</code>,
+  (f) saves per-episode thumbnail + state/action curve png.</p>
+  <details>
+    <summary>Converter parquet schema (matches <code>demo_data/cube_to_bowl_5</code>)</summary>
+    <pre><code>observation.state : 12-D float32  [arm:0..6, hand:6..12]
+action            : 12-D float32  [arm:0..6, hand:6..12]  (= state shifted by 1)
+timestamp         : float32
+frame_index       : int64
+episode_index     : int64
+index             : int64  (global, across all episodes)
+task_index        : int64  (→ tasks.jsonl)</code></pre>
+  </details>
+</li>
+
+<li>
+  <span class="step-title">Phase 3 — modality config + EmbodimentTag</span> <span class="badge done">done</span>
+  <p>New file <code>examples/xarm_inspire/xarm_inspire_config.py</code> — lifted from the SO100 template,
+  registers <code>EmbodimentTag.NEW_EMBODIMENT</code> with the 4 cameras (cam0..cam3), arm + hand state/action,
+  16-step action horizon, both arm and hand as RELATIVE.</p>
+  <p>The dataset's <code>meta/modality.json</code> declares the byte-range slicing
+  (<code>state.arm = [0..6)</code>, <code>state.hand = [6..12)</code>), so the same modality config works for any state/hand dim.</p>
+</li>
+
+<li>
+  <span class="step-title">Phase 4 — generate stats</span> <span class="badge done">done</span>
+  <pre><code>python gr00t/data/stats.py \
+    --dataset-path /data/datasets/xarm_inspire_broom_v1 \
+    --embodiment-tag NEW_EMBODIMENT \
+    --modality-config-path examples/xarm_inspire/xarm_inspire_config.py</code></pre>
+  <p>Wrote <code>meta/stats.json</code> (3 keys: action, observation.state, timestamp) and
+  <code>meta/relative_stats.json</code> (2 keys: arm, hand — RELATIVE-mode means a separate file).
+  Stats.py executing end-to-end means the loader can read every parquet + apply the modality slicing.
+  This <strong>was the dataset-validity gate</strong>.</p>
+</li>
+
+<li>
+  <span class="step-title">Phase 5 — dataset loader smoke test</span> <span class="badge done">done</span>
+  <p>The plan originally said "run <code>gr00t/eval/open_loop_eval.py</code> against the base model" — but
+  <code>NEW_EMBODIMENT</code> is rejected by the base checkpoint:</p>
+  <pre><code>ValueError: Embodiment tag 'NEW_EMBODIMENT' is not supported by this checkpoint.
+Hint: NEW_EMBODIMENT is for finetuning. Use launch_finetune.py, not the base model directly.</code></pre>
+  <p>Replaced with <code>scripts/_smoke_dataset_loader.py</code> — imports the modality config,
+  registers it, calls <code>LeRobotEpisodeLoader</code>, reads <code>_load_parquet_data(0)</code>
+  + <code>_load_video_data(0, [0, mid, last])</code>. Result:</p>
+  <pre><code>state.arm:  (6,) float32     state.hand: (6,) float32
+action.arm: (6,) float32     action.hand:(6,) float32
+cam0..3:    (3, 1536, 2048, 3) uint8
+language:   "sweep the cutting board with the broom"</code></pre>
+  <p>This proves the modality config, parquet schema, video keys, and embodiment-tag registration
+  all line up <em>without</em> needing a model.</p>
+</li>
+
+<li>
+  <span class="step-title">Phase 6 — scale to all 30 episodes</span> <span class="badge done">done</span>
+  <pre><code>python scripts/convert_teleop_to_lerobot.py \
+    --src-dir /data/teleop/task/2_broom_sweep \
+    --out-dir /data/datasets/xarm_inspire_broom_v1 \
+    --task-instruction "sweep the cutting board with the broom" \
+    --vis-dir /data/datasets/xarm_inspire_broom_v1/_vis</code></pre>
+  <p><strong>Result:</strong> 30 episodes, 35,688 frames total (avg ~1,190 frames ≈ 40 s @ 30 fps per episode).
+  Wall-clock 22 min — slower than expected because frame-count-drift episodes hit the libx264 re-encode path
+  rather than the fast <code>-c copy</code> remux. Acceptable for a one-time conversion; would optimize for
+  rapid iteration via <code>-c copy -vframes N</code> path.</p>
+  <p>Re-ran <code>gr00t/data/stats.py</code> over the 30-episode dataset (3 s for the trajectory loops; 30 parquets indexed at 380/s).
+  <code>scripts/_smoke_dataset_loader.py</code> confirms trajs <strong>0, 14, 29</strong> all load cleanly:
+  state/action <code>(6,) float32</code> per modality, all 4 cams decode to <code>(3, 1536, 2048, 3) uint8</code>.</p>
+</li>
+
+<li>
+  <span class="step-title">Phase 5.5 — manual dataset completeness review</span> <span class="badge done">done</span>
+  <p>Tool: <code>scripts/review_lerobot_dataset.py</code>. Original implementation used
+  <code>ffprobe -count_frames</code> which forces a full decode per video — projected ~20 min for 120 videos.
+  Killed it, patched to read the cheap <code>nb_frames</code> metadata first (instant, falls back to count_frames only if missing).</p>
+  <p><strong>Result:</strong> <code>FAILURES: (none)</code>. Per-episode CSV confirms:</p>
+  <ul>
+    <li>Episode lengths range <strong>862 → 1,679 frames</strong> (29–56 s @ 30 fps).</li>
+    <li>All 4 per-camera frame counts equal the parquet row count for every episode.</li>
+    <li>state_dim = action_dim = 12 across all 30 episodes.</li>
+    <li>State range is fairly homogeneous: most episodes' state_min ∈ [-1.7, -0.9] rad. Outliers:
+      <strong>ep 20, 21, 26, 27</strong> with state_min near -2 to -3 rad; <strong>ep 24, 27</strong>
+      near -4.7 to -4.9 rad — consistent with wider wrist excursions. Worth eyeballing the corresponding
+      <code>_review/episode_000024_cam_thumbs.jpg</code> but not a blocker (xArm6 wrist rotates &gt; ±π legally).</li>
+  </ul>
+  <p>Artifacts in <code>/data/datasets/xarm_inspire_broom_v1/_review/</code>:
+  30 × <code>episode_NNNNNN_cam_thumbs.jpg</code> + <code>per_episode_stats.csv</code> + <code>state_action_summary.png</code>.</p>
+</li>
+
+<li>
+  <span class="step-title">Phase 7 — VRAM probe (1× A5000)</span> <span class="badge done">done</span>
+  <p><strong>Result:</strong> first attempt at <code>batch=8, grad-accum=4</code> with stock optimizer
+  hit <span class="bad">CUDA OOM</span> exactly as predicted — model + Adam fp32 state for 1.62 B trainable params is ~26 GB
+  before any activations, ceiling is 24 GB.</p>
+
+  <p><strong>Escalation applied (single try, no flailing):</strong></p>
+  <ul>
+    <li><code>uv pip install bitsandbytes</code> → 0.49.2</li>
+    <li>Patched <code>gr00t/experiment/launch_finetune.py</code> to forward two env vars into the underlying training config:
+      <code>GR00T_OPTIM</code> → <code>config.training.optim</code>, and <code>GR00T_GRAD_CKPT=1</code> → <code>config.training.gradient_checkpointing</code>.</li>
+    <li>Set <code>GR00T_OPTIM=paged_adamw_8bit</code> (paged 8-bit Adam) and <code>GR00T_GRAD_CKPT=1</code> (gradient checkpointing).</li>
+    <li>Dropped <code>--global-batch-size</code> from 8 to 4 for additional headroom.</li>
+  </ul>
+
+  <p><strong>Result on probe v2 (1× A5000, 20 steps to fail-fast):</strong></p>
+  <ul>
+    <li>20/20 steps completed ✓</li>
+    <li>Wall-clock 6:24 (first step 5:47 was shard-cache warmup; steady-state <strong>~2 s/step</strong>)</li>
+    <li>Loss 1.01 → 1.03 — finite, no NaN</li>
+    <li>No OOM</li>
+  </ul>
+
+  <p><strong>Math behind the fix:</strong></p>
+  <table>
+    <tr><th>Buffer</th><th>fp32 Adam</th><th>paged 8-bit Adam + grad-ckpt</th></tr>
+    <tr><td>Adam <code>exp_avg + exp_avg_sq</code> for 1.62 B trainable</td><td>~13 GB</td><td>~3.25 GB (4× reduction)</td></tr>
+    <tr><td>Activations</td><td>full</td><td>~70 % (recomputed on backward)</td></tr>
+    <tr><td>Estimated total at training time</td><td><strong>~26 GB</strong> (won't fit)</td><td>well under 24 GB</td></tr>
+  </table>
+
+  <p>Defaults in <code>scripts/run_finetune_xarm_inspire.sh</code> now bake these in
+  (<code>GR00T_OPTIM=paged_adamw_8bit GR00T_GRAD_CKPT=1</code>).</p>
+</li>
+
+<li>
+  <span class="step-title">Phase 8 — real finetune</span> <span class="badge running">running — single-GPU (after 2 DDP attempts)</span>
+  <p>Two DDP attempts both died at the post-init NCCL barrier (10-min watchdog vs ~10-min stats regen per rank).
+  Switched to single-GPU on GPU 0 — the probe already proved this path. Wall-clock estimate ~75 min for 2000 steps.</p>
+  <pre><code>CUDA_VISIBLE_DEVICES=0 NUM_GPUS=1 RUN_NAME=broom_run1 MAX_STEPS=2000 \
+  bash /workspace/scripts/run_finetune_xarm_inspire.sh</code></pre>
+  <p>Defaults: <code>paged_adamw_8bit</code>, gradient checkpointing, batch 4, grad-accum 4 → effective batch 16.
+  Wandb run live at
+  <a href="https://wandb.ai/junesjukim-seoul-national-university/finetune-gr00t-n1d7">junesjukim-seoul-national-university/finetune-gr00t-n1d7</a>.</p>
+</li>
+
+<li>
+  <span class="step-title">Phase 9 — post-finetune open-loop eval</span> <span class="badge pending">pending</span>
+  <p>Run <code>gr00t/eval/open_loop_eval.py</code> against the finetuned checkpoint.
+  Gate: MSE/MAE substantially below random (baseline plots are from the inspector — we never had a model-side baseline because the base checkpoint can't load NEW_EMBODIMENT).</p>
+</li>
+
+<li>
+  <span class="step-title">Phase 10 — Isaac Lab closed-loop (separate container)</span> <span class="badge pending">pending</span>
+  <p>Two-container ZMQ split: gr00t container serves the policy; Isaac Lab container runs the scene + acts as client.
+  Uses <code>nvcr.io/nvidia/isaac-lab:latest</code>. Authoring the Isaac Lab scene is the long pole (~3–5 days for a fresh embodiment).</p>
+</li>
+
+</ol>
+
+<h2>5. Issues encountered &amp; resolutions (chronological)</h2>
+<table>
+  <tr><th>#</th><th>Symptom</th><th>Cause</th><th>Resolution</th></tr>
+  <tr><td>1</td><td><code>401 / 403</code> on Hugging Face gated repo</td>
+      <td>Fine-grained HF token missing "public gated repos" scope</td>
+      <td>Use a plain "Read" token instead of fine-grained; accept terms on both <code>GR00T-N1.7-3B</code> AND <code>Cosmos-Reason2-2B</code></td></tr>
+  <tr><td>2</td><td><code>parquet magic bytes not found</code></td>
+      <td>Demo data files were git-LFS pointers (131 bytes each), not real parquets</td>
+      <td><code>git lfs pull --include "demo_data/droid_sample/**"</code> from host — container can't run lfs (no <code>.git</code>)</td></tr>
+  <tr><td>3</td><td><code>Dataset path does not exist: demo_data/droid_sample</code></td>
+      <td>Repo-root <code>.dockerignore</code> excludes <code>demo_data/</code> from build context</td>
+      <td>Mount <code>-v /media/ssd1/sungjoo/Isaac-GR00T/demo_data:/workspace/demo_data</code> on container start</td></tr>
+  <tr><td>4</td><td>Container has no <code>.git</code>, so <code>git lfs pull</code> fails inside</td>
+      <td><code>.dockerignore</code> excludes <code>.git/</code></td>
+      <td>Bind-mount <code>/media/ssd1/sungjoo/Isaac-GR00T/.git → /workspace/.git</code></td></tr>
+  <tr><td>5</td><td>Converter found "1 episode" when there are 30</td>
+      <td><code>--max-episodes 1</code> sliced before the count was printed</td>
+      <td>Print total candidate count before the slice; report converting-N vs found-M</td></tr>
+  <tr><td>6</td><td>Arm state &amp; action curves on hugely different y-scales</td>
+      <td>Unit mismatch: state in rad, action in deg</td>
+      <td>Detect via <code>max(|x|) &gt; 2π+0.2</code>; np.unwrap + deg→rad before write</td></tr>
+  <tr><td>7</td><td>State and action arm curves still differ after unit fix</td>
+      <td>Recorded teleop command stream lives in a different reference frame than encoder reads</td>
+      <td>Use <code>next-state-as-action</code>: <code>action[t]=state[t+1]</code>. Eliminates frame mismatch by construction.</td></tr>
+  <tr><td>8</td><td><code>NEW_EMBODIMENT not supported by checkpoint</code> in baseline open-loop eval</td>
+      <td>NEW_EMBODIMENT is finetune-only by design</td>
+      <td>Replace baseline eval with a no-model loader smoke test (<code>scripts/_smoke_dataset_loader.py</code>)</td></tr>
+  <tr><td>9</td><td>Modality config didn't appear in registry after import</td>
+      <td>Registry key is <code>embodiment_tag.value</code> (the string), not the enum itself</td>
+      <td>Look up via <code>tag.value</code>; document for the rest of the pipeline</td></tr>
+  <tr><td>10</td><td>FileNotFoundError on thumbnail generation for episode 3</td>
+      <td>Cam3 had 896 frames vs others' 897; ffmpeg seek past EOS</td>
+      <td>Probe ALL cameras, use <code>min(n_frames)</code> as timeline; trim each mp4 to that count; abort on spread &gt; 5</td></tr>
+  <tr><td>11</td><td>Multi-GPU "fixing" 24 GB VRAM ceiling</td>
+      <td>Plain DDP shards <em>batch</em>, not model — each GPU still holds full model + optimizer</td>
+      <td>FSDP (lever 4) is what shards model state across GPUs. Phase 7 explicitly tests this escalation path.</td></tr>
+  <tr><td>12</td><td>OOM in Phase 7 at batch=8 (single A5000)</td>
+      <td>Optimizer state alone (Adam fp32, 1.62 B trainable) = 13 GB; total ~26 GB before activations</td>
+      <td><code>uv pip install bitsandbytes</code>; patch <code>launch_finetune.py</code> to read
+      <code>GR00T_OPTIM</code> + <code>GR00T_GRAD_CKPT</code> env vars; rerun with
+      <code>paged_adamw_8bit</code> + gradient checkpointing + batch=4. Fits in 24 GB,
+      ~2 s/step steady-state.</td></tr>
+  <tr><td>13</td><td>Phase 8 DDP run #1 failed with NCCL ALLREDUCE timeout after ~10:00</td>
+      <td>HF Trainer / NCCL default <code>ddp_timeout</code> is 600 s. Each rank independently regenerates
+      <code>meta/stats.json</code> at init (~10 min for 30 episodes). Both ranks finished within 4 s of each
+      other but the watchdog had already fired exactly at the 10:00 mark.</td>
+      <td>Patched <code>gr00t/experiment/experiment.py</code> to pass <code>ddp_timeout=1800</code> (override
+      via env <code>GR00T_DDP_TIMEOUT_S</code>). Relaunched with <code>GR00T_DDP_TIMEOUT_S=3600</code>.</td></tr>
+  <tr><td>14</td><td>Phase 8 DDP run #2 ALSO failed with the same 10-min NCCL timeout</td>
+      <td><code>TrainingArguments.ddp_timeout</code> only configures the process group HF Trainer makes
+      <em>later</em>; the launch-time PG created by torchrun/accelerate keeps the 600 s NCCL watchdog
+      regardless. Patching that requires either an env var (<code>TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC</code>)
+      or wrapping <code>init_process_group(timeout=...)</code> manually — neither is exposed by gr00t.</td>
+      <td><strong>Dropped DDP entirely; running single-GPU.</strong> Probe already proved this path works
+      (~2 s/step). Expected wall-clock ~75 min for 2000 steps. Acceptable trade for guaranteed completion.</td></tr>
+</table>
+
+<h2>6. File map (what's where)</h2>
+<table>
+  <tr><th>Path</th><th>Purpose</th></tr>
+  <tr><td><code>/media/ssd1/sungjoo/copy_teleop_test/</code></td><td>Original teleop data (read-only)</td></tr>
+  <tr><td><code>/media/ssd1/sungjoo/datasets/xarm_inspire_broom_v1/</code></td><td>Converted LeRobot v2 dataset</td></tr>
+  <tr><td><code>/media/ssd1/sungjoo/datasets/xarm_inspire_broom_v1/_vis/</code></td><td>Per-episode thumbnails + curve plots</td></tr>
+  <tr><td><code>/media/ssd1/sungjoo/checkpoints/</code></td><td>Finetune output (Phase 7 + 8)</td></tr>
+  <tr><td><code>scripts/convert_teleop_to_lerobot.py</code></td><td>The converter (Phase 2 + 6)</td></tr>
+  <tr><td><code>scripts/inspect_teleop_episode.py</code></td><td>Phase 1 schema inspector</td></tr>
+  <tr><td><code>scripts/review_lerobot_dataset.py</code></td><td>Phase 5.5 manual review</td></tr>
+  <tr><td><code>scripts/_smoke_dataset_loader.py</code></td><td>Phase 5 loader smoke test</td></tr>
+  <tr><td><code>scripts/_run_open_loop_eval.py</code></td><td>Wrapper that pre-imports the modality config before open_loop_eval (Phase 9)</td></tr>
+  <tr><td><code>examples/xarm_inspire/xarm_inspire_config.py</code></td><td>Modality config that registers NEW_EMBODIMENT</td></tr>
+  <tr><td><code>/media/ssd1/sungjoo/.claude/plans/humming-moseying-globe.md</code></td><td>The full plan (this report's source)</td></tr>
+</table>
+
+<h2>7. What unblocks the next step</h2>
+<p>The Phase 7 probe passed. The next action is Phase 8 — the real finetune:</p>
+<pre><code>docker exec -it gr00t bash -c "cd /workspace && bash scripts/run_finetune_xarm_inspire.sh"</code></pre>
+<p>That single command does everything: 2 GPUs DDP, 2000 steps, batch 4/GPU × grad-accum 4, paged 8-bit Adam, gradient checkpointing, wandb logging.
+Expected wall-clock ~40 min. Watch <code>wandb</code> or the stdout for loss curve; sanity-check that loss drops below 0.5 within the first ~500 steps.</p>
+
+<p>After Phase 8 finishes:</p>
+<ol>
+  <li>Phase 9: <code>scripts/_run_open_loop_eval.py</code> against
+    <code>/data/checkpoints/xarm_inspire_broom_run1/checkpoint-2000</code>.
+    MSE/MAE should be substantially below the converted action's natural variance.</li>
+  <li>Phase 10: Isaac Lab container, ZMQ rollouts.</li>
+</ol>
+
+<h2>8. Numbers at a glance (after Phase 6)</h2>
+<div class="kv">
+  <b>Episodes</b><span>30</span>
+  <b>Total frames</b><span>35,688</span>
+  <b>Avg episode length</b><span>~1,190 frames (~40 s @ 30 fps)</span>
+  <b>State dim</b><span>12 (arm 6 + hand 6)</span>
+  <b>Action dim</b><span>12 (next-state)</span>
+  <b>Cameras</b><span>4 (cam0..cam3, each 2048×1536 @ 30 fps)</span>
+  <b>Disk footprint</b><span>~700 MB parquet + ~few GB mp4 (each ~50 MB at h264)</span>
+  <b>Task</b><span>1 (sweep the cutting board with the broom)</span>
+</div>
+
+</body>
+</html>

@@ -255,8 +255,25 @@ class InspireControllerIP:
             
             self.write6('angleSet', action)
 
-            current_hand_angles = np.asarray(self.read6('angleAct'))
-            current_force = np.asarray(self.read6('forceAct'))
+            raw_angles = self.read6('angleAct')
+            raw_force = self.read6('forceAct')
+            # A Modbus hiccup makes read6 return None (or <6 values). Appending
+            # that (np.asarray(None) -> 0-d object array) mixes per-frame shapes
+            # and later blows up np.save with an "inhomogeneous shape" error,
+            # which kills stop() and loses the whole episode. Skip the bad frame
+            # entirely so the recorded arrays stay uniform + time-aligned. Logged
+            # (rate-limited), never silently swallowed.
+            if (raw_angles is None or len(raw_angles) < 6
+                    or raw_force is None or len(raw_force) < 6):
+                self._bad_read_count = getattr(self, "_bad_read_count", 0) + 1
+                if self._bad_read_count == 1 or self._bad_read_count % 50 == 0:
+                    print(f"[inspire] Modbus read failed (x{self._bad_read_count}); "
+                          f"frame skipped (not recorded)")
+                time.sleep(max(0, 1 / self.fps - (time.time() - start_time)))
+                continue
+
+            current_hand_angles = np.asarray(raw_angles)
+            current_force = np.asarray(raw_force)
             if self.tactile:
                 current_tactile = np.asarray(self.read_all_tactile())
             # current_action = np.asarray(self.read6('angleSet'))

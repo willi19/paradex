@@ -1,6 +1,7 @@
 import os
 import glob
 import json
+import shutil
 import numpy as np
 
 td = 2 / 30
@@ -69,6 +70,11 @@ def _save_synced_dir(in_dir, out_dir, ref_time, sensor_time):
             continue
         src = os.path.join(in_dir, fname)
         if not os.path.isfile(src):
+            continue
+        if not fname.endswith(".npy"):
+            # non-array files (e.g. teleop/metadata.json from the vive receiver)
+            # aren't time-series to resample; copy them through unchanged.
+            shutil.copy2(src, os.path.join(out_dir, fname))
             continue
         data = np.load(src, allow_pickle=True)
         # teleop's left.npy/right.npy are dicts saved as 0-d object arrays

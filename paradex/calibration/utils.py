@@ -4,7 +4,7 @@ import numpy as np
 import shutil
 import cv2
 
-from paradex.utils.path import shared_dir
+from paradex.utils.path import shared_dir, local_shared_dir
 from paradex.utils.file_io import find_latest_directory
 from paradex.utils.system import config_dir
 
@@ -20,6 +20,29 @@ handeye_calib_path = os.path.join(shared_dir, f"handeye_calibration{_calib_suffi
 eef_calib_path = os.path.join(shared_dir, f"eef{_calib_suffix}")
 extrinsic_dir = os.path.join(shared_dir, f"extrinsic{_calib_suffix}")
 intrinsic_dir = os.path.join(shared_dir, f"intrinsic{_calib_suffix}")
+
+# Local (data2) mirror of the CURRENT calibration, read at capture time so
+# stop()'s save_current_camparam/C2R never hit the slow NAS. Populate/refresh
+# with sync_local_calib.py after every recalibration.
+local_cam_param_dir = os.path.join(local_shared_dir, f"cam_param{_calib_suffix}")
+local_handeye_calib_path = os.path.join(local_shared_dir, f"handeye_calibration{_calib_suffix}")
+
+
+def _capture_calib_src(local_dir, nas_dir, what):
+    """Return the calibration source dir + its latest name for capture-time reads.
+
+    Prefer the local data2 mirror (fast, no NAS). If the mirror is missing/empty,
+    fall back to the NAS with a LOUD warning (never silent). The chosen name is
+    printed so a stale mirror is visible in the capture log without a NAS probe
+    -- re-run sync_local_calib.py whenever you recalibrate."""
+    if os.path.isdir(local_dir):
+        latest = find_latest_directory(local_dir)
+        if latest is not None:
+            print(f"[calib] {what}: local mirror '{latest}' (data2, no NAS)")
+            return local_dir, latest
+    print(f"[calib] WARNING: local {what} mirror not found at {local_dir}; "
+          f"reading from the NAS (SLOW). Run sync_local_calib.py to mirror it under data2.")
+    return nas_dir, find_latest_directory(nas_dir)
 
 def load_current_camparam(name=None):
     if name == None:
@@ -90,15 +113,15 @@ def load_eef(demo_path):
     return eef
 
 def save_current_camparam(save_path):
-    camparam_name = find_latest_directory(cam_param_dir)
-    camparam_path = os.path.join(cam_param_dir, camparam_name)
+    src, camparam_name = _capture_calib_src(local_cam_param_dir, cam_param_dir, "cam_param")
+    camparam_path = os.path.join(src, camparam_name)
     shutil.copytree(camparam_path, os.path.join(save_path, "cam_param"), dirs_exist_ok=True)
-    
+
 def load_current_C2R():
-    name = find_latest_directory(handeye_calib_path)
-    index_list = sorted(os.listdir(os.path.join(handeye_calib_path, name)))
-    
-    return load_c2r(os.path.join(handeye_calib_path, name, index_list[0]))
+    src, name = _capture_calib_src(local_handeye_calib_path, handeye_calib_path, "handeye_calibration")
+    index_list = sorted(os.listdir(os.path.join(src, name)))
+
+    return load_c2r(os.path.join(src, name, index_list[0]))
 
 def save_current_C2R(save_path):
     c2r = load_current_C2R()

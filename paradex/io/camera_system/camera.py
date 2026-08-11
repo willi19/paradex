@@ -6,6 +6,12 @@ import numpy as np
 import os
 import traceback
 
+# Record-only downscale to shrink the .avi (faster flush/save/transfer). 1 = full
+# resolution (default, unchanged). Set env PARADEX_RECORD_SCALE=2 for half-res,
+# 4 for quarter, etc. Only the recorded video is downscaled; the shared-memory
+# live stream stays full resolution.
+RECORD_SCALE = max(1, int(os.environ.get("PARADEX_RECORD_SCALE", "1")))
+
 class Camera():
     # JPEG shm geometry: keep MAX large enough for 2048x1536 q=85 worst case
     # (~1 MB). Layout per buffer: [4B little-endian length | JPEG bytes ...].
@@ -334,6 +340,10 @@ class Camera():
         stream = (self.mode in ["stream", "full"])
         blank_frame = np.zeros(self.frame_shape, dtype=np.uint8)
         blank_frame[::2, ::2] = 255  # checkerboard pattern for dropped frames
+        # Record-only downscale (stream stays full-res).
+        rec_w = self.frame_shape[1] // RECORD_SCALE
+        rec_h = self.frame_shape[0] // RECORD_SCALE
+        rec_blank = blank_frame if RECORD_SCALE == 1 else cv2.resize(blank_frame, (rec_w, rec_h))
 
         # Recording is driven entirely by self.event["record"] (armed at
         # start() for video/full, or toggled at runtime via record_start/
@@ -349,7 +359,7 @@ class Camera():
             fourcc = cv2.VideoWriter_fourcc(*'MJPG')
             w = cv2.VideoWriter(
                 self.record_save_path, fourcc, fps=self.record_fps,
-                frameSize=(self.frame_shape[1], self.frame_shape[0]),
+                frameSize=(rec_w, rec_h),
             )
             self.event["record_closed"].clear()  # a file is now open
             print(f"[INFO] Camera {self.name} recording -> {self.record_save_path}")
@@ -420,8 +430,9 @@ class Camera():
                         rec_prev_fid = current_frame_id - 1
                     for _ in range(current_frame_id - rec_prev_fid - 1):
                         print(f"frame drop {self.name}: missing frame id", current_frame_id - rec_prev_fid - 1)
-                        video_writer.write(blank_frame)
-                    video_writer.write(frame)
+                        video_writer.write(rec_blank)
+                    video_writer.write(frame if RECORD_SCALE == 1
+                                       else cv2.resize(frame, (rec_w, rec_h)))
                     rec_prev_fid = current_frame_id
 
                 if stream:

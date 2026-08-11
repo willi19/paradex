@@ -49,8 +49,11 @@ class remote_camera_controller:
         """
         socket = self.ctx.socket(zmq.REQ)
         socket.setsockopt(zmq.LINGER, 0)
-        socket.setsockopt(zmq.RCVTIMEO, 1000)
-        socket.setsockopt(zmq.SNDTIMEO, 1000)
+        # Heartbeat/command recv timeout. Raised 1000 -> 1500 ms: capturenew's
+        # daemon occasionally answers a hair over 1 s, which tripped a false
+        # "no response" and rebuilt the socket every time (connect/drop flapping).
+        socket.setsockopt(zmq.RCVTIMEO, 1500)
+        socket.setsockopt(zmq.SNDTIMEO, 1500)
         socket.connect(f"tcp://{get_pc_ip(pc)}:{self.command_port}")
         return socket
 
@@ -117,42 +120,77 @@ class remote_camera_controller:
         long_actions = {'record_start', 'record_stop', 'start', 'stop'}
         long_timeout_ms = 15000 if cmd.get('action') in long_actions else None
 
-        for pc in list(self.command_sockets.keys()):
+        # PARALLEL: fire the send to EVERY PC first, then collect the replies.
+        # The daemons process concurrently and all receive the command within
+        # ~ms of each other, instead of a slow PC gating the next one's send
+        # (which offset the cameras' record start). Each PC has its own REQ
+        # socket, so one send + one (later) recv per socket stays legal.
+        pcs = list(self.command_sockets.keys())
+        _limit_ms = long_timeout_ms if long_timeout_ms is not None else 1500
+        old_rcv = {}
+        t0 = {}
+        sent = []
+
+        for pc in pcs:
             socket = self.command_sockets[pc]
-            old_rcv = None
             if long_timeout_ms is not None:
                 try:
-                    old_rcv = socket.getsockopt(zmq.RCVTIMEO)
+                    old_rcv[pc] = socket.getsockopt(zmq.RCVTIMEO)
                     socket.setsockopt(zmq.RCVTIMEO, long_timeout_ms)
                 except Exception:
-                    old_rcv = None
+                    old_rcv[pc] = None
+            t0[pc] = time.perf_counter()
             try:
-                socket.send_json(cmd)
+                socket.send_json(cmd)          # queues; daemons start working now
+                sent.append(pc)
+            except zmq.ZMQError as e:
+                response[pc] = {'status': 'error', 'msg': f'no response (send: {e})'}
+                print(f"[cam-timing] {pc} SEND failed on action='{cmd.get('action')}': {e}")
+                self._rebuild_socket(pc)
+
+        # Diagnostics: a timeout firing right at the limit => timeout too tight;
+        # a reply well under the limit but >500ms => the daemon is lagging.
+        for pc in sent:
+            socket = self.command_sockets[pc]
+            try:
                 response[pc] = socket.recv_json()
             except zmq.ZMQError as e:
+                _dt_ms = (time.perf_counter() - t0[pc]) * 1000.0
                 response[pc] = {'status': 'error', 'msg': f'no response ({e})'}
-                # Rebuild the wedged socket so the next round has a fresh
-                # REQ-REP state machine to work with.
-                try:
-                    socket.close(linger=0)
-                except Exception:
-                    pass
-                try:
-                    self.command_sockets[pc] = self._new_command_socket(pc)
-                except Exception as rebuild_err:
-                    print(f"{pc}: socket rebuild failed: {rebuild_err}")
-                    # Drop the broken entry; check_server_alive on next
-                    # full restart will recreate it.
-                    self.command_sockets.pop(pc, None)
+                print(f"[cam-timing] {pc} TIMEOUT after {_dt_ms:.0f}ms "
+                      f"(limit {_limit_ms}ms) on action='{cmd.get('action')}'")
+                self._rebuild_socket(pc)
                 continue
-            # Restore the short heartbeat timeout on the still-healthy socket.
-            if old_rcv is not None:
-                try:
-                    self.command_sockets[pc].setsockopt(zmq.RCVTIMEO, old_rcv)
-                except Exception:
-                    pass
+            _dt_ms = (time.perf_counter() - t0[pc]) * 1000.0
+            if _dt_ms > 500:
+                print(f"[cam-timing] {pc} slow reply {_dt_ms:.0f}ms "
+                      f"(limit {_limit_ms}ms) on action='{cmd.get('action')}'")
+
+        # Restore the short heartbeat timeout on the still-healthy sockets.
+        if long_timeout_ms is not None:
+            for pc in pcs:
+                if old_rcv.get(pc) is not None and pc in self.command_sockets:
+                    try:
+                        self.command_sockets[pc].setsockopt(zmq.RCVTIMEO, old_rcv[pc])
+                    except Exception:
+                        pass
 
         return response
+
+    def _rebuild_socket(self, pc):
+        """Close + recreate a wedged REQ socket (it sits in EFSM after a timeout,
+        so every later send raises until it is rebuilt)."""
+        try:
+            self.command_sockets[pc].close(linger=0)
+        except Exception:
+            pass
+        try:
+            self.command_sockets[pc] = self._new_command_socket(pc)
+        except Exception as rebuild_err:
+            print(f"{pc}: socket rebuild failed: {rebuild_err}")
+            # Drop the broken entry; check_server_alive on next full restart
+            # will recreate it.
+            self.command_sockets.pop(pc, None)
             
     def register(self):
         cmd = {'action': 'register'}
@@ -170,9 +208,18 @@ class remote_camera_controller:
         self.sending_event.wait()
 
     def stop(self):
+        self.request_stop()
+        self.wait_stopped()
+
+    def request_stop(self):
+        """Fire the camera stop (avi flush) without blocking. Pair with
+        wait_stopped() so the ~flush overlaps other teardown (arm/hand save)."""
         self.sending_event.clear()
         self.stop_event.set()
-        self.sending_event.wait()
+
+    def wait_stopped(self, timeout=None):
+        """Block until the async request_stop() has completed on the daemon."""
+        self.sending_event.wait(timeout)
 
     def release(self):
         """Release the daemon controller lock without stopping cameras.
@@ -258,10 +305,13 @@ class remote_camera_controller:
                 self.sending_event.set()
 
             any_error = False
+            dropped = False
             for pc, resp in response.items():
                 if resp['status'] == 'error':
                     print(f"{pc}: {resp['msg']}")
                     any_error = True
+                    if 'no active controller' in str(resp.get('msg', '')):
+                        dropped = True
             # error_event reflects the *current* round, not stale failures —
             # one transient ZMQ timeout no longer sticks forever and trips
             # stream_owner's auto-restart.
@@ -269,6 +319,20 @@ class remote_camera_controller:
                 self.error_event.set()
             else:
                 self.error_event.clear()
+
+            # The daemon's command socket has RCVTIMEO=5000, so any 5 s gap in
+            # commands makes it call camera_loader.stop() and clear
+            # current_controller (camera_server_daemon.command_thread). We only
+            # registered inside initialize(), so without this every later
+            # heartbeat answers "no active controller" forever: acquisition
+            # stays dead, the shm freezes at all-zero, and this process still
+            # looks healthy. Re-register from THIS thread — it owns the
+            # sockets — and resume whatever mode we were running.
+            if dropped and self.register_as_owner:
+                print("[Info] daemon dropped the controller; re-registering")
+                self.send_command({'action': 'register'})
+                if getattr(self, 'mode', None) is not None:
+                    self.start_event.set()
 
             time.sleep(0.1)
 

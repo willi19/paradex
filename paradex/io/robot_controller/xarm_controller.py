@@ -189,6 +189,18 @@ class XArmController:
             self.position_control_event.clear()
             self.position_control_event.wait()
         
+    def hold(self):
+        """Freeze the arm at its CURRENT measured pose. The control loop keeps
+        streaming servo targets, so after teleop stops sending commands the arm
+        would otherwise coast to the last (lag-ahead) target -- visible as j4/j5
+        still rotating after you press 's'. Snapping the servo target to the
+        measured pose stops it right where it is. get_data() takes the lock
+        itself, so read first, then set under the lock (no re-entrant deadlock)."""
+        cur = self.get_data()["position"]   # measured 4x4 base->tool
+        with self.lock:
+            self.action = cur.copy()
+            self.is_servo = True
+
     def clear_error(self):
         """Clear errors/warnings and re-enable servo mode without reconnecting."""
         if self.arm.has_err_warn:

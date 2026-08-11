@@ -41,8 +41,10 @@ DEVICE2WRIST = {
 
 # T ^ {Global : predefined global coordinate} _ {Device coordinate}
 DEVICE2GLOBAL = {
-    "xarm":np.array([[1, 0, 0, 0], 
-                         [0, 1, 0, 0], 
+    # VIVE world -> xArm base: horizontal axes are flipped (hand forward -> robot
+    # back, hand right -> robot left) while up/down matches => 180 deg about Z.
+    "xarm":np.array([[-1, 0, 0, 0],
+                         [0, -1, 0, 0],
                          [0, 0, 1, 0],
                          [0, 0, 0, 1]]),
     "franka":np.array([[1, 0, 0, 0], 

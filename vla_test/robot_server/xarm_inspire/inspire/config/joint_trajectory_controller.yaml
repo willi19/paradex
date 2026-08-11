@@ -1,0 +1,27 @@
+# Position Controllers ---------------------------------------
+gripper_controller:
+  type: position_controllers/JointTrajectoryController
+  joints:
+    - right_thumb_1_joint
+    - right_thumb_2_joint
+    - right_index_1_joint
+    - right_middle_1_joint
+    - right_ring_1_joint
+    - right_little_1_joint
+    
+    
+  constraints:
+    goal_time: 0.6
+    stopped_velocity_tolerance: 0.05
+    right_thumb_1_joint: {trajectory: 0.2, goal: 0.2}
+    right_thumb_2_joint: {trajectory: 0.2, goal: 0.2}
+    right_index_1_joint: {trajectory: 0.2, goal: 0.2}
+    right_middle_1_joint: {trajectory: 0.2, goal: 0.2}
+    right_ring_1_joint: {trajectory: 0.2, goal: 0.2}
+    right_little_1_joint: {trajectory: 0.2, goal: 0.2}
+    
+  stop_trajectory_duration: 0.5
+  state_publish_rate:  500
+  action_monitor_rate: 10
+
+

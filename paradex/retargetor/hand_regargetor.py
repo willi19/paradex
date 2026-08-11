@@ -54,6 +54,48 @@ def allegro(hand_pose_frame):
 
     return allegro_angles
 
+
+# --- MANUS ergonomics -> Inspire ANGLE_SET command (ported from paraoffice-vive) ---
+# The geometric inspire() thumb formula emits values far outside [0,1000] which
+# saturate; the glove's own ergonomics angles are reliable, including the thumb.
+_INSPIRE_FINGER_ANGLE_RANGE_DEG = 176.7 - 19.0
+_INSPIRE_THUMB_BEND_RANGE_DEG = 53.6 - (-13.0)
+_INSPIRE_THUMB_ROTATE_RANGE_DEG = 165.0 - 90.0
+_INSPIRE_THUMB_EXTRA_BEND_GAIN = 3.0
+_INSPIRE_THUMB_EXTRA_BEND_COMMAND = -500.0
+_INSPIRE_THUMB_SECONDARY_GAIN = 0.8
+
+
+def _open_to_closed_command(flexion_deg, range_deg):
+    normalized = np.clip(float(flexion_deg) / float(range_deg), 0.0, 1.0)
+    return (1.0 - normalized) * 1000.0
+
+
+def inspire_from_manus_ergonomics(ergonomics):
+    """Map MANUS ergonomic angles to Inspire ANGLE_SET order (6,), each in [0,1000]."""
+    required = []
+    for finger in ("Pinky", "Ring", "Middle", "Index"):
+        required += [f"{finger}MCPStretch", f"{finger}PIPStretch", f"{finger}DIPStretch"]
+    required += ["ThumbMCPStretch", "ThumbMCPSpread"]
+    missing = [n for n in required if n not in ergonomics]
+    if missing:
+        raise ValueError("MANUS ergonomics missing Inspire inputs: " + ", ".join(missing))
+
+    command = np.zeros(6, dtype=np.float64)
+    for index, finger in enumerate(("Pinky", "Ring", "Middle", "Index")):
+        flexion = sum(float(ergonomics[f"{finger}{j}Stretch"]) for j in ("MCP", "PIP", "DIP"))
+        command[index] = _open_to_closed_command(flexion, _INSPIRE_FINGER_ANGLE_RANGE_DEG)
+    command[4] = np.clip(
+        (np.clip(float(ergonomics["ThumbMCPSpread"]) / _INSPIRE_THUMB_ROTATE_RANGE_DEG, 0.0, 1.0)
+         * 1000.0 * _INSPIRE_THUMB_EXTRA_BEND_GAIN) + _INSPIRE_THUMB_EXTRA_BEND_COMMAND,
+        0.0, 1000.0)
+    command[5] = np.clip(
+        (1000.0 - _open_to_closed_command(ergonomics["ThumbMCPStretch"], _INSPIRE_THUMB_BEND_RANGE_DEG))
+        * _INSPIRE_THUMB_SECONDARY_GAIN,
+        0.0, 1000.0)
+    return command
+
+
 def inspire(hand_pose_frame):
     inspire_angles = np.zeros(6)
 

@@ -54,7 +54,12 @@ def read_hand_qpos_rad(hand) -> np.ndarray:
     """Inspire qpos [thumb_yaw, thumb_pitch, index, middle, ring, pinky] (rad).
     register=0 → fully closed (max rad), register=1000 → fully open (0 rad).
     Matches paradex.robot.inspire.parse_inspire and src/process/teleop_real/
-    unified.py:inspire_register_to_qpos — the convention VLA was trained on."""
+    unified.py:inspire_register_to_qpos — i.e. the real URDF joint angle, for
+    FK and rendering.
+
+    NOT what the deployed VLA was trained on: that dataset stores the mirror
+    encoding (open → LIMITS). Use read_hand_vla_rad for anything on the policy
+    wire; see the convention note below hand_raw_register_to_qpos_rad."""
     raw = _inspire_read_raw(hand)
     qpos_order_register = raw[::-1]
     return INSPIRE_LIMITS_RAD * (1.0 - qpos_order_register / 1000.0)
@@ -76,6 +81,54 @@ def hand_raw_register_to_qpos_rad(raw_register) -> np.ndarray:
     reg = np.clip(np.asarray(raw_register, dtype=np.float64), 0, 1000)
     qpos_order_register = reg[::-1]
     return INSPIRE_LIMITS_RAD * (1.0 - qpos_order_register / 1000.0)
+
+
+# ── Inspire: the OTHER rad convention (the one the VLA was trained on) ───────
+# The same 0..1000 Modbus `angleAct` register is encoded as radians two
+# different, mirror-image ways in this stack:
+#
+#   URDF / paradex   rad = LIMITS * (1 - reg/1000)    open (reg 1000) -> 0
+#       the real joint angle. Correct for FK, viser rendering, overlays —
+#       everything above (parse_inspire, read_hand_qpos_rad) uses this.
+#
+#   VLA dataset      rad = LIMITS * (reg/1000)        open (reg 1000) -> LIMITS
+#       what the training convert script stored, therefore what the policy
+#       was trained on and what it emits.
+#
+# Verified against the deployed checkpoint's dataset: its episode starts (hand
+# open) sit at [0.72-0.80, 0.46-0.55, 1.13-1.43, 1.16-1.52, 1.23-1.56,
+# 1.48-1.60], and this rig's own open hand (registers ~800) maps to
+# [0.90, 0.55, 1.28, 1.28, 1.28, 1.28] under the second formula — inside that
+# range. Under the first formula it maps to [0.25, 0.00, 0.32, ...], which the
+# policy reads as an almost fully CLOSED hand.
+#
+# Both directions matter. Feeding the wrong one on the state side makes the
+# policy think it is already gripping; using the wrong one on the action side
+# drives the fingers toward the opposite end of their range (measured on the
+# 20260810_220838 run: thumb_pitch commanded to register 176 instead of 823).
+#
+# The register ORDER is identical on both paths — inspire_controller_ip stores
+# read6('angleAct') straight into hand/position.npy (line 283) and get_qpos()
+# returns the same array (line 216), and both pipelines then apply [::-1].
+
+def hand_raw_register_to_vla_rad(raw_register) -> np.ndarray:
+    """Raw register order [little..thumb_yaw] → VLA-convention rad in qpos
+    order [thumb_yaw..pinky]. register=1000 (open) → LIMITS."""
+    reg = np.clip(np.asarray(raw_register, dtype=np.float64), 0, 1000)
+    return INSPIRE_LIMITS_RAD * (reg[::-1] / 1000.0)
+
+
+def vla_rad_to_hand_raw_register(vla_rad) -> np.ndarray:
+    """Inverse: VLA-convention rad in qpos order → raw register order,
+    int32 clipped to [0, 1000]."""
+    q = np.clip(np.asarray(vla_rad, dtype=np.float64), 0.0, INSPIRE_LIMITS_RAD)
+    reg = np.clip(q / INSPIRE_LIMITS_RAD * 1000.0, 0, 1000).astype(np.int32)
+    return reg[::-1]
+
+
+def read_hand_vla_rad(hand) -> np.ndarray:
+    """Live Inspire state in the convention the policy was trained on."""
+    return hand_raw_register_to_vla_rad(_inspire_read_raw(hand))
 
 
 # ── FK (link6 in link_base) ──────────────────────────────────────────────────
@@ -115,7 +168,8 @@ def _infer_action_mode(chunk):
     return "delta" if np.linalg.norm(first_pos) < 0.20 else "absolute"
 
 
-def decode_action_chunk(chunk, cur_pos, cur_rotvec, action_mode="auto"):
+def decode_action_chunk(chunk, cur_pos, cur_rotvec, action_mode="auto",
+                        hand_rad_to_raw=hand_qpos_rad_to_raw_register):
     """Action chunk (16, 12) → list of 16 absolute targets.
 
     action_mode:
@@ -158,14 +212,16 @@ def decode_action_chunk(chunk, cur_pos, cur_rotvec, action_mode="auto"):
             "target_pos_m":         cur_pos.copy(),
             "target_rotvec_rad":    cur_rotvec.copy(),
             "target_hand_rad_qpos": target_hand_rad,
-            "target_hand_raw_reg":  hand_qpos_rad_to_raw_register(target_hand_rad),
+            "target_hand_raw_reg":  hand_rad_to_raw(target_hand_rad),
         })
     return targets
 
 
-def integrate_chunk(chunk, cur_pos, cur_rotvec, action_mode="auto"):
+def integrate_chunk(chunk, cur_pos, cur_rotvec, action_mode="auto",
+                    hand_rad_to_raw=hand_qpos_rad_to_raw_register):
     """Backward-compatible wrapper for callers using the old helper name."""
-    return decode_action_chunk(chunk, cur_pos, cur_rotvec, action_mode)
+    return decode_action_chunk(chunk, cur_pos, cur_rotvec, action_mode,
+                               hand_rad_to_raw)
 
 
 # ── Cartesian execution ──────────────────────────────────────────────────────
@@ -194,7 +250,8 @@ def send_cartesian_step(arm, hand, target, link6_to_sdk_tcp=None):
 
 
 def interpolate_targets(start_pos, start_rotvec, start_hand_rad, target,
-                        max_pos_step_m=0.02, max_rot_step_rad=0.15):
+                        max_pos_step_m=0.02, max_rot_step_rad=0.15,
+                        hand_rad_to_raw=hand_qpos_rad_to_raw_register):
     """Split a target into bounded Cartesian subtargets from the current pose."""
     start_pos = np.asarray(start_pos, dtype=np.float64)
     start_rotvec = np.asarray(start_rotvec, dtype=np.float64)
@@ -223,7 +280,7 @@ def interpolate_targets(start_pos, start_rotvec, start_hand_rad, target,
             "target_pos_m": pos,
             "target_rotvec_rad": rotvec,
             "target_hand_rad_qpos": hand_rad,
-            "target_hand_raw_reg": hand_qpos_rad_to_raw_register(hand_rad),
+            "target_hand_raw_reg": hand_rad_to_raw(hand_rad),
         })
     return out
 
@@ -231,7 +288,8 @@ def interpolate_targets(start_pos, start_rotvec, start_hand_rad, target,
 def execute_plan(arm, hand, targets, control_hz: float = 30.0,
                  on_step=None, stop_check=None, link6_to_sdk_tcp=None,
                  start_pos=None, start_rotvec=None, start_hand_rad=None,
-                 max_pos_step_m=0.02, max_rot_step_rad=0.15):
+                 max_pos_step_m=0.02, max_rot_step_rad=0.15,
+                 hand_rad_to_raw=hand_qpos_rad_to_raw_register):
     """Iterate every target at `control_hz`. Sleeps to maintain rate.
 
     on_step(idx, target) : optional callback after each send (for logging/viz)
@@ -250,6 +308,7 @@ def execute_plan(arm, hand, targets, control_hz: float = 30.0,
             cur_pos, cur_rotvec, cur_hand, target,
             max_pos_step_m=max_pos_step_m,
             max_rot_step_rad=max_rot_step_rad,
+            hand_rad_to_raw=hand_rad_to_raw,
         )
         for sub_idx, subtarget in enumerate(subtargets):
             if stop_check is not None and stop_check():

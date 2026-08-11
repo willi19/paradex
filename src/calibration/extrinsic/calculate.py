@@ -10,7 +10,7 @@ import json
 
 from paradex.utils.file_io import find_latest_directory
 from paradex.calibration.colmap import *
-from paradex.image.aruco import detect_charuco, merge_charuco_detection, get_adjecent_ids, find_common_indices
+from paradex.image.aruco import detect_charuco, merge_charuco_detection, get_adjecent_ids, find_common_indices, boardinfo_dict
 from paradex.calibration.utils import cam_param_dir, extrinsic_dir, load_current_intrinsic
 from paradex.image.image_dict import ImageDict
 
@@ -217,24 +217,67 @@ def save_kypt_3d(name):
         np.save(os.path.join(extrinsic_dir, name, index, "kypt_3d_id.npy"), merged_charuco_3d["checkerIDs"])
         np.save(os.path.join(extrinsic_dir, name, index, "kypt_3d_cor.npy"), merged_charuco_3d["checkerCorner"])
     
-def get_length(name):
+# --------------------------------------------------------------------------- #
+# metric scale
+# --------------------------------------------------------------------------- #
+# COLMAP solves pose up to scale, so the scene is rescaled by the physical size of
+# one checker square on the board that was waved during capture.
+#
+# SCALE_BOARD    board id in charuco_info.json used as the ruler.
+# SCALE_SQUARE_M its checker square edge, in metres, as actually printed.
+#
+# These MUST match the physical board, and the two must be changed together —
+# a wrong value scales every camera translation (and everything downstream:
+# triangulation, hand-eye, object pose) by exactly that ratio, silently.
+# The 10x7 boards (9/10/11) are printed at 50 mm; the 5x6 boards (1/2) at 60 mm.
+SCALE_BOARD = "10"
+SCALE_SQUARE_M = 0.05
+
+
+def _board_id_range(board_key):
+    """Global corner-id range of ``board_key`` under the merge_charuco_detection offsets."""
+    offset = 0
+    for b_id, cfg in boardinfo_dict.items():
+        n_corners = (cfg["numX"] - 1) * (cfg["numY"] - 1)
+        if b_id == board_key:
+            return (offset, offset + n_corners)
+        offset += n_corners
+    raise KeyError(f"SCALE_BOARD {board_key!r} is not in charuco_info.json")
+
+
+def get_length(name, board_key=SCALE_BOARD):
+    """Mean adjacent-corner distance of the scale board, in COLMAP units.
+
+    Restricted to one board on purpose: boards of different physical sizes share the
+    scene (the 50 mm 10x7 floor boards and the 60 mm 5x6 boards), and averaging their
+    edges together yields a ruler that matches no real board.
+    """
     index_list = sorted(os.listdir(os.path.join(extrinsic_dir, name)))
     length_list = []
-    
+
     adj_ids = get_adjecent_ids()
+    lo, hi = _board_id_range(board_key)
 
     for index in tqdm.tqdm(index_list, desc="Getting 3D keypoints length"):
         kypt_3d_ids = np.load(os.path.join(extrinsic_dir, name, index, "kypt_3d_id.npy"))
         kypt_3d_cor = np.load(os.path.join(extrinsic_dir, name, index, "kypt_3d_cor.npy"))
         kypt_3d = {}
-        
+
         for id, cor in zip(kypt_3d_ids, kypt_3d_cor):
-            kypt_3d[id] = cor
+            if lo <= id < hi:
+                kypt_3d[id] = cor
         for mid in kypt_3d.keys():
             for adj_id in adj_ids[mid]:
                 if adj_id in kypt_3d:
                     length_list.append(np.linalg.norm(kypt_3d[mid] - kypt_3d[adj_id]))
-    
+
+    if len(length_list) == 0:
+        raise RuntimeError(
+            f"No corner pairs from scale board {board_key!r} in '{name}'. The scene was "
+            f"calibrated with a different board — set SCALE_BOARD/SCALE_SQUARE_M to it.")
+
+    print(f"Scale board {board_key} ({SCALE_SQUARE_M*1000:.0f} mm squares), "
+          f"{len(length_list)} edge samples")
     print("Length mean:", np.mean(length_list))
     print("Length std:", np.std(length_list))
     print("Max length:", np.max(length_list))
@@ -379,7 +422,7 @@ if __name__ == "__main__":
     new_extrinsics = {}
     for serial_num, extrinsic in extrinsics.items():
         new_extrinsic = np.array(extrinsic)
-        new_extrinsic[:3, 3] *= (0.06/ np.mean(length))
+        new_extrinsic[:3, 3] *= (SCALE_SQUARE_M / np.mean(length))
         new_extrinsics[serial_num] = new_extrinsic.tolist()
 
     os.makedirs(os.path.join(cam_param_dir, name), exist_ok=True)

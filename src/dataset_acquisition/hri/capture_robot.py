@@ -122,15 +122,9 @@ parser.add_argument(
     help='Viser refresh rate for live Allegro joint/tactile feedback.',
 )
 parser.add_argument(
-    '--allegro-tactile-threshold',
-    type=float,
-    default=200.0,
-    help='Raw tactile magnitude below which the Allegro arrow is hidden.',
-)
-parser.add_argument(
     '--allegro-tactile-display-max',
     type=float,
-    default=5000.0,
+    default=1000.0,
     help='Raw tactile magnitude represented by the maximum arrow length.',
 )
 parser.add_argument('--xarm-servo-api', choices=["cartesian_aa", "angle_j"], default="cartesian_aa")
@@ -164,10 +158,8 @@ if args.camera_preview_request_timeout <= 0.0:
     parser.error('--camera-preview-request-timeout must be positive.')
 if args.allegro_visualization_rate_hz <= 0.0:
     parser.error('--allegro-visualization-rate-hz must be positive.')
-if args.allegro_tactile_threshold < 0.0:
-    parser.error('--allegro-tactile-threshold must be non-negative.')
-if args.allegro_tactile_display_max <= args.allegro_tactile_threshold:
-    parser.error('--allegro-tactile-display-max must exceed the tactile threshold.')
+if args.allegro_tactile_display_max <= 0.0:
+    parser.error('--allegro-tactile-display-max must be positive.')
 
 camera_enabled = args.camera_mode != 'off'
 camera_preview_enabled = args.camera_mode == 'preview'
@@ -271,7 +263,6 @@ if args.visualize_tactile_realtime:
         tactile_plotter = AllegroRealtimeViser(
             cs.hand,
             update_rate_hz=args.allegro_visualization_rate_hz,
-            tactile_threshold=args.allegro_tactile_threshold,
             tactile_display_max=args.allegro_tactile_display_max,
         )
         tactile_plotter.start()

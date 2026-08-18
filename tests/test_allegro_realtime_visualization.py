@@ -54,16 +54,16 @@ def test_named_allegro_qpos_rejects_missing_or_nonfinite_feedback():
     assert named_allegro_qpos(invalid, ALLEGRO_V5_JOINT_NAMES) is None
 
 
-def test_tactile_arrow_length_has_noise_floor_and_bounded_scale():
+def test_tactile_arrow_length_shows_every_positive_value_and_is_bounded():
     kwargs = {
-        "threshold": 200.0,
-        "display_max": 5000.0,
-        "max_length": 0.06,
+        "display_max": 1000.0,
+        "max_length": 0.2,
     }
-    assert tactile_arrow_length(199.0, **kwargs) == 0.0
-    assert tactile_arrow_length(200.0, **kwargs) == 0.0
-    assert np.isclose(tactile_arrow_length(2600.0, **kwargs), 0.03)
-    assert tactile_arrow_length(6000.0, **kwargs) == 0.06
+    assert tactile_arrow_length(0.0, **kwargs) == 0.0
+    assert tactile_arrow_length(-1.0, **kwargs) == 0.0
+    assert tactile_arrow_length(1.0, **kwargs) > 0.0
+    assert np.isclose(tactile_arrow_length(500.0, **kwargs), 0.1)
+    assert tactile_arrow_length(2000.0, **kwargs) == 0.2
 
 
 def test_v5_mesh_center_is_translated_to_the_world_origin():

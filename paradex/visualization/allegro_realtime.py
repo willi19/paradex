@@ -75,19 +75,16 @@ def named_allegro_qpos(
 def tactile_arrow_length(
     level: float,
     *,
-    threshold: float,
     display_max: float,
     max_length: float,
 ) -> float:
-    """Map a raw tactile magnitude to a bounded visible arrow length."""
+    """Map every positive tactile magnitude to a bounded arrow length."""
     level = float(level)
-    threshold = float(threshold)
     display_max = float(display_max)
     max_length = float(max_length)
-    if not np.isfinite(level) or level <= threshold:
+    if not np.isfinite(level) or level <= 0.0:
         return 0.0
-    span = max(display_max - threshold, 1.0)
-    return float(np.clip((level - threshold) / span, 0.0, 1.0) * max_length)
+    return float(np.clip(level / display_max, 0.0, 1.0) * max_length)
 
 
 def make_tactile_arrow(
@@ -184,9 +181,8 @@ class AllegroRealtimeViser:
         hand: Any,
         *,
         update_rate_hz: float = 20.0,
-        tactile_threshold: float = 200.0,
-        tactile_display_max: float = 5000.0,
-        max_arrow_length: float = 0.06,
+        tactile_display_max: float = 1000.0,
+        max_arrow_length: float = 0.2,
         tactile_max_age_s: float = 0.25,
         urdf_path: str = DEFAULT_ALLEGRO_V5_URDF,
     ) -> None:
@@ -199,12 +195,8 @@ class AllegroRealtimeViser:
         for name, value in positive.items():
             if not np.isfinite(value) or value <= 0.0:
                 raise ValueError(f"{name} must be a positive finite value")
-        if not np.isfinite(tactile_threshold) or tactile_threshold < 0.0:
-            raise ValueError("tactile_threshold must be a non-negative finite value")
-
         self.hand = hand
         self.update_period = 1.0 / float(update_rate_hz)
-        self.tactile_threshold = float(tactile_threshold)
         self.tactile_display_max = float(tactile_display_max)
         self.max_arrow_length = float(max_arrow_length)
         self.tactile_max_age_s = float(tactile_max_age_s)
@@ -293,7 +285,6 @@ class AllegroRealtimeViser:
             )
             length = tactile_arrow_length(
                 level,
-                threshold=self.tactile_threshold,
                 display_max=self.tactile_display_max,
                 max_length=self.max_arrow_length,
             )

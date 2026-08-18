@@ -15,7 +15,12 @@ import viser.transforms as tf
 from paradex.visualization.robot import RobotModule  
 
 class ViserViewer():
-    def __init__(self, up_direction=np.array([0,0,1]), scene_title = None):
+    def __init__(
+        self,
+        up_direction=np.array([0, 0, 1]),
+        scene_title=None,
+        show_player=True,
+    ):
         self.frame_nodes: dict[str, viser.FrameHandle] = {}
 
         self.up_direction = up_direction
@@ -30,7 +35,8 @@ class ViserViewer():
 
         self.load_server()
         self.add_lights()
-        self.add_player()
+        if show_player:
+            self.add_player()
         # self.add_lights()
         
         self.scene_title = scene_title

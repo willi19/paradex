@@ -1,4 +1,4 @@
-from paradex.io.streamdeck_pedal import MiddlePedalState
+from paradex.io.streamdeck_pedal import LeftRightPedalState, MiddlePedalState
 
 
 class FakePedal:
@@ -73,4 +73,41 @@ def test_get_state_does_not_query_usb_connection():
         assert pedal.get_state() == 0
 
     assert device.connected_calls == 0
+    pedal.close()
+
+
+def test_outer_pedals_report_signed_motion_and_fail_safe_hold():
+    device = FakePedal()
+    pedal = LeftRightPedalState(
+        device=device,
+        connection_check_hz=0.01,
+        verbose=False,
+    )
+
+    assert pedal.get_direction() == 0
+    device.callback(device, 0, True)
+    assert pedal.get_direction() == 1
+    device.callback(device, 2, True)
+    assert pedal.get_direction() == 0
+    device.callback(device, 0, False)
+    assert pedal.get_direction() == -1
+    device.connected_value = False
+    pedal._check_physical_connection()
+    assert pedal.get_direction() == 0
+    pedal.close()
+
+
+def test_outer_pedal_reader_also_exposes_the_shared_middle_deadman_switch():
+    device = FakePedal()
+    pedal = LeftRightPedalState(
+        device=device,
+        connection_check_hz=0.01,
+        verbose=False,
+    )
+
+    assert pedal.get_state() == 1
+    device.callback(device, 1, True)
+    assert pedal.get_state() == 0
+    device.callback(device, 1, False)
+    assert pedal.get_state() == 1
     pedal.close()

@@ -7,9 +7,13 @@ temporary extrinsic workspace and removed when the program exits.
 
 import argparse
 import os
+import select
 import shutil
+import sys
 import tempfile
 import time
+import termios
+import tty
 from datetime import datetime
 from pathlib import Path
 
@@ -40,6 +44,36 @@ from paradex.utils.system import get_pc_list
 
 EXCLUDED_PCS = set()
 TEMP_ROOT_MARKER = ".extrinsic_validation_tmp"
+
+
+class _TerminalKeyReader:
+    """Read single terminal keys without taking focus from the OpenCV window."""
+
+    def __init__(self):
+        self._fd = None
+        self._settings = None
+        try:
+            if sys.stdin.isatty():
+                self._fd = sys.stdin.fileno()
+                self._settings = termios.tcgetattr(self._fd)
+                tty.setcbreak(self._fd)
+        except (OSError, termios.error):
+            self.close()
+
+    def read_key(self):
+        if self._fd is None:
+            return -1
+        ready, _, _ = select.select([self._fd], [], [], 0)
+        if not ready:
+            return -1
+        key = sys.stdin.read(1)
+        return ord(key.lower()) if key else -1
+
+    def close(self):
+        if self._fd is not None and self._settings is not None:
+            termios.tcsetattr(self._fd, termios.TCSADRAIN, self._settings)
+        self._fd = None
+        self._settings = None
 
 
 def _decode_preview_corners(item):
@@ -183,6 +217,7 @@ def run(args):
     rcc = None
     collector = None
     command_sender = None
+    terminal_keys = _TerminalKeyReader()
     validation_root = _create_validation_root()
     captured_errors = []
     images = {}
@@ -293,7 +328,9 @@ def run(args):
                 )
 
             cv2.imshow("Extrinsic validation", merged_image)
-            key = cv2.waitKey(1) & 0xFF
+            window_key = cv2.waitKey(1) & 0xFF
+            terminal_key = terminal_keys.read_key()
+            key = terminal_key if terminal_key != -1 else window_key
 
             if key == ord("q"):
                 break
@@ -361,6 +398,7 @@ def run(args):
     except KeyboardInterrupt:
         print("\nInterrupted; reporting captures collected so far.")
     finally:
+        terminal_keys.close()
         cv2.destroyAllWindows()
         try:
             if command_sender is not None:

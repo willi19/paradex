@@ -13,20 +13,34 @@ from paradex.calibration.utils import save_current_camparam, save_current_C2R
 
 parser = argparse.ArgumentParser()
 
-# parser.add_argument('--device', choices=['xsens', 'occulus'])
-# parser.add_argument('--arm', type=str, default=None)
-# parser.add_argument('--hand', type=str, default=None)
+
 parser.add_argument('--hand_side', type=str, default='right')
 parser.add_argument('--name', type=str)
-# parser.add_argument('--capture_root', default="eccv2026/hand_taeyun")
-parser.add_argument('--capture_root', default="eccv2026/hand_taeyun")
+parser.add_argument('--capture_root', default="0814_human_hand")
 parser.add_argument('--realsense', action='store_true')
 parser.add_argument('--human_tactile', '--human-tactile', action='store_true')
-parser.add_argument('--human_tactile_port', '--human-tactile-port', default="/dev/ttyUSB0")
+parser.add_argument('--human_tactile_port', '--human-tactile-port', default="/dev/ttyACM0")
 parser.add_argument('--human_tactile_baud_rate', '--human-tactile-baud-rate', type=int, default=115200)
 parser.add_argument('--human_tactile_reset_wait', '--human-tactile-reset-wait', type=float, default=2.0)
 parser.add_argument('--human_tactile_plot_refresh_interval', '--human-tactile-plot-refresh-interval', type=float, default=0.02)
 parser.add_argument('--human_tactile_plot_max_samples', '--human-tactile-plot-max-samples', type=int, default=200)
+preview_group = parser.add_mutually_exclusive_group()
+preview_group.add_argument(
+    '--camera-preview',
+    dest='camera_preview',
+    action='store_true',
+    help='Show live capture-PC images from the port 5484 preview API in a separate thread.',
+)
+preview_group.add_argument(
+    '--no-camera-preview',
+    dest='camera_preview',
+    action='store_false',
+    help='Disable the independent capture-PC preview GUI (default).',
+)
+parser.set_defaults(camera_preview=False)
+parser.add_argument('--camera-preview-port', type=int, default=5484)
+parser.add_argument('--camera-preview-refresh-interval', type=float, default=0.2)
+parser.add_argument('--camera-preview-request-timeout', type=float, default=1.5)
 
 args = parser.parse_args()
 
@@ -46,6 +60,27 @@ cs = CaptureSession(
     human_tactile_plot_refresh_interval=args.human_tactile_plot_refresh_interval,
     human_tactile_plot_max_samples=args.human_tactile_plot_max_samples,
 )
+camera_preview = None
+if args.camera_preview:
+    from paradex.io.camera_system.capture_pc_preview import CapturePcPreviewGui
+    from paradex.utils.system import get_pc_list
+
+    camera_preview = CapturePcPreviewGui(
+        pc_list=get_pc_list(),
+        port=args.camera_preview_port,
+        refresh_interval=args.camera_preview_refresh_interval,
+        request_timeout=args.camera_preview_request_timeout,
+    )
+    camera_preview.start()
+
+
+def refresh_guis():
+    """Run every GUI event loop on the main thread."""
+
+    if camera_preview is not None:
+        camera_preview.show()
+    if cs.human_tactile is not None:
+        cs.human_tactile.refresh_plot()
 
 name = args.name
 
@@ -55,6 +90,7 @@ last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.captur
 
 try:
     while not exit_event.is_set():
+        refresh_guis()
         if not save_event.is_set():
             stop_event.clear()
             time.sleep(0.02)
@@ -68,6 +104,7 @@ try:
 
         print("Starting new recording session:", name)
         while not stop_event.is_set() and not exit_event.is_set():
+            refresh_guis()
             time.sleep(0.02)
 
         cs.stop()
@@ -98,6 +135,8 @@ try:
         print(f"============== episode {last_idx} done =========================")
 finally:
     print("Exiting recording.")
+    if camera_preview is not None:
+        camera_preview.close()
     if getattr(cs, "save_path", None) is not None:
         cs.stop()
     cs.end()

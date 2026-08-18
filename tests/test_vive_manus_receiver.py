@@ -271,6 +271,20 @@ def test_get_data_fuses_each_manus_hand_with_its_bimanual_vive_tracker():
         np.testing.assert_allclose(actual_relative, expected_relative)
 
 
+def test_manus_only_left_mode_does_not_require_right_glove_or_vive():
+    receiver = make_receiver_without_ros(hand_side="left")
+    receiver.use_vive = False
+    receiver.require_left_control = False
+    receiver._manus_times["Right"] = None
+    receiver._manus_frames["Right"] = None
+
+    data = receiver.get_data()
+
+    assert data["Left"] is not None
+    assert data["Right"] is None
+    assert set(data["ergonomics"]) == {"Left"}
+
+
 def test_get_data_suppresses_commands_when_any_input_is_stale():
     data = make_receiver_without_ros(sample_age=1.0).get_data()
 

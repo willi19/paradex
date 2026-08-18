@@ -114,3 +114,57 @@ class MiddlePedalState:
                 self._device.close()
         finally:
             self._connection_monitor.join(timeout=1.0)
+
+
+class LeftRightPedalState(MiddlePedalState):
+    """Expose the outer Stream Deck Pedal switches as a signed input.
+
+    The outer switches provide a signed interpolation direction and the
+    inherited middle switch remains available as a deadman state.  This lets
+    one physical Stream Deck Pedal control both a hand interpolation and an
+    xArm without opening the USB device twice.
+    """
+
+    LEFT_KEY = 0
+    RIGHT_KEY = 2
+
+    def __init__(self, *args, **kwargs):
+        self._left_pressed = Event()
+        self._right_pressed = Event()
+        kwargs.setdefault("verbose", False)
+        super().__init__(*args, **kwargs)
+        if self._verbose:
+            print("Outer pedal control ready: left=+, right=-, both/released=hold")
+
+    def _on_key_change(self, _device, key, pressed):
+        if key == self.MIDDLE_KEY:
+            super()._on_key_change(_device, key, pressed)
+            return
+        pressed_event = (
+            self._left_pressed
+            if key == self.LEFT_KEY
+            else self._right_pressed
+            if key == self.RIGHT_KEY
+            else None
+        )
+        if pressed_event is None:
+            return
+        if pressed:
+            pressed_event.set()
+        else:
+            pressed_event.clear()
+
+    def _mark_disconnected(self):
+        super()._mark_disconnected()
+        self._left_pressed.clear()
+        self._right_pressed.clear()
+
+    def get_direction(self):
+        """Return +1 for left, -1 for right, and 0 for safe hold."""
+        if not self._connected.is_set():
+            return 0
+        left = self._left_pressed.is_set()
+        right = self._right_pressed.is_set()
+        if left == right:
+            return 0
+        return 1 if left else -1

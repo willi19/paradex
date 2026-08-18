@@ -100,7 +100,14 @@ def _publish_loop(shared, pub_cmd, exit_event, get_clock):
 class WujiControllerROS2:
     """Thin ROS2 controller for the wujihandros2 JointState command interface."""
 
-    def __init__(self, hand_side="right", hand_name=None, namespace=None, **_):
+    def __init__(
+        self,
+        hand_side="right",
+        hand_name=None,
+        namespace=None,
+        command_enabled=True,
+        **_,
+    ):
         if not rclpy.ok():
             rclpy.init()
             self._owns_rclpy = True
@@ -118,6 +125,7 @@ class WujiControllerROS2:
         self.hand_name = str(hand_name).strip("/")
         self.state_topic = f"/{self.hand_name}{STATE_TOPIC_SUFFIX}"
         self.command_topic = f"/{self.hand_name}{COMMAND_TOPIC_SUFFIX}"
+        self.command_enabled = bool(command_enabled)
 
         self.exit_event = Event()
         self.error_event = Event()
@@ -125,19 +133,28 @@ class WujiControllerROS2:
         self._shared = _Shared()
 
         self._state_node = _WujiStateNode(self._shared, self.hand_name, self.state_topic)
-        self._pub_cmd = self._state_node.create_publisher(
-            JointState,
-            self.command_topic,
-            _sensor_qos(),
+        self._pub_cmd = (
+            self._state_node.create_publisher(
+                JointState,
+                self.command_topic,
+                _sensor_qos(),
+            )
+            if self.command_enabled
+            else None
         )
         self._get_clock = self._state_node.get_clock
 
         self._executor = SingleThreadedExecutor()
         self._executor.add_node(self._state_node)
         self._state_thread = Thread(target=self._spin_state, daemon=True)
-        self._cmd_thread = Thread(target=self._publish_loop_wrapper, daemon=True)
+        self._cmd_thread = (
+            Thread(target=self._publish_loop_wrapper, daemon=True)
+            if self.command_enabled
+            else None
+        )
         self._state_thread.start()
-        self._cmd_thread.start()
+        if self._cmd_thread is not None:
+            self._cmd_thread.start()
 
     @property
     def connection_event(self):
@@ -162,6 +179,8 @@ class WujiControllerROS2:
             self.error_event.set()
 
     def move(self, action):
+        if not self.command_enabled:
+            raise RuntimeError("Wuji commands are disabled for this controller")
         action = np.asarray(action, dtype=np.float32)
         if action.shape == (5, 4):
             action = action.reshape(ACTION_DOF)
@@ -197,7 +216,8 @@ class WujiControllerROS2:
         if self._owns_rclpy:
             rclpy.shutdown()
         self._state_thread.join(timeout=2.0)
-        self._cmd_thread.join(timeout=2.0)
+        if self._cmd_thread is not None:
+            self._cmd_thread.join(timeout=2.0)
 
     def get_data(self):
         with self._shared.lock:
@@ -205,6 +225,13 @@ class WujiControllerROS2:
                 "qpos": self._shared.joint_value.copy(),
                 "action": self._shared.action.copy(),
                 "time": time.time(),
+                "is_connected": self._shared.connection_event.is_set(),
+                "joint_names": tuple(
+                    f"{self.hand_side}_finger{finger}_joint{joint}"
+                    for finger in range(1, 6)
+                    for joint in range(1, 5)
+                ),
+                "state_topic": self.state_topic,
             }
 
     def is_error(self):

@@ -79,6 +79,31 @@ class CameraDaemonReader:
             )
         return image, frame_id
 
+    def get_preview(self, camera_name: str) -> Optional[np.ndarray]:
+        """Return the daemon's low-bandwidth cached preview JPEG, if available."""
+
+        path = "/preview/{}".format(quote(str(camera_name), safe=""))
+        try:
+            with self._open(path) as response:
+                encoded = response.read()
+        except HTTPError as exc:
+            if exc.code == 404:
+                return None
+            raise CameraDaemonReaderError(
+                "Could not read {}{}: {}".format(self.base_url, path, exc)
+            )
+        except URLError as exc:
+            raise CameraDaemonReaderError(
+                "Could not read {}{}: {}".format(self.base_url, path, exc)
+            )
+
+        image = cv2.imdecode(np.frombuffer(encoded, dtype=np.uint8), cv2.IMREAD_COLOR)
+        if image is None:
+            raise CameraDaemonReaderError(
+                "Camera {} returned an invalid preview JPEG".format(camera_name)
+            )
+        return image
+
     def get_images(self, copy: bool = True) -> Dict[str, Tuple[np.ndarray, int]]:
         images = {}
         for camera_name in self.camera_names:
@@ -87,6 +112,16 @@ class CameraDaemonReader:
                 continue
             image, frame_id = result
             images[camera_name] = (image.copy() if copy else image, frame_id)
+        return images
+
+    def get_preview_images(self, copy: bool = True) -> Dict[str, np.ndarray]:
+        """Return the latest low-bandwidth preview image from every camera."""
+
+        images = {}
+        for camera_name in self.camera_names:
+            image = self.get_preview(camera_name)
+            if image is not None:
+                images[camera_name] = image.copy() if copy else image
         return images
 
 

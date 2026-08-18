@@ -22,8 +22,9 @@ RECV_MIN_INTERVAL = 1.0 / RECV_RATE_HZ
 
 DEFAULT_VAL = None
 
-# Allegro v5 driver joint names: joint_<i>_0, finger blocks 0-3 thumb, 4-7 index, 8-11 middle, 12-15 ring.
-# This matches our logical order (thumb, index, middle, ring), so command/state mapping is identity.
+# Allegro v5 driver joint names: joint_<i>_0, finger blocks 0-3 index,
+# 4-7 middle, 8-11 ring, 12-15 thumb.  This is also the exact action order
+# produced by ``hand_regargetor.allegro_v5`` and used by CaptureSession.
 DRIVER_JOINT_ORDER = [f"joint_{i}_0" for i in range(16)]
 LOGICAL_JOINT_ORDER = list(DRIVER_JOINT_ORDER)
 
@@ -41,6 +42,7 @@ class _StateReceiverNode(Node):
         self._last_state_t = 0.0
         self._last_tactile_t = 0.0
         topic = f'/{namespace}{JOINT_STATE_SUFFIX}' if namespace else JOINT_STATE_SUFFIX
+        self.state_topic = topic
         self.create_subscription(JointState, topic, self._cb, 10)
         if tactile:
             tactile_topic = (
@@ -56,6 +58,7 @@ class _StateReceiverNode(Node):
         tactile = np.asarray(msg.data, dtype=np.int32)
         with self._shared.lock:
             self._shared.tactile = tactile
+            self._shared.tactile_time = now
 
     def _cb(self, msg: JointState):
         now = time.perf_counter()
@@ -121,12 +124,24 @@ class _Shared:
         self.action = np.zeros(action_dof, dtype=float)
         self.joint_value = np.zeros(action_dof, dtype=float)
         self.tactile = None
+        # ``perf_counter`` time of the most recently accepted tactile packet.
+        # It lets callers reject an old contact reading instead of treating it
+        # as a current contact.
+        self.tactile_time = None
         self.data = None
 
 
 class AllegroController:
-    def __init__(self, hand_side=None, namespace=None, tactile=False, **_):
+    def __init__(
+        self,
+        hand_side=None,
+        namespace=None,
+        tactile=False,
+        command_enabled=True,
+        **_,
+    ):
         self.tactile_enabled = bool(tactile)
+        self.command_enabled = bool(command_enabled)
         if not rclpy.ok():
             rclpy.init()
             self._owns_rclpy = True
@@ -153,16 +168,27 @@ class AllegroController:
         cmd_topic = (
             f'/{self.namespace}{COMMAND_SUFFIX}' if self.namespace else COMMAND_SUFFIX
         )
-        self._pub_cmd = self._state_node.create_publisher(JointState, cmd_topic, 10)
+        self._pub_cmd = (
+            self._state_node.create_publisher(JointState, cmd_topic, 10)
+            if self.command_enabled
+            else None
+        )
+        self.state_topic = self._state_node.state_topic
+        self.command_topic = cmd_topic
         self._get_clock = self._state_node.get_clock
 
         self._state_executor = SingleThreadedExecutor()
         self._state_executor.add_node(self._state_node)
 
         self._state_thread = Thread(target=self._spin_state, daemon=True)
-        self._cmd_thread = Thread(target=self._publish_loop_wrapper, daemon=True)
+        self._cmd_thread = (
+            Thread(target=self._publish_loop_wrapper, daemon=True)
+            if self.command_enabled
+            else None
+        )
         self._state_thread.start()
-        self._cmd_thread.start()
+        if self._cmd_thread is not None:
+            self._cmd_thread.start()
 
     def _spin_state(self):
         try:
@@ -187,6 +213,8 @@ class AllegroController:
         return self._shared.save_event
 
     def move(self, action):
+        if not self.command_enabled:
+            raise RuntimeError("Allegro command publishing is disabled for this controller.")
         action = np.asarray(action, dtype=float)
         assert action.shape[0] == action_dof
         with self._shared.lock:
@@ -220,13 +248,23 @@ class AllegroController:
         if self._owns_rclpy:
             rclpy.shutdown()
         self._state_thread.join(timeout=2.0)
-        self._cmd_thread.join(timeout=2.0)
+        if self._cmd_thread is not None:
+            self._cmd_thread.join(timeout=2.0)
 
     def get_data(self):
         with self._shared.lock:
+            tactile = (
+                None if self._shared.tactile is None else self._shared.tactile.copy()
+            )
             return {
                 'qpos': self._shared.joint_value.copy(),
                 'action': self._shared.action.copy(),
+                'joint_names': list(LOGICAL_JOINT_ORDER),
+                'is_connected': self._shared.connection_event.is_set(),
+                'state_topic': self.state_topic,
+                'command_topic': self.command_topic,
+                'tactile': tactile,
+                'tactile_time': self._shared.tactile_time,
                 'time': time.time(),
             }
 

@@ -69,6 +69,31 @@ class CameraDaemonReaderTests(unittest.TestCase):
         ), self.assertRaisesRegex(CameraDaemonReaderError, "No cameras"):
             CameraDaemonReader("capture-a")
 
+    def test_reader_decodes_low_bandwidth_preview(self):
+        image = np.full((3, 4, 3), 127, dtype=np.uint8)
+        ok, encoded = cv2.imencode(".jpg", image)
+        self.assertTrue(ok)
+        responses = [
+            FakeResponse(
+                json.dumps(
+                    {
+                        "backend": "aravis-gstreamer",
+                        "cameras": [{"name": "cam-a"}],
+                    }
+                ).encode("utf-8")
+            ),
+            FakeResponse(encoded.tobytes()),
+        ]
+
+        with patch(
+            "paradex.io.camera_system.camera_daemon_reader.urlopen",
+            side_effect=responses,
+        ):
+            reader = CameraDaemonReader("capture-a")
+            previews = reader.get_preview_images()
+
+        self.assertEqual(previews["cam-a"].shape, image.shape)
+
     def test_multi_reader_waits_until_every_camera_is_new(self):
         reader = MultiCameraDaemonReader.__new__(MultiCameraDaemonReader)
         reader.camera_names = ["cam-a", "cam-b"]

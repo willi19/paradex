@@ -23,6 +23,7 @@ def get_hand(
     hand_side="right",
     interface=None,
     host=None,
+    command_enabled=True,
 ):
     if hand_name in ("inspire", "inspire_dftp"):
         if ip:
@@ -43,15 +44,25 @@ def get_hand(
             # from .inspire_f1_controller import InspireF1Controller
             # return InspireF1Controller(**network_info["inspire_f1"]["param"], tactile=tactile)
         from .inspire_f1_state_receiver import InspireF1Controller
-        return InspireF1Controller(hand_side=hand_side)
+        return InspireF1Controller(
+            hand_side=hand_side,
+            command_enabled=command_enabled,
+        )
         
     if hand_name == "allegro":
         from .allegro_controller_ros2 import AllegroController
-        return AllegroController(**network_info[hand_name]["param"])
+        return AllegroController(
+            **network_info[hand_name]["param"],
+            command_enabled=command_enabled,
+        )
 
-    if hand_name == "allegro_v5":
+    if hand_name in ("allegro_v5", "allegro_v5_anyteleop", "allegro_v5_wonik"):
         from .allegro_v5_controller_ros2 import AllegroController
-        return AllegroController(hand_side=hand_side, tactile=tactile)
+        return AllegroController(
+            hand_side=hand_side,
+            tactile=tactile,
+            command_enabled=command_enabled,
+        )
 
     if hand_name == "robotiq_2f85":
         from .robotiq_2f85_controller_ros2 import Robotiq2F85ControllerROS2
@@ -61,7 +72,11 @@ def get_hand(
     if hand_name in ("wuji", "wuji_direct", "wuji_hybrid"):
         from .wuji_controller_ros2 import WujiControllerROS2
         params = network_info.get("wuji", {}).get("param", {})
-        return WujiControllerROS2(hand_side=hand_side, **params)
+        return WujiControllerROS2(
+            hand_side=hand_side,
+            command_enabled=command_enabled,
+            **params,
+        )
 
     if hand_name == "kistar":
         from .kistarcontroller import KistarController

@@ -24,7 +24,12 @@ class InspireF1Controller(Node):
     - Provides InspireF1Controller-like logging interface for CaptureSession.
     """
 
-    def __init__(self, hand_side: str = "both", namespace: str = ""):
+    def __init__(
+        self,
+        hand_side: str = "both",
+        namespace: str = "",
+        command_enabled: bool = True,
+    ):
         if not rclpy.ok():
             rclpy.init()
             self._owns_rclpy = True
@@ -44,12 +49,16 @@ class InspireF1Controller(Node):
         self.save_event = Event()
         self.error_event = Event()
         self.exit_event = Event()
+        self.command_enabled = Event()
+        if command_enabled:
+            self.command_enabled.set()
 
         self.latest: Dict[str, Dict[str, Optional[object]]] = {}
         for side in self.hand_sides:
             self.latest[side] = {
                 "time": None,
                 "joint_states": None,
+                "joint_names": None,
                 "commands": None,
                 "tactile": None,
             }
@@ -119,6 +128,10 @@ class InspireF1Controller(Node):
     def _joint_cb(self, side: str, msg: JointState):
         with self.lock:
             self.latest[side]["joint_states"] = np.array(msg.position, dtype=np.float64)
+            # A JointState position vector is meaningful only with its name
+            # vector.  Retain it for capture tools instead of forcing them to
+            # guess the controller's ordering later.
+            self.latest[side]["joint_names"] = tuple(str(name) for name in msg.name)
             now = time.time()
             self.latest[side]["time"] = now
             if self.save_event.is_set() and self.data is not None:
@@ -218,6 +231,8 @@ class InspireF1Controller(Node):
         arr = np.asarray(action, dtype=np.float64).reshape(-1)
         if arr.shape[0] != 6:
             raise ValueError(f"action must have 6 values, got shape {arr.shape}")
+        if not self.command_enabled.is_set():
+            return
 
         # Keep the same mapping as openarm_f1_xsens_standalone.py:
         # input action: [little, ring, middle, index, thumb_1, thumb_2]
@@ -248,6 +263,56 @@ class InspireF1Controller(Node):
         target_side = self._pick_default_side()
         self._publish_hand_command(target_side, action)
 
+    def publish_raw_wire_command(
+        self,
+        raw_values: Sequence[float],
+        joint_names: Sequence[str],
+        side: str = "right",
+    ) -> None:
+        """Publish named raw F1 motor values in the driver's wire order.
+
+        This is intentionally separate from :meth:`move`, whose legacy input
+        order is ``[little, ring, middle, index, thumb_1, thumb_2]``.
+        """
+        if side not in self.cmd_pubs:
+            raise ValueError(f"unknown side: {side}")
+        values = np.asarray(raw_values, dtype=np.float64).reshape(-1)
+        names = tuple(str(name) for name in joint_names)
+        if values.shape != (len(names),):
+            raise ValueError("raw values and joint names must have the same length")
+        expected = (
+            f"{side}_thumb_1_joint",
+            f"{side}_thumb_2_joint",
+            f"{side}_index_1_joint",
+            f"{side}_middle_1_joint",
+            f"{side}_ring_1_joint",
+            f"{side}_little_1_joint",
+        )
+        raw_by_name = dict(zip(names, values.tolist()))
+        missing = [name for name in expected if name not in raw_by_name]
+        if missing:
+            raise ValueError("raw F1 command missing joints: " + ", ".join(missing))
+        if not self.command_enabled.is_set():
+            return
+
+        msg = Float64MultiArray()
+        msg.data = [float(raw_by_name[name]) for name in expected]
+        self.cmd_pubs[side].publish(msg)
+        with self.lock:
+            self.latest[side]["commands"] = np.asarray(msg.data, dtype=np.float64)
+            self.latest[side]["time"] = time.time()
+
+    def set_command_enabled(self, enabled: bool) -> None:
+        """Allow or block outgoing commands from this controller instance.
+
+        State subscriptions remain active in either mode.  Disabling this gate
+        does not affect commands produced by another ROS publisher.
+        """
+        if enabled:
+            self.command_enabled.set()
+        else:
+            self.command_enabled.clear()
+
     def get_data(self, side: Optional[str] = None):
         side = self.hand_sides[0] if side is None else side
         if side not in self.latest:
@@ -258,6 +323,7 @@ class InspireF1Controller(Node):
                 if self.latest[side]["joint_states"] is None
                 else self.latest[side]["joint_states"].copy()
             )
+            joint_names = self.latest[side]["joint_names"]
             tactile = (
                 None
                 if self.latest[side]["tactile"] is None
@@ -266,6 +332,7 @@ class InspireF1Controller(Node):
             last_time = self.latest[side]["time"]
         return {
             "qpos": qpos,
+            "joint_names": None if joint_names is None else list(joint_names),
             "position": None,
             "tactile": tactile,
             "time": last_time if last_time is not None else time.time(),

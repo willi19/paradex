@@ -25,6 +25,16 @@ parser = argparse.ArgumentParser()
 
 parser.add_argument('--device', choices=['xsens', 'occulus', 'vive'], default="vive")
 parser.add_argument('--hand-side', choices=['right', 'left', 'bimanual'], default="right")
+vive_group = parser.add_mutually_exclusive_group()
+vive_group.add_argument(
+    '--use-vive', dest='use_vive', action='store_true',
+    help='Use the VIVE wrist tracker for arm/wrist pose fusion (default).',
+)
+vive_group.add_argument(
+    '--no-vive', dest='use_vive', action='store_false',
+    help='Use Manus glove data only; suitable for hand-only teleoperation.',
+)
+parser.set_defaults(use_vive=True)
 camera_group = parser.add_mutually_exclusive_group()
 camera_group.add_argument('--camera', dest='camera', action='store_true')
 camera_group.add_argument(
@@ -44,7 +54,7 @@ parser.set_defaults(timestamp=True)
 parser.add_argument('--arm', type=str, default="xarm",
                     help="Arm controller name. Use 'none' (or empty) to disable arm control.")
 parser.add_argument('--hand', type=str, default="inspire_f1",
-                    help="Hand controller/retargetor name. Use 'none' for arm-only teleop, 'wuji' for optimization, 'wuji_direct' for direct mapping, or 'wuji_hybrid' for opt thumb + direct fingers.")
+                    help="Hand controller/retargetor name. Use 'none' for arm-only teleop; 'allegro_v5' for the direct-anchor retargeter; 'allegro_v5_wonik' for Wonik's Manus ergonomics rule-based mapping; 'allegro_v5_anyteleop' for opt-in geometric retargeting with direct-anchor fallback; 'wuji' for optimization, 'wuji_direct' for direct mapping, or 'wuji_hybrid' for opt thumb + direct fingers.")
 parser.add_argument('--capture_root', type=str, default="eccv2026/allegro_v5")
 parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--tactile', action="store_true")
@@ -78,7 +88,7 @@ parser.add_argument(
     default=1.15
 
     ,
-    help="Uniform Wuji hand keypoint scale around the wrist. Use 1.5 if the robot hand is about 1.5x larger.",
+    help="Uniform keypoint scale around the wrist for Wuji. Use 1.5 if the robot hand is about 1.5x larger.",
 )
 args = parser.parse_args()
 
@@ -169,6 +179,8 @@ try:
         camera_pc_list=camera_pc_list,
         arm_kwargs={"servo_api": args.xarm_servo_api} if args.arm == "xarm" else None,
         hand_scale=args.hand_scale,
+        use_vive=args.use_vive,
+        require_left_control=args.use_vive,
     )
 except Exception:
     if pedal_state is not None:

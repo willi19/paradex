@@ -36,7 +36,7 @@ CONTROLLER_JOINT_ORDER = [
 ]
 
 class AllegroController(Node):
-    def __init__(self, addr=None, **_):
+    def __init__(self, addr=None, command_enabled=True, **_):
         if not rclpy.ok():
             rclpy.init()
             self._owns_rclpy = True
@@ -48,6 +48,9 @@ class AllegroController(Node):
         self.exit_event = Event()
         self.connection_event = Event()
         self.error_event = Event()
+        self.command_enabled = Event()
+        if command_enabled:
+            self.command_enabled.set()
 
         super().__init__('allegro_hand_node')
         # addr is accepted for API compatibility with network configuration.
@@ -107,7 +110,8 @@ class AllegroController(Node):
                 action = self.action.copy()
                 joint_value = self.joint_value.copy()
 
-            self._publish_action(action, absolute=True)
+            if self.command_enabled.is_set():
+                self._publish_action(action, absolute=True)
 
             if self.save_event.is_set():
                 self.data["action"].append(action.copy())
@@ -149,6 +153,13 @@ class AllegroController(Node):
         assert action.shape[0] == action_dof
         with self.lock:
             self.action = action.copy()
+
+    def set_command_enabled(self, enabled: bool):
+        """Allow or block outgoing commands while continuing state feedback."""
+        if enabled:
+            self.command_enabled.set()
+        else:
+            self.command_enabled.clear()
 
     def _sub_callback_joint_state(self, msg: JointState):
         if len(msg.name) != len(msg.position):
@@ -210,6 +221,10 @@ class AllegroController(Node):
             return {
                 'qpos': self.joint_value.copy(),
                 'action': self.action.copy(),
+                'joint_names': list(LOGICAL_JOINT_ORDER),
+                'is_connected': self.connection_event.is_set(),
+                'state_topic': JOINT_STATE_TOPIC,
+                'command_topic': COMMAND_TOPIC,
                 'time': time.time()
             }
 

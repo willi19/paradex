@@ -7,6 +7,9 @@ from threading import Event, Lock, Thread
 import numpy as np
 
 
+HUMAN_TACTILE_NUM_CHANNELS = 26
+
+
 class HumanTactileRecorder:
     def __init__(
         self,
@@ -17,6 +20,7 @@ class HumanTactileRecorder:
         plot_realtime=False,
         plot_refresh_interval=0.02,
         plot_max_samples=200,
+        num_channels=HUMAN_TACTILE_NUM_CHANNELS,
     ):
         self.port = port
         self.baud_rate = baud_rate
@@ -25,6 +29,7 @@ class HumanTactileRecorder:
         self.plot_realtime = plot_realtime
         self.plot_refresh_interval = plot_refresh_interval
         self.plot_max_samples = plot_max_samples
+        self.num_channels = num_channels
 
         self.ser = None
         self.reader_thread = None
@@ -47,11 +52,10 @@ class HumanTactileRecorder:
         self.fig = None
         self.ax = None
         self.lines = None
+        self._last_plotted_sample_id = 0
+        self._next_plot_refresh = 0.0
         self.plot_sample_ids = deque(maxlen=plot_max_samples)
-        self.plot_history = [
-            deque(maxlen=plot_max_samples),
-            deque(maxlen=plot_max_samples),
-        ]
+        self.plot_history = [deque(maxlen=plot_max_samples) for _ in range(num_channels)]
 
     def connect(self):
         if self.reader_thread is not None:
@@ -111,7 +115,7 @@ class HumanTactileRecorder:
         time_arr = np.asarray(times, dtype=np.float64)
         tactile_arr = np.asarray(tactile, dtype=np.int32)
         if tactile_arr.size == 0:
-            tactile_arr = tactile_arr.reshape(0, 2)
+            tactile_arr = tactile_arr.reshape(0, self.num_channels)
 
         np.save(os.path.join(save_path, "time.npy"), time_arr)
         np.save(os.path.join(save_path, "tactile.npy"), tactile_arr)
@@ -123,6 +127,7 @@ class HumanTactileRecorder:
                 {
                     "port": self.port,
                     "baud_rate": self.baud_rate,
+                    "num_channels": self.num_channels,
                     "num_samples": int(len(time_arr)),
                     "duration": duration,
                     "sample_rate_hz": sample_rate_hz,
@@ -159,7 +164,7 @@ class HumanTactileRecorder:
             return self.latest_sample_id, self.latest_timestamp, self.latest_sample.copy()
 
     def start_plot(self):
-        if self.plot_thread is not None and self.plot_thread.is_alive():
+        if self.plot_enabled:
             return
 
         if self.plt is None:
@@ -174,21 +179,43 @@ class HumanTactileRecorder:
                 print(f"Failed to initialize human tactile realtime plot: {exc}")
                 return
 
+        # GUI event loops must stay on the application's main thread.  In
+        # particular, creating a Matplotlib/Qt window in this worker thread
+        # conflicts with the OpenCV/Qt capture-PC preview window.  Call
+        # ``refresh_plot`` from the owner loop instead.
         self.plot_stop_event.clear()
-        self.plot_thread = Thread(target=self._plot_loop, daemon=True)
-        self.plot_thread.start()
 
     def stop_plot(self):
         self.plot_stop_event.set()
-        if self.plot_thread is not None:
-            self.plot_thread.join(timeout=1.0)
-            self.plot_thread = None
 
         if self.fig is not None and self.plt is not None:
             self.plt.close(self.fig)
             self.fig = None
             self.ax = None
             self.lines = None
+
+    def refresh_plot(self) -> None:
+        """Refresh the optional tactile plot from the application's main thread."""
+
+        if not self.plot_enabled or self.plot_stop_event.is_set():
+            return
+        now = time.monotonic()
+        if now < self._next_plot_refresh:
+            return
+        self._next_plot_refresh = now + self.plot_refresh_interval
+
+        latest = self.get_latest()
+        if latest is None:
+            return
+        sample_id, _, sample = latest
+        if sample_id == self._last_plotted_sample_id:
+            return
+        try:
+            self._update_plot(sample_id, sample)
+            self._last_plotted_sample_id = sample_id
+        except Exception as exc:
+            self.plot_enabled = False
+            print(f"Disabling human tactile realtime plot after update failure: {exc}")
 
     def _read_loop(self):
         while not self.exit_event.is_set():
@@ -207,8 +234,7 @@ class HumanTactileRecorder:
                 continue
 
             try:
-                first, second = line.split(",")
-                sample = [int(first), int(second)]
+                sample = self._parse_line(line)
             except ValueError:
                 with self.save_lock:
                     if self.save_event.is_set():
@@ -228,18 +254,32 @@ class HumanTactileRecorder:
                         self.data["time"].append(timestamp)
                         self.data["tactile"].append(sample)
 
+    def _parse_line(self, line):
+        sample = [int(value) for value in line.split(",")]
+        if len(sample) != self.num_channels:
+            raise ValueError(
+                f"Expected {self.num_channels} tactile values, received {len(sample)}."
+            )
+        return sample
+
     def _ensure_plot(self):
         if self.fig is not None:
             return
 
-        self.fig, raw_axes = self.plt.subplots(2, 1, figsize=(9, 6), sharex=True)
-        self.ax = list(raw_axes)
+        self.fig, raw_axes = self.plt.subplots(
+            self.num_channels,
+            1,
+            figsize=(9, max(6, self.num_channels * 1.6)),
+            sharex=True,
+        )
+        self.ax = list(np.atleast_1d(raw_axes))
         self.fig.suptitle("Human Tactile Realtime")
         self.lines = [
-            self.ax[0].plot([], [], linewidth=1.5, label="value1")[0],
-            self.ax[1].plot([], [], linewidth=1.5, label="value2")[0],
+            ax.plot([], [], linewidth=1.5, label=f"value{index + 1}")[0]
+            for index, ax in enumerate(self.ax)
         ]
-        for ax, label in zip(self.ax, ("value1", "value2")):
+        for index, ax in enumerate(self.ax):
+            label = f"value{index + 1}"
             ax.set_ylabel(label)
             ax.grid(True, alpha=0.3)
             ax.legend(loc="upper right")
@@ -252,8 +292,8 @@ class HumanTactileRecorder:
         self._ensure_plot()
 
         self.plot_sample_ids.append(sample_id)
-        self.plot_history[0].append(int(sample[0]))
-        self.plot_history[1].append(int(sample[1]))
+        for history, value in zip(self.plot_history, sample):
+            history.append(int(value))
         x_vals = list(self.plot_sample_ids)
 
         for ax, line, y_vals in zip(self.ax, self.lines, self.plot_history):
@@ -263,26 +303,3 @@ class HumanTactileRecorder:
 
         self.fig.canvas.draw_idle()
         self.fig.canvas.flush_events()
-
-    def _plot_loop(self):
-        last_sample_id = 0
-
-        try:
-            while not self.plot_stop_event.is_set() and not self.exit_event.is_set():
-                if not self.plot_enabled:
-                    break
-
-                latest = self.get_latest()
-                if latest is None:
-                    time.sleep(self.plot_refresh_interval)
-                    continue
-
-                sample_id, _, sample = latest
-                if sample_id != last_sample_id:
-                    self._update_plot(sample_id, sample)
-                    last_sample_id = sample_id
-
-                time.sleep(self.plot_refresh_interval)
-        except Exception as exc:
-            self.plot_enabled = False
-            print(f"Disabling human tactile realtime plot after update failure: {exc}")

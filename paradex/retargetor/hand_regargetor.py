@@ -1,5 +1,6 @@
 import os
 import sys
+import json
 from pathlib import Path
 from typing import Dict
 
@@ -32,6 +33,21 @@ _WUJI_DIRECT_FINGERS = (
 _WUJI_DIRECT_MCP_FROM_PIP_BLEND = 0.55
 _WUJI_DIRECT_MCP_FLEX_GAIN = 1.15
 _WUJI_DIRECT_THUMB_OPPOSITION_GAIN = 1.9
+_WUJI_DIRECT_ANCHOR_CONFIG = (
+    _REPO_ROOT / "rsc" / "robot" / "wuji" / "wuji_left_direct_retargeter_anchors.json"
+)
+_WUJI_DIRECT_ANCHOR_DATA = {}
+# Wuji is ordered thumb, index, middle, ring, pinky, with four joints each.
+# A calibration block is therefore always local to one human finger and its
+# matching four Wuji joints.
+_WUJI_DIRECT_FINGER_INTERPOLATION_LAYOUT = tuple(
+    (slice(finger * 4, (finger + 1) * 4), slice(finger * 3, (finger + 1) * 3))
+    for finger in range(5)
+)
+# MANUS tip coordinates are normalized by palm length while the geometric
+# direct extractor is radians. Keep the latter a tie-breaker only, so tip
+# motion remains the primary metric.
+_WUJI_DIRECT_TIP_RAW_TIE_BREAK_SCALE_PALM_LENGTHS_PER_RAD = 0.04
 _WUJI_DIRECT_FALLBACK_LOWER = np.array(
     [
         0.0475, -0.1387, -0.4642, -0.4699,
@@ -52,6 +68,422 @@ _WUJI_DIRECT_FALLBACK_UPPER = np.array(
     ],
     dtype=np.float32,
 )
+
+# Allegro v5 action order is index, middle, ring, thumb, with four joints per
+# finger.  The seven manually edited captures are the entire output model:
+# every command is a finger-local interpolation of their target blocks.  The
+# raw direct-angle extractor is used only as a distance-feature tie-breaker;
+# it never contributes an output pose or a fallback calibration.
+_ALLEGRO_V5_DIRECT_ANCHOR_CONFIG = (
+    _REPO_ROOT / "rsc" / "robot" / "allegro_v5" / "allegro_v5_direct_retargeter_anchors.json"
+)
+# Exact hard limits from allegro_v5/allegro_right_A.urdf in driver order.
+_ALLEGRO_V5_PHYSICAL_LOWER = np.array(
+    [-0.47, -0.196, -0.174, -0.227] * 3 + [0.0, -0.26, 0.0, -0.09],
+    dtype=np.float64,
+)
+_ALLEGRO_V5_PHYSICAL_UPPER = np.array(
+    [0.47, 1.8, 1.709, 1.618] * 3 + [1.78, 1.78, 1.9, 1.8],
+    dtype=np.float64,
+)
+_ALLEGRO_V5_DIRECT_ANCHOR_DATA = None
+_ALLEGRO_V5_ERGONOMIC_COMPATIBILITY_BLEND = 0.25
+_ALLEGRO_V5_ERGONOMIC_FIELDS = (
+    "ThumbMCPStretch",
+    "ThumbMCPSpread",
+    "IndexMCPStretch",
+    "IndexPIPStretch",
+    "IndexDIPStretch",
+    "MiddleMCPStretch",
+    "MiddlePIPStretch",
+    "MiddleDIPStretch",
+    "RingMCPStretch",
+    "RingPIPStretch",
+    "RingDIPStretch",
+    "PinkyMCPStretch",
+    "PinkyPIPStretch",
+    "PinkyDIPStretch",
+)
+# Allegro v5 action order is index, middle, ring, thumb.  MANUS tip features
+# retain the native thumb, index, middle, ring, pinky order.  There is no
+# separate Allegro pinky, so it intentionally has no target block here.
+_ALLEGRO_V5_FINGER_INTERPOLATION_LAYOUT = (
+    ("index", slice(0, 4), slice(3, 6), slice(2, 3)),
+    ("middle", slice(4, 8), slice(6, 9), slice(3, 4)),
+    ("ring", slice(8, 12), slice(9, 12), slice(4, 5)),
+    ("thumb", slice(12, 16), slice(0, 3), slice(0, 2)),
+)
+# MANUS tip positions are expressed in metres while raw retargeter actions are
+# radians.  The raw action is a small finger-local tie-breaker: it separates
+# captures with the same fingertip position but a different local bend without
+# allowing radians to dominate the Cartesian tip distance.
+_ALLEGRO_V5_TIP_RAW_TIE_BREAK_SCALE_M_PER_RAD = 0.1
+
+
+def _load_allegro_v5_direct_anchor_data():
+    """Load the seven operator-edited anchors for the direct-angle retargeter."""
+    global _ALLEGRO_V5_DIRECT_ANCHOR_DATA
+    if _ALLEGRO_V5_DIRECT_ANCHOR_DATA is not None:
+        return _ALLEGRO_V5_DIRECT_ANCHOR_DATA
+    with _ALLEGRO_V5_DIRECT_ANCHOR_CONFIG.open(encoding="utf-8") as stream:
+        raw = json.load(stream)
+    if (
+        raw.get("schema_version") != 2
+        or raw.get("method")
+        != "allegro_v5_manus_anchor_shepard_blend"
+    ):
+        raise RuntimeError("Unsupported Allegro v5 direct-angle anchor calibration")
+    interpolation = raw.get("interpolation", {})
+    data = {
+        "raw_features": np.asarray(raw["anchor_raw_actions_rad"], dtype=np.float64),
+        "manus_tip_features": np.asarray(
+            raw["anchor_manus_tip_features_m"], dtype=np.float64
+        ),
+        "manus_ergonomic_features": np.asarray(
+            raw["anchor_manus_ergonomic_features_deg"], dtype=np.float64
+        ),
+        "targets": np.asarray(raw["anchor_target_actions_rad"], dtype=np.float64),
+        "safe_lower": np.asarray(raw["safe_lower_rad"], dtype=np.float64),
+        "safe_upper": np.asarray(raw["safe_upper_rad"], dtype=np.float64),
+        "sigma": float(interpolation["gaussian_sigma_m"]),
+        "influence_radius": float(interpolation["influence_radius_m"]),
+        "inverse_distance_epsilon": float(
+            interpolation["inverse_distance_epsilon_m_sq"]
+        ),
+        "inverse_distance_power": float(interpolation["inverse_distance_power"]),
+        "ergonomic_sigma": float(raw["ergonomic_interpolation"]["gaussian_sigma_deg"]),
+        "ergonomic_influence_radius": float(
+            raw["ergonomic_interpolation"]["influence_radius_deg"]
+        ),
+        "ergonomic_inverse_distance_epsilon": float(
+            raw["ergonomic_interpolation"]["inverse_distance_epsilon_deg_sq"]
+        ),
+        "ergonomic_inverse_distance_power": float(
+            raw["ergonomic_interpolation"]["inverse_distance_power"]
+        ),
+    }
+    if (
+        data["raw_features"].shape != (7, 16)
+        or data["manus_tip_features"].shape != (7, 15)
+        or data["manus_ergonomic_features"].shape != (7, 6)
+        or data["targets"].shape != (7, 16)
+        or data["safe_lower"].shape != (16,)
+        or data["safe_upper"].shape != (16,)
+        or not np.all(np.isfinite(data["raw_features"]))
+        or not np.all(np.isfinite(data["manus_tip_features"]))
+        or not np.all(np.isfinite(data["manus_ergonomic_features"]))
+        or not np.all(np.isfinite(data["targets"]))
+        or not np.all(np.isfinite(data["safe_lower"]))
+        or not np.all(np.isfinite(data["safe_upper"]))
+        or not np.all(data["safe_lower"] <= data["safe_upper"])
+        or not np.all(_ALLEGRO_V5_PHYSICAL_LOWER <= data["safe_lower"])
+        or not np.all(data["safe_upper"] <= _ALLEGRO_V5_PHYSICAL_UPPER)
+        or not np.isfinite(data["sigma"])
+        or data["sigma"] <= 0.0
+        or not np.isfinite(data["influence_radius"])
+        or data["influence_radius"] <= 0.0
+        or not np.isfinite(data["inverse_distance_epsilon"])
+        or data["inverse_distance_epsilon"] <= 0.0
+        or not np.isfinite(data["inverse_distance_power"])
+        or data["inverse_distance_power"] < 1.0
+        or not np.isfinite(data["ergonomic_sigma"])
+        or data["ergonomic_sigma"] <= 0.0
+        or not np.isfinite(data["ergonomic_influence_radius"])
+        or data["ergonomic_influence_radius"] <= 0.0
+        or not np.isfinite(data["ergonomic_inverse_distance_epsilon"])
+        or data["ergonomic_inverse_distance_epsilon"] <= 0.0
+        or not np.isfinite(data["ergonomic_inverse_distance_power"])
+        or data["ergonomic_inverse_distance_power"] < 1.0
+    ):
+        raise RuntimeError("Allegro v5 direct-angle anchor calibration is invalid")
+
+    _ALLEGRO_V5_DIRECT_ANCHOR_DATA = data
+    return data
+
+
+def clip_allegro_v5_safe_action(action):
+    """Constrain direct v5 commands to the seven approved pose envelope."""
+    action = np.asarray(action, dtype=np.float64)
+    if action.shape != (16,):
+        raise ValueError(f"Allegro v5 action must have shape (16,), got {action.shape}")
+    data = _load_allegro_v5_direct_anchor_data()
+    return np.clip(action, data["safe_lower"], data["safe_upper"])
+
+
+def _allegro_v5_manus_tip_feature(hand_pose_frame):
+    """Return wrist-relative MANUS fingertip positions in meters.
+
+    Contact intent is expressed by where the tips are, not just by the local
+    bone rotations used by the legacy direct-angle extractor.  This feature is
+    invariant to the global hand pose and preserves the original extractor as
+    the fallback when a MANUS payload is malformed.
+    """
+    try:
+        wrist = np.asarray(hand_pose_frame["wrist"], dtype=np.float64)
+        wrist_inv = np.linalg.inv(wrist)
+        feature = np.concatenate(
+            [
+                (wrist_inv @ np.asarray(hand_pose_frame[name], dtype=np.float64))[
+                    :3, 3
+                ]
+                for name in (
+                    "thumb_tip",
+                    "index_tip",
+                    "middle_tip",
+                    "ring_tip",
+                    "pinky_tip",
+                )
+            ]
+        )
+    except (KeyError, TypeError, ValueError, np.linalg.LinAlgError):
+        return None
+    return feature if feature.shape == (15,) and np.all(np.isfinite(feature)) else None
+
+
+def _allegro_v5_manus_ergonomic_feature(ergonomics):
+    """Return a MANUS joint-angle feature without relying on field ordering.
+
+    The first two components preserve thumb bend/opposition.  Each remaining
+    component is the total finger flexion, mirroring the semantic quantity
+    used by Inspire DFTP while retaining the legacy Allegro pose extractor.
+    """
+    if not isinstance(ergonomics, dict):
+        return None
+    try:
+        values = {name: float(ergonomics[name]) for name in _ALLEGRO_V5_ERGONOMIC_FIELDS}
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not np.all(np.isfinite(tuple(values.values()))):
+        return None
+    return np.asarray(
+        (
+            values["ThumbMCPStretch"],
+            values["ThumbMCPSpread"],
+            sum(values[f"Index{joint}Stretch"] for joint in ("MCP", "PIP", "DIP")),
+            sum(values[f"Middle{joint}Stretch"] for joint in ("MCP", "PIP", "DIP")),
+            sum(values[f"Ring{joint}Stretch"] for joint in ("MCP", "PIP", "DIP")),
+            sum(values[f"Pinky{joint}Stretch"] for joint in ("MCP", "PIP", "DIP")),
+        ),
+        dtype=np.float64,
+    )
+
+
+def _distance_gated_weights(features, query, *, sigma, epsilon, distance_power):
+    """Return normalized local anchor weights, favoring the closest pose."""
+    feature_deltas = features - query[None, :]
+    distances_sq = np.einsum("ij,ij->i", feature_deltas, feature_deltas)
+    log_weights = (
+        -0.5 * distances_sq / sigma ** 2
+        - distance_power * np.log(distances_sq + epsilon)
+    )
+    log_weights -= log_weights.max()
+    weights = np.exp(log_weights)
+    return weights / weights.sum(), distances_sq
+
+
+def _distance_gated_target(
+    features, query, targets, *, sigma, influence_radius, epsilon, distance_power
+):
+    """Blend a target block from its matching per-anchor feature block."""
+    weights, distances_sq = _distance_gated_weights(
+        features,
+        query,
+        sigma=sigma,
+        epsilon=epsilon,
+        distance_power=distance_power,
+    )
+    target = weights @ targets
+    normalized_distance = np.clip(
+        1.0 - np.sqrt(distances_sq.min()) / influence_radius, 0.0, 1.0
+    )
+    influence = normalized_distance ** 2 * (3.0 - 2.0 * normalized_distance)
+    return target, influence
+
+
+def _cluster_balanced_distance_gated_target(
+    features,
+    query,
+    targets,
+    *,
+    sigma,
+    influence_radius,
+    epsilon,
+    distance_power,
+    duplicate_cluster_radius,
+):
+    """Blend anchors by unique local pose, not by repeated capture count.
+
+    Nearby duplicate samples are condensed into one centroid/mean-target
+    anchor before Shepard weighting.  Thus five captures at one local finger
+    pose get the same total influence as one capture at another local pose.
+    """
+    features = np.asarray(features, dtype=np.float64)
+    targets = np.asarray(targets, dtype=np.float64)
+    if features.ndim != 2 or targets.ndim != 2 or len(features) != len(targets):
+        raise ValueError("Anchor features and targets must be matching 2D arrays")
+
+    remaining = set(range(len(features)))
+    groups = []
+    while remaining:
+        group = {remaining.pop()}
+        frontier = list(group)
+        while frontier:
+            index = frontier.pop()
+            candidates = [
+                candidate
+                for candidate in remaining
+                if np.linalg.norm(features[index] - features[candidate])
+                <= duplicate_cluster_radius
+            ]
+            for candidate in candidates:
+                remaining.remove(candidate)
+                group.add(candidate)
+                frontier.append(candidate)
+        groups.append(sorted(group))
+
+    cluster_features = np.asarray(
+        [features[group].mean(axis=0) for group in groups], dtype=np.float64
+    )
+    cluster_targets = np.asarray(
+        [targets[group].mean(axis=0) for group in groups], dtype=np.float64
+    )
+    return _distance_gated_target(
+        cluster_features,
+        query,
+        cluster_targets,
+        sigma=sigma,
+        influence_radius=influence_radius,
+        epsilon=epsilon,
+        distance_power=distance_power,
+    )
+
+
+def _align_allegro_v5_action(
+    action,
+    manus_tip_feature=None,
+    manus_ergonomic_feature=None,
+):
+    """Return a finger-local interpolation of the seven edited target poses."""
+    action = np.asarray(action, dtype=np.float64)
+    if action.shape != (16,) or not np.all(np.isfinite(action)):
+        raise ValueError(f"Allegro v5 action must be finite shape (16,), got {action.shape}")
+    data = _load_allegro_v5_direct_anchor_data()
+    calibrated = np.empty_like(action)
+    has_anchor_target = False
+    tip_feature = None
+    if manus_tip_feature is not None:
+        candidate = np.asarray(manus_tip_feature, dtype=np.float64)
+        if candidate.shape == (15,) and np.all(np.isfinite(candidate)):
+            tip_feature = candidate
+    ergonomic_feature = None
+    if manus_ergonomic_feature is not None:
+        candidate = np.asarray(manus_ergonomic_feature, dtype=np.float64)
+        if candidate.shape == (6,) and np.all(np.isfinite(candidate)):
+            ergonomic_feature = candidate
+
+    # An exactly replayed capture must reconstruct its manually edited target
+    # as one complete pose.  Finger-local features can be intentionally
+    # identical across different captures, so without this exact-anchor rule
+    # their conflicting manual targets cannot all be reproduced.
+    if tip_feature is not None:
+        exact_anchor = np.all(np.isclose(data["raw_features"], action, atol=1e-12, rtol=0.0), axis=1)
+        exact_anchor &= np.all(
+            np.isclose(data["manus_tip_features"], tip_feature, atol=1e-12, rtol=0.0),
+            axis=1,
+        )
+        if ergonomic_feature is not None:
+            exact_anchor &= np.all(
+                np.isclose(
+                    data["manus_ergonomic_features"], ergonomic_feature,
+                    atol=1e-12,
+                    rtol=0.0,
+                ),
+                axis=1,
+            )
+        matching_indices = np.flatnonzero(exact_anchor)
+        if matching_indices.size:
+            return clip_allegro_v5_safe_action(data["targets"][matching_indices[0]])
+
+    if tip_feature is not None:
+        manus_tip_feature = tip_feature
+        for _finger, action_slice, tip_slice, _ergonomic_slice in (
+            _ALLEGRO_V5_FINGER_INTERPOLATION_LAYOUT
+        ):
+            anchor_feature = np.concatenate(
+                (
+                    data["manus_tip_features"][:, tip_slice],
+                    data["raw_features"][:, action_slice]
+                    * _ALLEGRO_V5_TIP_RAW_TIE_BREAK_SCALE_M_PER_RAD,
+                ),
+                axis=1,
+            )
+            query_feature = np.concatenate(
+                (
+                    manus_tip_feature[tip_slice],
+                    action[action_slice]
+                    * _ALLEGRO_V5_TIP_RAW_TIE_BREAK_SCALE_M_PER_RAD,
+                )
+            )
+            tip_target, _tip_influence = _distance_gated_target(
+                anchor_feature,
+                query_feature,
+                data["targets"][:, action_slice],
+                sigma=data["sigma"],
+                influence_radius=data["influence_radius"],
+                epsilon=data["inverse_distance_epsilon"],
+                distance_power=data["inverse_distance_power"],
+            )
+            calibrated[action_slice] = tip_target
+            has_anchor_target = True
+
+    if ergonomic_feature is not None:
+        manus_ergonomic_feature = ergonomic_feature
+        for _finger, action_slice, _tip_slice, ergonomic_slice in (
+            _ALLEGRO_V5_FINGER_INTERPOLATION_LAYOUT
+        ):
+            # Ergonomic degrees provide the metric; the local raw action
+            # merely disambiguates otherwise identical MANUS angles.
+            anchor_feature = np.concatenate(
+                (
+                    data["manus_ergonomic_features"][:, ergonomic_slice],
+                    data["raw_features"][:, action_slice],
+                ),
+                axis=1,
+            )
+            query_feature = np.concatenate(
+                (
+                    manus_ergonomic_feature[ergonomic_slice], action[action_slice]
+                )
+            )
+            ergonomic_target, ergonomic_influence = _distance_gated_target(
+                anchor_feature,
+                query_feature,
+                data["targets"][:, action_slice],
+                sigma=data["ergonomic_sigma"],
+                influence_radius=data["ergonomic_influence_radius"],
+                epsilon=data["ergonomic_inverse_distance_epsilon"],
+                distance_power=data["ergonomic_inverse_distance_power"],
+            )
+            if tip_feature is None:
+                calibrated[action_slice] = ergonomic_target
+            else:
+                # This is still a blend of the same seven target poses: named
+                # MANUS angles only refine the finger-local anchor weighting.
+                influence = (
+                    _ALLEGRO_V5_ERGONOMIC_COMPATIBILITY_BLEND * ergonomic_influence
+                )
+                calibrated[action_slice] = calibrated[action_slice] + influence * (
+                    ergonomic_target - calibrated[action_slice]
+                )
+            has_anchor_target = True
+    if not has_anchor_target:
+        # Do not resurrect the old direct-angle output when MANUS data is
+        # malformed.  Select the closest of the seven approved targets instead.
+        nearest_anchor = np.argmin(
+            np.sum((data["raw_features"] - action[None, :]) ** 2, axis=1)
+        )
+        calibrated = data["targets"][nearest_anchor].copy()
+    return clip_allegro_v5_safe_action(calibrated)
 
 
 def _pose_position(pose):
@@ -323,6 +755,170 @@ def _resolve_wuji_direct_limits(is_right=True):
     return limits
 
 
+def _load_wuji_direct_anchor_data(is_right=True):
+    """Load operator-edited Wuji anchors for the captured hand side.
+
+    Only the left-hand calibration exists currently.  The uncalibrated side
+    intentionally keeps the established direct retargeter unchanged.
+    """
+    side = "right" if is_right else "left"
+    if side == "right":
+        return None
+    if side in _WUJI_DIRECT_ANCHOR_DATA:
+        return _WUJI_DIRECT_ANCHOR_DATA[side]
+
+    with _WUJI_DIRECT_ANCHOR_CONFIG.open(encoding="utf-8") as stream:
+        raw = json.load(stream)
+    if (
+        raw.get("schema_version") != 1
+        or raw.get("method")
+        != "wuji_direct_manus_palm_normalized_tip_shepard_residual"
+        or raw.get("side") != side
+    ):
+        raise RuntimeError("Unsupported Wuji direct anchor calibration")
+
+    interpolation = raw.get("interpolation", {})
+    data = {
+        "raw_features": np.asarray(raw["anchor_raw_actions_rad"], dtype=np.float64),
+        "manus_tip_features": np.asarray(
+            raw["anchor_manus_tip_features_m"], dtype=np.float64
+        ),
+        "targets": np.asarray(raw["anchor_target_actions_rad"], dtype=np.float64),
+        "safe_lower": np.asarray(raw["safe_lower_rad"], dtype=np.float64),
+        "safe_upper": np.asarray(raw["safe_upper_rad"], dtype=np.float64),
+        "sigma": float(interpolation["gaussian_sigma_palm_lengths"]),
+        "influence_radius": float(interpolation["influence_radius_palm_lengths"]),
+        "inverse_distance_epsilon": float(
+            interpolation["inverse_distance_epsilon_palm_lengths_sq"]
+        ),
+        "inverse_distance_power": float(interpolation["inverse_distance_power"]),
+        "duplicate_cluster_radius": float(
+            interpolation["duplicate_cluster_radius_palm_lengths"]
+        ),
+    }
+    lower, upper = _resolve_wuji_direct_limits(is_right=is_right)
+    if (
+        data["raw_features"].ndim != 2
+        or data["raw_features"].shape[0] < 2
+        or data["raw_features"].shape[1] != 20
+        or data["manus_tip_features"].shape != (data["raw_features"].shape[0], 15)
+        or data["targets"].shape != (data["raw_features"].shape[0], 20)
+        or data["safe_lower"].shape != (20,)
+        or data["safe_upper"].shape != (20,)
+        or not all(np.all(np.isfinite(data[key])) for key in (
+            "raw_features", "manus_tip_features", "targets", "safe_lower", "safe_upper"
+        ))
+        or not np.all(data["safe_lower"] <= data["safe_upper"])
+        or not np.all(lower <= data["safe_lower"])
+        or not np.all(data["safe_upper"] <= upper)
+        or not all(np.isfinite(data[key]) and data[key] > 0.0 for key in (
+            "sigma", "influence_radius", "inverse_distance_epsilon"
+        ))
+        or not np.isfinite(data["inverse_distance_power"])
+        or data["inverse_distance_power"] < 1.0
+        or not np.isfinite(data["duplicate_cluster_radius"])
+        or data["duplicate_cluster_radius"] <= 0.0
+    ):
+        raise RuntimeError("Wuji direct anchor calibration is invalid")
+
+    _WUJI_DIRECT_ANCHOR_DATA[side] = data
+    return data
+
+
+def clip_wuji_direct_safe_action(action, is_right=True):
+    """Keep Wuji direct commands within its URDF physical safety limits."""
+    action = np.asarray(action, dtype=np.float64)
+    if action.shape != (20,):
+        raise ValueError(f"Wuji action must have shape (20,), got {action.shape}")
+    data = _load_wuji_direct_anchor_data(is_right=is_right)
+    if data is None:
+        lower, upper = _resolve_wuji_direct_limits(is_right=is_right)
+    else:
+        lower, upper = data["safe_lower"], data["safe_upper"]
+    return np.clip(action, lower, upper).astype(np.float32)
+
+
+def _wuji_direct_tip_feature(keypoints):
+    """Return palm-normalized wrist-relative MANUS fingertip coordinates.
+
+    ``wuji_direct`` derives joint angles from directions, so those raw angles
+    are invariant to the caller's optional hand scale.  Normalize the tip
+    anchor feature by the wrist-to-middle-MCP distance for the same property:
+    captures made in the alignment UI at ``--scale 1.15`` must also replay
+    through the standard Retargetor default scale of ``1.0``.
+    """
+    keypoints = np.asarray(keypoints, dtype=np.float64)
+    if keypoints.shape != (21, 3) or not np.all(np.isfinite(keypoints)):
+        return None
+    palm_scale = np.linalg.norm(keypoints[9] - keypoints[0])
+    if not np.isfinite(palm_scale) or palm_scale < 1e-6:
+        return None
+    return ((keypoints[[4, 8, 12, 16, 20]] - keypoints[0]) / palm_scale).reshape(15)
+
+
+def _align_wuji_direct_action(action, keypoints, is_right=True):
+    """Locally blend edited Wuji targets over the established direct output."""
+    action = np.asarray(action, dtype=np.float64)
+    if action.shape != (20,) or not np.all(np.isfinite(action)):
+        raise ValueError(f"Wuji action must be finite shape (20,), got {action.shape}")
+    data = _load_wuji_direct_anchor_data(is_right=is_right)
+    tip_feature = _wuji_direct_tip_feature(keypoints)
+    if data is None or tip_feature is None:
+        return clip_wuji_direct_safe_action(action, is_right=is_right)
+
+    # Preserve every manually edited capture exactly.  Local per-finger
+    # interpolation alone cannot resolve two captures whose fingertip feature
+    # happens to coincide but whose edited robot targets differ.
+    # Direction-derived angles are scale-invariant in theory, but a nearly
+    # straight distal segment can differ by about 3.5e-4 rad after float32
+    # arithmetic when the caller changes ``hand_scale``.  The normalized tip
+    # feature remains the strict pose identity check; this tolerance only
+    # prevents that numerical detail from defeating exact capture replay.
+    exact_anchor = np.all(
+        np.isclose(data["raw_features"], action, atol=5e-4, rtol=0.0), axis=1
+    ) & np.all(
+        np.isclose(data["manus_tip_features"], tip_feature, atol=2e-6, rtol=0.0),
+        axis=1,
+    )
+    matching_indices = np.flatnonzero(exact_anchor)
+    if matching_indices.size:
+        return clip_wuji_direct_safe_action(
+            data["targets"][matching_indices[0]], is_right=is_right
+        )
+
+    calibrated = action.copy()
+    for action_slice, tip_slice in _WUJI_DIRECT_FINGER_INTERPOLATION_LAYOUT:
+        anchor_feature = np.concatenate(
+            (
+                data["manus_tip_features"][:, tip_slice],
+                data["raw_features"][:, action_slice]
+                * _WUJI_DIRECT_TIP_RAW_TIE_BREAK_SCALE_PALM_LENGTHS_PER_RAD,
+            ),
+            axis=1,
+        )
+        query_feature = np.concatenate(
+            (
+                tip_feature[tip_slice],
+                action[action_slice]
+                * _WUJI_DIRECT_TIP_RAW_TIE_BREAK_SCALE_PALM_LENGTHS_PER_RAD,
+            )
+        )
+        target, influence = _cluster_balanced_distance_gated_target(
+            anchor_feature,
+            query_feature,
+            data["targets"][:, action_slice],
+            sigma=data["sigma"],
+            influence_radius=data["influence_radius"],
+            epsilon=data["inverse_distance_epsilon"],
+            distance_power=data["inverse_distance_power"],
+            duplicate_cluster_radius=data["duplicate_cluster_radius"],
+        )
+        calibrated[action_slice] = action[action_slice] + influence * (
+            target - action[action_slice]
+        )
+    return clip_wuji_direct_safe_action(calibrated, is_right=is_right)
+
+
 def _wuji_direct_non_thumb_angles(keypoints, finger_indices, normal):
     mcp, pip, dip, tip = [keypoints[i] for i in finger_indices]
     base_dir = _project_to_plane(mcp - keypoints[0], normal)
@@ -377,7 +973,8 @@ def _wuji_direct_from_mediapipe(keypoints, is_right=True):
         angles[1:, 1] *= -1.0
 
     lower, upper = _resolve_wuji_direct_limits(is_right=is_right)
-    return np.clip(angles.reshape(20), lower, upper).astype(np.float32)
+    raw_action = np.clip(angles.reshape(20), lower, upper).astype(np.float32)
+    return _align_wuji_direct_action(raw_action, keypoints, is_right=is_right)
 
 
 def _import_wuji_retargeter():
@@ -892,8 +1489,8 @@ def kistar(hand_pose_frame):
     return kistar_raw
 
 
-def allegro_v5(hand_pose_frame):
-    hand_joint_angle = np.zeros((20,3))
+def _allegro_v5_raw(hand_pose_frame):
+    """Extract uncalibrated Allegro v5 angles in retargeter action order."""
     allegro_angles = np.zeros(16)
     # for finger_id in range(4):
     #     for joint_id in range(4):
@@ -920,7 +1517,11 @@ def allegro_v5(hand_pose_frame):
         if tip_direction[1] > 0.9:
             allegro_angles[4*i] = 0
         else:
-            allegro_angles[4*i] = np.arctan(tip_direction[0] / tip_direction[2]) * (0.9-tip_direction[1])
+            # ``arctan2`` avoids a discontinuity or divide-by-zero warning
+            # when a fingertip direction crosses the local z=0 plane.
+            allegro_angles[4*i] = np.arctan2(
+                tip_direction[0], tip_direction[2]
+            ) * (0.9 - tip_direction[1])
         
         for j in range(3):
             parent_name = finger_name + "_" + joint_name_list[j]
@@ -943,3 +1544,12 @@ def allegro_v5(hand_pose_frame):
         allegro_angles[14+i] = rot_mat[2, 1] * 1.2
 
     return allegro_angles
+
+
+def allegro_v5(hand_pose_frame, ergonomics=None):
+    """Retarget MANUS transforms, with conservative joint-angle reinforcement."""
+    return _align_allegro_v5_action(
+        _allegro_v5_raw(hand_pose_frame),
+        _allegro_v5_manus_tip_feature(hand_pose_frame),
+        _allegro_v5_manus_ergonomic_feature(ergonomics),
+    )

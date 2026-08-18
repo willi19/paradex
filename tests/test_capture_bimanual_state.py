@@ -154,9 +154,177 @@ def test_capture_session_routes_vive_bimanual_mode_to_receiver(monkeypatch):
         hand_side="bimanual",
     )
 
-    assert receiver_kwargs == {"hand_side": "bimanual"}
+    assert receiver_kwargs == {
+        "hand_side": "bimanual",
+        "require_left_control": True,
+        "use_vive": True,
+    }
     assert session.arm_left is not None
     assert session.arm_right is not None
+
+
+def test_capture_session_routes_manus_only_hand_teleop_without_an_arm(monkeypatch):
+    receiver_kwargs = {}
+
+    class FakeViveReceiver:
+        def __init__(self, **kwargs):
+            receiver_kwargs.update(kwargs)
+
+    monkeypatch.setattr(capture_module, "get_hand", lambda **_kwargs: FakeHand())
+    monkeypatch.setattr(
+        vive_receiver_module,
+        "ViveManusROSReceiver",
+        FakeViveReceiver,
+    )
+
+    session = capture_module.CaptureSession(
+        camera=False,
+        arm=None,
+        hand="allegro_v5_anyteleop",
+        teleop="vive",
+        hand_side="right",
+        use_vive=False,
+    )
+
+    assert session.arm is None
+    assert session.hand is not None
+    assert receiver_kwargs == {
+        "hand_side": "right",
+        "require_left_control": False,
+        "use_vive": False,
+    }
+
+
+def test_keyboard_hand_only_teleop_does_not_wait_for_optional_left_glove(monkeypatch):
+    monkeypatch.setattr(capture_module.chime, "warning", lambda **_kwargs: None)
+    monkeypatch.setattr(capture_module.chime, "success", lambda **_kwargs: None)
+
+    events = make_events()
+
+    class ManusOnlyDevice:
+        def get_data(self):
+            events["exit"].set()
+            return {"Left": None, "Right": object()}
+
+        def get_state(self):
+            return None
+
+    class HandOnlyRetargetor:
+        def start(self, _home_pose):
+            pass
+
+        def get_action(self, _data):
+            return np.eye(4), np.array([0.1, 0.2])
+
+    session = capture_module.CaptureSession.__new__(capture_module.CaptureSession)
+    session.teleop_device = ManusOnlyDevice()
+    session.hand_side = "Right"
+    session.arm = None
+    session.hand = FakeHand()
+    session.retargetor = HandOnlyRetargetor()
+    session.teleop_name = "vive"
+    session.save_path = None
+
+    assert session.teleop(session_events=events, state_policy="keyboard_control") == "exit"
+    assert len(session.hand.moves) == 1
+    np.testing.assert_allclose(session.hand.moves[0], [0.1, 0.2])
+
+
+def test_capture_session_replaces_manus_hand_action_with_external_provider(monkeypatch):
+    monkeypatch.setattr(capture_module.chime, "warning", lambda **_kwargs: None)
+    monkeypatch.setattr(capture_module.chime, "success", lambda **_kwargs: None)
+    events = make_events()
+
+    class ViveOnlyDevice:
+        def get_data(self):
+            events["exit"].set()
+            return {"Left": None, "Right": {"wrist": np.eye(4)}}
+
+        def get_state(self):
+            return None
+
+    class ArmOnlyRetargetor:
+        def start(self, _home_pose):
+            pass
+
+        def get_action(self, _data):
+            return np.eye(4), None
+
+    session = capture_module.CaptureSession.__new__(capture_module.CaptureSession)
+    session.teleop_device = ViveOnlyDevice()
+    session.hand_side = "Right"
+    session.arm = None
+    session.hand = FakeHand()
+    session.retargetor = ArmOnlyRetargetor()
+    session.teleop_name = "vive"
+    session.save_path = None
+    session.hand_action_provider = lambda: np.array([0.3, 0.4])
+
+    assert session.teleop(session_events=events, state_policy="keyboard_control") == "exit"
+    np.testing.assert_allclose(session.hand.moves[0], [0.3, 0.4])
+
+
+def test_unimanual_arm_deadman_holds_arm_but_keeps_external_hand_active(monkeypatch):
+    monkeypatch.setattr(capture_module.chime, "warning", lambda **_kwargs: None)
+    monkeypatch.setattr(capture_module.chime, "success", lambda **_kwargs: None)
+    events = make_events()
+
+    class ViveOnlyDevice:
+        def __init__(self):
+            self.calls = 0
+
+        def get_data(self):
+            self.calls += 1
+            if self.calls == 2:
+                events["exit"].set()
+            return {"Left": None, "Right": {"wrist": np.eye(4)}}
+
+        def get_state(self):
+            return None
+
+    class ArmRetargetor:
+        def __init__(self):
+            self.starts = []
+            self.actions = 0
+
+        def start(self, home_pose):
+            self.starts.append(home_pose.copy())
+
+        def get_action(self, _data):
+            self.actions += 1
+            return np.eye(4), None
+
+    enabled = iter((False, True))
+    session = capture_module.CaptureSession.__new__(capture_module.CaptureSession)
+    session.teleop_device = ViveOnlyDevice()
+    session.hand_side = "Right"
+    session.arm = FakeArm()
+    session.hand = FakeHand()
+    session.retargetor = ArmRetargetor()
+    session.teleop_name = "vive"
+    session.save_path = None
+    session.hand_action_provider = lambda: np.array([0.3, 0.4])
+    session.arm_command_enabled_provider = lambda: next(enabled)
+
+    assert session.teleop(session_events=events, state_policy="keyboard_control") == "exit"
+    assert len(session.hand.moves) == 2
+    assert len(session.arm.moves) == 1
+    assert session.retargetor.actions == 1
+    # Initial teleop setup plus rebase on the deadman's rising edge.
+    assert len(session.retargetor.starts) == 2
+
+
+def test_capture_session_accepts_unimanual_external_hand_provider():
+    session = capture_module.CaptureSession(
+        camera=False,
+        arm=None,
+        hand=None,
+        teleop=None,
+        hand_side="right",
+        hand_action_provider=lambda: np.zeros(16),
+    )
+
+    assert session.hand_action_provider is not None
 
 
 def test_capture_session_routes_per_hand_network_interfaces(monkeypatch):

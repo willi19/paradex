@@ -109,8 +109,13 @@ class CaptureSession():
         camera_pc_list=None,
         timestamp=True,
         hand_scale=1.0,
+        use_vive=True,
+        use_manus=True,
+        require_left_control=None,
+        hand_action_provider=None,
+        arm_command_enabled_provider=None,
         human_tactile=False,
-        human_tactile_port="/dev/ttyUSB0",
+        human_tactile_port="/dev/ttyACM0",
         human_tactile_baud_rate=115200,
         human_tactile_reset_wait=2.0,
         human_tactile_plot_realtime=False,
@@ -156,6 +161,22 @@ class CaptureSession():
 
         self.events = events
         self.teleop_name = teleop
+        self.use_vive = bool(use_vive)
+        self.use_manus = bool(use_manus)
+        self.hand_action_provider = hand_action_provider
+        self.arm_command_enabled_provider = arm_command_enabled_provider
+        if (
+            self.arm_command_enabled_provider is not None
+            and not callable(self.arm_command_enabled_provider)
+        ):
+            raise ValueError("arm_command_enabled_provider must be callable")
+        if self.hand_action_provider is not None and str(hand_side).lower() == "bimanual":
+            raise ValueError("hand_action_provider currently supports one robot hand.")
+        if require_left_control is None:
+            # A left glove is only needed for the legacy gesture pause/control
+            # path.  Manus-only hand teleoperation can run from one glove.
+            require_left_control = self.use_vive and self.use_manus
+        self.require_left_control = bool(require_left_control)
 
         if hand_side == "right":
             self.hand_side = "Right"
@@ -246,7 +267,12 @@ class CaptureSession():
                 self.teleop_device = XSensReceiver(**network_info["xsens"]["param"])
             elif teleop == "vive":
                 from paradex.io.teleop.vive.receiver import ViveManusROSReceiver
-                self.teleop_device = ViveManusROSReceiver(hand_side=hand_side)
+                self.teleop_device = ViveManusROSReceiver(
+                    hand_side=hand_side,
+                    require_left_control=self.require_left_control,
+                    use_vive=self.use_vive,
+                    **({"use_manus": False} if not self.use_manus else {}),
+                )
             else:
                 raise ValueError(f"Unsupported teleop device: {teleop}")
 
@@ -256,7 +282,7 @@ class CaptureSession():
             if arm != 'openarm':
                 self.retargetor = Retargetor(
                     arm_name=arm,
-                    hand_name=hand,
+                    hand_name=None if self.hand_action_provider is not None else hand,
                     hand_side=self.hand_side,
                     hand_name_left=self.hand_name_left,
                     hand_name_right=self.hand_name_right,
@@ -509,6 +535,18 @@ class CaptureSession():
                     f"rotation={rotation_delta_deg:.1f} deg"
                 )
 
+        arm_deadman_was_enabled = None
+
+        def arm_commands_enabled():
+            provider = getattr(self, "arm_command_enabled_provider", None)
+            if provider is None:
+                return True
+            try:
+                return bool(provider())
+            except Exception as exc:
+                print(f"Arm command enable provider failed; holding arm: {exc}")
+                return False
+
         while True:
             if session_events is not None and session_events["exit"].is_set():
                 chime.success(sync=True)
@@ -532,8 +570,15 @@ class CaptureSession():
                 if hasattr(self.teleop_device, "get_state"):
                     state = self.teleop_device.get_state()
                     if state is None:
-                        time.sleep(0.01)
-                        continue
+                        # Keyboard-controlled, Manus-only sessions have no
+                        # left-glove pause gesture.  Continue hand-only
+                        # teleoperation instead of waiting for that optional
+                        # control stream.
+                        if state_policy == "keyboard_control":
+                            state = 0
+                        else:
+                            time.sleep(0.01)
+                            continue
                 else:
                     state = self.state_extractor.get_state(
                         data[self.hand_side_opposite]
@@ -551,14 +596,45 @@ class CaptureSession():
                         loop_callback = None
                     
                 if state == 0:
-                    wrist_pose, hand_action = self.retargetor.get_action(data)
-                    if self.hand is not None:
+                    hand_action_provider = getattr(self, "hand_action_provider", None)
+                    arm_enabled = arm_commands_enabled()
+                    if arm_enabled:
+                        # Rebase VIVE to the *actual* current arm pose when a
+                        # deadman switch is re-pressed.  Tracker movement while
+                        # released can therefore never become an arm jump.
+                        if (
+                            getattr(self, "arm_command_enabled_provider", None) is not None
+                            and arm_deadman_was_enabled is not True
+                            and self.arm is not None
+                        ):
+                            arm_home_pose = self.arm.get_data()["position"]
+                            self.retargetor.start(arm_home_pose)
+                            vive_arm_limiters[self.hand_side] = _PoseCommandLimiter(
+                                arm_home_pose, time.monotonic()
+                            )
+                        wrist_pose, hand_action = self.retargetor.get_action(data)
+                        if hand_action_provider is not None:
+                            hand_action = hand_action_provider()
+                    elif hand_action_provider is not None:
+                        # The external pedal/tactile hand keeps operating
+                        # while the xArm deadman switch is released.  Avoid
+                        # calculating a VIVE arm pose during this interval so
+                        # the re-enable rebase has no stale tracker delta.
+                        wrist_pose = None
+                        hand_action = hand_action_provider()
+                    else:
+                        wrist_pose = None
+                        hand_action = None
+                    if self.hand is not None and hand_action is not None:
                         self.hand.move(hand_action)
 
-                    move_arm_if_safe(self.hand_side, self.arm, wrist_pose)
+                    if arm_enabled and wrist_pose is not None:
+                        move_arm_if_safe(self.hand_side, self.arm, wrist_pose)
+                    arm_deadman_was_enabled = arm_enabled
 
                 if state == 1:   
                     self.retargetor.stop()
+                    arm_deadman_was_enabled = None
                 
                 if state == 2:
                     self.retargetor.stop()
@@ -652,8 +728,7 @@ class CaptureSession():
             #     if self.events["exit"].is_set():
             #         return "exit"
             time.sleep(0.01)
-        
-    
+
     def move(self, action_dict):
         if "arm" in action_dict and self.arm is not None:
             self.arm.move(action_dict["arm"])

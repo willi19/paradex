@@ -60,6 +60,16 @@ parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--tactile', action="store_true")
 parser.add_argument('--ip', action="store_true")
 parser.add_argument(
+    '--allegro-command-rate-hz',
+    type=float,
+    default=30.0,
+    help=(
+        'Maximum live target-update rate for Allegro V5 hands. Defaults to '
+        '30 Hz, matching allegro_retargeter_alignment_ui.py; the driver holds '
+        'the latest target between updates.'
+    ),
+)
+parser.add_argument(
     '--inspire-right-interface',
     default='enp8s0f1',
     help='Network interface for the right Inspire Modbus TCP hand.',
@@ -101,6 +111,8 @@ def _normalize_optional_name(name):
 
 args.arm = _normalize_optional_name(args.arm)
 args.hand = _normalize_optional_name(args.hand)
+if args.allegro_command_rate_hz <= 0.0:
+    parser.error('--allegro-command-rate-hz must be positive.')
 
 
 stop_event = Event()
@@ -179,6 +191,15 @@ try:
         camera_pc_list=camera_pc_list,
         arm_kwargs={"servo_api": args.xarm_servo_api} if args.arm == "xarm" else None,
         hand_scale=args.hand_scale,
+        hand_command_rate_hz=(
+            args.allegro_command_rate_hz
+            if args.hand in (
+                'allegro_v5',
+                'allegro_v5_wonik',
+                'allegro_v5_anyteleop',
+            )
+            else None
+        ),
         use_vive=args.use_vive,
         require_left_control=args.use_vive,
     )

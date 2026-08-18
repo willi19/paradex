@@ -25,6 +25,40 @@ _VIVE_ROTATION_MARGIN_DEG = 1.5
 _VIVE_MAX_COMMAND_DT_S = 0.05
 
 
+class _HandCommandRateLimiter:
+    """Sample-and-hold hand targets at a fixed maximum update rate.
+
+    The Allegro alignment UI computes a fresh MANUS target on every browser
+    loop, but only calls ``hand.move`` at 30 Hz.  The Allegro driver keeps
+    publishing that most recent target between updates.  CaptureSession used
+    to overwrite the driver target on every ~10 ms teleop iteration instead,
+    which exposed high-frequency MANUS measurement noise to the physical hand.
+    """
+
+    def __init__(self, rate_hz):
+        if rate_hz is None:
+            self.period_s = None
+            self.next_send_time = None
+            return
+        rate_hz = float(rate_hz)
+        if not np.isfinite(rate_hz) or rate_hz <= 0.0:
+            raise ValueError("hand_command_rate_hz must be a positive finite value or None")
+        self.period_s = 1.0 / rate_hz
+        self.next_send_time = None
+
+    def is_due(self, now):
+        """Reserve one target update when the next sample time has arrived."""
+        if self.period_s is None:
+            return True
+        now = float(now)
+        if self.next_send_time is not None and now < self.next_send_time:
+            return False
+        # Reset from ``now`` rather than catching up with queued stale targets:
+        # this is the same latest-target sample-and-hold behavior as the UI.
+        self.next_send_time = now + self.period_s
+        return True
+
+
 def _normalize_optional_name(name):
     if name is not None and isinstance(name, str) and name.strip().lower() in ("", "none", "null"):
         return None
@@ -109,6 +143,7 @@ class CaptureSession():
         camera_pc_list=None,
         timestamp=True,
         hand_scale=1.0,
+        hand_command_rate_hz=None,
         use_vive=True,
         use_manus=True,
         require_left_control=None,
@@ -163,6 +198,10 @@ class CaptureSession():
         self.teleop_name = teleop
         self.use_vive = bool(use_vive)
         self.use_manus = bool(use_manus)
+        self.hand_command_rate_hz = hand_command_rate_hz
+        self._hand_command_limiter = _HandCommandRateLimiter(
+            hand_command_rate_hz
+        )
         self.hand_action_provider = hand_action_provider
         self.arm_command_enabled_provider = arm_command_enabled_provider
         if (
@@ -535,6 +574,21 @@ class CaptureSession():
                     f"rotation={rotation_delta_deg:.1f} deg"
                 )
 
+        def move_hands_if_due(hand_commands):
+            """Send a coherent hand target set at the configured UI-rate cap."""
+            valid_commands = [
+                (hand_controller, action)
+                for hand_controller, action in hand_commands
+                if hand_controller is not None and action is not None
+            ]
+            if not valid_commands:
+                return
+            limiter = getattr(self, "_hand_command_limiter", None)
+            if limiter is not None and not limiter.is_due(time.monotonic()):
+                return
+            for hand_controller, action in valid_commands:
+                hand_controller.move(action)
+
         arm_deadman_was_enabled = None
 
         def arm_commands_enabled():
@@ -625,8 +679,7 @@ class CaptureSession():
                     else:
                         wrist_pose = None
                         hand_action = None
-                    if self.hand is not None and hand_action is not None:
-                        self.hand.move(hand_action)
+                    move_hands_if_due(((self.hand, hand_action),))
 
                     if arm_enabled and wrist_pose is not None:
                         move_arm_if_safe(self.hand_side, self.arm, wrist_pose)
@@ -699,10 +752,12 @@ class CaptureSession():
 
                     move_arm_if_safe("Left", self.arm_left, wrist_pose_left)
                     move_arm_if_safe("Right", self.arm_right, wrist_pose_right)
-                    if self.hand_left is not None and hand_action_left is not None:
-                        self.hand_left.move(hand_action_left)
-                    if self.hand_right is not None and hand_action_right is not None:
-                        self.hand_right.move(hand_action_right)
+                    move_hands_if_due(
+                        (
+                            (self.hand_left, hand_action_left),
+                            (self.hand_right, hand_action_right),
+                        )
+                    )
                 else:
                     self.retargetor.stop()
 

@@ -24,6 +24,22 @@ class FakeArm:
         self.moves.append(pose)
 
 
+def test_hand_command_rate_limiter_matches_alignment_ui_sample_and_hold():
+    limiter = capture_module._HandCommandRateLimiter(30.0)
+
+    assert limiter.is_due(10.0)
+    assert not limiter.is_due(10.01)
+    assert not limiter.is_due(10.0 + (1.0 / 30.0) - 1.0e-6)
+    assert limiter.is_due(10.0 + (1.0 / 30.0))
+
+
+def test_hand_command_rate_limiter_can_be_explicitly_disabled():
+    limiter = capture_module._HandCommandRateLimiter(None)
+
+    assert limiter.is_due(10.0)
+    assert limiter.is_due(10.0001)
+
+
 class FakeHand:
     def __init__(self):
         self.moves = []

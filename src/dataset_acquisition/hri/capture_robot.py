@@ -107,7 +107,32 @@ parser.add_argument(
     default='192.168.11.210',
     help='IP address for the left Inspire Modbus TCP hand.',
 )
-parser.add_argument('--visualize-tactile-realtime', action="store_true")
+parser.add_argument(
+    '--visualize-tactile-realtime',
+    action="store_true",
+    help=(
+        'Show live tactile feedback. Inspire F1 uses matplotlib; Allegro V5 '
+        'uses a Viser feedback mesh with fingertip arrows.'
+    ),
+)
+parser.add_argument(
+    '--allegro-visualization-rate-hz',
+    type=float,
+    default=20.0,
+    help='Viser refresh rate for live Allegro joint/tactile feedback.',
+)
+parser.add_argument(
+    '--allegro-tactile-threshold',
+    type=float,
+    default=200.0,
+    help='Raw tactile magnitude below which the Allegro arrow is hidden.',
+)
+parser.add_argument(
+    '--allegro-tactile-display-max',
+    type=float,
+    default=5000.0,
+    help='Raw tactile magnitude represented by the maximum arrow length.',
+)
 parser.add_argument('--xarm-servo-api', choices=["cartesian_aa", "angle_j"], default="cartesian_aa")
 parser.add_argument(
     '--scale', '--hand-scale',
@@ -137,9 +162,25 @@ if args.camera_preview_refresh_interval <= 0.0:
     parser.error('--camera-preview-refresh-interval must be positive.')
 if args.camera_preview_request_timeout <= 0.0:
     parser.error('--camera-preview-request-timeout must be positive.')
+if args.allegro_visualization_rate_hz <= 0.0:
+    parser.error('--allegro-visualization-rate-hz must be positive.')
+if args.allegro_tactile_threshold < 0.0:
+    parser.error('--allegro-tactile-threshold must be non-negative.')
+if args.allegro_tactile_display_max <= args.allegro_tactile_threshold:
+    parser.error('--allegro-tactile-display-max must exceed the tactile threshold.')
 
 camera_enabled = args.camera_mode != 'off'
 camera_preview_enabled = args.camera_mode == 'preview'
+allegro_v5_hands = {
+    'allegro_v5',
+    'allegro_v5_wonik',
+    'allegro_v5_anyteleop',
+}
+allegro_realtime_visualization = (
+    args.visualize_tactile_realtime
+    and args.hand in allegro_v5_hands
+    and args.hand_side == 'right'
+)
 
 
 stop_event = Event()
@@ -192,7 +233,7 @@ try:
         teleop=args.device,
         hand_side=args.hand_side,
         events=events,
-        tactile=args.tactile,
+        tactile=args.tactile or allegro_realtime_visualization,
         ip=args.ip or inspire_bimanual,
         hand_kwargs=hand_kwargs,
         timestamp=args.timestamp,
@@ -222,8 +263,20 @@ tactile_plotter = None
 if args.visualize_tactile_realtime:
     if args.hand_side == "bimanual":
         print("Realtime tactile visualization is not supported in bimanual mode. Ignoring option.")
+    elif args.hand in allegro_v5_hands and args.hand_side != "right":
+        print("Realtime Allegro visualization currently supports the right hand only. Ignoring option.")
+    elif args.hand in allegro_v5_hands:
+        from paradex.visualization.allegro_realtime import AllegroRealtimeViser
+
+        tactile_plotter = AllegroRealtimeViser(
+            cs.hand,
+            update_rate_hz=args.allegro_visualization_rate_hz,
+            tactile_threshold=args.allegro_tactile_threshold,
+            tactile_display_max=args.allegro_tactile_display_max,
+        )
+        tactile_plotter.start()
     elif args.hand != "inspire_f1":
-        print("Realtime tactile visualization is only supported for inspire_f1. Ignoring option.")
+        print("Realtime tactile visualization supports inspire_f1 and Allegro V5. Ignoring option.")
     elif not args.tactile:
         print("Realtime tactile visualization requires --tactile. Ignoring option.")
     else:
@@ -307,10 +360,10 @@ finally:
     print("Exiting teleoperation recording.")
     if camera_preview is not None:
         camera_preview.close()
+    if tactile_plotter is not None:
+        tactile_plotter.close()
     if getattr(cs, "save_path", None) is not None:
         cs.stop()
     cs.end()
     if pedal_state is not None:
         pedal_state.close()
-    if tactile_plotter is not None:
-        tactile_plotter.close()

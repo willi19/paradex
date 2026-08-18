@@ -36,8 +36,10 @@ from paradex.retargetor.hand_regargetor import (
     _cluster_balanced_distance_gated_target,
     _distance_gated_weights,
     _allegro_v5_manus_ergonomic_feature,
+    _allegro_v5_raw_from_manus_ergonomics,
     _load_allegro_v5_direct_anchor_data,
     _load_wuji_direct_anchor_data,
+    allegro_v5,
     _wuji_direct_tip_feature,
     clip_wuji_direct_safe_action,
     clip_allegro_v5_safe_action,
@@ -431,6 +433,58 @@ def test_allegro_v5_ergonomics_uses_named_angles_and_ignores_field_order():
     expected = np.array([20.0, 10.0, 6.0, 15.0, 24.0, 33.0])
     np.testing.assert_allclose(_allegro_v5_manus_ergonomic_feature(ergonomics), expected)
     assert _allegro_v5_manus_ergonomic_feature({}) is None
+
+
+def test_allegro_v5_raw_uses_full_manus_joint_angles_for_vive():
+    ergonomics = {
+        "ThumbMCPStretch": 42.0,
+        "ThumbMCPSpread": 31.0,
+        "ThumbPIPStretch": 30.0,
+        "ThumbDIPStretch": 60.0,
+        "IndexSpread": -6.0,
+        "IndexMCPStretch": 20.0,
+        "IndexPIPStretch": 30.0,
+        "IndexDIPStretch": 40.0,
+        "MiddleSpread": -4.0,
+        "MiddleMCPStretch": 25.0,
+        "MiddlePIPStretch": 35.0,
+        "MiddleDIPStretch": 45.0,
+        "RingSpread": -2.0,
+        "RingMCPStretch": 30.0,
+        "RingPIPStretch": 40.0,
+        "RingDIPStretch": 50.0,
+    }
+    expected = np.array(
+        [
+            np.deg2rad(-6.0),
+            (np.deg2rad(20.0) - 0.35) * 1.5,
+            np.deg2rad(30.0),
+            np.deg2rad(40.0),
+            np.deg2rad(-4.0),
+            (np.deg2rad(25.0) - 0.35) * 1.5,
+            np.deg2rad(35.0),
+            np.deg2rad(45.0),
+            np.deg2rad(-2.0),
+            (np.deg2rad(30.0) - 0.35) * 1.5,
+            np.deg2rad(40.0),
+            np.deg2rad(50.0),
+            0.0,
+            -np.deg2rad(31.0) - 1.57,
+            1.2 * np.sin(np.deg2rad(30.0)),
+            1.2 * np.sin(np.deg2rad(60.0)),
+        ]
+    )
+    np.testing.assert_allclose(
+        _allegro_v5_raw_from_manus_ergonomics(dict(reversed(ergonomics.items()))),
+        expected,
+    )
+    # A VIVE/MANUS packet can now drive the raw path without a 4x4 frame.
+    np.testing.assert_allclose(allegro_v5({}, ergonomics=ergonomics), expected)
+
+
+def test_allegro_v5_raw_rejects_partial_manus_ergonomics():
+    with pytest.raises(ValueError, match="missing Allegro v5 raw inputs"):
+        _allegro_v5_raw_from_manus_ergonomics({"IndexMCPStretch": 10.0})
 
 
 def test_allegro_v5_invalid_ergonomics_preserves_existing_transform_result():

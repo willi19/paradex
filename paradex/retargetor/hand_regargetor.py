@@ -104,6 +104,28 @@ _ALLEGRO_V5_ERGONOMIC_FIELDS = (
     "PinkyPIPStretch",
     "PinkyDIPStretch",
 )
+# The raw Allegro extractor mirrors the legacy transform path's complete
+# 16-axis contract.  Unlike the compact six-value calibration feature above,
+# it needs the individual joint angles and MCP spread for every actuated
+# MANUS digit.
+_ALLEGRO_V5_RAW_ERGONOMIC_FIELDS = (
+    "ThumbMCPStretch",
+    "ThumbMCPSpread",
+    "ThumbPIPStretch",
+    "ThumbDIPStretch",
+    "IndexSpread",
+    "IndexMCPStretch",
+    "IndexPIPStretch",
+    "IndexDIPStretch",
+    "MiddleSpread",
+    "MiddleMCPStretch",
+    "MiddlePIPStretch",
+    "MiddleDIPStretch",
+    "RingSpread",
+    "RingMCPStretch",
+    "RingPIPStretch",
+    "RingDIPStretch",
+)
 # Allegro v5 action order is index, middle, ring, thumb.  MANUS tip features
 # retain the native thumb, index, middle, ring, pinky order.  There is no
 # separate Allegro pinky, so it intentionally has no target block here.
@@ -1489,8 +1511,73 @@ def kistar(hand_pose_frame):
     return kistar_raw
 
 
-def _allegro_v5_raw(hand_pose_frame):
-    """Extract uncalibrated Allegro v5 angles in retargeter action order."""
+def _allegro_v5_raw_from_manus_ergonomics(ergonomics):
+    """Convert named MANUS joint angles to the legacy raw-v5 action order.
+
+    VIVE's MANUS stream contains stable per-joint ergonomics in degrees.  The
+    former raw extractor inferred these quantities from reconstructed 4x4
+    transforms, which is both noisier and sensitive to the VIVE wrist frame.
+    This is the direct equivalent of :func:`inspire_from_manus_ergonomics`:
+    it uses the MANUS angles whenever the complete named payload is present.
+
+    The non-thumb MCP bend keeps the legacy ``(angle - 0.35) * 1.5``
+    calibration, while PIP/DIP retain their direct radians.  The thumb spread
+    and distal bends preserve the signs/scales of the old Euler/rotation-matrix
+    extraction.  Returning the existing index, middle, ring, thumb order is
+    essential because the v5 ROS controller consumes that order directly.
+    """
+    if not isinstance(ergonomics, dict):
+        raise ValueError("MANUS ergonomics must be a name-to-angle mapping")
+    missing = [
+        field for field in _ALLEGRO_V5_RAW_ERGONOMIC_FIELDS if field not in ergonomics
+    ]
+    if missing:
+        raise ValueError(
+            "MANUS ergonomics is missing Allegro v5 raw inputs: "
+            + ", ".join(missing)
+        )
+    try:
+        values = {
+            field: float(ergonomics[field])
+            for field in _ALLEGRO_V5_RAW_ERGONOMIC_FIELDS
+        }
+    except (TypeError, ValueError) as error:
+        raise ValueError("MANUS ergonomics contains a non-numeric Allegro input") from error
+    if not np.all(np.isfinite(tuple(values.values()))):
+        raise ValueError("MANUS ergonomics contains a non-finite Allegro input")
+
+    action = np.zeros(16, dtype=np.float64)
+    for index, finger in enumerate(("Index", "Middle", "Ring")):
+        offset = index * 4
+        # MANUS calls the first joint's lateral component ``Spread``.  It is
+        # already a signed angular quantity; preserve it in radians rather
+        # than deriving it from fingertip position in the VIVE wrist frame.
+        action[offset] = np.deg2rad(values[f"{finger}Spread"])
+        action[offset + 1] = (
+            np.deg2rad(values[f"{finger}MCPStretch"]) - 0.35
+        ) * 1.5
+        action[offset + 2] = np.deg2rad(values[f"{finger}PIPStretch"])
+        action[offset + 3] = np.deg2rad(values[f"{finger}DIPStretch"])
+
+    # ``thumb_metacarpal``'s x Euler component is not represented as an
+    # independent MANUS ergonomic field.  Its legacy value was effectively
+    # zero for the calibrated VIVE captures, so preserve that neutral value.
+    action[12] = 0.0
+    action[13] = -np.deg2rad(values["ThumbMCPSpread"]) - 1.57
+    action[14] = np.sin(np.deg2rad(values["ThumbPIPStretch"])) * 1.2
+    action[15] = np.sin(np.deg2rad(values["ThumbDIPStretch"])) * 1.2
+    return action
+
+
+def _allegro_v5_raw(hand_pose_frame, ergonomics=None):
+    """Extract raw Allegro-v5 angles in retargeter action order.
+
+    Prefer named MANUS ergonomics for VIVE teleoperation.  The transform
+    implementation remains only as the compatibility fallback for older
+    MANUS sources that do not publish ergonomics.
+    """
+    if ergonomics is not None:
+        return _allegro_v5_raw_from_manus_ergonomics(ergonomics)
     allegro_angles = np.zeros(16)
     # for finger_id in range(4):
     #     for joint_id in range(4):
@@ -1547,9 +1634,10 @@ def _allegro_v5_raw(hand_pose_frame):
 
 
 def allegro_v5(hand_pose_frame, ergonomics=None):
-    """Retarget MANUS transforms, with conservative joint-angle reinforcement."""
-    return _align_allegro_v5_action(
-        _allegro_v5_raw(hand_pose_frame),
-        _allegro_v5_manus_tip_feature(hand_pose_frame),
-        _allegro_v5_manus_ergonomic_feature(ergonomics),
-    )
+    """Retarget MANUS data through the raw-v5 action contract.
+
+    VIVE teleoperation supplies named ergonomic joint angles, so the raw
+    mapper uses those directly.  Older transform-only MANUS inputs still use
+    the fallback inside :func:`_allegro_v5_raw`.
+    """
+    return _allegro_v5_raw(hand_pose_frame, ergonomics=ergonomics)

@@ -214,7 +214,10 @@ class AllegroRealtimeViser:
         self.viewer.add_robot(
             "allegro_feedback",
             urdf_path,
-            include_arm_meshes=False,
+            # This is a hand-only URDF. ``include_arm_meshes=False`` uses an
+            # Inspire-specific name filter (``/right_hand_*``) and therefore
+            # removes every Allegro V5 mesh from the Viser scene.
+            include_arm_meshes=True,
         )
         self.viser_robot = self.viewer.robot_dict["allegro_feedback"]
         self.robot = self.viser_robot.urdf

@@ -72,6 +72,17 @@ def test_v5_mesh_center_is_translated_to_the_world_origin():
     np.testing.assert_allclose(mesh_center + centered_robot_offset(robot), 0.0)
 
 
+def test_v5_visual_meshes_do_not_match_the_inspire_hand_only_filter():
+    robot = RobotModule(DEFAULT_ALLEGRO_V5_URDF)
+    mesh_names = tuple(robot.scene.geometry)
+
+    assert mesh_names
+    assert not any(
+        "/left_hand_" in name or "/right_hand_" in name
+        for name in mesh_names
+    )
+
+
 def test_v5_tactile_arrows_are_anchored_on_fingertip_mesh_surfaces():
     robot = RobotModule(DEFAULT_ALLEGRO_V5_URDF)
     assert ALLEGRO_V5_TACTILE_VERTEX_IDS == (1783, 1601, 2222, 1588)

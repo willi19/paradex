@@ -48,6 +48,21 @@ def merge_image(
             if available_height < grid_rows:
                 raise ValueError("target_height is too small for the image grid")
             new_H = available_height // grid_rows
+            # Let the output window become narrower instead of padding every
+            # camera into the legacy 2048px-wide canvas.
+            new_W = max(
+                max(
+                    1,
+                    int(
+                        round(
+                            new_H
+                            * image_dict[name].shape[1]
+                            / image_dict[name].shape[0]
+                        )
+                    ),
+                )
+                for name in name_list
+            )
         canvas_height = new_H * grid_rows
     else:
         new_H = 1200 // grid_rows #1536

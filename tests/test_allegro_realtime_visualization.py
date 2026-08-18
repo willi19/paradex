@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import time
 
 import numpy as np
 
@@ -98,11 +99,16 @@ def test_viser_side_panel_render_is_bounded_and_converted_to_bgr():
 
     client = FakeClient()
     studio = object.__new__(AllegroRealtimeViser)
+    studio._initialize_render_state()
     studio.viewer = SimpleNamespace(
         server=SimpleNamespace(get_clients=lambda: {0: client})
     )
 
     image = studio.render_bgr(height=1230, width=1298)
+    deadline = time.monotonic() + 1.0
+    while image is None and time.monotonic() < deadline:
+        time.sleep(0.01)
+        image = studio.render_bgr(height=1230, width=1298)
 
     assert client.request == {
         "height": 720,

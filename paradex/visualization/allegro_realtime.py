@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import time
-from threading import Event, Thread
+from threading import Event, Lock, Thread
 from typing import Any, Mapping, Optional
 
 import numpy as np
@@ -185,6 +185,7 @@ class AllegroRealtimeViser:
         self.exit_event = Event()
         self.thread: Optional[Thread] = None
         self.arrow_handles = {}
+        self._initialize_render_state()
 
         self.viewer = ViserViewer(
             scene_title="Live Allegro feedback + tactile",
@@ -301,23 +302,95 @@ class AllegroRealtimeViser:
             remaining = self.update_period - (time.perf_counter() - started)
             self.exit_event.wait(timeout=max(0.0, remaining))
 
-    def render_bgr(self, height: int, width: int) -> Optional[np.ndarray]:
-        """Return the latest browser-rendered Viser view for OpenCV preview."""
-        clients = tuple(self.viewer.server.get_clients().values())
-        if not clients:
-            return None
+    def _initialize_render_state(self) -> None:
+        self._render_lock = Lock()
+        self._render_worker = None
+        self._render_worker_token = None
+        self._render_worker_client_id = None
+        self._render_worker_started_at = 0.0
+        self._render_failed_client_ids = set()
+        self._latest_render_bgr = None
 
-        # Keep browser rendering bounded; the camera preview scales this image
-        # into its full-size right panel after it arrives.
-        scale = min(1.0, 720.0 / height, 960.0 / width)
-        render_height = max(1, int(round(height * scale)))
-        render_width = max(1, int(round(width * scale)))
-        rgb = clients[0].get_render(
-            height=render_height,
-            width=render_width,
-            transport_format="jpeg",
-        )
-        return np.asarray(rgb[..., :3])[..., ::-1].copy()
+    def _request_render(
+        self,
+        client_id: int,
+        client: Any,
+        token: object,
+        height: int,
+        width: int,
+    ) -> None:
+        try:
+            rgb = client.get_render(
+                height=height,
+                width=width,
+                transport_format="jpeg",
+            )
+            bgr = np.asarray(rgb[..., :3])[..., ::-1].copy()
+        except Exception as exc:
+            print(f"[Camera preview] Viser client {client_id} render failed: {exc}")
+            bgr = None
+        with self._render_lock:
+            if bgr is not None:
+                self._latest_render_bgr = bgr
+            else:
+                self._render_failed_client_ids.add(client_id)
+            if self._render_worker_token is token:
+                self._render_worker = None
+                self._render_worker_token = None
+                self._render_worker_client_id = None
+
+    def render_bgr(self, height: int, width: int) -> Optional[np.ndarray]:
+        """Poll a non-blocking browser render for the OpenCV side panel."""
+        clients = self.viewer.server.get_clients()
+        live_client_ids = set(clients)
+        now = time.monotonic()
+
+        with self._render_lock:
+            self._render_failed_client_ids.intersection_update(live_client_ids)
+            if self._render_worker is not None:
+                if self._render_worker.is_alive():
+                    if now - self._render_worker_started_at <= 3.0:
+                        return self._latest_render_bgr
+                    failed_id = self._render_worker_client_id
+                    self._render_failed_client_ids.add(failed_id)
+                    print(
+                        f"[Camera preview] Viser client {failed_id} render timed out; "
+                        "trying a newer browser client."
+                    )
+                self._render_worker = None
+                self._render_worker_token = None
+                self._render_worker_client_id = None
+
+            candidates = sorted(
+                live_client_ids - self._render_failed_client_ids,
+                reverse=True,
+            )
+            if not candidates:
+                return self._latest_render_bgr
+
+            client_id = candidates[0]
+            scale = min(1.0, 720.0 / height, 960.0 / width)
+            render_height = max(1, int(round(height * scale)))
+            render_width = max(1, int(round(width * scale)))
+            token = object()
+            worker = Thread(
+                target=self._request_render,
+                args=(
+                    client_id,
+                    clients[client_id],
+                    token,
+                    render_height,
+                    render_width,
+                ),
+                name=f"viser-render-client-{client_id}",
+                daemon=True,
+            )
+            self._render_worker = worker
+            self._render_worker_token = token
+            self._render_worker_client_id = client_id
+            self._render_worker_started_at = now
+            worker.start()
+            return self._latest_render_bgr
 
     def close(self) -> None:
         self.exit_event.set()

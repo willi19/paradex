@@ -468,7 +468,7 @@ def test_allegro_v5_raw_uses_full_manus_joint_angles_for_vive():
             (np.deg2rad(30.0) - 0.35) * 1.5,
             np.deg2rad(40.0),
             np.deg2rad(50.0),
-            0.0,
+            np.clip(42.0 / (53.6 - (-13.0)), 0.0, 1.0) * 0.8 * 1.78,
             -np.deg2rad(31.0) - 1.57,
             1.2 * np.sin(np.deg2rad(30.0)),
             1.2 * np.sin(np.deg2rad(60.0)),

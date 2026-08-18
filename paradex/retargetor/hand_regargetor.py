@@ -1167,6 +1167,14 @@ def _open_to_closed_command(flexion_deg, range_deg):
     return (1.0 - normalized) * 1000.0
 
 
+def _inspire_thumb_secondary_fraction(flexion_deg):
+    """Return Inspire's secondary-thumb command as a [0, 0.8] fraction."""
+    return (
+        1000.0
+        - _open_to_closed_command(flexion_deg, _INSPIRE_THUMB_BEND_RANGE_DEG)
+    ) * (_INSPIRE_THUMB_SECONDARY_GAIN / 1000.0)
+
+
 def inspire_from_manus_ergonomics(ergonomics):
     """Map MANUS ergonomic angles to RH56 ANGLE_SET register order."""
     required = []
@@ -1213,16 +1221,8 @@ def inspire_from_manus_ergonomics(ergonomics):
         1000.0,
     )
     command[5] = np.clip(
-        (
-            (
-                1000.0
-                - _open_to_closed_command(
-                    ergonomics["ThumbMCPStretch"],
-                    _INSPIRE_THUMB_BEND_RANGE_DEG,
-                )
-            )
-            * _INSPIRE_THUMB_SECONDARY_GAIN
-        ),
+        _inspire_thumb_secondary_fraction(ergonomics["ThumbMCPStretch"])
+        * 1000.0,
         0.0,
         1000.0,
     )
@@ -1559,10 +1559,14 @@ def _allegro_v5_raw_from_manus_ergonomics(ergonomics):
         action[offset + 2] = np.deg2rad(values[f"{finger}PIPStretch"])
         action[offset + 3] = np.deg2rad(values[f"{finger}DIPStretch"])
 
-    # ``thumb_metacarpal``'s x Euler component is not represented as an
-    # independent MANUS ergonomic field.  Its legacy value was effectively
-    # zero for the calibrated VIVE captures, so preserve that neutral value.
-    action[12] = 0.0
+    # Reuse Inspire's ThumbMCPStretch normalization and 0.8 gain, then express
+    # the result over Allegro joint 12's physical radian range.  This gives the
+    # two hands the same MANUS thumb-bend semantics without mixing command
+    # units (Inspire 0..1000 versus Allegro radians).
+    action[12] = (
+        _inspire_thumb_secondary_fraction(values["ThumbMCPStretch"])
+        * _ALLEGRO_V5_PHYSICAL_UPPER[12]
+    )
     action[13] = -np.deg2rad(values["ThumbMCPSpread"]) - 1.57
     action[14] = np.sin(np.deg2rad(values["ThumbPIPStretch"])) * 1.2
     action[15] = np.sin(np.deg2rad(values["ThumbDIPStretch"])) * 1.2

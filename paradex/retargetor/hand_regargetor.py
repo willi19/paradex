@@ -128,7 +128,7 @@ _ALLEGRO_V5_RAW_ERGONOMIC_FIELDS = (
 )
 # Slightly amplify all four MANUS-driven thumb axes.  Distal outputs are
 # capped at their physical positive limits after applying the shared gain.
-_ALLEGRO_V5_THUMB_BASE_FLEX_GAIN = 1.1
+_ALLEGRO_V5_THUMB_BASE_FLEX_GAIN = 1.2
 _ALLEGRO_V5_THUMB_SECONDARY_FLEX_GAIN = 1.65
 # Allegro v5 action order is index, middle, ring, thumb.  MANUS tip features
 # retain the native thumb, index, middle, ring, pinky order.  There is no

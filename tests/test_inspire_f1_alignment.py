@@ -476,7 +476,7 @@ def test_allegro_v5_raw_uses_full_manus_joint_angles_for_vive():
             1.65 * 1.2 * np.sin(np.deg2rad(60.0)),
         ]
     )
-    expected[12] *= 1.1
+    expected[12] *= 1.2
     np.testing.assert_allclose(
         _allegro_v5_raw_from_manus_ergonomics(dict(reversed(ergonomics.items()))),
         expected,
@@ -488,7 +488,7 @@ def test_allegro_v5_raw_uses_full_manus_joint_angles_for_vive():
     high_stretch = dict(ergonomics, ThumbMCPStretch=53.6 - (-13.0))
     low_action = _allegro_v5_raw_from_manus_ergonomics(low_stretch)[12]
     high_action = _allegro_v5_raw_from_manus_ergonomics(high_stretch)[12]
-    np.testing.assert_allclose(low_action, 0.8 * 1.78 * 1.1)
+    np.testing.assert_allclose(low_action, 0.8 * 1.78 * 1.2)
     np.testing.assert_allclose(high_action, 0.0)
     assert low_action > high_action
 

@@ -126,6 +126,10 @@ _ALLEGRO_V5_RAW_ERGONOMIC_FIELDS = (
     "RingPIPStretch",
     "RingDIPStretch",
 )
+# Increase the three thumb axes after the base joint while preserving their
+# existing directions.  The legacy distal scale is 1.2, so a 1.5 multiplier
+# reaches at most 1.8 rad for joints 14/15.
+_ALLEGRO_V5_THUMB_SECONDARY_FLEX_GAIN = 1.5
 # Allegro v5 action order is index, middle, ring, thumb.  MANUS tip features
 # retain the native thumb, index, middle, ring, pinky order.  There is no
 # separate Allegro pinky, so it intentionally has no target block here.
@@ -1567,9 +1571,21 @@ def _allegro_v5_raw_from_manus_ergonomics(ergonomics):
         _INSPIRE_THUMB_SECONDARY_GAIN
         - _inspire_thumb_secondary_fraction(values["ThumbMCPStretch"])
     ) * _ALLEGRO_V5_PHYSICAL_UPPER[12]
-    action[13] = -np.deg2rad(values["ThumbMCPSpread"]) - 1.57
-    action[14] = np.sin(np.deg2rad(values["ThumbPIPStretch"])) * 1.2
-    action[15] = np.sin(np.deg2rad(values["ThumbDIPStretch"])) * 1.2
+    action[13] = (
+        -np.deg2rad(values["ThumbMCPSpread"])
+        * _ALLEGRO_V5_THUMB_SECONDARY_FLEX_GAIN
+        - 1.57
+    )
+    action[14] = (
+        np.sin(np.deg2rad(values["ThumbPIPStretch"]))
+        * 1.2
+        * _ALLEGRO_V5_THUMB_SECONDARY_FLEX_GAIN
+    )
+    action[15] = (
+        np.sin(np.deg2rad(values["ThumbDIPStretch"]))
+        * 1.2
+        * _ALLEGRO_V5_THUMB_SECONDARY_FLEX_GAIN
+    )
     return action
 
 

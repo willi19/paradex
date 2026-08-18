@@ -6,7 +6,7 @@ import threading
 import time
 import os
 from pathlib import Path
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Optional
 
 # The OpenCV wheel bundles Qt but not its font directory.  Tell Qt to use the
 # system DejaVu fonts before importing cv2 so it does not print a warning for
@@ -44,6 +44,7 @@ class CapturePcPreviewGui:
         reader_factory: Callable = CameraDaemonReader,
         host_lookup: Callable[[str], str] = get_pc_ip,
         cv2_module=cv2,
+        side_panel_provider: Optional[Callable[[int, int], Optional[np.ndarray]]] = None,
     ) -> None:
         self.pc_list = list(pc_list)
         self.port = int(port)
@@ -53,6 +54,7 @@ class CapturePcPreviewGui:
         self._reader_factory = reader_factory
         self._host_lookup = host_lookup
         self._cv2 = cv2_module
+        self._side_panel_provider = side_panel_provider
 
         self._readers = {}
         self._retry_after = {}
@@ -64,6 +66,10 @@ class CapturePcPreviewGui:
         self._next_gui_update = 0.0
         self._stop_event = threading.Event()
         self._thread = None
+        self._side_thread = None
+        self._side_lock = threading.Lock()
+        self._side_panel_size = None
+        self._latest_side_panel = None
 
     def start(self) -> None:
         if self._thread is not None and self._thread.is_alive():
@@ -76,12 +82,22 @@ class CapturePcPreviewGui:
             daemon=True,
         )
         self._thread.start()
+        if self._side_panel_provider is not None:
+            self._side_thread = threading.Thread(
+                target=self._run_side_panel,
+                name="capture-pc-preview-side-panel",
+                daemon=True,
+            )
+            self._side_thread.start()
 
     def stop(self) -> None:
         self._stop_event.set()
         if self._thread is not None:
             self._thread.join(timeout=max(2.0, self.request_timeout + 1.0))
             self._thread = None
+        if self._side_thread is not None:
+            self._side_thread.join(timeout=max(2.0, self.request_timeout + 1.0))
+            self._side_thread = None
 
     def close(self) -> None:
         """Stop preview I/O and close the window from the main thread."""
@@ -178,6 +194,51 @@ class CapturePcPreviewGui:
         )
         return image
 
+    def _waiting_side_panel(self, height: int, width: int) -> np.ndarray:
+        image = np.zeros((height, width, 3), dtype=np.uint8)
+        self._cv2.putText(
+            image,
+            "Open Viser at http://localhost:8080",
+            (20, max(40, height // 2)),
+            self._cv2.FONT_HERSHEY_SIMPLEX,
+            0.7,
+            (255, 255, 255),
+            1,
+            self._cv2.LINE_AA,
+        )
+        return image
+
+    def _compose_side_panel(self, display: np.ndarray) -> np.ndarray:
+        if self._side_panel_provider is None:
+            return display
+        height, width = display.shape[:2]
+        with self._side_lock:
+            self._side_panel_size = (height, width)
+            side_panel = self._latest_side_panel
+        if side_panel is None:
+            side_panel = self._waiting_side_panel(height, width)
+        elif side_panel.shape[:2] != (height, width):
+            side_panel = self._cv2.resize(side_panel, (width, height))
+        separator = np.full((height, 10, 3), 255, dtype=np.uint8)
+        return np.concatenate((display, separator, side_panel), axis=1)
+
+    def _run_side_panel(self) -> None:
+        """Fetch Viser renders without ever blocking camera collection."""
+        while not self._stop_event.is_set():
+            with self._side_lock:
+                panel_size = self._side_panel_size
+            if panel_size is not None:
+                height, width = panel_size
+                try:
+                    image = self._side_panel_provider(height, width)
+                except Exception as exc:
+                    print(f"[Camera preview] Viser render failed: {exc}")
+                    image = None
+                if image is not None:
+                    with self._side_lock:
+                        self._latest_side_panel = image
+            self._stop_event.wait(self.refresh_interval)
+
     def _run(self) -> None:
         try:
             while not self._stop_event.is_set():
@@ -196,6 +257,7 @@ class CapturePcPreviewGui:
                     if images
                     else self._status_image()
                 )
+                display = self._compose_side_panel(display)
                 with self._display_lock:
                     self._latest_display = display
                 self._stop_event.wait(self.refresh_interval)

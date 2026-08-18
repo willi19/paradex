@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import numpy as np
 
 from paradex.visualization.allegro_realtime import (
@@ -5,6 +7,7 @@ from paradex.visualization.allegro_realtime import (
     ALLEGRO_V5_TIP_LINKS,
     ALLEGRO_V5_VISUAL_LINKS,
     DEFAULT_ALLEGRO_V5_URDF,
+    AllegroRealtimeViser,
     allegro_tactile_finger_levels,
     canonical_allegro_mesh,
     centered_robot_offset,
@@ -82,3 +85,28 @@ def test_v5_tactile_arrows_are_anchored_on_fingertip_mesh_surfaces():
         assert np.all(np.isfinite(anchor))
         assert np.all(np.isfinite(normal))
         np.testing.assert_allclose(np.linalg.norm(normal), 1.0, atol=1.0e-6)
+
+
+def test_viser_side_panel_render_is_bounded_and_converted_to_bgr():
+    class FakeClient:
+        def __init__(self):
+            self.request = None
+
+        def get_render(self, **kwargs):
+            self.request = kwargs
+            return np.array([[[10, 20, 30]]], dtype=np.uint8)
+
+    client = FakeClient()
+    studio = object.__new__(AllegroRealtimeViser)
+    studio.viewer = SimpleNamespace(
+        server=SimpleNamespace(get_clients=lambda: {0: client})
+    )
+
+    image = studio.render_bgr(height=1230, width=1298)
+
+    assert client.request == {
+        "height": 720,
+        "width": 760,
+        "transport_format": "jpeg",
+    }
+    assert image.tolist() == [[[30, 20, 10]]]

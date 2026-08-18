@@ -284,6 +284,7 @@ if camera_preview_enabled:
         port=args.camera_preview_port,
         refresh_interval=args.camera_preview_refresh_interval,
         request_timeout=args.camera_preview_request_timeout,
+        side_panel_provider=getattr(tactile_plotter, "render_bgr", None),
     )
     camera_preview.start()
 

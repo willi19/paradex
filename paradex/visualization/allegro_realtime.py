@@ -301,6 +301,24 @@ class AllegroRealtimeViser:
             remaining = self.update_period - (time.perf_counter() - started)
             self.exit_event.wait(timeout=max(0.0, remaining))
 
+    def render_bgr(self, height: int, width: int) -> Optional[np.ndarray]:
+        """Return the latest browser-rendered Viser view for OpenCV preview."""
+        clients = tuple(self.viewer.server.get_clients().values())
+        if not clients:
+            return None
+
+        # Keep browser rendering bounded; the camera preview scales this image
+        # into its full-size right panel after it arrives.
+        scale = min(1.0, 720.0 / height, 960.0 / width)
+        render_height = max(1, int(round(height * scale)))
+        render_width = max(1, int(round(width * scale)))
+        rgb = clients[0].get_render(
+            height=render_height,
+            width=render_width,
+            transport_format="jpeg",
+        )
+        return np.asarray(rgb[..., :3])[..., ::-1].copy()
+
     def close(self) -> None:
         self.exit_event.set()
         if self.thread is not None:

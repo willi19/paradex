@@ -1,11 +1,8 @@
 import os
 import argparse
 import atexit
-import json
-import time
 import numpy as np
-from collections import deque
-from threading import Event, Lock, Thread
+from threading import Event
 
 # import chime
 # chime.theme('pokemon')
@@ -148,8 +145,6 @@ camera_preview_enabled = args.camera_mode == 'preview'
 stop_event = Event()
 save_event = Event()
 exit_event = Event()
-grasp_yes_event = Event()
-grasp_no_event = Event()
 events = {"save": save_event, "stop": stop_event, "exit": exit_event}
 
 listen_keyboard(
@@ -157,28 +152,10 @@ listen_keyboard(
         "c": save_event,
         "q": exit_event,
         "s": stop_event,
-        "y": grasp_yes_event,
-        "n": grasp_no_event,
     }
 )
-print("Keyboard control: c=start, s=stop, q=exit, y=grasp success, n=grasp fail")
+print("Keyboard control: c=start capture, s=stop capture, q=exit")
 print("In keyboard_control mode, gesture states 2/3 do not control session start/stop/exit.")
-
-
-def wait_for_grasp_result():
-    grasp_yes_event.clear()
-    grasp_no_event.clear()
-    print("Grasp success? Press y or n, then Enter.")
-
-    while not exit_event.is_set():
-        refresh_guis()
-        if grasp_yes_event.is_set():
-            return "y"
-        if grasp_no_event.is_set():
-            return "n"
-        time.sleep(0.01)
-
-    return "n"
 
 pedal_state = MiddlePedalState() if args.hand_side == "bimanual" else None
 if pedal_state is not None:
@@ -277,9 +254,6 @@ name = args.name
 
 last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.capture_root, args.name)))
 
-success_count = 0
-fail_count = 0
-
 try:
     while not exit_event.is_set():
         state = cs.teleop(
@@ -299,6 +273,9 @@ try:
         print("Prepare to record new session:", name, "episode:", last_idx)
         episode_rel_path = os.path.join("capture", args.capture_root, args.name, str(last_idx))
         episode_abs_path = os.path.join(shared_dir, episode_rel_path)
+        # Match capture_hand.py: an idle-time 's' must not immediately stop
+        # the next capture after 'c' is pressed.
+        stop_event.clear()
         cs.start(episode_rel_path)
         # chime.info(sync=True)
         print("Starting new recording session:", name)
@@ -310,6 +287,7 @@ try:
             loop_callback=refresh_guis,
             bimanual_state_provider=bimanual_state_provider,
         )
+        print("Stopping recording session:", name)
         cs.stop()
         print("Stopped recording session:", name)
 
@@ -321,43 +299,6 @@ try:
 
         save_event.clear()
         stop_event.clear()
-
-        grasp_input = wait_for_grasp_result()
-        if grasp_input == "y":
-            success_count += 1
-        else:
-            fail_count += 1
-
-        os.makedirs(episode_abs_path, exist_ok=True)
-        grasp_json_path = os.path.join(episode_abs_path, "grasp_result.json")
-        with open(grasp_json_path, "w") as f:
-            json.dump(
-                {
-                    "episode": last_idx,
-                    "grasp_success": grasp_input == "y",
-                },
-                f,
-                indent=2,
-            )
-        grasp_yes_event.clear()
-        grasp_no_event.clear()
-
-        paired_human_episode = int(input(f"Enter the episode number of paired human sequence for {args.name}: "))
-        paired_info_json_path = os.path.join(shared_dir, episode_rel_path, "paired_human_episode.json")
-
-        with open(paired_info_json_path, "w") as f:
-            json.dump(
-                {
-                    "human hand episode": last_idx,
-                    "paired human episode": paired_human_episode,
-                },
-                f,
-                indent=2,
-            )
-
-        # print(f"Saved grasp result: {grasp_json_path}")
-        print(f"Current Success count: {success_count} / Failure count: {fail_count}")
-        print("===================================================")
         print(f"============== episode {last_idx} done =========================")
 
         if state == "exit":

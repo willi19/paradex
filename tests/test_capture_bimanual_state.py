@@ -356,6 +356,34 @@ def test_teleop_loop_callback_runs_while_device_data_is_unavailable(monkeypatch)
     assert callback_sessions == [session]
 
 
+def test_recording_stop_event_returns_before_reading_another_teleop_frame(monkeypatch):
+    monkeypatch.setattr(capture_module.chime, "warning", lambda **_kwargs: None)
+    monkeypatch.setattr(capture_module.chime, "info", lambda **_kwargs: None)
+    events = make_events()
+    events["stop"].set()
+
+    class DeviceThatMustNotBeRead:
+        def get_data(self):
+            raise AssertionError("stop must be handled before reading teleop data")
+
+    class IdleRetargetor:
+        def start(self, _home_pose):
+            pass
+
+    session = capture_module.CaptureSession.__new__(capture_module.CaptureSession)
+    session.teleop_device = DeviceThatMustNotBeRead()
+    session.hand_side = "Right"
+    session.arm = None
+    session.retargetor = IdleRetargetor()
+    session.teleop_name = "vive"
+    session.save_path = "capture/in-progress"
+
+    assert session.teleop(
+        session_events=events,
+        state_policy="keyboard_control",
+    ) == "stop"
+
+
 def test_capture_session_replaces_manus_hand_action_with_external_provider(monkeypatch):
     monkeypatch.setattr(capture_module.chime, "warning", lambda **_kwargs: None)
     monkeypatch.setattr(capture_module.chime, "success", lambda **_kwargs: None)

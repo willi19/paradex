@@ -662,6 +662,12 @@ class CaptureSession():
             if session_events is not None and session_events["exit"].is_set():
                 chime.success(sync=True)
                 return "exit"
+            if session_events is not None:
+                if self.save_path is None and session_events["save"].is_set():
+                    return "start"
+                if self.save_path is not None and session_events["stop"].is_set():
+                    chime.info(sync=True)
+                    return "stop"
 
             if loop_callback is not None:
                 try:

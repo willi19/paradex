@@ -10,6 +10,7 @@ import numpy as np
 import trimesh
 
 from paradex.utils.path import rsc_path
+from paradex.visualization.robot import RobotModule
 from paradex.visualization.visualizer.viser import ViserViewer
 
 
@@ -21,6 +22,10 @@ ALLEGRO_V5_TIP_LINKS = {
     "ring": "link_11_0_tip",
     "thumb": "link_15_0_tip",
 }
+# Fixed V5 fingertip mesh vertices, matching visualize_all.py's explicit
+# ``TACTILE_VERTEX_MAP -> compute_contact_arrow`` contract. All four V5 tip
+# meshes use the same vertex topology.
+ALLEGRO_V5_TACTILE_VERTEX_IDS = (1783, 1601, 2222, 1588)
 DEFAULT_ALLEGRO_V5_URDF = (
     rsc_path + "/robot/allegro_v5/allegro_right_A.urdf"
 )
@@ -118,6 +123,47 @@ def make_tactile_arrow(
     return arrow
 
 
+def centered_robot_offset(robot: RobotModule) -> np.ndarray:
+    """Translate the canonical hand mesh so its bounding box is at the origin."""
+    mesh = robot.get_robot_mesh(collision_geometry=False)
+    if mesh is None or len(mesh.vertices) == 0:
+        return np.zeros(3, dtype=np.float64)
+    return -np.asarray(mesh.bounding_box.centroid, dtype=np.float64)
+
+
+def fingertip_surface_arrow_frame(
+    robot: RobotModule,
+    link_name: str,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Use fixed fingertip vertices exactly like visualize_all.py."""
+    scene = robot.scene
+    geometry_name = next(
+        (
+            node
+            for node, parent in scene.graph.transforms.parents.items()
+            if parent == link_name and node in scene.geometry
+        ),
+        None,
+    )
+    if geometry_name is None:
+        raise ValueError(f"No visual fingertip mesh is attached to {link_name}")
+
+    tip_mesh = scene.geometry[geometry_name].copy()
+    tip_mesh.apply_transform(scene.graph.get(geometry_name)[0])
+    vertex_ids = np.asarray(ALLEGRO_V5_TACTILE_VERTEX_IDS, dtype=int)
+    if np.max(vertex_ids) >= len(tip_mesh.vertices):
+        raise ValueError(
+            f"Fingertip mesh for {link_name} does not match the V5 tactile vertex map"
+        )
+    anchor = np.asarray(tip_mesh.vertices[vertex_ids]).mean(axis=0)
+    normal = np.asarray(tip_mesh.vertex_normals[vertex_ids]).mean(axis=0)
+    normal_norm = float(np.linalg.norm(normal))
+    if not np.isfinite(normal_norm) or normal_norm <= 1.0e-9:
+        raise ValueError(f"Invalid tactile surface normal for {link_name}")
+    normal /= normal_norm
+    return anchor, normal
+
+
 class AllegroRealtimeViser:
     """Render live ROS2 feedback without blocking the capture loop."""
 
@@ -165,7 +211,6 @@ class AllegroRealtimeViser:
             scene_title="Live Allegro feedback + tactile",
             show_player=False,
         )
-        self.viewer.add_floor(height=-0.02)
         self.viewer.add_robot(
             "allegro_feedback",
             urdf_path,
@@ -173,6 +218,10 @@ class AllegroRealtimeViser:
         )
         self.viser_robot = self.viewer.robot_dict["allegro_feedback"]
         self.robot = self.viser_robot.urdf
+        self.scene_offset = centered_robot_offset(self.robot)
+        # Keep the hand itself centered. All tactile meshes receive this same
+        # translation because they live directly under the Viser world root.
+        self.viser_robot._visual_root_frame.position = self.scene_offset
 
         with self.viewer.server.gui.add_folder("Live Allegro", expand_by_default=True):
             self.connection_status = self.viewer.server.gui.add_text(
@@ -241,15 +290,12 @@ class AllegroRealtimeViser:
                 max_length=self.max_arrow_length,
             )
             link_name = ALLEGRO_V5_TIP_LINKS[finger]
-            tip_from_world = self.robot.get_transform(
+            anchor, direction = fingertip_surface_arrow_frame(
+                self.robot,
                 link_name,
-                self.robot.urdf.base_link,
-                collision_geometry=False,
             )
-            anchor = tip_from_world[:3, 3]
-            direction = tip_from_world[:3, :3] @ np.array((0.0, 0.0, 1.0))
             arrow = make_tactile_arrow(
-                anchor,
+                anchor + self.scene_offset,
                 direction,
                 length,
                 self._ARROW_COLORS[finger],

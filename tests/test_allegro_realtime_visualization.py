@@ -1,11 +1,17 @@
 import numpy as np
 
 from paradex.visualization.allegro_realtime import (
+    ALLEGRO_V5_TACTILE_VERTEX_IDS,
+    ALLEGRO_V5_TIP_LINKS,
     ALLEGRO_V5_JOINT_NAMES,
+    DEFAULT_ALLEGRO_V5_URDF,
     allegro_tactile_finger_levels,
+    centered_robot_offset,
+    fingertip_surface_arrow_frame,
     named_allegro_qpos,
     tactile_arrow_length,
 )
+from paradex.visualization.robot import RobotModule
 
 
 def test_allegro_tactile_levels_split_four_contiguous_finger_blocks():
@@ -57,3 +63,21 @@ def test_tactile_arrow_length_has_noise_floor_and_bounded_scale():
     assert tactile_arrow_length(200.0, **kwargs) == 0.0
     assert np.isclose(tactile_arrow_length(2600.0, **kwargs), 0.03)
     assert tactile_arrow_length(6000.0, **kwargs) == 0.06
+
+
+def test_v5_mesh_center_is_translated_to_the_world_origin():
+    robot = RobotModule(DEFAULT_ALLEGRO_V5_URDF)
+    mesh_center = np.asarray(robot.get_robot_mesh().bounding_box.centroid)
+
+    np.testing.assert_allclose(mesh_center + centered_robot_offset(robot), 0.0)
+
+
+def test_v5_tactile_arrows_are_anchored_on_fingertip_mesh_surfaces():
+    robot = RobotModule(DEFAULT_ALLEGRO_V5_URDF)
+    assert ALLEGRO_V5_TACTILE_VERTEX_IDS == (1783, 1601, 2222, 1588)
+
+    for link_name in ALLEGRO_V5_TIP_LINKS.values():
+        anchor, normal = fingertip_surface_arrow_frame(robot, link_name)
+        assert np.all(np.isfinite(anchor))
+        assert np.all(np.isfinite(normal))
+        np.testing.assert_allclose(np.linalg.norm(normal), 1.0, atol=1.0e-6)

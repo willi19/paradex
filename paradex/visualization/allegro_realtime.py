@@ -164,7 +164,7 @@ class AllegroRealtimeViser:
         *,
         update_rate_hz: float = 100.0,
         tactile_display_max: float = 1000.0,
-        max_arrow_length: float = 0.2,
+        max_arrow_length: float = 0.1,
         tactile_max_age_s: float = 0.25,
         urdf_path: str = DEFAULT_ALLEGRO_V5_URDF,
     ) -> None:

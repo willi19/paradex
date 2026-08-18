@@ -22,6 +22,11 @@ ALLEGRO_V5_TIP_LINKS = {
     "ring": "link_11_0_tip",
     "thumb": "link_15_0_tip",
 }
+ALLEGRO_V5_VISUAL_LINKS = frozenset(
+    ("palm_link",)
+    + tuple(f"link_{index}_0" for index in range(16))
+    + tuple(ALLEGRO_V5_TIP_LINKS.values())
+)
 # Fixed V5 fingertip mesh vertices, matching visualize_all.py's explicit
 # ``TACTILE_VERTEX_MAP -> compute_contact_arrow`` contract. All four V5 tip
 # meshes use the same vertex topology.
@@ -214,10 +219,10 @@ class AllegroRealtimeViser:
         self.viewer.add_robot(
             "allegro_feedback",
             urdf_path,
-            # This is a hand-only URDF. ``include_arm_meshes=False`` uses an
-            # Inspire-specific name filter (``/right_hand_*``) and therefore
-            # removes every Allegro V5 mesh from the Viser scene.
             include_arm_meshes=True,
+            # Create only Allegro mesh nodes. This is an allowlist applied
+            # before Viser nodes are created, not a visibility toggle.
+            mesh_link_names=ALLEGRO_V5_VISUAL_LINKS,
         )
         self.viser_robot = self.viewer.robot_dict["allegro_feedback"]
         self.robot = self.viser_robot.urdf

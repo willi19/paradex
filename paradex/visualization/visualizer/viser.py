@@ -6,7 +6,7 @@ from scipy.spatial.transform import Rotation as R
 from trimesh import Scene
 import viser
 import trimesh
-from typing import List, Tuple, Dict, Optional
+from typing import Collection, List, Tuple, Dict, Optional
 from pathlib import Path
 import time
 import cv2
@@ -148,7 +148,14 @@ class ViserViewer():
             print(f"Loaded saved view from: {self.view_state_path}")
         return True
 
-    def add_robot(self, name, urdf_path, pose=None, include_arm_meshes=True):
+    def add_robot(
+        self,
+        name,
+        urdf_path,
+        pose=None,
+        include_arm_meshes=True,
+        mesh_link_names: Optional[Collection[str]] = None,
+    ):
         robot = ViserRobotModule(
             target=self.server,
             urdf_path=urdf_path,
@@ -157,6 +164,7 @@ class ViserViewer():
             load_meshes=True,
             load_collision_meshes=False,
             include_arm_meshes=include_arm_meshes,
+            mesh_link_names=mesh_link_names,
         )
         if pose is not None:
             if hasattr(robot, '_visual_root_frame'):
@@ -801,13 +809,17 @@ class ViserRobotModule():
                  root_node_name: str = "/",
                  load_meshes=True, 
                  load_collision_meshes=False,
-                 include_arm_meshes=True):
+                 include_arm_meshes=True,
+                 mesh_link_names: Optional[Collection[str]] = None):
         self._urdf = RobotModule(urdf_path)
         self._target = target
         self._scale = scale
         self._load_meshes = load_meshes
         self._load_collision_meshes = load_collision_meshes
         self._include_arm_meshes = include_arm_meshes
+        self._mesh_link_names = (
+            None if mesh_link_names is None else frozenset(mesh_link_names)
+        )
         self._joint_frames: List[viser.FrameHandle] = []
         self._meshes: Dict[str, viser.MeshHandle] = {}
         num_joints_to_repeat = 0
@@ -928,6 +940,13 @@ class ViserRobotModule():
         # Add the URDF's meshes/geometry to viser.
         for link_name, mesh in scene.geometry.items():
             assert isinstance(mesh, trimesh.Trimesh)
+            mesh_parent_link = scene.graph.transforms.parents[link_name]
+            if (
+                self._mesh_link_names is not None
+                and mesh_parent_link not in self._mesh_link_names
+            ):
+                # Do not create a Viser mesh node at all for excluded links.
+                continue
             T_parent_child = self._urdf.get_transform(
                 link_name,
                 scene.graph.transforms.parents[link_name],

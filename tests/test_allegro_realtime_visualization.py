@@ -3,6 +3,7 @@ import numpy as np
 from paradex.visualization.allegro_realtime import (
     ALLEGRO_V5_TACTILE_VERTEX_IDS,
     ALLEGRO_V5_TIP_LINKS,
+    ALLEGRO_V5_VISUAL_LINKS,
     ALLEGRO_V5_JOINT_NAMES,
     DEFAULT_ALLEGRO_V5_URDF,
     allegro_tactile_finger_levels,
@@ -81,6 +82,16 @@ def test_v5_visual_meshes_do_not_match_the_inspire_hand_only_filter():
         "/left_hand_" in name or "/right_hand_" in name
         for name in mesh_names
     )
+
+
+def test_v5_visual_allowlist_contains_every_allegro_mesh_parent():
+    robot = RobotModule(DEFAULT_ALLEGRO_V5_URDF)
+    mesh_parent_links = {
+        robot.scene.graph.transforms.parents[name]
+        for name in robot.scene.geometry
+    }
+
+    assert mesh_parent_links == ALLEGRO_V5_VISUAL_LINKS
 
 
 def test_v5_tactile_arrows_are_anchored_on_fingertip_mesh_surfaces():

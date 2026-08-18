@@ -468,7 +468,9 @@ def test_allegro_v5_raw_uses_full_manus_joint_angles_for_vive():
             (np.deg2rad(30.0) - 0.35) * 1.5,
             np.deg2rad(40.0),
             np.deg2rad(50.0),
-            np.clip(42.0 / (53.6 - (-13.0)), 0.0, 1.0) * 0.8 * 1.78,
+            (1.0 - np.clip(42.0 / (53.6 - (-13.0)), 0.0, 1.0))
+            * 0.8
+            * 1.78,
             -np.deg2rad(31.0) - 1.57,
             1.2 * np.sin(np.deg2rad(30.0)),
             1.2 * np.sin(np.deg2rad(60.0)),
@@ -480,6 +482,14 @@ def test_allegro_v5_raw_uses_full_manus_joint_angles_for_vive():
     )
     # A VIVE/MANUS packet can now drive the raw path without a 4x4 frame.
     np.testing.assert_allclose(allegro_v5({}, ergonomics=ergonomics), expected)
+
+    low_stretch = dict(ergonomics, ThumbMCPStretch=0.0)
+    high_stretch = dict(ergonomics, ThumbMCPStretch=53.6 - (-13.0))
+    low_action = _allegro_v5_raw_from_manus_ergonomics(low_stretch)[12]
+    high_action = _allegro_v5_raw_from_manus_ergonomics(high_stretch)[12]
+    np.testing.assert_allclose(low_action, 0.8 * 1.78)
+    np.testing.assert_allclose(high_action, 0.0)
+    assert low_action > high_action
 
 
 def test_allegro_v5_raw_rejects_partial_manus_ergonomics():

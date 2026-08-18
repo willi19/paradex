@@ -1559,14 +1559,14 @@ def _allegro_v5_raw_from_manus_ergonomics(ergonomics):
         action[offset + 2] = np.deg2rad(values[f"{finger}PIPStretch"])
         action[offset + 3] = np.deg2rad(values[f"{finger}DIPStretch"])
 
-    # Reuse Inspire's ThumbMCPStretch normalization and 0.8 gain, then express
-    # the result over Allegro joint 12's physical radian range.  This gives the
-    # two hands the same MANUS thumb-bend semantics without mixing command
-    # units (Inspire 0..1000 versus Allegro radians).
+    # Reuse Inspire's ThumbMCPStretch normalization and 0.8 gain, but reverse
+    # its direction for Allegro joint 12: increasing MANUS stretch decreases
+    # this Allegro joint.  Convert the resulting fraction to radians only
+    # after applying that direction change.
     action[12] = (
-        _inspire_thumb_secondary_fraction(values["ThumbMCPStretch"])
-        * _ALLEGRO_V5_PHYSICAL_UPPER[12]
-    )
+        _INSPIRE_THUMB_SECONDARY_GAIN
+        - _inspire_thumb_secondary_fraction(values["ThumbMCPStretch"])
+    ) * _ALLEGRO_V5_PHYSICAL_UPPER[12]
     action[13] = -np.deg2rad(values["ThumbMCPSpread"]) - 1.57
     action[14] = np.sin(np.deg2rad(values["ThumbPIPStretch"])) * 1.2
     action[15] = np.sin(np.deg2rad(values["ThumbDIPStretch"])) * 1.2

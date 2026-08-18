@@ -118,8 +118,8 @@ parser.add_argument(
 parser.add_argument(
     '--allegro-visualization-rate-hz',
     type=float,
-    default=20.0,
-    help='Viser refresh rate for live Allegro joint/tactile feedback.',
+    default=100.0,
+    help='Viser refresh rate for lightweight Allegro tactile arrows.',
 )
 parser.add_argument(
     '--allegro-tactile-display-max',

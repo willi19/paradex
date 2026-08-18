@@ -4,12 +4,11 @@ from paradex.visualization.allegro_realtime import (
     ALLEGRO_V5_TACTILE_VERTEX_IDS,
     ALLEGRO_V5_TIP_LINKS,
     ALLEGRO_V5_VISUAL_LINKS,
-    ALLEGRO_V5_JOINT_NAMES,
     DEFAULT_ALLEGRO_V5_URDF,
     allegro_tactile_finger_levels,
+    canonical_allegro_mesh,
     centered_robot_offset,
     fingertip_surface_arrow_frame,
-    named_allegro_qpos,
     tactile_arrow_length,
 )
 from paradex.visualization.robot import RobotModule
@@ -34,26 +33,6 @@ def test_allegro_tactile_levels_reject_malformed_packets():
     assert allegro_tactile_finger_levels([1, 2, 3, np.nan]) is None
 
 
-def test_named_allegro_qpos_reorders_ros_feedback_by_joint_name():
-    names = tuple(reversed(ALLEGRO_V5_JOINT_NAMES))
-    values = np.arange(16, dtype=float)
-    expected_by_name = dict(zip(names, values))
-
-    actual = named_allegro_qpos(values, names)
-
-    assert actual == {
-        name: expected_by_name[name]
-        for name in ALLEGRO_V5_JOINT_NAMES
-    }
-
-
-def test_named_allegro_qpos_rejects_missing_or_nonfinite_feedback():
-    assert named_allegro_qpos(np.zeros(15), ALLEGRO_V5_JOINT_NAMES[:-1]) is None
-    invalid = np.zeros(16)
-    invalid[4] = np.inf
-    assert named_allegro_qpos(invalid, ALLEGRO_V5_JOINT_NAMES) is None
-
-
 def test_tactile_arrow_length_shows_every_positive_value_and_is_bounded():
     kwargs = {
         "display_max": 1000.0,
@@ -68,7 +47,7 @@ def test_tactile_arrow_length_shows_every_positive_value_and_is_bounded():
 
 def test_v5_mesh_center_is_translated_to_the_world_origin():
     robot = RobotModule(DEFAULT_ALLEGRO_V5_URDF)
-    mesh_center = np.asarray(robot.get_robot_mesh().bounding_box.centroid)
+    mesh_center = np.asarray(canonical_allegro_mesh(robot).bounding_box.centroid)
 
     np.testing.assert_allclose(mesh_center + centered_robot_offset(robot), 0.0)
 

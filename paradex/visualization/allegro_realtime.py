@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from threading import Event, Thread
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Mapping, Optional
 
 import numpy as np
 import trimesh
@@ -15,7 +15,6 @@ from paradex.visualization.visualizer.viser import ViserViewer
 
 
 ALLEGRO_FINGERS = ("index", "middle", "ring", "thumb")
-ALLEGRO_V5_JOINT_NAMES = tuple(f"joint_{index}_0" for index in range(16))
 ALLEGRO_V5_TIP_LINKS = {
     "index": "link_3_0_tip",
     "middle": "link_7_0_tip",
@@ -57,21 +56,6 @@ def allegro_tactile_finger_levels(tactile: Any) -> Optional[dict[str, float]]:
     }
 
 
-def named_allegro_qpos(
-    qpos: Any,
-    joint_names: Optional[Sequence[str]],
-) -> Optional[dict[str, float]]:
-    """Validate and reorder ROS feedback for the V5 URDF."""
-    values = np.asarray(qpos, dtype=np.float64).reshape(-1)
-    names = tuple(joint_names or ())
-    if values.size != len(names) or not np.all(np.isfinite(values)):
-        return None
-    by_name = dict(zip(names, values))
-    if any(name not in by_name for name in ALLEGRO_V5_JOINT_NAMES):
-        return None
-    return {name: float(by_name[name]) for name in ALLEGRO_V5_JOINT_NAMES}
-
-
 def tactile_arrow_length(
     level: float,
     *,
@@ -87,50 +71,48 @@ def tactile_arrow_length(
     return float(np.clip(level / display_max, 0.0, 1.0) * max_length)
 
 
-def make_tactile_arrow(
-    start: np.ndarray,
+def make_tactile_arrow_head(
     direction: np.ndarray,
-    length: float,
-    color: tuple[int, int, int, int],
-) -> Optional[trimesh.Trimesh]:
-    """Build the compact arrow mesh used by ``visualize_all.py``."""
-    if length <= 1.0e-6:
-        return None
+) -> trimesh.Trimesh:
+    """Build one fixed arrowhead; only its position changes at runtime."""
     direction = np.asarray(direction, dtype=np.float64)
     norm = float(np.linalg.norm(direction))
     if not np.isfinite(norm) or norm <= 1.0e-9:
-        return None
+        raise ValueError("Arrow direction must be finite and nonzero")
     direction = direction / norm
-    shaft_height = length * 0.72
-    head_height = length - shaft_height
-    shaft = trimesh.creation.cylinder(
-        radius=min(0.002, length * 0.10),
-        height=shaft_height,
-        sections=12,
+    head_height = 0.015
+    head = trimesh.creation.cone(radius=0.005, height=head_height, sections=12)
+    # Put the cone tip at the local origin, then orient it along the fixed
+    # fingertip normal. Runtime updates only translate this mesh handle.
+    head.apply_translation((0.0, 0.0, -head_height * 0.5))
+    head.apply_transform(
+        trimesh.geometry.align_vectors((0.0, 0.0, 1.0), direction)
     )
-    head = trimesh.creation.cone(
-        radius=min(0.004, length * 0.18),
-        height=head_height,
-        sections=12,
-    )
-    shaft.apply_translation((0.0, 0.0, shaft_height * 0.5))
-    head.apply_translation((0.0, 0.0, shaft_height + head_height * 0.5))
-    arrow = trimesh.util.concatenate((shaft, head))
-    arrow.apply_transform(trimesh.geometry.align_vectors((0.0, 0.0, 1.0), direction))
-    arrow.apply_translation(np.asarray(start, dtype=np.float64))
-    arrow.visual.vertex_colors = np.tile(
-        np.asarray(color, dtype=np.uint8),
-        (len(arrow.vertices), 1),
-    )
-    return arrow
+    return head
 
 
 def centered_robot_offset(robot: RobotModule) -> np.ndarray:
     """Translate the canonical hand mesh so its bounding box is at the origin."""
-    mesh = robot.get_robot_mesh(collision_geometry=False)
+    mesh = canonical_allegro_mesh(robot)
     if mesh is None or len(mesh.vertices) == 0:
         return np.zeros(3, dtype=np.float64)
     return -np.asarray(mesh.bounding_box.centroid, dtype=np.float64)
+
+
+def canonical_allegro_mesh(robot: RobotModule) -> trimesh.Trimesh:
+    """Combine only Allegro visual geometry into one static qpos=0 mesh."""
+    meshes = []
+    scene = robot.scene
+    for geometry_name, mesh in scene.geometry.items():
+        parent_link = scene.graph.transforms.parents[geometry_name]
+        if parent_link not in ALLEGRO_V5_VISUAL_LINKS:
+            continue
+        transformed = mesh.copy()
+        transformed.apply_transform(scene.graph.get(geometry_name)[0])
+        meshes.append(transformed)
+    if not meshes:
+        raise ValueError("No Allegro V5 visual geometry found in URDF")
+    return trimesh.util.concatenate(meshes)
 
 
 def fingertip_surface_arrow_frame(
@@ -167,7 +149,7 @@ def fingertip_surface_arrow_frame(
 
 
 class AllegroRealtimeViser:
-    """Render live ROS2 feedback without blocking the capture loop."""
+    """Render a static canonical hand with lightweight live tactile arrows."""
 
     _ARROW_COLORS = {
         "index": (255, 80, 60, 255),
@@ -180,7 +162,7 @@ class AllegroRealtimeViser:
         self,
         hand: Any,
         *,
-        update_rate_hz: float = 20.0,
+        update_rate_hz: float = 100.0,
         tactile_display_max: float = 1000.0,
         max_arrow_length: float = 0.2,
         tactile_max_age_s: float = 0.25,
@@ -202,48 +184,54 @@ class AllegroRealtimeViser:
         self.tactile_max_age_s = float(tactile_max_age_s)
         self.exit_event = Event()
         self.thread: Optional[Thread] = None
-        self.arrow_handles = {finger: None for finger in ALLEGRO_FINGERS}
+        self.arrow_handles = {}
 
         self.viewer = ViserViewer(
             scene_title="Live Allegro feedback + tactile",
             show_player=False,
         )
-        self.viewer.add_robot(
-            "allegro_feedback",
-            urdf_path,
-            include_arm_meshes=True,
-            # Create only Allegro mesh nodes. This is an allowlist applied
-            # before Viser nodes are created, not a visibility toggle.
-            mesh_link_names=ALLEGRO_V5_VISUAL_LINKS,
-        )
-        self.viser_robot = self.viewer.robot_dict["allegro_feedback"]
-        self.robot = self.viser_robot.urdf
+        self.robot = RobotModule(urdf_path)
+        self.robot.update_cfg(np.zeros(self.robot.get_num_joints()))
         self.scene_offset = centered_robot_offset(self.robot)
-        # Keep the hand itself centered. All tactile meshes receive this same
-        # translation because they live directly under the Viser world root.
-        self.viser_robot._visual_root_frame.position = self.scene_offset
+        static_mesh = canonical_allegro_mesh(self.robot)
+        static_mesh.apply_translation(self.scene_offset)
+        # One combined mesh, no robot joint frames and no per-link scene nodes.
+        self.robot_mesh_handle = self.viewer.server.scene.add_mesh_trimesh(
+            "/allegro",
+            static_mesh,
+        )
+        self._create_static_arrow_handles()
 
-        with self.viewer.server.gui.add_folder("Live Allegro", expand_by_default=True):
-            self.connection_status = self.viewer.server.gui.add_text(
-                "ROS2 feedback",
-                initial_value="WAITING",
-                disabled=True,
+    def _create_static_arrow_handles(self) -> None:
+        """Create four shafts and heads once; never recreate mesh geometry."""
+        for finger in ALLEGRO_FINGERS:
+            anchor, direction = fingertip_surface_arrow_frame(
+                self.robot,
+                ALLEGRO_V5_TIP_LINKS[finger],
             )
-            self.tactile_status = self.viewer.server.gui.add_text(
-                "Tactile",
-                initial_value="WAITING",
-                disabled=True,
+            anchor = anchor + self.scene_offset
+            color = self._ARROW_COLORS[finger]
+            shaft = self.viewer.server.scene.add_spline_catmull_rom(
+                f"/tactile/{finger}/shaft",
+                points=np.stack((anchor, anchor)),
+                line_width=6.0,
+                color=color[:3],
+                visible=False,
             )
-            self.tactile_sliders = {
-                finger: self.viewer.server.gui.add_slider(
-                    f"{finger} tactile raw",
-                    min=0.0,
-                    max=self.tactile_display_max,
-                    step=1.0,
-                    initial_value=0.0,
-                    disabled=True,
-                )
-                for finger in ALLEGRO_FINGERS
+            head_mesh = make_tactile_arrow_head(direction)
+            head = self.viewer.server.scene.add_mesh_simple(
+                f"/tactile/{finger}/head",
+                vertices=np.asarray(head_mesh.vertices),
+                faces=np.asarray(head_mesh.faces),
+                color=color[:3],
+                position=anchor,
+                visible=False,
+            )
+            self.arrow_handles[finger] = {
+                "anchor": anchor,
+                "direction": direction,
+                "shaft": shaft,
+                "head": head,
             }
 
     def start(self) -> None:
@@ -255,19 +243,12 @@ class AllegroRealtimeViser:
             daemon=True,
         )
         self.thread.start()
-        print("Allegro feedback/tactile Viser started at http://localhost:8080")
+        print("Static Allegro/tactile Viser started at http://localhost:8080")
 
     def _clear_arrows(self) -> None:
-        for finger, handle in self.arrow_handles.items():
-            if handle is not None:
-                handle.remove()
-                self.arrow_handles[finger] = None
-
-    def _clear_tactile_display(self, status: str) -> None:
-        self.tactile_status.value = status
-        for slider in self.tactile_sliders.values():
-            slider.value = 0.0
-        self._clear_arrows()
+        for handles in self.arrow_handles.values():
+            handles["shaft"].visible = False
+            handles["head"].visible = False
 
     def _tactile_is_fresh(self, feedback: Mapping[str, Any]) -> bool:
         tactile_time = feedback.get("tactile_time")
@@ -280,71 +261,34 @@ class AllegroRealtimeViser:
     def _update_arrows(self, levels: Mapping[str, float]) -> None:
         for finger in ALLEGRO_FINGERS:
             level = float(levels[finger])
-            self.tactile_sliders[finger].value = float(
-                np.clip(level, 0.0, self.tactile_display_max)
-            )
             length = tactile_arrow_length(
                 level,
                 display_max=self.tactile_display_max,
                 max_length=self.max_arrow_length,
             )
-            link_name = ALLEGRO_V5_TIP_LINKS[finger]
-            anchor, direction = fingertip_surface_arrow_frame(
-                self.robot,
-                link_name,
-            )
-            arrow = make_tactile_arrow(
-                anchor + self.scene_offset,
-                direction,
-                length,
-                self._ARROW_COLORS[finger],
-            )
-            old_handle = self.arrow_handles[finger]
-            if old_handle is not None:
-                old_handle.remove()
-                self.arrow_handles[finger] = None
-            if arrow is not None:
-                self.arrow_handles[finger] = (
-                    self.viewer.server.scene.add_mesh_trimesh(
-                        f"/tactile/{finger}",
-                        arrow,
-                    )
-                )
+            handles = self.arrow_handles[finger]
+            if length <= 0.0:
+                handles["shaft"].visible = False
+                handles["head"].visible = False
+                continue
+            endpoint = handles["anchor"] + handles["direction"] * length
+            handles["shaft"].points = np.stack((handles["anchor"], endpoint))
+            handles["head"].position = endpoint
+            handles["shaft"].visible = True
+            handles["head"].visible = True
 
     def update_once(self, feedback: Mapping[str, Any]) -> bool:
-        if not feedback.get("is_connected", False):
-            self.connection_status.value = "WAITING FOR JOINT FEEDBACK"
-            with self.viewer.server.atomic():
-                self._clear_tactile_display("WAITING FOR JOINT FEEDBACK")
-            return False
-        qpos = named_allegro_qpos(
-            feedback.get("qpos"),
-            feedback.get("joint_names"),
+        levels = (
+            allegro_tactile_finger_levels(feedback.get("tactile"))
+            if self._tactile_is_fresh(feedback)
+            else None
         )
-        if qpos is None:
-            self.connection_status.value = "INVALID JOINT FEEDBACK"
-            with self.viewer.server.atomic():
-                self._clear_tactile_display("WAITING FOR VALID JOINT FEEDBACK")
-            return False
-
-        topic = feedback.get("state_topic", "/right/allegroHand_0/joint_states")
         with self.viewer.server.atomic():
-            self.viser_robot.update_cfg(qpos)
-            self.connection_status.value = f"CONNECTED: {topic}"
-
-            levels = (
-                allegro_tactile_finger_levels(feedback.get("tactile"))
-                if self._tactile_is_fresh(feedback)
-                else None
-            )
             if levels is None:
-                self._clear_tactile_display("WAITING OR STALE")
+                self._clear_arrows()
             else:
-                self.tactile_status.value = "LIVE: " + ", ".join(
-                    f"{finger}={levels[finger]:.0f}" for finger in ALLEGRO_FINGERS
-                )
                 self._update_arrows(levels)
-        return True
+        return levels is not None
 
     def _run(self) -> None:
         while not self.exit_event.is_set():
@@ -352,7 +296,8 @@ class AllegroRealtimeViser:
             try:
                 self.update_once(self.hand.get_data())
             except Exception as exc:
-                self.connection_status.value = f"VISUALIZATION ERROR: {exc}"
+                print(f"Allegro tactile visualization error: {exc}")
+                self.exit_event.set()
             remaining = self.update_period - (time.perf_counter() - started)
             self.exit_event.wait(timeout=max(0.0, remaining))
 

@@ -663,6 +663,13 @@ class CaptureSession():
                 chime.success(sync=True)
                 return "exit"
 
+            if loop_callback is not None:
+                try:
+                    loop_callback(self)
+                except Exception as exc:
+                    print(f"teleop loop_callback failed: {exc}")
+                    loop_callback = None
+
             data = self.teleop_device.get_data()
 
             
@@ -699,13 +706,6 @@ class CaptureSession():
                     self.state_hist.append(state)
                     self.state_time.append(time.time())
 
-                if loop_callback is not None:
-                    try:
-                        loop_callback(self)
-                    except Exception as exc:
-                        print(f"teleop loop_callback failed: {exc}")
-                        loop_callback = None
-                    
                 if state == 0:
                     right_hand_hold_target = None
                     hand_action_provider = getattr(self, "hand_action_provider", None)
@@ -811,13 +811,6 @@ class CaptureSession():
                 if self.save_path is not None:
                     self.state_hist.append(state)
                     self.state_time.append(time.time())
-
-                if loop_callback is not None:
-                    try:
-                        loop_callback(self)
-                    except Exception as exc:
-                        print(f"teleop loop_callback failed: {exc}")
-                        loop_callback = None
 
                 if state == 0:
                     wrist_pose_left, wrist_pose_right, hand_action_left, hand_action_right = self.retargetor.get_action(data)

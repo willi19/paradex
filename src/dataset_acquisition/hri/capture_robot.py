@@ -36,14 +36,35 @@ vive_group.add_argument(
 )
 parser.set_defaults(use_vive=True)
 camera_group = parser.add_mutually_exclusive_group()
-camera_group.add_argument('--camera', dest='camera', action='store_true')
+camera_group.add_argument(
+    '--camera',
+    dest='camera_mode',
+    nargs='?',
+    const='capture',
+    choices=['capture', 'preview'],
+    default='capture',
+    help=(
+        "Enable remote camera recording. Use '--camera=preview' to also show "
+        'the independent live capture-PC preview window.'
+    ),
+)
 camera_group.add_argument(
     '--no-camera',
-    dest='camera',
-    action='store_false',
+    dest='camera_mode',
+    action='store_const',
+    const='off',
     help='Disable remote cameras, sync generator, and timestamp monitor.',
 )
-parser.set_defaults(camera=True)
+camera_group.add_argument(
+    '--camera-preview',
+    dest='camera_mode',
+    action='store_const',
+    const='preview',
+    help="Alias for '--camera=preview'.",
+)
+parser.add_argument('--camera-preview-port', type=int, default=5484)
+parser.add_argument('--camera-preview-refresh-interval', type=float, default=0.2)
+parser.add_argument('--camera-preview-request-timeout', type=float, default=1.5)
 parser.add_argument(
     '--no-timestamp',
     dest='timestamp',
@@ -113,6 +134,15 @@ args.arm = _normalize_optional_name(args.arm)
 args.hand = _normalize_optional_name(args.hand)
 if args.allegro_command_rate_hz <= 0.0:
     parser.error('--allegro-command-rate-hz must be positive.')
+if args.camera_preview_port <= 0:
+    parser.error('--camera-preview-port must be positive.')
+if args.camera_preview_refresh_interval <= 0.0:
+    parser.error('--camera-preview-refresh-interval must be positive.')
+if args.camera_preview_request_timeout <= 0.0:
+    parser.error('--camera-preview-request-timeout must be positive.')
+
+camera_enabled = args.camera_mode != 'off'
+camera_preview_enabled = args.camera_mode == 'preview'
 
 
 stop_event = Event()
@@ -141,6 +171,7 @@ def wait_for_grasp_result():
     print("Grasp success? Press y or n, then Enter.")
 
     while not exit_event.is_set():
+        refresh_guis()
         if grasp_yes_event.is_set():
             return "y"
         if grasp_no_event.is_set():
@@ -177,7 +208,7 @@ if inspire_bimanual:
 
 try:
     cs = CaptureSession(
-        camera=args.camera,
+        camera=camera_enabled,
         realsense=False,
         arm=args.arm,
         hand=args.hand,
@@ -223,6 +254,25 @@ if args.visualize_tactile_realtime:
         if tactile_plotter.enabled:
             tactile_plotter.start()
 
+camera_preview = None
+if camera_preview_enabled:
+    from paradex.io.camera_system.capture_pc_preview import CapturePcPreviewGui
+
+    camera_preview = CapturePcPreviewGui(
+        pc_list=camera_pc_list,
+        port=args.camera_preview_port,
+        refresh_interval=args.camera_preview_refresh_interval,
+        request_timeout=args.camera_preview_request_timeout,
+    )
+    camera_preview.start()
+
+
+def refresh_guis(_session=None):
+    """Process preview GUI events on the teleoperation main thread."""
+
+    if camera_preview is not None:
+        camera_preview.show()
+
 name = args.name
 
 last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.capture_root, args.name)))
@@ -230,95 +280,96 @@ last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.captur
 success_count = 0
 fail_count = 0
 
-while not exit_event.is_set():
-    state = cs.teleop(
-        session_events=events,
-        state_policy="keyboard_control",
-        bimanual_state_provider=bimanual_state_provider,
-    )
-
-    if state == "exit":
-        break
-
-    if state != "start":
-        continue
-
-    last_idx += 1
-    print("Prepare to record new session:", name, "episode:", last_idx)
-    episode_rel_path = os.path.join("capture", args.capture_root, args.name, str(last_idx))
-    episode_abs_path = os.path.join(shared_dir, episode_rel_path)
-    cs.start(episode_rel_path)
-    # chime.info(sync=True)
-    print("Starting new recording session:", name)
-    print("Capturing index:", last_idx)
-    
-    
-    state = cs.teleop(
-        session_events=events,
-        state_policy="keyboard_control",
-        bimanual_state_provider=bimanual_state_provider,
-    )
-    cs.stop()
-    print("Stopped recording session:", name)
-
-    timestamp_npy_path = os.path.join(episode_abs_path, "raw", "timestamps", "timestamp.npy")
-    if os.path.exists(timestamp_npy_path):
-        print(f"timestamp.npy length: {len(np.load(timestamp_npy_path))}")
-    else:
-        print(f"timestamp.npy not found at {timestamp_npy_path}")
-
-    save_event.clear()
-    stop_event.clear()
-
-    grasp_input = wait_for_grasp_result()
-    if grasp_input == "y":
-        success_count += 1
-    else:
-        fail_count += 1
-
-    os.makedirs(episode_abs_path, exist_ok=True)
-    grasp_json_path = os.path.join(episode_abs_path, "grasp_result.json")
-    with open(grasp_json_path, "w") as f:
-        json.dump(
-            {
-                "episode": last_idx,
-                "grasp_success": grasp_input == "y",
-            },
-            f,
-            indent=2,
+try:
+    while not exit_event.is_set():
+        state = cs.teleop(
+            session_events=events,
+            state_policy="keyboard_control",
+            loop_callback=refresh_guis,
+            bimanual_state_provider=bimanual_state_provider,
         )
-    grasp_yes_event.clear()
-    grasp_no_event.clear()
-    
-    
-    paired_human_episode = int(input(f"Enter the episode number of paired human sequence for {args.name}: "))
-    paired_info_json_path = os.path.join(shared_dir, episode_rel_path, "paired_human_episode.json")
-    
-    with open(paired_info_json_path, "w") as f:
-        json.dump(
-            {
-                "human hand episode": last_idx,
-                "paired human episode": paired_human_episode,
-            },
-            f,
-            indent=2,
+
+        if state == "exit":
+            break
+
+        if state != "start":
+            continue
+
+        last_idx += 1
+        print("Prepare to record new session:", name, "episode:", last_idx)
+        episode_rel_path = os.path.join("capture", args.capture_root, args.name, str(last_idx))
+        episode_abs_path = os.path.join(shared_dir, episode_rel_path)
+        cs.start(episode_rel_path)
+        # chime.info(sync=True)
+        print("Starting new recording session:", name)
+        print("Capturing index:", last_idx)
+
+        state = cs.teleop(
+            session_events=events,
+            state_policy="keyboard_control",
+            loop_callback=refresh_guis,
+            bimanual_state_provider=bimanual_state_provider,
         )
-        
-    
-        
-    # print(f"Saved grasp result: {grasp_json_path}")
-    print(f"Current Success count: {success_count} / Failure count: {fail_count}")
-    print("===================================================")
-    
-    
-    print(f"============== episode {last_idx} done =========================")
+        cs.stop()
+        print("Stopped recording session:", name)
 
-    if state == "exit":
-        break
+        timestamp_npy_path = os.path.join(episode_abs_path, "raw", "timestamps", "timestamp.npy")
+        if os.path.exists(timestamp_npy_path):
+            print(f"timestamp.npy length: {len(np.load(timestamp_npy_path))}")
+        else:
+            print(f"timestamp.npy not found at {timestamp_npy_path}")
 
-print("Exiting teleoperation recording.")
-cs.end()
-if pedal_state is not None:
-    pedal_state.close()
-if tactile_plotter is not None:
-    tactile_plotter.close()
+        save_event.clear()
+        stop_event.clear()
+
+        grasp_input = wait_for_grasp_result()
+        if grasp_input == "y":
+            success_count += 1
+        else:
+            fail_count += 1
+
+        os.makedirs(episode_abs_path, exist_ok=True)
+        grasp_json_path = os.path.join(episode_abs_path, "grasp_result.json")
+        with open(grasp_json_path, "w") as f:
+            json.dump(
+                {
+                    "episode": last_idx,
+                    "grasp_success": grasp_input == "y",
+                },
+                f,
+                indent=2,
+            )
+        grasp_yes_event.clear()
+        grasp_no_event.clear()
+
+        paired_human_episode = int(input(f"Enter the episode number of paired human sequence for {args.name}: "))
+        paired_info_json_path = os.path.join(shared_dir, episode_rel_path, "paired_human_episode.json")
+
+        with open(paired_info_json_path, "w") as f:
+            json.dump(
+                {
+                    "human hand episode": last_idx,
+                    "paired human episode": paired_human_episode,
+                },
+                f,
+                indent=2,
+            )
+
+        # print(f"Saved grasp result: {grasp_json_path}")
+        print(f"Current Success count: {success_count} / Failure count: {fail_count}")
+        print("===================================================")
+        print(f"============== episode {last_idx} done =========================")
+
+        if state == "exit":
+            break
+finally:
+    print("Exiting teleoperation recording.")
+    if camera_preview is not None:
+        camera_preview.close()
+    if getattr(cs, "save_path", None) is not None:
+        cs.stop()
+    cs.end()
+    if pedal_state is not None:
+        pedal_state.close()
+    if tactile_plotter is not None:
+        tactile_plotter.close()

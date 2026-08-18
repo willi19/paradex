@@ -183,7 +183,16 @@ class CapturePcPreviewGui:
             while not self._stop_event.is_set():
                 self._connect_readers()
                 images, frame_text = self._collect_frames()
-                display = merge_image(images, frame_text) if images else self._status_image()
+                display = (
+                    merge_image(
+                        images,
+                        frame_text,
+                        grid_cols=4,
+                        preserve_aspect=True,
+                    )
+                    if images
+                    else self._status_image()
+                )
                 with self._display_lock:
                     self._latest_display = display
                 self._stop_event.wait(self.refresh_interval)

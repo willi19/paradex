@@ -10,18 +10,43 @@ def get_optimal_font_scale(text, target_width, font=cv2.FONT_HERSHEY_SIMPLEX, th
             return max(0.3, scale - 0.1)  # 한 단계 작게
     return 3.0
 
-def merge_image(image_dict, image_text={}, put_text=True):
+def merge_image(
+    image_dict,
+    image_text={},
+    put_text=True,
+    grid_cols=None,
+    preserve_aspect=False,
+):
     name_list = sorted(list(image_dict.keys()))
     num_images = len(name_list)
     
-    grid_cols = math.ceil(math.sqrt(num_images))
+    grid_cols = math.ceil(math.sqrt(num_images)) if grid_cols is None else int(grid_cols)
+    if grid_cols <= 0:
+        raise ValueError("grid_cols must be positive")
     grid_rows = math.ceil(num_images / grid_cols)
     border_px = 10
     
     new_W = 2048 // grid_cols
-    new_H = 1200 // grid_rows #1536
+    if preserve_aspect:
+        new_H = max(
+            max(
+                1,
+                int(
+                    round(
+                        new_W
+                        * image_dict[name].shape[0]
+                        / image_dict[name].shape[1]
+                    )
+                ),
+            )
+            for name in name_list
+        )
+        canvas_height = new_H * grid_rows
+    else:
+        new_H = 1200 // grid_rows #1536
+        canvas_height = 1200
     
-    grid_image = np.ones((1200+border_px*(grid_rows-1), new_W*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
+    grid_image = np.ones((canvas_height+border_px*(grid_rows-1), new_W*grid_cols+border_px*(grid_cols-1), 3), dtype=np.uint8) * 255
 
     for idx, img_name in enumerate(name_list):
         img = image_dict[img_name].copy()
@@ -53,7 +78,20 @@ def merge_image(image_dict, image_text={}, put_text=True):
                     cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 0), thickness)
             
         # 리사이즈 및 배치
-        resized_img = cv2.resize(img, (new_W, new_H))
+        if preserve_aspect:
+            scale = min(new_W / img.shape[1], new_H / img.shape[0])
+            resized_W = max(1, int(round(img.shape[1] * scale)))
+            resized_H = max(1, int(round(img.shape[0] * scale)))
+            resized = cv2.resize(img, (resized_W, resized_H))
+            resized_img = np.ones((new_H, new_W, 3), dtype=np.uint8) * 255
+            y_offset = (new_H - resized_H) // 2
+            x_offset = (new_W - resized_W) // 2
+            resized_img[
+                y_offset:y_offset + resized_H,
+                x_offset:x_offset + resized_W,
+            ] = resized
+        else:
+            resized_img = cv2.resize(img, (new_W, new_H))
         
         r_idx = idx // grid_cols
         c_idx = idx % grid_cols

@@ -1,5 +1,6 @@
 import numpy as np
 
+from paradex.image.merge import merge_image
 from paradex.io.camera_system.capture_pc_preview import CapturePcPreviewGui
 
 
@@ -88,3 +89,21 @@ def test_capture_pc_preview_retains_frames_after_a_transient_request_failure():
     assert "capture1" in preview._readers
     assert np.array_equal(second_images["capture1:camera-1"], first_images["capture1:camera-1"])
     assert frame_text["capture1:camera-1"] == "preview (stale)"
+
+
+def test_camera_preview_grid_uses_four_columns_without_stretching_images():
+    images = {
+        f"camera-{index:02d}": np.zeros((30, 40, 3), dtype=np.uint8)
+        for index in range(20)
+    }
+
+    merged = merge_image(
+        images,
+        put_text=False,
+        grid_cols=4,
+        preserve_aspect=True,
+    )
+
+    # Four 512px-wide, 4:3 cells and five rows, with 10px inter-cell borders.
+    assert merged.shape == (1960, 2078, 3)
+    assert np.all(merged[:384, :512] == 0)

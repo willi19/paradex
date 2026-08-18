@@ -11,6 +11,10 @@ from paradex.io.camera_system.signal_generator import UTGE900
 from paradex.io.camera_system.timestamp_monitor import TimestampMonitor
 from paradex.io.robot_controller import get_arm, get_hand
 from paradex.io.tactile import HumanTactileRecorder
+from paradex.retargetor.allegro_alignment import (
+    ALLEGRO_V5_DRIVER_JOINT_NAMES,
+    retargeter_action_to_live_controller_qpos,
+)
 from paradex.utils.path import shared_dir
 from paradex.retargetor.state import HandStateExtractor
 from paradex.retargetor.unimanual import Retargetor
@@ -23,6 +27,9 @@ _VIVE_MAX_ANGULAR_SPEED_DEG_S = 240.0
 _VIVE_POSITION_MARGIN_M = 0.003
 _VIVE_ROTATION_MARGIN_DEG = 1.5
 _VIVE_MAX_COMMAND_DT_S = 0.05
+_ALLEGRO_UI_ALIGNED_HANDS = frozenset(
+    ("allegro_v5", "allegro_v5_wonik", "allegro_v5_anyteleop")
+)
 
 
 class _HandCommandRateLimiter:
@@ -57,6 +64,39 @@ class _HandCommandRateLimiter:
         # this is the same latest-target sample-and-hold behavior as the UI.
         self.next_send_time = now + self.period_s
         return True
+
+
+def _is_allegro_ui_aligned_hand(hand_name):
+    return hand_name in _ALLEGRO_UI_ALIGNED_HANDS
+
+
+def _allegro_v5_feedback_hold_target(feedback):
+    """Return the current V5 feedback in the exact live command order.
+
+    This mirrors the alignment UI's pause behavior: one named feedback pose is
+    frozen as the controller target, instead of merely ceasing to replace the
+    preceding live MANUS target.
+    """
+    if not isinstance(feedback, dict) or not feedback.get("is_connected", False):
+        return None
+    try:
+        values = np.asarray(feedback["qpos"], dtype=np.float64).reshape(-1)
+        names = tuple(str(name) for name in feedback["joint_names"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if (
+        values.shape != (len(names),)
+        or len(set(names)) != len(names)
+        or not np.all(np.isfinite(values))
+    ):
+        return None
+    by_name = dict(zip(names, values.tolist()))
+    if any(name not in by_name for name in ALLEGRO_V5_DRIVER_JOINT_NAMES):
+        return None
+    return np.asarray(
+        [by_name[name] for name in ALLEGRO_V5_DRIVER_JOINT_NAMES],
+        dtype=np.float64,
+    )
 
 
 def _normalize_optional_name(name):
@@ -536,6 +576,9 @@ class CaptureSession():
             home_pose = self.arm.get_data()["position"] if self.arm is not None else np.eye(4)
 
         self.retargetor.start(home_pose)
+        hand_name = getattr(self, "hand_name", None)
+        hand_name_left = getattr(self, "hand_name_left", None)
+        hand_name_right = getattr(self, "hand_name_right", None)
         vive_arm_limiters = {}
         if getattr(self, "teleop_name", None) == "vive":
             limiter_start_time = time.monotonic()
@@ -576,11 +619,24 @@ class CaptureSession():
 
         def move_hands_if_due(hand_commands):
             """Send a coherent hand target set at the configured UI-rate cap."""
-            valid_commands = [
-                (hand_controller, action)
-                for hand_controller, action in hand_commands
-                if hand_controller is not None and action is not None
-            ]
+            valid_commands = []
+            for hand_controller, action, hand_name in hand_commands:
+                if hand_controller is None or action is None:
+                    continue
+                if _is_allegro_ui_aligned_hand(hand_name):
+                    # The UI waits for real feedback before it replaces the
+                    # driver's feedback-initialized hold target.  Preserve
+                    # that safety boundary in capture as well.
+                    try:
+                        feedback = hand_controller.get_data()
+                    except Exception:
+                        continue
+                    if _allegro_v5_feedback_hold_target(feedback) is None:
+                        continue
+                    action = retargeter_action_to_live_controller_qpos(
+                        action, hand_name
+                    )
+                valid_commands.append((hand_controller, action))
             if not valid_commands:
                 return
             limiter = getattr(self, "_hand_command_limiter", None)
@@ -590,6 +646,7 @@ class CaptureSession():
                 hand_controller.move(action)
 
         arm_deadman_was_enabled = None
+        right_hand_hold_target = None
 
         def arm_commands_enabled():
             provider = getattr(self, "arm_command_enabled_provider", None)
@@ -650,6 +707,7 @@ class CaptureSession():
                         loop_callback = None
                     
                 if state == 0:
+                    right_hand_hold_target = None
                     hand_action_provider = getattr(self, "hand_action_provider", None)
                     arm_enabled = arm_commands_enabled()
                     if arm_enabled:
@@ -679,7 +737,9 @@ class CaptureSession():
                     else:
                         wrist_pose = None
                         hand_action = None
-                    move_hands_if_due(((self.hand, hand_action),))
+                    move_hands_if_due(
+                        ((self.hand, hand_action, hand_name),)
+                    )
 
                     if arm_enabled and wrist_pose is not None:
                         move_arm_if_safe(self.hand_side, self.arm, wrist_pose)
@@ -687,6 +747,18 @@ class CaptureSession():
 
                 if state == 1:   
                     self.retargetor.stop()
+                    if _is_allegro_ui_aligned_hand(hand_name):
+                        if right_hand_hold_target is None and self.hand is not None:
+                            right_hand_hold_target = _allegro_v5_feedback_hold_target(
+                                self.hand.get_data()
+                            )
+                        move_hands_if_due(
+                            ((
+                                self.hand,
+                                right_hand_hold_target,
+                                hand_name,
+                            ),)
+                        )
                     arm_deadman_was_enabled = None
                 
                 if state == 2:
@@ -754,8 +826,16 @@ class CaptureSession():
                     move_arm_if_safe("Right", self.arm_right, wrist_pose_right)
                     move_hands_if_due(
                         (
-                            (self.hand_left, hand_action_left),
-                            (self.hand_right, hand_action_right),
+                            (
+                                self.hand_left,
+                                hand_action_left,
+                                hand_name_left,
+                            ),
+                            (
+                                self.hand_right,
+                                hand_action_right,
+                                hand_name_right,
+                            ),
                         )
                     )
                 else:

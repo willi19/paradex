@@ -40,6 +40,80 @@ def test_hand_command_rate_limiter_can_be_explicitly_disabled():
     assert limiter.is_due(10.0001)
 
 
+def test_allegro_v5_feedback_hold_target_uses_driver_names_not_feedback_order():
+    names = list(reversed(capture_module.ALLEGRO_V5_DRIVER_JOINT_NAMES))
+    values = np.arange(16, dtype=float)
+    feedback = {
+        "is_connected": True,
+        "qpos": values,
+        "joint_names": names,
+    }
+
+    target = capture_module._allegro_v5_feedback_hold_target(feedback)
+
+    expected_by_name = dict(zip(names, values))
+    np.testing.assert_array_equal(
+        target,
+        [expected_by_name[name] for name in capture_module.ALLEGRO_V5_DRIVER_JOINT_NAMES],
+    )
+
+
+def test_allegro_v5_feedback_hold_target_requires_live_feedback():
+    assert capture_module._allegro_v5_feedback_hold_target({}) is None
+
+
+def test_ui_aligned_allegro_pause_holds_current_feedback_not_prior_manus_target(
+    monkeypatch,
+):
+    monkeypatch.setattr(capture_module.chime, "warning", lambda **_kwargs: None)
+    monkeypatch.setattr(capture_module.chime, "success", lambda **_kwargs: None)
+    events = make_events()
+    feedback_target = np.arange(16, dtype=float) / 10.0
+
+    class PausedDevice:
+        def get_data(self):
+            return {"Left": object(), "Right": {"wrist": np.eye(4)}}
+
+        def get_state(self):
+            events["exit"].set()
+            return 1
+
+    class FeedbackHand:
+        def __init__(self):
+            self.moves = []
+
+        def get_data(self):
+            return {
+                "is_connected": True,
+                "qpos": feedback_target,
+                "joint_names": capture_module.ALLEGRO_V5_DRIVER_JOINT_NAMES,
+            }
+
+        def move(self, action):
+            self.moves.append(action)
+
+    class Retargetor:
+        def start(self, _home_pose):
+            pass
+
+        def stop(self):
+            pass
+
+    session = capture_module.CaptureSession.__new__(capture_module.CaptureSession)
+    session.teleop_device = PausedDevice()
+    session.hand_side = "Right"
+    session.arm = None
+    session.hand = FeedbackHand()
+    session.hand_name = "allegro_v5"
+    session.retargetor = Retargetor()
+    session.teleop_name = "vive"
+    session.save_path = None
+
+    assert session.teleop(session_events=events, state_policy="keyboard_control") == "exit"
+    assert len(session.hand.moves) == 1
+    np.testing.assert_array_equal(session.hand.moves[0], feedback_target)
+
+
 class FakeHand:
     def __init__(self):
         self.moves = []

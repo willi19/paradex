@@ -16,6 +16,7 @@ def merge_image(
     put_text=True,
     grid_cols=None,
     preserve_aspect=False,
+    target_height=None,
 ):
     name_list = sorted(list(image_dict.keys()))
     num_images = len(name_list)
@@ -28,19 +29,25 @@ def merge_image(
     
     new_W = 2048 // grid_cols
     if preserve_aspect:
-        new_H = max(
-            max(
-                1,
-                int(
-                    round(
-                        new_W
-                        * image_dict[name].shape[0]
-                        / image_dict[name].shape[1]
-                    )
-                ),
+        if target_height is None:
+            new_H = max(
+                max(
+                    1,
+                    int(
+                        round(
+                            new_W
+                            * image_dict[name].shape[0]
+                            / image_dict[name].shape[1]
+                        )
+                    ),
+                )
+                for name in name_list
             )
-            for name in name_list
-        )
+        else:
+            available_height = int(target_height) - border_px * (grid_rows - 1)
+            if available_height < grid_rows:
+                raise ValueError("target_height is too small for the image grid")
+            new_H = available_height // grid_rows
         canvas_height = new_H * grid_rows
     else:
         new_H = 1200 // grid_rows #1536

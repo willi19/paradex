@@ -102,8 +102,16 @@ def test_camera_preview_grid_uses_four_columns_without_stretching_images():
         put_text=False,
         grid_cols=4,
         preserve_aspect=True,
+        target_height=1230,
     )
 
-    # Four 512px-wide, 4:3 cells and five rows, with 10px inter-cell borders.
-    assert merged.shape == (1960, 2078, 3)
-    assert np.all(merged[:384, :512] == 0)
+    # Four columns and five rows, retaining the old preview's total height.
+    assert merged.shape == (1230, 2078, 3)
+
+    first_cell = merged[:238, :512]
+    image_mask = np.all(first_cell == 0, axis=2)
+    ys, xs = np.where(image_mask)
+    rendered_height = ys.max() - ys.min() + 1
+    rendered_width = xs.max() - xs.min() + 1
+    assert rendered_height == 238
+    assert np.isclose(rendered_width / rendered_height, 4.0 / 3.0, atol=0.01)

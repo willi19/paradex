@@ -189,6 +189,9 @@ class CapturePcPreviewGui:
                         frame_text,
                         grid_cols=4,
                         preserve_aspect=True,
+                        # Match the previous 5x4 preview's total height:
+                        # 1200px image area + three 10px row gaps.
+                        target_height=1230,
                     )
                     if images
                     else self._status_image()

@@ -1667,4 +1667,19 @@ def allegro_v5(hand_pose_frame, ergonomics=None):
     mapper uses those directly.  Older transform-only MANUS inputs still use
     the fallback inside :func:`_allegro_v5_raw`.
     """
-    return _allegro_v5_raw(hand_pose_frame, ergonomics=ergonomics)
+    # Keep the raw tie-breaker in the same wrist-invariant representation as
+    # the VIVE/MANUS input contract.  The transform fallback contains legacy
+    # one-sided angle branches that are sensitive to round-off introduced by
+    # VIVE frame reparenting; named ergonomics avoid that ambiguity whenever
+    # the glove publishes a complete payload.
+    try:
+        raw_action = _allegro_v5_raw(hand_pose_frame, ergonomics=ergonomics)
+    except ValueError:
+        # Preserve the legacy transform-only contract for MANUS sources that
+        # do not publish a complete ergonomic payload.
+        raw_action = _allegro_v5_raw(hand_pose_frame)
+    return _align_allegro_v5_action(
+        raw_action,
+        _allegro_v5_manus_tip_feature(hand_pose_frame),
+        _allegro_v5_manus_ergonomic_feature(ergonomics),
+    )

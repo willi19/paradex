@@ -1,7 +1,7 @@
 """Capture-PC side of distributed intrinsic calibration.
 
-Continuously reads each local camera from shared memory, detects the charuco
-board, and AUTO-accumulates a frame's corners whenever the board pose is
+Continuously reads each local camera from the capture-PC daemon, detects the
+charuco board, and AUTO-accumulates a frame's corners whenever the board pose is
 sufficiently novel vs. the frames already kept for that camera. There is no
 save button — this mirrors the original design intent:
 
@@ -15,7 +15,9 @@ camera:
     ~/shared_data/intrinsic/<serial>/keypoint/<timestamp>.npy
     shape (N, num_corners, 1, 2), NaN for undetected corners
 
-— exactly the format calculate.py consumes.
+— exactly the format calculate.py consumes.  A same-stem JSON sidecar records
+the full-resolution frame size used for each camera, so calculation never has
+to infer it from the preview.
 
 Coupled to capture.py by data types ('image' downscaled /8, 'charuco_detection'
 /8 float32) and ports (1234 publish, 6890 command). Change both together.
@@ -23,12 +25,13 @@ Coupled to capture.py by data types ('image' downscaled /8, 'charuco_detection'
 
 import time
 import os
+import json
 from threading import Event
 
 import numpy as np
 import cv2
 
-from paradex.io.camera_system.camera_reader import MultiCameraReader
+from paradex.io.camera_system.camera_daemon_reader import CameraDaemonReader
 from paradex.io.capture_pc.data_sender import DataPublisher
 from paradex.io.capture_pc.command_sender import CommandReceiver
 from paradex.image.aruco import (
@@ -71,9 +74,20 @@ dp = DataPublisher(port=1234, name="camera_stream")
 exit_event = Event()
 cr = CommandReceiver(event_dict={"exit": exit_event}, port=6890)
 
-reader = MultiCameraReader()
+# The Aravis/GStreamer daemon exposes full-resolution JPEGs on localhost:5484.
+# Calibration points must come from full-resolution frames; previews are only
+# for the Main-PC UI.
+daemon_reader = CameraDaemonReader("127.0.0.1")
+if not daemon_reader.backend.startswith("aravis"):
+    raise RuntimeError(
+        f"intrinsic calibration requires the Aravis camera daemon; "
+        f"127.0.0.1:5484 reported backend {daemon_reader.backend!r}"
+    )
+reader = daemon_reader
+print(f"intrinsic client reading {reader.backend} daemon frames")
 last_frame_ids = {name: 0 for name in reader.camera_names}
 kept = {name: [] for name in reader.camera_names}  # list of full-board (n_corners, 2)
+image_sizes = {}
 
 
 def try_accumulate(camera_name, cor):
@@ -104,6 +118,13 @@ while not exit_event.is_set():
             continue
 
         cur_image = image.copy()
+        image_size = (int(cur_image.shape[1]), int(cur_image.shape[0]))
+        previous_size = image_sizes.setdefault(camera_name, image_size)
+        if image_size != previous_size:
+            raise RuntimeError(
+                f"{camera_name}: frame size changed from {previous_size} to {image_size}; "
+                "restart capture with one fixed camera mode before calibrating"
+            )
         detection = detect_charuco(cur_image)
         cor = fixed_corner_array(detection, BOARD, n_corners)
 
@@ -159,6 +180,9 @@ for camera_name, frames in kept.items():
     os.makedirs(out_dir, exist_ok=True)
     out_path = os.path.join(out_dir, f"{timestamp}.npy")
     np.save(out_path, arr)
+    width, height = image_sizes[camera_name]
+    with open(os.path.join(out_dir, f"{timestamp}.json"), "w") as f:
+        json.dump({"width": width, "height": height}, f, indent=2)
     print(f"[{camera_name}] saved {len(frames)} frames -> {out_path}  shape={arr.shape}")
 
 dp.close()

@@ -27,13 +27,36 @@ def load_object_points(b_id):
     return _charuco_board_cache[b_id].getChessboardCorners().reshape(-1, 3).astype(np.float32)
 
 
-def calibrate_one(serial, b_id, image_size, min_corners):
+def calibration_image_size(src, requested_size):
+    """Resolve the raw-frame size, preferring capture metadata over defaults."""
+    if requested_size is not None:
+        return requested_size
+
+    metadata_path = os.path.splitext(src)[0] + ".json"
+    if os.path.exists(metadata_path):
+        with open(metadata_path) as f:
+            metadata = json.load(f)
+        width = int(metadata["width"])
+        height = int(metadata["height"])
+        if width <= 0 or height <= 0:
+            raise ValueError(f"invalid image size in {metadata_path}: {width}x{height}")
+        return width, height
+
+    # Keypoints captured before the daemon migration have no sidecar.  Preserve
+    # their historical resolution, but make the assumption visible.
+    print(f"WARN: {metadata_path} missing; assuming legacy 2048x1536. "
+          "Pass --width/--height if the source images used another size.")
+    return 2048, 1536
+
+
+def calibrate_one(serial, b_id, requested_size, min_corners):
     base = os.path.join(intrinsic_dir, serial)
     files = sorted(glob.glob(os.path.join(base, "keypoint", "*.npy")))
     if not files:
         raise FileNotFoundError(f"no keypoint files under {base}/keypoint")
     src = files[-1]
     kpts = np.load(src)  # (N, M, 1, 2) possibly with NaN
+    image_size = calibration_image_size(src, requested_size)
     print(f"[{serial}] loading {os.path.basename(src)}  shape={kpts.shape}")
 
     obj_full = load_object_points(b_id)
@@ -109,8 +132,10 @@ def main():
                         help="camera serials to calibrate (default: every serial "
                              "that has a keypoint/ dir under ~/shared_data/intrinsic)")
     parser.add_argument("--board", default="3", help="charuco board id (default 3)")
-    parser.add_argument("--width", type=int, default=2048)
-    parser.add_argument("--height", type=int, default=1536)
+    parser.add_argument("--width", type=int, default=None,
+                        help="override raw image width (normally read from capture metadata)")
+    parser.add_argument("--height", type=int, default=None,
+                        help="override raw image height (normally read from capture metadata)")
     parser.add_argument("--min-corners", type=int, default=10,
                         help="minimum detected corners to use a frame (default 10)")
     args = parser.parse_args()
@@ -126,7 +151,9 @@ def main():
             return
         print(f"auto-detected serials: {serials}")
 
-    image_size = (args.width, args.height)
+    if (args.width is None) != (args.height is None):
+        parser.error("--width and --height must be supplied together")
+    image_size = None if args.width is None else (args.width, args.height)
     failures = []
     for s in serials:
         try:

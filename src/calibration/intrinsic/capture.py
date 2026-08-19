@@ -9,6 +9,9 @@ only shows the current detection (green) and each camera's kept-frame count
 Press 'q' to finish. The Capture PCs then write their keypoint .npy files;
 run calculate.py afterward to solve K + distortion per camera.
 
+The client reads full-resolution frames from the local Aravis/GStreamer daemon
+(``localhost:5484``); the stream opened here makes those frames available.
+
 No `--args`. Coupled to client.py by data types and ports (1234 publish,
 6890 command) — change both together.
 """

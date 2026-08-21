@@ -13,6 +13,7 @@ from paradex.io.capture_pc.command_sender import CommandSender
 from paradex.image.merge import merge_image, fit_to_screen, get_screen_size
 from paradex.image.overlay import overlay_mask
 from paradex.calibration.utils import extrinsic_dir
+from paradex.utils.path import assert_shared_data_mounted
 from paradex.image.aruco import draw_charuco
 
 BOARD_COLORS = [
@@ -39,6 +40,10 @@ print(f"[extrinsic] screen {SCREEN_W}x{SCREEN_H} -> canvas width {CANVAS_W}")
 # Resizable window so it can still be dragged smaller.
 cv2.namedWindow("Merged Stream", cv2.WINDOW_NORMAL)
 
+# Before anything is captured: a down NFS mount would silently send this whole
+# session to the local disk while the capture PCs write to the real NAS.
+assert_shared_data_mounted("an extrinsic capture session")
+
 filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
 os.makedirs(os.path.join(extrinsic_dir, filename), exist_ok=True)
 
@@ -61,6 +66,7 @@ img_text = {}
 
 save_num = 0
 saved_count = {}  # serial_num -> number of captures this camera actually saved corners for
+save_errors = {}  # serial_num -> last write error reported by its capture PC
 
 last_seen = {}      # item_name -> frame_id already decoded/drawn
 dirty = True        # only re-decode + re-merge when something actually changed
@@ -78,6 +84,13 @@ while True:
             image_bytes = item_data.get('data')
             frame_id = item_data.get('frame_id', 0)
             save_id = item_data.get('save_id', 0)
+
+            # A capture PC that cannot write its files says so here. Its own stdout
+            # goes to /dev/null under run_script, so this is the only path by which
+            # a failed save reaches the operator.
+            err = item_data.get('save_error')
+            if err:
+                save_errors[item_name] = err
 
             if save_id < save_num:
                 waiting_save = True
@@ -193,6 +206,11 @@ while True:
         hud = (f"saved {save_num}" + (f" (cams behind: {behind})" if behind else "") +
                f" | {len(arrivals) / 2.0 / max(1, len(display_dict)):.1f} fps/cam | "
                f"tx {lat:.0f} ms | drops {drops}")
+        if save_errors:
+            # Nothing is being written — the session is worthless until this is fixed,
+            # so it takes over the HUD rather than sitting quietly beside the counter.
+            one = next(iter(save_errors.values()))
+            hud = f"!! SAVE FAILING on {len(save_errors)} cam(s): {one}"
         hud_scale = max(0.5, min(1.1, merged_image.shape[1] / 1800))
         hud_th = max(1, int(round(hud_scale * 2)))
         (hud_w, hud_h), _ = cv2.getTextSize(hud, cv2.FONT_HERSHEY_SIMPLEX, hud_scale, hud_th)

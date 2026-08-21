@@ -26,11 +26,33 @@ import cv2
 import numpy as np
 
 
+# Set by _save_camera_data when a write fails, read by the main loop so the failure
+# reaches the operator's screen instead of dying in a discarded stdout.
+save_error = None
+
+
 def _save_camera_data(save_path, camera_name, corners, ids, image, frame_id):
-    np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), corners)
-    np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), ids)
-    cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), image)
-    print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
+    """Write one camera's calibration input. Creates its own directories.
+
+    The Main PC also mkdirs this path, but it is a *different machine*: when its
+    shared_data mount is down its mkdir lands on its local disk while we write to the
+    NAS, and every np.save here then dies with FileNotFoundError. That happened
+    silently for a whole 25-pose session (run_script discards our stdout, and the
+    save_id we publish had already been incremented), so own the mkdir here and make
+    a failure loud rather than trusting the other machine's filesystem.
+    """
+    global save_error
+    try:
+        os.makedirs(os.path.join(save_path, "markers_2d"), exist_ok=True)
+        os.makedirs(os.path.join(save_path, "images"), exist_ok=True)
+        np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_corner.npy"), corners)
+        np.save(os.path.join(save_path, "markers_2d", f"{camera_name}_id.npy"), ids)
+        if not cv2.imwrite(os.path.join(save_path, "images", f"{camera_name}.png"), image):
+            raise IOError(f"cv2.imwrite returned False for {camera_name}.png")
+        print(f"Saved data for camera {camera_name} at frame {frame_id} to {save_path}")
+    except Exception as e:
+        save_error = f"{camera_name}: {type(e).__name__}: {e}"
+        print(f"[SAVE FAILED] {save_error} (path {save_path})", flush=True)
 
 from paradex.io.camera_system.camera_reader import MultiCameraReader
 from paradex.io.capture_pc.data_sender import DataPublisher
@@ -179,6 +201,9 @@ while not exit_event.is_set():
             'name': res["name"],
             'frame_id': res["frame_id"],
             'save_id': save_id[res["name"]],
+            # None unless a write failed; capture.py turns this into an on-screen
+            # error so a silent save failure can't be mistaken for a good session.
+            'save_error': save_error,
             'shape': res["shape"],
             'downscale': STREAM_DOWNSCALE,
             'data_index': len(binary_data),

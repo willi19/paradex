@@ -56,7 +56,7 @@ def get_hand(
             command_enabled=command_enabled,
         )
 
-    if hand_name in ("allegro_v5", "allegro_v5_anyteleop", "allegro_v5_wonik"):
+    if hand_name == "allegro_v5":
         from .allegro_v5_controller_ros2 import AllegroController
         return AllegroController(
             hand_side=hand_side,

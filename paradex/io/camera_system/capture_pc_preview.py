@@ -38,23 +38,29 @@ class CapturePcPreviewGui:
         self,
         pc_list: Iterable[str],
         port: int = 5484,
-        refresh_interval: float = 0.1,
+        refresh_interval: float = 1.0 / 30.0,
         request_timeout: float = 1.5,
         window_name: str = "Capture PC Preview",
         reader_factory: Callable = CameraDaemonReader,
         host_lookup: Callable[[str], str] = get_pc_ip,
         cv2_module=cv2,
         side_panel_provider: Optional[Callable[[int, int], Optional[np.ndarray]]] = None,
+        side_panel_refresh_interval: float = 1.0 / 30.0,
     ) -> None:
         self.pc_list = list(pc_list)
         self.port = int(port)
         self.refresh_interval = float(refresh_interval)
+        if self.refresh_interval <= 0.0:
+            raise ValueError("refresh_interval must be positive")
         self.request_timeout = float(request_timeout)
         self.window_name = window_name
         self._reader_factory = reader_factory
         self._host_lookup = host_lookup
         self._cv2 = cv2_module
         self._side_panel_provider = side_panel_provider
+        self.side_panel_refresh_interval = float(side_panel_refresh_interval)
+        if self.side_panel_refresh_interval <= 0.0:
+            raise ValueError("side_panel_refresh_interval must be positive")
 
         self._readers = {}
         self._retry_after = {}
@@ -62,6 +68,7 @@ class CapturePcPreviewGui:
         self._last_images = {}
         self._display_lock = threading.Lock()
         self._latest_display = None
+        self._latest_camera_grid = None
         self._preview_closed = False
         self._next_gui_update = 0.0
         self._stop_event = threading.Event()
@@ -222,6 +229,27 @@ class CapturePcPreviewGui:
         separator = np.full((height, 10, 3), 255, dtype=np.uint8)
         return np.concatenate((display, separator, side_panel), axis=1)
 
+    def _publish_camera_grid(self, camera_grid: np.ndarray) -> None:
+        """Cache a camera frame and publish its current side-panel composite."""
+        with self._display_lock:
+            self._latest_camera_grid = camera_grid
+        self._refresh_composite(camera_grid)
+
+    def _refresh_composite(self, camera_grid: Optional[np.ndarray] = None) -> None:
+        """Rebuild the display without waiting for another camera request."""
+        if camera_grid is None:
+            with self._display_lock:
+                camera_grid = self._latest_camera_grid
+        if camera_grid is None:
+            return
+
+        display = self._compose_side_panel(camera_grid)
+        with self._display_lock:
+            # Do not replace a newer camera frame if collection completed while
+            # the side panel was being resized and concatenated.
+            if camera_grid is self._latest_camera_grid:
+                self._latest_display = display
+
     def _run_side_panel(self) -> None:
         """Fetch Viser renders without ever blocking camera collection."""
         while not self._stop_event.is_set():
@@ -237,11 +265,13 @@ class CapturePcPreviewGui:
                 if image is not None:
                     with self._side_lock:
                         self._latest_side_panel = image
-            self._stop_event.wait(self.refresh_interval)
+                    self._refresh_composite()
+            self._stop_event.wait(self.side_panel_refresh_interval)
 
     def _run(self) -> None:
         try:
             while not self._stop_event.is_set():
+                started = time.monotonic()
                 self._connect_readers()
                 images, frame_text = self._collect_frames()
                 display = (
@@ -257,9 +287,8 @@ class CapturePcPreviewGui:
                     if images
                     else self._status_image()
                 )
-                display = self._compose_side_panel(display)
-                with self._display_lock:
-                    self._latest_display = display
-                self._stop_event.wait(self.refresh_interval)
+                self._publish_camera_grid(display)
+                remaining = self.refresh_interval - (time.monotonic() - started)
+                self._stop_event.wait(max(0.0, remaining))
         except Exception as exc:
             print(f"[Camera preview] Disabled after GUI error: {exc}")

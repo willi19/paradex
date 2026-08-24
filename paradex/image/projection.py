@@ -122,6 +122,9 @@ def mesh_to_obj_dict(mesh, device='cuda', texture_type='vertex_color'):
 class BatchRenderer:
     def __init__(self, intrinsics, extrinsics, near=0.01, far=2):
 
+        self.device = device = 'cuda:0' if torch.cuda.is_available() else 'cpu'
+        if torch.cuda.is_available():
+            torch.cuda.set_device(0)
         # self.glctx = dr.RasterizeGLContext() if opengl else dr.RasterizeCudaContext()
         self.glctx = dr.RasterizeCudaContext()
 
@@ -135,8 +138,6 @@ class BatchRenderer:
         height = intrinsics[serial_list[0]]['height']
 
         self.width, self.height = width, height
-        self.device = device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
         cam_extrs = []
         for cam_extrinsic in cam_extrinsics:
             org_extr = np.eye(4)
@@ -292,6 +293,30 @@ class BatchRenderer:
         depth_dict = {serial: depth[i][:,:,0] for i, serial in enumerate(self.serial_list)}
 
         return color_dict, mask_dict, depth_dict
+
+    def render_mask(self, mesh):
+        """Render only boolean silhouettes, avoiding unused RGB/depth transfers."""
+        obj_dict = mesh_to_obj_dict(mesh, device=self.device)
+        pos = obj_dict['verts'][0]
+        pos_idx = obj_dict['faces']
+        pos_clip = transform_pos(
+            self.intr_opengl @ self.flip_z @ self.cam_extrs_t,
+            pos,
+        )
+        rast_out, _ = dr.rasterize(
+            self.glctx,
+            pos_clip,
+            pos_idx,
+            resolution=(self.height, self.width),
+        )
+        ones = torch.ones_like(pos[:, :1], device=pos.device)[None]
+        mask_soft, _ = dr.interpolate(ones, rast_out, pos_idx)
+        mask_soft = dr.antialias(mask_soft, rast_out, pos_clip, pos_idx)
+        masks = torch.flip(mask_soft, dims=[1]).detach().cpu().numpy()
+        return {
+            serial: masks[index, :, :, 0].astype(np.bool_)
+            for index, serial in enumerate(self.serial_list)
+        }
 
     def render_multi(self, mesh_list):
         """

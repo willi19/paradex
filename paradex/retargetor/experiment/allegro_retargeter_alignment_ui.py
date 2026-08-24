@@ -47,8 +47,6 @@ from paradex.retargetor.hand_regargetor import (
     allegro_v5,
     clip_allegro_v5_safe_action,
 )
-from paradex.retargetor.allegro_v5_wonik import AllegroV5WonikManusRetargeter
-from paradex.retargetor.allegro_v5_anyteleop import AllegroV5AnyTeleopRetargeter
 from paradex.retargetor.hand_alignment_common import (
     HandStateContractError,
     read_json,
@@ -66,8 +64,8 @@ SCHEMA_VERSION = 1
 DEFAULT_URDF = Path(rsc_path) / "robot" / "allegro.urdf"
 COMMAND_RATE_HZ = 30.0
 DEFAULT_MANUS_TOPICS = ("/manus_glove_0", "/manus_glove_1")
-_V5_HAND_NAMES = frozenset(("allegro_v5", "allegro_v5_wonik"))
-RETARGETER_MODES = ("direct", "anyteleop")
+_V5_HAND_NAMES = frozenset(("allegro_v5",))
+RETARGETER_MODES = ("direct",)
 _MANUS_ERGONOMIC_FIELDS = (
     "ThumbMCPStretch", "ThumbPIPStretch", "ThumbDIPStretch", "ThumbMCPSpread",
     "IndexMCPStretch", "IndexPIPStretch", "IndexDIPStretch", "IndexSpread",
@@ -81,12 +79,6 @@ def _make_retargeter(hand_name: str, mode: str):
     """Build a UI-only retargeter without changing the capture pipeline."""
     if mode not in RETARGETER_MODES:
         raise ValueError(f"Unsupported Allegro alignment retargeter: {mode}")
-    if mode == "anyteleop":
-        if hand_name not in _V5_HAND_NAMES:
-            raise ValueError("AnyTeleop geometric retargeting requires --hand allegro_v5")
-        return AllegroV5AnyTeleopRetargeter()
-    if hand_name == "allegro_v5_wonik":
-        return AllegroV5WonikManusRetargeter()
     return allegro_v5 if hand_name == "allegro_v5" else allegro
 
 
@@ -94,8 +86,7 @@ def _live_retargeter_kwargs(hand_name: str, mode: str, ergonomics: dict) -> dict
     """Pass MANUS ergonomic angles through the direct v5 path only.
 
     This is deliberately the same input contract as ``Retargetor.get_action``
-    in the live capture path.  The AnyTeleop implementation owns its separate
-    geometric input model and must not receive these keyword arguments.
+    in the live capture path.
     """
     if mode == "direct" and hand_name in _V5_HAND_NAMES:
         return {"ergonomics": ergonomics}
@@ -103,16 +94,10 @@ def _live_retargeter_kwargs(hand_name: str, mode: str, ergonomics: dict) -> dict
 
 
 def _retargeter_function_name(hand_name: str, mode: str) -> str:
-    if mode == "anyteleop":
-        return "paradex.retargetor.allegro_v5_anyteleop.AllegroV5AnyTeleopRetargeter"
     return (
         "paradex.retargetor.hand_regargetor.allegro_v5"
         if hand_name == "allegro_v5"
-        else (
-            "paradex.retargetor.allegro_v5_wonik.AllegroV5WonikManusRetargeter"
-            if hand_name == "allegro_v5_wonik"
-            else "paradex.retargetor.hand_regargetor.allegro"
-        )
+        else "paradex.retargetor.hand_regargetor.allegro"
     )
 
 
@@ -1198,24 +1183,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--urdf", type=Path, default=DEFAULT_URDF, help="Allegro hand URDF")
     parser.add_argument(
         "--hand",
-        choices=("allegro_v5", "allegro_v5_wonik", "allegro"),
+        choices=("allegro_v5", "allegro"),
         default="allegro_v5",
         help=(
             "robot driver/retargeter, matching capture_robot.py --hand; "
             "default allegro_v5 uses direct-angle retargeting plus conservative "
-            "ergonomic anchor correction; "
-            "allegro_v5_wonik uses Wonik's Manus ergonomics rule-based "
-            "mapping; both use the same /right/allegroHand_0/joint_states driver"
+            "ergonomic anchor correction."
         ),
     )
     parser.add_argument(
         "--retargeter",
         choices=RETARGETER_MODES,
         default="direct",
-        help=(
-            "UI experiment only: direct keeps the existing Allegro mapping; "
-            "anyteleop enables the geometric fingertip optimizer for Allegro V5."
-        ),
+        help="UI retargeter mode; direct keeps the existing Allegro mapping.",
     )
     parser.add_argument(
         "--use-vive",

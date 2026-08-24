@@ -40,6 +40,47 @@ def test_hand_command_rate_limiter_can_be_explicitly_disabled():
     assert limiter.is_due(10.0001)
 
 
+def test_allegro_teleop_diagnostic_keeps_manus_command_and_feedback_aligned(tmp_path):
+    path = tmp_path / "allegro_diagnostic.npz"
+    logger = capture_module._AllegroTeleopDiagnosticLogger(path)
+    frame = {
+        "wrist": np.eye(4),
+        "index_distal": np.diag([1.0, 1.0, 1.0, 1.0]),
+    }
+    frame["index_distal"][:3, 3] = [0.01, 0.02, 0.03]
+    action = np.arange(16, dtype=float) / 10.0
+    logger.record(
+        teleop_data={
+            "Right": frame,
+            "ergonomics": {"Right": {"IndexMCPStretch": 42.0}},
+            "time": 123.0,
+        },
+        state=0,
+        hand_name="allegro_v5",
+        retargeter_action=action,
+        controller_target=action + 1.0,
+        feedback={
+            "qpos": action + 2.0,
+            "action": action + 3.0,
+            "joint_names": [f"joint_{index}_0" for index in range(16)],
+            "is_connected": True,
+            "tactile": [7, 9],
+        },
+    )
+    logger.flush()
+
+    with np.load(path, allow_pickle=False) as saved:
+        assert saved["manus_transforms"].shape == (1, 2, 4, 4)
+        assert saved["manus_joint_names"].tolist() == ["index_distal", "wrist"]
+        np.testing.assert_array_equal(saved["retargeter_action"][0], action)
+        np.testing.assert_array_equal(saved["controller_target"][0], action + 1.0)
+        np.testing.assert_array_equal(saved["feedback_qpos"][0], action + 2.0)
+        assert saved["feedback_joint_names"].tolist() == [
+            f"joint_{index}_0" for index in range(16)
+        ]
+        np.testing.assert_array_equal(saved["tactile"][0], [7.0, 9.0])
+
+
 def test_allegro_v5_feedback_hold_target_uses_driver_names_not_feedback_order():
     names = list(reversed(capture_module.ALLEGRO_V5_DRIVER_JOINT_NAMES))
     values = np.arange(16, dtype=float)
@@ -270,7 +311,7 @@ def test_capture_session_routes_manus_only_hand_teleop_without_an_arm(monkeypatc
     session = capture_module.CaptureSession(
         camera=False,
         arm=None,
-        hand="allegro_v5_anyteleop",
+        hand="allegro_v5",
         teleop="vive",
         hand_side="right",
         use_vive=False,

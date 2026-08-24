@@ -55,7 +55,7 @@ DEFAULT_SESSION = Path(shared_dir) / "retargeter_alignment" / "allegro" / "alleg
 DEFAULT_SOURCE_POSE_A = DEFAULT_SESSION / "000000"
 DEFAULT_SOURCE_POSE_B = DEFAULT_SESSION / "000001"
 # Keep pedal endpoints in the regular alignment session so they can be edited
-# and browsed with allegro_retargeter_alignment_ui.py just like any capture.
+# and browsed with the Allegro alignment experiment just like any capture.
 DEFAULT_POSE_A = DEFAULT_SESSION / "000008"
 DEFAULT_POSE_B = DEFAULT_SESSION / "000009"
 
@@ -258,6 +258,7 @@ class AllegroPedalPoseStudio:
         pedal_rate: float,
         tactile_contact_stop: bool = True,
         tactile_threshold: float = 200.0,
+        ring_tactile_threshold: float = 150.0,
         external_hand: bool = False,
     ):
         self.pose_a_sample = pose_a_sample.resolve()
@@ -270,6 +271,10 @@ class AllegroPedalPoseStudio:
             raise ValueError("--pedal-rate must be a positive finite value")
         if tactile_threshold < 0.0 or not np.isfinite(tactile_threshold):
             raise ValueError("--tactile-threshold must be a non-negative finite value")
+        if ring_tactile_threshold < 0.0 or not np.isfinite(ring_tactile_threshold):
+            raise ValueError(
+                "--ring-tactile-threshold must be a non-negative finite value"
+            )
         if simulate and observe_only:
             raise ValueError("--simulate and --observe-only cannot be combined")
 
@@ -280,6 +285,7 @@ class AllegroPedalPoseStudio:
         self.pedal_rate = float(pedal_rate)
         self.tactile_contact_stop = bool(tactile_contact_stop)
         self.tactile_threshold = float(tactile_threshold)
+        self.ring_tactile_threshold = float(ring_tactile_threshold)
         self.parameter = 0.0
         # A tactile latch freezes the first-contact target.  Reopening only
         # releases it after the global parameter returns to that contact point.
@@ -366,6 +372,12 @@ class AllegroPedalPoseStudio:
                 initial_value=self.tactile_threshold,
                 disabled=not self.tactile_contact_stop,
             )
+            self.ring_tactile_threshold_slider = gui.add_slider(
+                "Ring tactile stop threshold", min=0.0,
+                max=max(10000.0, self.ring_tactile_threshold), step=1.0,
+                initial_value=self.ring_tactile_threshold,
+                disabled=not self.tactile_contact_stop,
+            )
             disable_commands = self.observe_only or (self.simulate and not self.external_hand)
             self.enable_button = gui.add_button("Enable pedal interpolation", disabled=disable_commands)
             self.pause_button = gui.add_button("Pause hand (hold feedback)", disabled=disable_commands)
@@ -404,6 +416,12 @@ class AllegroPedalPoseStudio:
         @self.tactile_threshold_slider.on_update
         def _(_event):
             self.tactile_threshold = float(self.tactile_threshold_slider.value)
+
+        @self.ring_tactile_threshold_slider.on_update
+        def _(_event):
+            self.ring_tactile_threshold = float(
+                self.ring_tactile_threshold_slider.value
+            )
 
         @self.endpoint_selector.on_update
         def _(_event):
@@ -572,7 +590,12 @@ class AllegroPedalPoseStudio:
             return feedback_action.copy()
         arming = []
         for finger, level in levels.items():
-            if level >= self.tactile_threshold:
+            threshold = (
+                self.ring_tactile_threshold
+                if finger == "ring"
+                else self.tactile_threshold
+            )
+            if level >= threshold:
                 self.contact_above_threshold_count[finger] += 1
             else:
                 self.contact_above_threshold_count[finger] = 0
@@ -696,6 +719,10 @@ def parse_args() -> argparse.Namespace:
         help="per-finger raw tactile maximum at which a closing finger latches (default: 200)",
     )
     parser.add_argument(
+        "--ring-tactile-threshold", type=float, default=150.0,
+        help="ring-finger raw tactile maximum at which it latches (default: 150)",
+    )
+    parser.add_argument(
         "--no-tactile-contact-stop", action="store_true",
         help="disable tactile finger holds and interpolate all fingers normally",
     )
@@ -731,6 +758,7 @@ def main() -> None:
         pedal_rate=args.pedal_rate,
         tactile_contact_stop=not args.no_tactile_contact_stop,
         tactile_threshold=args.tactile_threshold,
+        ring_tactile_threshold=args.ring_tactile_threshold,
         external_hand=False,
     )
     xarm_teleop = None

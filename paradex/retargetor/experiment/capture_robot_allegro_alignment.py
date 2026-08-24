@@ -3,7 +3,8 @@
 
 This is an isolated experiment entry point.  It keeps the VIVE/xArm/camera
 and recording flow of ``capture_robot.py``, but explicitly constructs the
-right-hand retargeter through ``allegro_retargeter_alignment_ui.py``.
+right-hand retargeter through
+``paradex.retargetor.experiment.allegro_retargeter_alignment_ui``.
 """
 
 from __future__ import annotations
@@ -22,7 +23,8 @@ from paradex.utils.file_io import find_latest_index
 from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.utils.path import shared_dir
 from paradex.utils.system import get_pc_list
-from src.dataset_acquisition.hri.allegro_retargeter_alignment_ui import (
+from paradex.retargetor.experiment.allegro_retargeter_alignment_ui import (
+    DEFAULT_URDF,
     RETARGETER_MODES,
     _live_retargeter_kwargs,
     _make_retargeter,
@@ -111,11 +113,23 @@ def parse_args() -> argparse.Namespace:
         const="preview",
     )
     parser.add_argument("--camera-preview-port", type=int, default=5484)
-    parser.add_argument("--camera-preview-refresh-interval", type=float, default=0.2)
+    parser.add_argument("--camera-preview-refresh-interval", type=float, default=1.0 / 30.0)
     parser.add_argument("--camera-preview-request-timeout", type=float, default=1.5)
     parser.add_argument("--no-timestamp", dest="timestamp", action="store_false")
     parser.set_defaults(timestamp=True)
     parser.add_argument("--tactile", action="store_true")
+    parser.add_argument(
+        "--visualize-allegro-feedback",
+        "--visualize-tactile-realtime",
+        dest="visualize_allegro_feedback",
+        action="store_true",
+        help=(
+            "Show the live right-Allegro URDF mesh from ROS2 feedback; tactile "
+            "arrows are included when --tactile is enabled."
+        ),
+    )
+    parser.add_argument("--allegro-visualization-rate-hz", type=float, default=100.0)
+    parser.add_argument("--allegro-tactile-display-max", type=float, default=1000.0)
     parser.add_argument(
         "--xarm-servo-api",
         choices=("cartesian_aa", "angle_j"),
@@ -130,6 +144,8 @@ def parse_args() -> argparse.Namespace:
         "--camera-preview-port": args.camera_preview_port,
         "--camera-preview-refresh-interval": args.camera_preview_refresh_interval,
         "--camera-preview-request-timeout": args.camera_preview_request_timeout,
+        "--allegro-visualization-rate-hz": args.allegro_visualization_rate_hz,
+        "--allegro-tactile-display-max": args.allegro_tactile_display_max,
     }
     for option, value in positive_values.items():
         if value <= 0:
@@ -177,6 +193,19 @@ def main() -> None:
         mode=args.retargeter,
     )
 
+    allegro_visualizer = None
+    if args.visualize_allegro_feedback:
+        from paradex.visualization.allegro_realtime import AllegroRealtimeViser
+
+        allegro_visualizer = AllegroRealtimeViser(
+            session.hand,
+            update_rate_hz=args.allegro_visualization_rate_hz,
+            tactile_display_max=args.allegro_tactile_display_max,
+            urdf_path=str(DEFAULT_URDF),
+            render_feedback_pose=True,
+        )
+        allegro_visualizer.start()
+
     preview = None
     if preview_enabled:
         from paradex.io.camera_system.capture_pc_preview import CapturePcPreviewGui
@@ -186,6 +215,7 @@ def main() -> None:
             port=args.camera_preview_port,
             refresh_interval=args.camera_preview_refresh_interval,
             request_timeout=args.camera_preview_request_timeout,
+            side_panel_provider=getattr(allegro_visualizer, "render_bgr", None),
         )
         preview.start()
 
@@ -238,6 +268,8 @@ def main() -> None:
         print("Exiting Allegro alignment-retargeter capture.")
         if preview is not None:
             preview.close()
+        if allegro_visualizer is not None:
+            allegro_visualizer.close()
         if session.save_path is not None:
             session.stop()
         session.end()

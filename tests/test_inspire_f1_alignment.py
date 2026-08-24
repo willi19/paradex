@@ -36,6 +36,7 @@ from paradex.retargetor.hand_regargetor import (
     _cluster_balanced_distance_gated_target,
     _distance_gated_weights,
     _allegro_v5_manus_ergonomic_feature,
+    _allegro_v5_raw,
     _allegro_v5_raw_from_manus_ergonomics,
     _load_allegro_v5_direct_anchor_data,
     _load_wuji_direct_anchor_data,
@@ -45,21 +46,21 @@ from paradex.retargetor.hand_regargetor import (
     clip_allegro_v5_safe_action,
 )
 from paradex.retargetor.unimanual import Retargetor
-from src.dataset_acquisition.hri.allegro_retargeter_alignment_ui import (
+from paradex.retargetor.experiment.allegro_retargeter_alignment_ui import (
     AllegroRetargeterAlignmentStudio,
     _alignment_samples,
     _delete_alignment_sample,
     _live_retargeter_kwargs,
     _retargeter_action_to_preview_qpos,
 )
-from src.dataset_acquisition.hri.wuji_retargeter_alignment_ui import (
+from paradex.retargetor.experiment.wuji_retargeter_alignment_ui import (
     _as_qpos as _as_wuji_qpos,
     _alignment_samples as _wuji_alignment_samples,
     _delete_alignment_sample as _delete_wuji_alignment_sample,
     _resolve_target_source_sample,
     _wuji_joint_names,
 )
-from src.dataset_acquisition.hri.allegro_pedal_pose_ui import (
+from paradex.retargetor.experiment.allegro_pedal_pose_ui import (
     AllegroPedalPoseStudio,
     allegro_tactile_finger_levels,
     ensure_editable_pose_copy,
@@ -481,8 +482,10 @@ def test_allegro_v5_raw_uses_full_manus_joint_angles_for_vive():
         _allegro_v5_raw_from_manus_ergonomics(dict(reversed(ergonomics.items()))),
         expected,
     )
-    # A VIVE/MANUS packet can now drive the raw path without a 4x4 frame.
-    np.testing.assert_allclose(allegro_v5({}, ergonomics=ergonomics), expected)
+    # A VIVE/MANUS packet can drive the raw tie-breaker without a 4x4 frame.
+    np.testing.assert_allclose(
+        _allegro_v5_raw({}, ergonomics=ergonomics), expected
+    )
 
     low_stretch = dict(ergonomics, ThumbMCPStretch=0.0)
     high_stretch = dict(ergonomics, ThumbMCPStretch=53.6 - (-13.0))
@@ -495,6 +498,67 @@ def test_allegro_v5_raw_uses_full_manus_joint_angles_for_vive():
     saturated = dict(ergonomics, ThumbPIPStretch=90.0, ThumbDIPStretch=90.0)
     saturated_action = _allegro_v5_raw_from_manus_ergonomics(saturated)
     np.testing.assert_allclose(saturated_action[14:16], [1.9, 1.8])
+
+
+def test_allegro_v5_uses_ergonomics_for_vive_reparenting_invariant_tie_breaker():
+    """A global wrist reparent must not flip the aligned hand target.
+
+    The legacy transform fallback turns a tiny sign change of ``rot_mat[2, 1]``
+    into either a normal joint angle or zero.  Use two frames with unchanged
+    fingertip positions and ergonomics, but opposite signs for that element,
+    to ensure VIVE paths use the stable named-angle raw feature instead.
+    """
+    ergonomics = {
+        "ThumbMCPStretch": 42.0,
+        "ThumbMCPSpread": 31.0,
+        "ThumbPIPStretch": 30.0,
+        "ThumbDIPStretch": 60.0,
+        "IndexSpread": -6.0,
+        "IndexMCPStretch": 20.0,
+        "IndexPIPStretch": 30.0,
+        "IndexDIPStretch": 40.0,
+        "MiddleSpread": -4.0,
+        "MiddleMCPStretch": 25.0,
+        "MiddlePIPStretch": 35.0,
+        "MiddleDIPStretch": 45.0,
+        "RingSpread": -2.0,
+        "RingMCPStretch": 30.0,
+        "RingPIPStretch": 40.0,
+        "RingDIPStretch": 50.0,
+    }
+
+    def make_frame(index_proximal_x_rotation):
+        frame = {}
+        for name in (
+            "wrist",
+            "thumb_metacarpal", "thumb_proximal", "thumb_distal", "thumb_tip",
+            "index_metacarpal", "index_proximal", "index_intermediate", "index_distal", "index_tip",
+            "middle_metacarpal", "middle_proximal", "middle_intermediate", "middle_distal", "middle_tip",
+            "ring_metacarpal", "ring_proximal", "ring_intermediate", "ring_distal", "ring_tip",
+            "pinky_metacarpal", "pinky_proximal", "pinky_intermediate", "pinky_distal", "pinky_tip",
+        ):
+            frame[name] = np.eye(4)
+        for finger, x_position in (("index", -0.03), ("middle", 0.0), ("ring", 0.03)):
+            frame[f"{finger}_metacarpal"][:3, 3] = (x_position, 0.0, 0.02)
+            frame[f"{finger}_distal"][:3, 3] = (x_position, 0.0, 0.12)
+            frame[f"{finger}_tip"][:3, 3] = (x_position, 0.0, 0.14)
+        frame["thumb_tip"][:3, 3] = (-0.05, -0.02, 0.07)
+        angle = index_proximal_x_rotation
+        frame["index_proximal"][:3, :3] = np.array(
+            [[1.0, 0.0, 0.0], [0.0, np.cos(angle), -np.sin(angle)], [0.0, np.sin(angle), np.cos(angle)]]
+        )
+        return frame
+
+    positive_branch = make_frame(0.6)
+    negative_branch = make_frame(-0.6)
+    assert abs(_allegro_v5_raw(positive_branch)[1] - _allegro_v5_raw(negative_branch)[1]) > 0.8
+    np.testing.assert_allclose(
+        allegro_v5(positive_branch, ergonomics=ergonomics),
+        allegro_v5(negative_branch, ergonomics=ergonomics),
+        atol=1e-12,
+    )
+    # Missing MANUS angles retain the transform-only compatibility path.
+    assert allegro_v5(positive_branch, ergonomics={}).shape == (16,)
 
 
 def test_allegro_v5_raw_rejects_partial_manus_ergonomics():
@@ -610,10 +674,6 @@ def test_alignment_ui_matches_capture_v5_ergonomics_input_contract():
     assert _live_retargeter_kwargs("allegro_v5", "direct", ergonomics) == {
         "ergonomics": ergonomics
     }
-    assert _live_retargeter_kwargs("allegro_v5_wonik", "direct", ergonomics) == {
-        "ergonomics": ergonomics
-    }
-    assert _live_retargeter_kwargs("allegro_v5", "anyteleop", ergonomics) == {}
     assert _live_retargeter_kwargs("allegro", "direct", ergonomics) == {}
 
 

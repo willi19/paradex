@@ -358,9 +358,12 @@ class AravisGStreamerCamera:
         def count_frame(_pad, info):
             buffer = info.get_buffer()
             jpeg = None
+            frame_id = None
             if buffer is not None:
                 jpeg = bytes(buffer.extract_dup(0, buffer.get_size()))
-            self._update_encoded_frame(jpeg)
+                if buffer.offset != Gst.BUFFER_OFFSET_NONE:
+                    frame_id = int(buffer.offset)
+            self._update_encoded_frame(jpeg, frame_id=frame_id)
             return Gst.PadProbeReturn.OK
 
         encoded_pad.add_probe(Gst.PadProbeType.BUFFER, count_frame)
@@ -477,11 +480,14 @@ class AravisGStreamerCamera:
         with self._frame_count_lock:
             return self._latest_frame
 
-    def _update_encoded_frame(self, jpeg: Optional[bytes]) -> None:
+    def _update_encoded_frame(self, jpeg: Optional[bytes], frame_id: Optional[int] = None) -> None:
         with self._frame_count_lock:
             self._frame_count += 1
             if jpeg is not None:
-                self._latest_frame = (self._frame_count, jpeg)
+                self._latest_frame = (
+                    self._frame_count if frame_id is None else int(frame_id),
+                    jpeg,
+                )
 
     def _create_aravis_stream(self) -> None:
         assert self._aravis is not None
@@ -554,6 +560,10 @@ class AravisGStreamerCamera:
                     data = bytes(arv_buffer.get_data())
                     gst_buffer = self._gst.Buffer.new_allocate(None, len(data), None)
                     gst_buffer.fill(0, data)
+                    # Preserve the GigE Vision frame id through the encode path.
+                    # Cross-PC inference synchronization must compare the camera
+                    # trigger sequence, not independent local encode counters.
+                    gst_buffer.offset = int(arv_buffer.get_frame_id())
                     # Match Aravis' official viewer: appsrc timestamps buffers
                     # against the running GStreamer clock. Camera timestamps
                     # are not assumed to share an epoch across devices.

@@ -30,6 +30,18 @@ def cart2homo(cart):
     return pos
 
 
+def homo2cart(homo):
+    pose = np.asarray(homo, dtype=np.float64)
+    if pose.shape != (4, 4) or not np.all(np.isfinite(pose)):
+        raise ValueError(f"Cartesian pose must be a finite 4x4 transform, got {pose.shape}")
+    return np.concatenate(
+        (
+            pose[:3, 3] * 1000.0,
+            Rotation.from_matrix(pose[:3, :3]).as_euler("xyz"),
+        )
+    )
+
+
 def aa2homo(aa):
     pos = np.eye(4)
     pos[:3, 3] = np.asarray(aa[:3], dtype=np.float64) / 1000.0
@@ -77,6 +89,7 @@ class XArmControllerROS(Node):
         servo_api="cartesian_aa",
         namespace=None,
         track_action_qpos=False,
+        servo_ready_settle_seconds=0.25,
     ):
         del ip  # kept for compatibility with existing network_info schema
 
@@ -99,6 +112,9 @@ class XArmControllerROS(Node):
         # servo command to record action_qpos. Off by default to keep the
         # control loop tight (one fewer ROS service call per iteration).
         self.track_action_qpos = bool(track_action_qpos)
+        self.servo_ready_settle_seconds = float(servo_ready_settle_seconds)
+        if self.servo_ready_settle_seconds < 0:
+            raise ValueError("servo_ready_settle_seconds must be non-negative")
         self.servo_api = str(servo_api).strip().lower()
         if self.servo_api not in ("cartesian_aa", "angle_j"):
             self.get_logger().warning(
@@ -125,10 +141,14 @@ class XArmControllerROS(Node):
         self.latest_torque = None
         self.latest_action_qpos = None
         self.latest_joint_time = None
+        self.latest_joint_monotonic = None
         self.last_pose_homo = np.eye(4, dtype=np.float64)
         self.latest_pose_time = None
 
         self.action = self.last_pose_homo.copy()
+        # Do not command the startup pose while the driver is still applying
+        # set_mode/set_state.  The first explicit move() starts servo output.
+        self._has_motion_command = False
         self.data = None
         self.save_path = None
 
@@ -136,6 +156,7 @@ class XArmControllerROS(Node):
         self.cli_set_state = self.create_client(SetInt16, f"{base}/set_state")
         self.cli_get_position = self.create_client(GetFloat32List, f"{base}/get_position")
         self.cli_get_servo_angle = self.create_client(GetFloat32List, f"{base}/get_servo_angle")
+        self.cli_set_position = self.create_client(MoveCartesian, f"{base}/set_position")
         self.cli_set_servo_cart_aa = self.create_client(MoveCartesian, f"{base}/set_servo_cartesian_aa")
         self.cli_set_servo_angle_j = None
         if MoveJoint is not None:
@@ -166,6 +187,7 @@ class XArmControllerROS(Node):
             self.latest_qvel = np.asarray(msg.velocity[:6], dtype=np.float64)
             self.latest_torque = np.asarray(msg.effort[:6], dtype=np.float64)
             self.latest_joint_time = msg.header.stamp.sec + msg.header.stamp.nanosec * 1e-9
+            self.latest_joint_monotonic = time.monotonic()
 
     def _robot_state_cb(self, msg):
         pose = np.asarray(msg.pose[:6], dtype=np.float64)
@@ -180,6 +202,7 @@ class XArmControllerROS(Node):
             (self.cli_set_state, "set_state"),
             (self.cli_get_position, "get_position"),
             (self.cli_get_servo_angle, "get_servo_angle"),
+            (self.cli_set_position, "set_position"),
             (self.cli_set_servo_cart_aa, "set_servo_cartesian_aa"),
         ]
         if self.cli_set_servo_angle_j is not None:
@@ -221,6 +244,9 @@ class XArmControllerROS(Node):
             self.last_pose_homo = cart2homo(np.asarray(res_pos.datas[:6], dtype=np.float64))
             self.action = self.last_pose_homo.copy()
             self.latest_action_qpos = action_qpos
+            self._has_motion_command = False
+        if self.servo_ready_settle_seconds:
+            time.sleep(self.servo_ready_settle_seconds)
 
     def _send_servo_aa(self, aa):
         req = MoveCartesian.Request()
@@ -257,6 +283,11 @@ class XArmControllerROS(Node):
 
             with self.lock:
                 action = self.action.copy()
+                has_motion_command = self._has_motion_command
+
+            if not has_motion_command:
+                time.sleep(1.0 / self.fps)
+                continue
 
             cmd_name = "set_servo_cartesian_aa"
             use_joint_servo = False
@@ -408,6 +439,59 @@ class XArmControllerROS(Node):
         assert action.shape == (4, 4) or action.shape == (6,)
         with self.lock:
             self.action = action.copy()
+            self._has_motion_command = True
+
+    def move_cartesian_timed(self, action, *, seconds, speed=0.0, acc=0.0):
+        """Send one blocking linear Cartesian waypoint with an explicit duration."""
+
+        action = np.asarray(action, dtype=np.float64)
+        seconds = float(seconds)
+        if action.shape != (4, 4) or not np.all(np.isfinite(action)):
+            raise ValueError("timed Cartesian action must be a finite 4x4 transform")
+        if seconds <= 0.0 or not np.isfinite(seconds):
+            raise ValueError("timed Cartesian duration must be positive and finite")
+        with self.lock:
+            self._has_motion_command = False
+
+        req_mode = SetInt16.Request()
+        req_mode.data = 0
+        res_mode = self._call_sync(self.cli_set_mode, req_mode)
+        if res_mode is None or res_mode.ret != 0:
+            raise RuntimeError(
+                f"set_mode(0) failed: {None if res_mode is None else res_mode.ret}"
+            )
+        req_state = SetInt16.Request()
+        req_state.data = 0
+        res_state = self._call_sync(self.cli_set_state, req_state)
+        if res_state is None or res_state.ret != 0:
+            raise RuntimeError(
+                f"set_state(0) failed: {None if res_state is None else res_state.ret}"
+            )
+
+        req = MoveCartesian.Request()
+        req.pose = homo2cart(action).astype(np.float32).tolist()
+        req.speed = float(speed)
+        req.acc = float(acc)
+        req.mvtime = seconds
+        req.wait = True
+        req.timeout = seconds + 5.0
+        req.radius = -1.0
+        req.is_tool_coord = False
+        req.relative = False
+        req.motion_type = 0
+        response = self._call_sync(
+            self.cli_set_position,
+            req,
+            timeout_sec=seconds + 7.0,
+        )
+        if response is None:
+            raise RuntimeError("set_position timed out")
+        if response.ret != 0:
+            raise RuntimeError(
+                f"set_position failed: ret={response.ret}, msg={response.message}"
+            )
+        with self.lock:
+            self.action = action.copy()
 
     def get_data(self):
         with self.lock:
@@ -424,6 +508,7 @@ class XArmControllerROS(Node):
             "qpos": qpos,
             "position": pos,
             "time": current_time,
+            "state_monotonic_time": self.latest_joint_monotonic,
         }
 
     def is_error(self):

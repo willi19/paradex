@@ -7,6 +7,8 @@ import numpy as np
 import pytest
 
 from paradex.io.teleop.vive.receiver import (
+    _VIVE_TRACKER_TO_WRIST_ROTATION,
+    _VIVE_TRANSLATION_AXIS_TRANSFORM,
     _canonical_joint_name,
     apply_vive_tracker_mount_rotation,
     manus_ergonomics_to_dict,
@@ -132,10 +134,13 @@ def test_vive_mount_rotation_preserves_existing_right_hand_correction():
     initial[:3, 3] = [0.4, -0.2, 1.1]
     corrected_initial = apply_vive_tracker_mount_rotation(initial)
 
-    np.testing.assert_allclose(corrected_initial[:3, 3], initial[:3, 3])
+    np.testing.assert_allclose(
+        corrected_initial[:3, 3],
+        _VIVE_TRANSLATION_AXIS_TRANSFORM @ initial[:3, 3],
+    )
     np.testing.assert_allclose(
         corrected_initial[:3, :3],
-        np.diag([-1.0, -1.0, -1.0]),
+        _VIVE_TRACKER_TO_WRIST_ROTATION,
     )
     for axis in ("x", "y", "z"):
         current = initial.copy()
@@ -143,7 +148,7 @@ def test_vive_mount_rotation_preserves_existing_right_hand_correction():
         corrected_current = apply_vive_tracker_mount_rotation(current)
         np.testing.assert_allclose(
             corrected_current[:3, :3],
-            current[:3, :3] @ np.diag([-1.0, -1.0, -1.0]),
+            current[:3, :3] @ _VIVE_TRACKER_TO_WRIST_ROTATION,
             atol=1.0e-8,
         )
 

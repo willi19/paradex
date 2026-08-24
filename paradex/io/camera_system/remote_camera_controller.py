@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import queue
 import threading
 import time
 import zmq
@@ -28,6 +29,8 @@ class remote_camera_controller:
     INITIALIZATION_WAIT_SECONDS = 60.0
     REGISTER_WAIT_SECONDS = 5.0
     REGISTER_ATTEMPTS = 3
+    HEARTBEAT_INTERVAL_SECONDS = 0.5
+    HEARTBEAT_RESPONSE_SECONDS = 2.0
 
     def __init__(self, name, pc_list=None):
         self.name = "{}_{}".format(name, datetime.now().strftime("%Y%m%d_%H%M%S"))
@@ -48,17 +51,28 @@ class remote_camera_controller:
         self.error_event = threading.Event()
         self.ready_event = threading.Event()
         self._request_lock = threading.Lock()
+        self._send_command_lock = threading.Lock()
+        self._heartbeat_lock = threading.Lock()
         self._initialization_error = None
         self._command_error = None
         self._last_response: Dict[str, dict] = {}
         self._last_heartbeat_failures = {}
+
+        # Each capture PC owns an independent command queue and worker.  A slow
+        # response from one PC must not prevent the other PCs from receiving
+        # their keepalive before the daemon's dead-man timeout expires.
+        self.command_queues = {}
+        self.command_sockets = {}
+        self.worker_threads = {}
+        self.worker_stop = threading.Event()
+        self._worker_ready = {}
+        self._worker_errors = {}
 
         self.run_thread = threading.Thread(target=self.run, daemon=True)
         self.run_thread.start()
 
     def initialize(self):
         self.ctx = zmq.Context()
-        self.command_sockets = {}
         failed_pcs = []
 
         for pc in self.pc_list:
@@ -66,13 +80,16 @@ class remote_camera_controller:
                 failed_pcs.append(pc)
                 continue
 
-            socket = self.ctx.socket(zmq.REQ)
-            socket.setsockopt(zmq.LINGER, 0)
-            socket.setsockopt(zmq.RCVTIMEO, 30000)
-            socket.setsockopt(zmq.SNDTIMEO, 10000)
-            socket.connect("tcp://{}:{}".format(get_pc_ip(pc), self.command_port))
-            self.command_sockets[pc] = socket
-            print("{}: Command socket connected".format(pc))
+            self.command_queues[pc] = queue.Queue()
+            self._worker_ready[pc] = threading.Event()
+            thread = threading.Thread(
+                target=self._command_worker,
+                args=(pc,),
+                name="camera-command-{}".format(pc),
+                daemon=True,
+            )
+            self.worker_threads[pc] = thread
+            thread.start()
 
         if failed_pcs:
             raise ConnectionError(
@@ -80,6 +97,14 @@ class remote_camera_controller:
                 "각 PC에서 'python src/camera/server_daemon.py --backend aravis-gstreamer'를 실행하세요.".format(
                     failed_pcs
                 )
+            )
+
+        for pc, ready in self._worker_ready.items():
+            if not ready.wait(self.REGISTER_WAIT_SECONDS):
+                self._worker_errors[pc] = "command worker did not initialize"
+        if self._worker_errors:
+            raise ConnectionError(
+                "Camera command workers failed: {}".format(self._worker_errors)
             )
 
         responses = {}
@@ -99,17 +124,7 @@ class remote_camera_controller:
                     attempt, self.REGISTER_ATTEMPTS
                 )
             )
-            for socket in self.command_sockets.values():
-                socket.close()
-            self.command_sockets = {}
             time.sleep(0.5)
-            for pc in self.pc_list:
-                socket = self.ctx.socket(zmq.REQ)
-                socket.setsockopt(zmq.LINGER, 0)
-                socket.setsockopt(zmq.RCVTIMEO, 30000)
-                socket.setsockopt(zmq.SNDTIMEO, 10000)
-                socket.connect("tcp://{}:{}".format(get_pc_ip(pc), self.command_port))
-                self.command_sockets[pc] = socket
         self._raise_for_failed_response("register", responses)
 
     def check_server_alive(self, pc):
@@ -128,67 +143,164 @@ class remote_camera_controller:
         finally:
             socket.close()
 
-    def send_command(self, cmd, timeout_seconds=None):
-        """Send one command and collect replies without sharing ZMQ sockets.
+    def _create_command_socket(self, pc):
+        """Create a REQ socket in the worker thread that exclusively owns it."""
 
-        ZeroMQ sockets are thread-affine.  All command sockets are created by
-        ``run`` and this method is normally called by that same thread, so use
-        one poller rather than handing the sockets to a thread pool.
-        """
+        socket = self.ctx.socket(zmq.REQ)
+        socket.setsockopt(zmq.LINGER, 0)
+        # Permit a worker to recover after a timed-out request instead of
+        # remaining stuck in REQ's send/receive state machine.
+        socket.setsockopt(zmq.REQ_RELAXED, 1)
+        socket.setsockopt(zmq.REQ_CORRELATE, 1)
+        socket.connect("tcp://{}:{}".format(get_pc_ip(pc), self.command_port))
+        return socket
+
+    @staticmethod
+    def _socket_error(phase, exc):
+        return {
+            "status": "error",
+            "msg": "{} failed: {}".format(phase, exc),
+        }
+
+    def _send_one(self, socket, command, timeout_seconds):
+        """Send one request from its owning worker and return one response."""
+
+        timeout_ms = max(1, int(float(timeout_seconds) * 1000))
+        socket.setsockopt(zmq.RCVTIMEO, timeout_ms)
+        socket.setsockopt(zmq.SNDTIMEO, timeout_ms)
+        try:
+            socket.send_json(command)
+        except zmq.ZMQError as exc:
+            return self._socket_error("send", exc), False
+        try:
+            return socket.recv_json(), True
+        except zmq.ZMQError as exc:
+            return self._socket_error("receive", exc), False
+
+    def _record_heartbeat(self, pc, response):
+        failure = None
+        if response.get("status") != "ok":
+            failure = response.get("msg", "unknown camera-agent error")
+
+        with self._heartbeat_lock:
+            previous = self._last_heartbeat_failures.get(pc)
+            if failure is None:
+                self._last_heartbeat_failures.pop(pc, None)
+                return
+            self.error_event.set()
+            self._last_heartbeat_failures[pc] = failure
+            if failure != previous:
+                print("{}: {}".format(pc, failure))
+
+    def _command_worker(self, pc):
+        """Own one PC's ZMQ socket and keep its daemon lease alive."""
+
+        socket = None
+        try:
+            socket = self._create_command_socket(pc)
+            self.command_sockets[pc] = socket
+            print("{}: Command socket connected".format(pc))
+        except Exception as exc:
+            self._worker_errors[pc] = str(exc)
+        finally:
+            self._worker_ready[pc].set()
+
+        if socket is None:
+            return
+
+        command_queue = self.command_queues[pc]
+        registered = False
+        try:
+            while not self.worker_stop.is_set():
+                try:
+                    item = command_queue.get(
+                        timeout=self.HEARTBEAT_INTERVAL_SECONDS
+                    )
+                except queue.Empty:
+                    if not registered:
+                        continue
+                    heartbeat = {
+                        "action": "heartbeat",
+                        "controller_name": self.name,
+                    }
+                    response, reusable = self._send_one(
+                        socket,
+                        heartbeat,
+                        self.HEARTBEAT_RESPONSE_SECONDS,
+                    )
+                    self._record_heartbeat(pc, response)
+                    if not reusable:
+                        socket.close()
+                        socket = self._create_command_socket(pc)
+                        self.command_sockets[pc] = socket
+                    continue
+
+                if item is None:
+                    break
+                command, timeout_seconds, response_queue = item
+                response, reusable = self._send_one(
+                    socket,
+                    command,
+                    timeout_seconds,
+                )
+                if command.get("action") == "register":
+                    registered = response.get("status") == "ok"
+                elif command.get("action") == "end" and response.get("status") == "ok":
+                    registered = False
+                response_queue.put(response)
+
+                if not reusable:
+                    socket.close()
+                    socket = self._create_command_socket(pc)
+                    self.command_sockets[pc] = socket
+        except Exception as exc:
+            self._worker_errors[pc] = str(exc)
+            self.error_event.set()
+        finally:
+            self.command_sockets.pop(pc, None)
+            socket.close()
+
+    def _stop_command_workers(self):
+        self.worker_stop.set()
+        for command_queue in self.command_queues.values():
+            command_queue.put(None)
+        for thread in self.worker_threads.values():
+            thread.join(timeout=self.HEARTBEAT_RESPONSE_SECONDS + 1.0)
+
+    def send_command(self, cmd, timeout_seconds=None):
+        """Broadcast through per-PC workers without coupling their heartbeats."""
+
+        with self._send_command_lock:
+            return self._send_command_locked(cmd, timeout_seconds)
+
+    def _send_command_locked(self, cmd, timeout_seconds):
+        """Queue one ordered rig-wide command and wait for its replies."""
 
         command = dict(cmd)
         command["controller_name"] = self.name
 
-        responses = {}
-        pending = {}
-        poller = zmq.Poller()
-        for pc, socket in self.command_sockets.items():
-            try:
-                socket.send_json(command)
-                poller.register(socket, zmq.POLLIN)
-                pending[socket] = pc
-            except zmq.ZMQError as exc:
-                responses[pc] = {
-                    "status": "error",
-                    "msg": "send failed: {}".format(exc),
-                }
-
         if timeout_seconds is None:
             timeout_seconds = self.COMMAND_RESPONSE_SECONDS
-        deadline = time.monotonic() + float(timeout_seconds)
-        while pending:
-            remaining_ms = max(0, int((deadline - time.monotonic()) * 1000))
-            if remaining_ms == 0:
-                break
-            events = dict(poller.poll(remaining_ms))
-            if not events:
-                break
-            for socket, event in events.items():
-                if socket not in pending or not event & zmq.POLLIN:
-                    continue
-                pc = pending.pop(socket)
-                poller.unregister(socket)
-                try:
-                    responses[pc] = socket.recv_json(flags=zmq.NOBLOCK)
-                except zmq.ZMQError as exc:
-                    responses[pc] = {
-                        "status": "error",
-                        "msg": "receive failed: {}".format(exc),
-                    }
+        timeout_seconds = float(timeout_seconds)
 
-        for socket, pc in pending.items():
-            poller.unregister(socket)
-            responses[pc] = {
-                "status": "error",
-                "msg": "no response within {:.1f}s".format(
-                    timeout_seconds
-                ),
-            }
-        return {
-            pc: responses[pc]
-            for pc in self.command_sockets
-            if pc in responses
-        }
+        response_queues = {}
+        for pc, command_queue in self.command_queues.items():
+            response_queue = queue.Queue(maxsize=1)
+            response_queues[pc] = response_queue
+            command_queue.put((command, timeout_seconds, response_queue))
+
+        responses = {}
+        deadline = time.monotonic() + float(timeout_seconds)
+        for pc, response_queue in response_queues.items():
+            remaining = max(0.0, deadline - time.monotonic())
+            try:
+                responses[pc] = response_queue.get(timeout=remaining)
+            except queue.Empty:
+                responses[pc] = {
+                    "status": "error",
+                    "msg": "no response within {:.1f}s".format(timeout_seconds),
+                }
+        return responses
 
     def register(self):
         return self.send_command(
@@ -280,9 +392,6 @@ class remote_camera_controller:
         if failures:
             self.error_event.set()
             self._command_error = "{} failed: {}".format(action, failures)
-            self._last_heartbeat_failures = failures
-        else:
-            self._last_heartbeat_failures = {}
         self.sending_event.set()
 
     def run(self):
@@ -296,16 +405,15 @@ class remote_camera_controller:
             self.ready_event.set()
 
         if not initialized:
-            for socket in getattr(self, "command_sockets", {}).values():
-                socket.close()
+            self._stop_command_workers()
             if hasattr(self, "ctx"):
                 self.ctx.term()
             return
 
         try:
             while not self.exit_event.is_set():
-                action = "heartbeat"
-                command = {"action": action}
+                action = None
+                command = None
                 if self.start_event.is_set():
                     action = "start"
                     command = {
@@ -346,34 +454,16 @@ class remote_camera_controller:
                     command = {"action": action}
                     self.abort_event.clear()
 
-                response = self.send_command(command)
-                if action in (
-                    "prepare",
-                    "start",
-                    "stop",
-                    "snapshot",
-                    "validate",
-                    "abort",
-                ):
+                if command is not None:
+                    response = self.send_command(command)
                     self._complete_command(action, response)
-                else:
-                    failures = self._failed_responses(response)
-                    if failures:
-                        self.error_event.set()
-                        if failures != self._last_heartbeat_failures:
-                            for pc, message in failures.items():
-                                print("{}: {}".format(pc, message))
-                        self._last_heartbeat_failures = failures
-                    else:
-                        self._last_heartbeat_failures = {}
-                time.sleep(0.1)
+                time.sleep(0.05)
         finally:
             try:
                 self.send_command({"action": "end"})
             except Exception:
                 pass
-            for socket in self.command_sockets.values():
-                socket.close()
+            self._stop_command_workers()
             self.ctx.term()
 
     def is_error(self):

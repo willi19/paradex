@@ -4,11 +4,34 @@ import threading
 from pathlib import Path
 
 import numpy as np
+import torch
 
+from paradex.calibration.Tsai_Lenz import _handeye_device, handeye_residual_loss
 from paradex.image.image_dict import ImageDict
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_batched_handeye_loss_matches_original_pose_loop():
+    rng = np.random.default_rng(7)
+    A = torch.as_tensor(rng.normal(size=(8, 4, 4)), dtype=torch.float64)
+    B = torch.as_tensor(rng.normal(size=(8, 4, 4)), dtype=torch.float64)
+    X = torch.as_tensor(rng.normal(size=(4, 4)), dtype=torch.float64)
+
+    expected = torch.zeros((), dtype=torch.float64)
+    for pose_a, pose_b in zip(A, B):
+        residual = pose_a @ X - X @ pose_b
+        expected += torch.norm(residual, "fro") ** 2
+        expected += torch.norm(residual[:3, 3])
+
+    torch.testing.assert_close(handeye_residual_loss(A, B, X), expected)
+
+
+def test_handeye_prefers_gpu_zero_when_cuda_is_available(monkeypatch):
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+
+    assert _handeye_device() == torch.device("cuda:0")
 
 
 def load_script(name, relative_path):
@@ -321,6 +344,39 @@ def test_calculate_sequence_keeps_single_arm_output_compatible(
     np.testing.assert_array_equal(np.load(tmp_path / "0" / "C2R.npy"), transform)
 
 
+def test_calculate_sequence_uses_precomputed_charuco(monkeypatch, tmp_path):
+    calculate = load_script(
+        "xarm_handeye_calculate_precomputed_test",
+        "src/calibration/handeye/xarm/calculate.py",
+    )
+    transform = np.eye(4)
+    (tmp_path / "0").mkdir()
+
+    def fail_if_detected(*_args, **_kwargs):
+        raise AssertionError("ChArUco detection must not run for precomputed data")
+
+    monkeypatch.setattr(calculate, "undistort_and_detect_charuco", fail_if_detected)
+    monkeypatch.setattr(calculate, "compute_fk", lambda _root, _arm: None)
+    monkeypatch.setattr(
+        calculate,
+        "compute_motion",
+        lambda _root: ([np.eye(4)], [np.eye(4)]),
+    )
+    monkeypatch.setattr(calculate, "solve_ax_xb", lambda *_args, **_kwargs: transform)
+    monkeypatch.setattr(calculate, "get_valid_indices", lambda _root: ["0", "1"])
+    monkeypatch.setattr(calculate, "debug", lambda *_args: None)
+    monkeypatch.setattr(calculate, "validate_capture_directory", lambda _root: None)
+
+    calculate.calculate_sequence(
+        str(tmp_path),
+        "xarm",
+        None,
+        precomputed_charuco=True,
+    )
+
+    np.testing.assert_array_equal(np.load(tmp_path / "0" / "C2R.npy"), transform)
+
+
 def test_charuco_detection_runs_camera_images_in_parallel(monkeypatch):
     calculate = load_script(
         "xarm_handeye_calculate_parallel_test",
@@ -350,6 +406,161 @@ def test_charuco_detection_runs_camera_images_in_parallel(monkeypatch):
         "cam-b": {"value": 2},
     }
     assert len(thread_ids) == 2
+
+
+def test_robot_debug_image_postprocessing_runs_in_parallel(monkeypatch, tmp_path):
+    calculate = load_script(
+        "xarm_handeye_debug_parallel_test",
+        "src/calibration/handeye/xarm/calculate.py",
+    )
+    raw_image_dir = tmp_path / "0" / "images"
+    image_dir = tmp_path / "0" / "undistort" / "images"
+    raw_image_dir.mkdir(parents=True)
+    image_dir.mkdir(parents=True)
+    for serial in ("cam-a", "cam-b"):
+        (raw_image_dir / f"{serial}.png").touch()
+        (image_dir / f"{serial}.png").touch()
+    np.save(tmp_path / "0" / "qpos.npy", np.zeros(6))
+    np.save(tmp_path / "0" / "eef_fk.npy", np.eye(4))
+    np.save(
+        tmp_path / "0" / "charuco_3d_corners.npy",
+        np.array([[0.0, 0.0, 1.0]]),
+    )
+
+    class FakeMesh:
+        def apply_transform(self, _transform):
+            pass
+
+    class FakeRobotModule:
+        def update_cfg(self, _qpos):
+            pass
+
+        def get_robot_mesh(self):
+            return FakeMesh()
+
+    class FakeRenderer:
+        def __init__(self, _intrinsic, _extrinsic):
+            pass
+
+        def render_mask(self, _mesh):
+            mask = np.zeros((2, 2), dtype=bool)
+            return {"cam-a": mask, "cam-b": mask}
+
+    import paradex.image.projection as projection
+
+    monkeypatch.setattr(projection, "BatchRenderer", FakeRenderer)
+    barrier = threading.Barrier(2)
+    thread_ids = set()
+
+    def fake_save(*_args):
+        thread_ids.add(threading.get_ident())
+        barrier.wait(timeout=1.0)
+
+    monkeypatch.setattr(calculate, "save_robot_debug_image", fake_save)
+    camera_matrix = np.eye(3)
+    camera_matrix[2, 2] = 1.0
+    intrinsic = {
+        serial: {"intrinsics_undistort": camera_matrix}
+        for serial in ("cam-a", "cam-b")
+    }
+    extrinsic = {
+        serial: np.column_stack((np.eye(3), np.zeros(3)))
+        for serial in ("cam-a", "cam-b")
+    }
+
+    calculate.render_robot_debug_parallel(
+        str(tmp_path),
+        ["0"],
+        FakeRobotModule(),
+        intrinsic,
+        extrinsic,
+        np.eye(4),
+        np.array([[0.0, 0.0, 1.0]]),
+        debug_workers=2,
+    )
+
+    assert len(thread_ids) == 2
+
+
+def test_robot_debug_skips_camera_missing_from_later_step(monkeypatch, tmp_path):
+    calculate = load_script(
+        "xarm_handeye_debug_missing_camera_test",
+        "src/calibration/handeye/xarm/calculate.py",
+    )
+    for index in ("0", "1"):
+        raw_dir = tmp_path / index / "images"
+        undistort_dir = tmp_path / index / "undistort" / "images"
+        raw_dir.mkdir(parents=True)
+        undistort_dir.mkdir(parents=True)
+        np.save(tmp_path / index / "qpos.npy", np.zeros(6))
+        np.save(tmp_path / index / "eef_fk.npy", np.eye(4))
+        np.save(
+            tmp_path / index / "charuco_3d_corners.npy",
+            np.array([[0.0, 0.0, 1.0]]),
+        )
+    for index, serial in (("0", "cam-a"), ("0", "cam-b"), ("1", "cam-a")):
+        (tmp_path / index / "images" / f"{serial}.png").touch()
+        (tmp_path / index / "undistort" / "images" / f"{serial}.png").touch()
+    # A stale undistorted image without a corresponding raw source must be ignored.
+    (tmp_path / "1" / "undistort" / "images" / "cam-b.png").touch()
+
+    class FakeMesh:
+        def apply_transform(self, _transform):
+            pass
+
+    class FakeRobotModule:
+        def update_cfg(self, _qpos):
+            pass
+
+        def get_robot_mesh(self):
+            return FakeMesh()
+
+    class FakeRenderer:
+        def __init__(self, _intrinsic, _extrinsic):
+            pass
+
+        def render_mask(self, _mesh):
+            mask = np.zeros((2, 2), dtype=bool)
+            return {"cam-a": mask, "cam-b": mask}
+
+    import paradex.image.projection as projection
+
+    monkeypatch.setattr(projection, "BatchRenderer", FakeRenderer)
+    saved_paths = []
+    monkeypatch.setattr(
+        calculate,
+        "save_robot_debug_image",
+        lambda _image, output, *_args: saved_paths.append(Path(output)),
+    )
+    camera_matrix = np.eye(3)
+    intrinsic = {
+        serial: {"intrinsics_undistort": camera_matrix}
+        for serial in ("cam-a", "cam-b")
+    }
+    extrinsic = {
+        serial: np.column_stack((np.eye(3), np.zeros(3)))
+        for serial in ("cam-a", "cam-b")
+    }
+
+    calculate.render_robot_debug_parallel(
+        str(tmp_path),
+        ["0", "1"],
+        FakeRobotModule(),
+        intrinsic,
+        extrinsic,
+        np.eye(4),
+        np.array([[0.0, 0.0, 1.0]]),
+        debug_workers=2,
+    )
+
+    relative_paths = {
+        path.relative_to(tmp_path).as_posix() for path in saved_paths
+    }
+    assert relative_paths == {
+        "0/debug/images/cam-a.png",
+        "0/debug/images/cam-b.png",
+        "1/debug/images/cam-a.png",
+    }
 
 
 def test_charuco_triangulation_reuses_precomputed_detections(monkeypatch):

@@ -134,3 +134,22 @@ def test_camera_preview_places_equal_size_viser_panel_on_the_right():
     assert np.all(combined[:, :40] == 0)
     assert np.all(combined[:, 40:50] == 255)
     assert np.all(combined[:, 50:] == 7)
+
+
+def test_side_panel_refresh_reuses_latest_camera_grid():
+    preview = CapturePcPreviewGui(
+        pc_list=[],
+        cv2_module=FakeCv2(),
+        side_panel_provider=lambda _height, _width: None,
+    )
+    camera_grid = np.zeros((30, 40, 3), dtype=np.uint8)
+    preview._publish_camera_grid(camera_grid)
+
+    with preview._side_lock:
+        preview._latest_side_panel = np.full((30, 40, 3), 9, dtype=np.uint8)
+    preview._refresh_composite()
+
+    with preview._display_lock:
+        combined = preview._latest_display
+    assert np.all(combined[:, :40] == 0)
+    assert np.all(combined[:, 50:] == 9)

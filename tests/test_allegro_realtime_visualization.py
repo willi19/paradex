@@ -88,6 +88,61 @@ def test_v5_tactile_arrows_are_anchored_on_fingertip_mesh_surfaces():
         np.testing.assert_allclose(np.linalg.norm(normal), 1.0, atol=1.0e-6)
 
 
+def test_feedback_pose_uses_named_v5_feedback_conversion_before_rendering():
+    class RecordingViserRobot:
+        def __init__(self):
+            self.configurations = []
+
+        def update_cfg(self, configuration):
+            self.configurations.append(np.asarray(configuration, dtype=np.float64))
+
+    studio = object.__new__(AllegroRealtimeViser)
+    studio.viser_robot = RecordingViserRobot()
+    studio.render_feedback_pose = True
+    studio.urdf_joint_names = (
+        "thumb_base", "thumb_proximal", "thumb_medial", "thumb_distal",
+        "index_base", "index_proximal", "index_medial", "index_distal",
+        "middle_base", "middle_proximal", "middle_medial", "middle_distal",
+        "ring_base", "ring_proximal", "ring_medial", "ring_distal",
+    )
+    studio._sync_arrow_frames_to_feedback_pose = lambda: None
+
+    assert studio._update_feedback_pose(
+        {
+            "qpos": np.arange(16, dtype=np.float64),
+            "joint_names": tuple(f"joint_{index}_0" for index in range(16)),
+        }
+    )
+    # V5 ROS names are index/middle/ring/thumb, but the Allegro URDF is
+    # thumb/index/middle/ring: this is the same conversion used by the UI.
+    np.testing.assert_allclose(
+        studio.viser_robot.configurations[-1],
+        np.r_[np.arange(12, 16), np.arange(0, 12)],
+    )
+
+
+def test_feedback_pose_preserves_native_standalone_urdf_joint_names():
+    class RecordingViserRobot:
+        def __init__(self):
+            self.configuration = None
+
+        def update_cfg(self, configuration):
+            self.configuration = np.asarray(configuration, dtype=np.float64)
+
+    studio = object.__new__(AllegroRealtimeViser)
+    studio.viser_robot = RecordingViserRobot()
+    studio.render_feedback_pose = True
+    studio.urdf_joint_names = tuple(f"joint_{index}_0" for index in range(16))
+    studio._sync_arrow_frames_to_feedback_pose = lambda: None
+    feedback_names = tuple(reversed(studio.urdf_joint_names))
+    feedback_values = np.arange(16, dtype=np.float64)
+
+    assert studio._update_feedback_pose(
+        {"qpos": feedback_values, "joint_names": feedback_names}
+    )
+    np.testing.assert_allclose(studio.viser_robot.configuration, feedback_values[::-1])
+
+
 def test_viser_side_panel_render_is_bounded_and_converted_to_bgr():
     class FakeClient:
         def __init__(self):
@@ -111,8 +166,8 @@ def test_viser_side_panel_render_is_bounded_and_converted_to_bgr():
         image = studio.render_bgr(height=1230, width=1298)
 
     assert client.request == {
-        "height": 720,
-        "width": 760,
+        "height": 480,
+        "width": 507,
         "transport_format": "jpeg",
     }
     assert image.tolist() == [[[30, 20, 10]]]

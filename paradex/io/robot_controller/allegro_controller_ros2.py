@@ -100,7 +100,7 @@ class AllegroController(Node):
         if self.exit_event.is_set():
             return
 
-        rate_hz = 100.0
+        rate_hz = 30.0
         dt = 1.0 / rate_hz
 
         while rclpy.ok() and not self.exit_event.is_set():

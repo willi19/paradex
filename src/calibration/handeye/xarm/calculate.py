@@ -3,7 +3,7 @@ import cv2
 import argparse
 import numpy as np
 import tqdm
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from copy import deepcopy
 
 from paradex.utils.file_io import find_latest_directory
@@ -31,6 +31,7 @@ EXCLUDED_SERIALS = {
     # "22684210",
 }
 DEFAULT_CHARUCO_WORKERS = min(8, os.cpu_count() or 1)
+DEFAULT_DEBUG_WORKERS = max(1, os.cpu_count() or 1)
 
 
 def _filter_images_for_calibration(images, intrinsics=None, extrinsics=None):
@@ -239,6 +240,7 @@ def debug(root_dir, arm, robot_wrt_cam_world):
     rm = RobotModule(get_robot_urdf_path(arm_name=arm))
     intrinsic, extrinsic = load_camparam(os.path.join(root_dir, "0"))
     
+    cam_world_wrt_robot = np.linalg.inv(robot_wrt_cam_world)
     for index in index_list:
         eef = np.load(os.path.join(root_dir, index, "eef_fk.npy"))
         eef_from_robot = np.load(os.path.join(root_dir, index, "eef.npy"))
@@ -255,12 +257,16 @@ def debug(root_dir, arm, robot_wrt_cam_world):
         charuco_3d_cor = np.load(os.path.join(root_dir, index, "charuco_3d_corners.npy"))
         charuco_id_cor = np.load(os.path.join(root_dir, index, "charuco_3d_ids.npy"))
         
-        for mid, cor in zip(charuco_id_cor, charuco_3d_cor):
+        marker_h = np.column_stack(
+            (charuco_3d_cor, np.ones(len(charuco_3d_cor)))
+        )
+        marker_in_eef = (
+            np.linalg.inv(eef) @ cam_world_wrt_robot @ marker_h.T
+        ).T[:, :3]
+        for mid, cor in zip(charuco_id_cor, marker_in_eef):
             if mid not in marker_pos:
                 marker_pos[mid] = []
-            cor_h = np.ones((4,))
-            cor_h[:3] = cor
-            marker_pos[mid].append(((np.linalg.inv(eef) @ np.linalg.inv(robot_wrt_cam_world) @ cor_h.T).T)[:3])
+            marker_pos[mid].append(cor)
 
     marker_wrt_eef = []
     for mid in marker_pos:
@@ -272,57 +278,177 @@ def debug(root_dir, arm, robot_wrt_cam_world):
         marker_wrt_eef.append(mean_pos)
     marker_wrt_eef = np.array(marker_wrt_eef)
     
-    img_dict = None
-    for index in tqdm.tqdm(index_list, desc="Debug"):
-        # if os.path.exists(os.path.join(root_dir, index, "debug", 'images')) and \
-        #    len(os.listdir(os.path.join(root_dir, index, "debug", 'images'))) == \
-        #    len(os.listdir(os.path.join(root_dir, index, "images"))):
-        #     continue
-        
-        if img_dict is None:
-            img_dict = ImageDict.from_path(os.path.join(root_dir, index, "undistort"))
-            img_dict.images = _filter_images_for_calibration(
-                img_dict.images, intrinsics=intrinsic, extrinsics=extrinsic
-            )
-            img_dict.set_camparam(intrinsic, extrinsic)
-        else:
-            img_dict.update_path(os.path.join(root_dir, index, "undistort"))
-            img_dict.images = _filter_images_for_calibration(
-                img_dict.images, intrinsics=intrinsic, extrinsics=extrinsic
-            )
-        if len(img_dict.images) == 0:
-            continue
-        
-        qpos = np.load(os.path.join(root_dir, index, "qpos.npy"))
-        eef = np.load(os.path.join(root_dir, index, "eef_fk.npy"))
-        
-        rm.update_cfg(qpos)
-        robot_mesh = rm.get_robot_mesh()
-        robot_mesh.apply_transform(robot_wrt_cam_world)
-        
-        overlay_img_dict = img_dict.project_mesh(robot_mesh)
-        
-        marker_wrt_eef_h = np.ones((marker_wrt_eef.shape[0], 4))
-        marker_wrt_eef_h[:,:3] = marker_wrt_eef 
+    render_robot_debug_parallel(
+        root_dir,
+        index_list,
+        rm,
+        intrinsic,
+        extrinsic,
+        robot_wrt_cam_world,
+        marker_wrt_eef,
+    )
 
-        marker_wrt_cam = (robot_wrt_cam_world @ eef @ marker_wrt_eef_h.T).T[:, :3]
-        proj_marker = overlay_img_dict.project_pointcloud(marker_wrt_cam)
-        overlay_img_dict.draw_keypoint(proj_marker, (255, 0, 0))
-        
-        marker_3d  = np.load(os.path.join(root_dir, index, "charuco_3d_corners.npy"))
-        proj_marker_3d = overlay_img_dict.project_pointcloud(marker_3d)
-        overlay_img_dict.draw_keypoint(proj_marker_3d, (0, 0, 255))
-        
-        overlay_img_dict.save(os.path.join(root_dir, index, "debug"))
+
+def project_debug_points(points, projection_matrix):
+    homogeneous = np.column_stack((points, np.ones(len(points))))
+    projected = (projection_matrix @ homogeneous.T).T
+    return projected[:, :2] / projected[:, 2:3]
+
+
+def save_robot_debug_image(
+    image_path,
+    output_path,
+    robot_mask,
+    fitted_markers,
+    observed_markers,
+):
+    from paradex.image.overlay import overlay_mask
+
+    image = cv2.imread(str(image_path), cv2.IMREAD_COLOR)
+    if image is None:
+        raise ValueError(f"Failed to read undistorted image: {image_path}")
+    image = overlay_mask(image, robot_mask, color=(0, 255, 0), alpha=0.5)
+    for point in fitted_markers:
+        cv2.circle(image, tuple(np.rint(point).astype(int)), 3, (255, 0, 0), -1)
+    for point in observed_markers:
+        cv2.circle(image, tuple(np.rint(point).astype(int)), 3, (0, 0, 255), -1)
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
+    if not cv2.imwrite(
+        str(output_path), image, [cv2.IMWRITE_PNG_COMPRESSION, 1]
+    ):
+        raise IOError(f"Failed to save robot debug image: {output_path}")
+
+
+def _finish_debug_futures(pending, progress, wait_for_one):
+    if not pending:
+        return pending
+    if wait_for_one:
+        completed, pending = wait(pending, return_when=FIRST_COMPLETED)
+    else:
+        completed, pending = pending, set()
+    for future in completed:
+        future.result()
+        progress.update(1)
+    return pending
+
+
+def render_robot_debug_parallel(
+    root_dir,
+    index_list,
+    robot_module,
+    intrinsic,
+    extrinsic,
+    robot_wrt_cam_world,
+    marker_wrt_eef,
+    debug_workers=DEFAULT_DEBUG_WORKERS,
+):
+    from paradex.image.projection import BatchRenderer
+
+    image_extensions = (".png", ".jpg", ".jpeg", ".bmp", ".tiff")
+    serials_by_index = {}
+    for index in index_list:
+        raw_image_dir = os.path.join(root_dir, index, "images")
+        undistort_image_dir = os.path.join(
+            root_dir, index, "undistort", "images"
+        )
+        raw_serials = {
+            os.path.splitext(filename)[0]
+            for filename in os.listdir(raw_image_dir)
+            if filename.lower().endswith(image_extensions)
+        }
+        undistorted_serials = {
+            os.path.splitext(filename)[0]
+            for filename in os.listdir(undistort_image_dir)
+            if filename.lower().endswith(image_extensions)
+        }
+        serials_by_index[index] = raw_serials & undistorted_serials
+
+    available_serials = set().union(*serials_by_index.values())
+    serials = sorted(
+        ((set(intrinsic) & set(extrinsic)) - set(EXCLUDED_SERIALS))
+        & available_serials
+    )
+    if not serials:
+        raise ValueError("No camera images are available for robot debug rendering")
+    filtered_intrinsic = {serial: intrinsic[serial] for serial in serials}
+    filtered_extrinsic = {serial: extrinsic[serial] for serial in serials}
+    renderer = BatchRenderer(filtered_intrinsic, filtered_extrinsic)
+    projection_matrices = {
+        serial: filtered_intrinsic[serial]["intrinsics_undistort"]
+        @ filtered_extrinsic[serial]
+        for serial in serials
+    }
+    marker_wrt_eef_h = np.column_stack(
+        (marker_wrt_eef, np.ones(len(marker_wrt_eef)))
+    )
+    worker_count = min(debug_workers, max(1, len(index_list) * len(serials)))
+    max_pending = max(1, worker_count * 2)
+    previous_opencv_threads = cv2.getNumThreads()
+    cv2.setNumThreads(1)
+    try:
+        with ThreadPoolExecutor(max_workers=worker_count) as executor:
+            pending = set()
+            total = sum(
+                len(set(serials) & serials_by_index[index])
+                for index in index_list
+            )
+            save_progress = tqdm.tqdm(total=total, desc="Saving robot debug images")
+            try:
+                for index in tqdm.tqdm(index_list, desc="Rendering robot debug"):
+                    qpos = np.load(os.path.join(root_dir, index, "qpos.npy"))
+                    eef = np.load(os.path.join(root_dir, index, "eef_fk.npy"))
+                    robot_module.update_cfg(qpos)
+                    robot_mesh = robot_module.get_robot_mesh()
+                    robot_mesh.apply_transform(robot_wrt_cam_world)
+                    masks = renderer.render_mask(robot_mesh)
+
+                    marker_wrt_cam = (
+                        robot_wrt_cam_world @ eef @ marker_wrt_eef_h.T
+                    ).T[:, :3]
+                    marker_3d = np.load(
+                        os.path.join(root_dir, index, "charuco_3d_corners.npy")
+                    )
+                    for serial in sorted(set(serials) & serials_by_index[index]):
+                        image_path = os.path.join(
+                            root_dir, index, "undistort", "images", f"{serial}.png"
+                        )
+                        output_path = os.path.join(
+                            root_dir, index, "debug", "images", f"{serial}.png"
+                        )
+                        pending.add(
+                            executor.submit(
+                                save_robot_debug_image,
+                                image_path,
+                                output_path,
+                                masks[serial],
+                                project_debug_points(
+                                    marker_wrt_cam, projection_matrices[serial]
+                                ),
+                                project_debug_points(
+                                    marker_3d, projection_matrices[serial]
+                                ),
+                            )
+                        )
+                        if len(pending) >= max_pending:
+                            pending = _finish_debug_futures(
+                                pending, save_progress, wait_for_one=True
+                            )
+                _finish_debug_futures(pending, save_progress, wait_for_one=False)
+            finally:
+                save_progress.close()
+    finally:
+        cv2.setNumThreads(previous_opencv_threads)
                 
 def calculate_sequence(
     root_path,
     arm,
     save_path,
     charuco_workers=DEFAULT_CHARUCO_WORKERS,
+    precomputed_charuco=False,
 ):
     validate_capture_directory(root_path)
-    undistort_and_detect_charuco(root_path, charuco_workers)
+    if not precomputed_charuco:
+        undistort_and_detect_charuco(root_path, charuco_workers)
     compute_fk(root_path, arm)
     motion_wrt_cam, motion_wrt_robot = compute_motion(root_path)
     robot_wrt_cam_world = solve_ax_xb(

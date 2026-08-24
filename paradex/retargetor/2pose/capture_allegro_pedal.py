@@ -21,14 +21,24 @@ from paradex.dataset_acqusition.capture import CaptureSession
 from paradex.utils.file_io import find_latest_index
 from paradex.utils.keyboard_listener import listen_keyboard
 from paradex.utils.path import shared_dir
-from src.dataset_acquisition.hri.allegro_pedal_pose_ui import (
-    DEFAULT_POSE_A,
-    DEFAULT_POSE_B,
-    DEFAULT_SOURCE_POSE_A,
-    DEFAULT_SOURCE_POSE_B,
-    AllegroPedalPoseStudio,
-    ensure_editable_pose_copy,
-)
+if __package__:
+    from .allegro_pedal_pose_ui import (
+        DEFAULT_POSE_A,
+        DEFAULT_POSE_B,
+        DEFAULT_SOURCE_POSE_A,
+        DEFAULT_SOURCE_POSE_B,
+        AllegroPedalPoseStudio,
+        ensure_editable_pose_copy,
+    )
+else:
+    from allegro_pedal_pose_ui import (
+        DEFAULT_POSE_A,
+        DEFAULT_POSE_B,
+        DEFAULT_SOURCE_POSE_A,
+        DEFAULT_SOURCE_POSE_B,
+        AllegroPedalPoseStudio,
+        ensure_editable_pose_copy,
+    )
 
 
 def parse_args() -> argparse.Namespace:

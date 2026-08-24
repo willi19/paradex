@@ -2,6 +2,8 @@ import os
 import time
 import glob
 import subprocess
+import json
+from pathlib import Path
 import numpy as np
 import chime
 chime.theme('pokemon')
@@ -27,9 +29,171 @@ _VIVE_MAX_ANGULAR_SPEED_DEG_S = 240.0
 _VIVE_POSITION_MARGIN_M = 0.003
 _VIVE_ROTATION_MARGIN_DEG = 1.5
 _VIVE_MAX_COMMAND_DT_S = 0.05
-_ALLEGRO_UI_ALIGNED_HANDS = frozenset(
-    ("allegro_v5", "allegro_v5_wonik", "allegro_v5_anyteleop")
-)
+_ALLEGRO_UI_ALIGNED_HANDS = frozenset(("allegro_v5",))
+
+
+class _AllegroTeleopDiagnosticLogger:
+    """Keep aligned MANUS/command/feedback samples for offline diagnosis.
+
+    Recording stays in memory while teleoperating so the diagnostic option
+    cannot add filesystem latency to the command path.  ``flush`` writes one
+    compressed ``.npz`` file when the CaptureSession ends.
+    """
+
+    FORMAT_VERSION = 1
+
+    def __init__(self, path):
+        self.path = Path(path)
+        self._frame_names = None
+        self._ergonomic_fields = None
+        self._feedback_joint_names = None
+        self._samples = []
+
+    @staticmethod
+    def _vector(value, size=None):
+        if value is None:
+            return None
+        try:
+            result = np.asarray(value, dtype=np.float64).reshape(-1)
+        except (TypeError, ValueError):
+            return None
+        if (size is not None and result.shape != (size,)) or not np.all(np.isfinite(result)):
+            return None
+        return result.copy()
+
+    def record(
+        self,
+        *,
+        teleop_data,
+        state,
+        hand_name,
+        retargeter_action,
+        controller_target,
+        feedback,
+    ):
+        """Record exactly one physical Allegro command and its input/state."""
+        frame = teleop_data.get("Right") if isinstance(teleop_data, dict) else None
+        if not isinstance(frame, dict) or "wrist" not in frame:
+            return
+
+        if self._frame_names is None:
+            self._frame_names = tuple(sorted(str(name) for name in frame))
+        if any(name not in frame for name in self._frame_names):
+            return
+        try:
+            transforms = np.asarray(
+                [frame[name] for name in self._frame_names], dtype=np.float64
+            )
+        except (TypeError, ValueError):
+            return
+        if transforms.shape != (len(self._frame_names), 4, 4) or not np.all(np.isfinite(transforms)):
+            return
+
+        ergonomics = teleop_data.get("ergonomics", {}).get("Right", {})
+        if not isinstance(ergonomics, dict):
+            ergonomics = {}
+        if self._ergonomic_fields is None:
+            self._ergonomic_fields = tuple(sorted(str(name) for name in ergonomics))
+        ergonomic_values = np.asarray(
+            [ergonomics.get(name, np.nan) for name in self._ergonomic_fields],
+            dtype=np.float64,
+        )
+        feedback = feedback if isinstance(feedback, dict) else {}
+        if self._feedback_joint_names is None:
+            feedback_names = tuple(str(name) for name in feedback.get("joint_names", ()))
+            if len(feedback_names) == 16 and len(set(feedback_names)) == 16:
+                self._feedback_joint_names = feedback_names
+        tactile = self._vector(feedback.get("tactile"))
+        self._samples.append(
+            {
+                "sample_monotonic_s": time.monotonic(),
+                "teleop_wall_time_s": float(teleop_data.get("time", time.time())),
+                "state": -1 if state is None else int(state),
+                "hand_name": str(hand_name),
+                "manus_transforms": transforms.copy(),
+                "manus_ergonomics_deg": ergonomic_values.copy(),
+                "retargeter_action": self._vector(retargeter_action, 16),
+                "controller_target": self._vector(controller_target, 16),
+                "feedback_qpos": self._vector(feedback.get("qpos"), 16),
+                "feedback_action": self._vector(feedback.get("action"), 16),
+                "feedback_connected": bool(feedback.get("is_connected", False)),
+                "tactile": tactile,
+            }
+        )
+
+    @staticmethod
+    def _stack(samples, key, shape):
+        result = np.full((len(samples), *shape), np.nan, dtype=np.float64)
+        for index, sample in enumerate(samples):
+            value = sample[key]
+            if value is not None and value.shape == shape:
+                result[index] = value
+        return result
+
+    def flush(self):
+        """Write a self-describing compressed archive, including empty logs."""
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        samples = self._samples
+        frame_names = self._frame_names or ()
+        ergonomic_fields = self._ergonomic_fields or ()
+        if samples:
+            transforms = np.stack([sample["manus_transforms"] for sample in samples])
+            ergonomics = np.stack([sample["manus_ergonomics_deg"] for sample in samples])
+        else:
+            transforms = np.empty((0, len(frame_names), 4, 4), dtype=np.float64)
+            ergonomics = np.empty((0, len(ergonomic_fields)), dtype=np.float64)
+        tactile_width = max(
+            (0 if sample["tactile"] is None else len(sample["tactile"]) for sample in samples),
+            default=0,
+        )
+        tactile = np.full((len(samples), tactile_width), np.nan, dtype=np.float64)
+        for index, sample in enumerate(samples):
+            value = sample["tactile"]
+            if value is not None:
+                tactile[index, : len(value)] = value
+
+        metadata = {
+            "format": "paradex_allegro_teleop_diagnostic",
+            "version": self.FORMAT_VERSION,
+            "sample_count": len(samples),
+            "notes": (
+                "Each row is one hand.move() call. manus_transforms is the Right "
+                "frame actually consumed by retargeting (therefore VIVE-reparented "
+                "when VIVE is enabled). feedback_qpos is measured ROS feedback "
+                "sampled immediately before the command."
+            ),
+        }
+        np.savez_compressed(
+            self.path,
+            metadata_json=np.asarray(json.dumps(metadata, sort_keys=True)),
+            sample_monotonic_s=np.asarray(
+                [sample["sample_monotonic_s"] for sample in samples], dtype=np.float64
+            ),
+            teleop_wall_time_s=np.asarray(
+                [sample["teleop_wall_time_s"] for sample in samples], dtype=np.float64
+            ),
+            state=np.asarray([sample["state"] for sample in samples], dtype=np.int16),
+            hand_name=np.asarray([sample["hand_name"] for sample in samples], dtype=str),
+            manus_joint_names=np.asarray(frame_names, dtype=str),
+            manus_transforms=transforms,
+            manus_ergonomic_fields=np.asarray(ergonomic_fields, dtype=str),
+            manus_ergonomics_deg=ergonomics,
+            feedback_joint_names=np.asarray(
+                self._feedback_joint_names or (), dtype=str
+            ),
+            retargeter_action=self._stack(samples, "retargeter_action", (16,)),
+            controller_target=self._stack(samples, "controller_target", (16,)),
+            feedback_qpos=self._stack(samples, "feedback_qpos", (16,)),
+            feedback_action=self._stack(samples, "feedback_action", (16,)),
+            feedback_connected=np.asarray(
+                [sample["feedback_connected"] for sample in samples], dtype=bool
+            ),
+            tactile=tactile,
+        )
+        print(
+            f"Saved Allegro teleop diagnostic: {self.path} "
+            f"({len(samples)} command samples)"
+        )
 
 
 class _HandCommandRateLimiter:
@@ -184,6 +348,7 @@ class CaptureSession():
         timestamp=True,
         hand_scale=1.0,
         hand_command_rate_hz=None,
+        allegro_teleop_diagnostic_path=None,
         use_vive=True,
         use_manus=True,
         require_left_control=None,
@@ -241,6 +406,11 @@ class CaptureSession():
         self.hand_command_rate_hz = hand_command_rate_hz
         self._hand_command_limiter = _HandCommandRateLimiter(
             hand_command_rate_hz
+        )
+        self._allegro_teleop_diagnostic_logger = (
+            _AllegroTeleopDiagnosticLogger(allegro_teleop_diagnostic_path)
+            if allegro_teleop_diagnostic_path is not None
+            else None
         )
         self.hand_action_provider = hand_action_provider
         self.arm_command_enabled_provider = arm_command_enabled_provider
@@ -517,6 +687,13 @@ class CaptureSession():
         self.save_path = None
 
     def end(self):
+        diagnostic_logger = getattr(self, "_allegro_teleop_diagnostic_logger", None)
+        if diagnostic_logger is not None:
+            try:
+                diagnostic_logger.flush()
+            except Exception as exc:
+                print(f"Failed to save Allegro teleop diagnostic: {exc}")
+            self._allegro_teleop_diagnostic_logger = None
         if self.arm is not None:
             self.arm.end()
         if self.arm_left is not None:
@@ -617,8 +794,15 @@ class CaptureSession():
                     f"rotation={rotation_delta_deg:.1f} deg"
                 )
 
-        def move_hands_if_due(hand_commands):
+        def move_hands_if_due(hand_commands, *, teleop_data=None, state=None):
             """Send a coherent hand target set at the configured UI-rate cap."""
+            # The UI samples feedback and updates its target on a single 30 Hz
+            # command tick.  Do the rate check before acquiring the Allegro
+            # feedback lock, so CaptureSession's 10 ms loop cannot contend with
+            # the controller's 100 Hz command publisher between actual targets.
+            limiter = getattr(self, "_hand_command_limiter", None)
+            if limiter is not None and not limiter.is_due(time.monotonic()):
+                return
             valid_commands = []
             for hand_controller, action, hand_name in hand_commands:
                 if hand_controller is None or action is None:
@@ -633,17 +817,28 @@ class CaptureSession():
                         continue
                     if _allegro_v5_feedback_hold_target(feedback) is None:
                         continue
-                    action = retargeter_action_to_live_controller_qpos(
+                    controller_target = retargeter_action_to_live_controller_qpos(
                         action, hand_name
                     )
-                valid_commands.append((hand_controller, action))
+                    valid_commands.append(
+                        (hand_controller, action, controller_target, hand_name, feedback)
+                    )
+                    continue
+                valid_commands.append((hand_controller, action, action, hand_name, None))
             if not valid_commands:
                 return
-            limiter = getattr(self, "_hand_command_limiter", None)
-            if limiter is not None and not limiter.is_due(time.monotonic()):
-                return
-            for hand_controller, action in valid_commands:
-                hand_controller.move(action)
+            for hand_controller, retargeter_action, controller_target, command_hand_name, feedback in valid_commands:
+                hand_controller.move(controller_target)
+                diagnostic_logger = getattr(self, "_allegro_teleop_diagnostic_logger", None)
+                if diagnostic_logger is not None and _is_allegro_ui_aligned_hand(command_hand_name):
+                    diagnostic_logger.record(
+                        teleop_data=teleop_data,
+                        state=state,
+                        hand_name=command_hand_name,
+                        retargeter_action=retargeter_action,
+                        controller_target=controller_target,
+                        feedback=feedback,
+                    )
 
         arm_deadman_was_enabled = None
         right_hand_hold_target = None
@@ -744,7 +939,9 @@ class CaptureSession():
                         wrist_pose = None
                         hand_action = None
                     move_hands_if_due(
-                        ((self.hand, hand_action, hand_name),)
+                        ((self.hand, hand_action, hand_name),),
+                        teleop_data=data,
+                        state=state,
                     )
 
                     if arm_enabled and wrist_pose is not None:
@@ -763,7 +960,9 @@ class CaptureSession():
                                 self.hand,
                                 right_hand_hold_target,
                                 hand_name,
-                            ),)
+                            ),),
+                            teleop_data=data,
+                            state=state,
                         )
                     arm_deadman_was_enabled = None
                 
@@ -835,7 +1034,9 @@ class CaptureSession():
                                 hand_action_right,
                                 hand_name_right,
                             ),
-                        )
+                        ),
+                        teleop_data=data,
+                        state=state,
                     )
                 else:
                     self.retargetor.stop()

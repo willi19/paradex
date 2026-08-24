@@ -81,6 +81,7 @@ class _StateReceiverNode(Node):
 
         with self._shared.lock:
             self._shared.joint_value = pos.copy()
+            self._shared.state_time = time.monotonic()
             if not self._shared.connection_event.is_set():
                 self._shared.action = pos.copy()
                 self._shared.connection_event.set()
@@ -98,7 +99,26 @@ def _publish_loop(shared, pub_cmd, exit_event, get_clock):
                 action = shared.action.copy()
                 joint_value = shared.joint_value.copy()
                 tactile = None if shared.tactile is None else shared.tactile.copy()
+                max_velocity = (
+                    None
+                    if shared.max_command_velocity_rad_s is None
+                    else shared.max_command_velocity_rad_s.copy()
+                )
+                last_published = (
+                    None
+                    if shared.last_published_action is None
+                    else shared.last_published_action.copy()
+                )
             action = np.clip(action, -MAX_ANGLE, MAX_ANGLE)
+            if max_velocity is not None and last_published is not None:
+                max_step = max_velocity * period
+                action = last_published + np.clip(
+                    action - last_published,
+                    -max_step,
+                    max_step,
+                )
+            with shared.lock:
+                shared.last_published_action = action.copy()
             driver_action = action[LOGICAL_TO_DRIVER_IDX]
             msg = JointState()
             msg.header.stamp = get_clock().now().to_msg()
@@ -122,7 +142,13 @@ class _Shared:
         self.connection_event = Event()
         self.save_event = Event()
         self.action = np.zeros(action_dof, dtype=float)
+        # ``action`` is the latest requested target.  The publish loop can
+        # optionally slew-limit its actual output so an overloaded caller
+        # cannot skip intermediate hand targets and create a joint jump.
+        self.last_published_action = None
+        self.max_command_velocity_rad_s = None
         self.joint_value = np.zeros(action_dof, dtype=float)
+        self.state_time = None
         self.tactile = None
         # ``perf_counter`` time of the most recently accepted tactile packet.
         # It lets callers reject an old contact reading instead of treating it
@@ -220,6 +246,61 @@ class AllegroController:
         with self._shared.lock:
             self._shared.action = action.copy()
 
+    def set_command_slew_rate(self, max_velocity_rad_s=None, *, initial_action=None):
+        """Limit physical command-output velocity, or pass ``None`` to disable.
+
+        This is intentionally applied in the publisher rather than in callers:
+        callers only hold a latest target, so their intermediate updates can be
+        skipped under scheduling load.  A rate limit here guarantees that every
+        outgoing joint command remains continuous.
+        """
+
+        if max_velocity_rad_s is None:
+            with self._shared.lock:
+                self._shared.max_command_velocity_rad_s = None
+                if initial_action is not None:
+                    self._shared.last_published_action = np.asarray(
+                        initial_action, dtype=float
+                    ).reshape(action_dof).copy()
+            return
+
+        velocity = np.asarray(max_velocity_rad_s, dtype=float)
+        if velocity.ndim == 0:
+            velocity = np.full(action_dof, float(velocity), dtype=float)
+        velocity = velocity.reshape(-1)
+        if (
+            velocity.shape != (action_dof,)
+            or not np.all(np.isfinite(velocity))
+            or np.any(velocity < 0.0)
+        ):
+            raise ValueError("max_command_velocity_rad_s must be a finite non-negative 16-vector")
+        with self._shared.lock:
+            self._shared.max_command_velocity_rad_s = velocity.copy()
+            if initial_action is not None:
+                initial = np.asarray(initial_action, dtype=float).reshape(-1)
+                if initial.shape != (action_dof,) or not np.all(np.isfinite(initial)):
+                    raise ValueError("initial_action must be a finite 16-vector")
+                self._shared.last_published_action = initial.copy()
+
+    def wait_for_published_action(self, action, *, timeout_seconds=1.0, atol=1e-6):
+        """Wait until the publish loop has emitted the specified hand command."""
+
+        action = np.asarray(action, dtype=float).reshape(-1)
+        if action.shape != (action_dof,) or not np.all(np.isfinite(action)):
+            raise ValueError("action must be a finite 16-vector")
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline:
+            with self._shared.lock:
+                published = (
+                    None
+                    if self._shared.last_published_action is None
+                    else self._shared.last_published_action.copy()
+                )
+            if published is not None and np.allclose(published, action, atol=atol, rtol=0.0):
+                return True
+            time.sleep(0.005)
+        return False
+
     def start(self, save_path):
         self.capture_path = save_path
         data = {"action": [], "time": [], "position": []}
@@ -259,12 +340,18 @@ class AllegroController:
             return {
                 'qpos': self._shared.joint_value.copy(),
                 'action': self._shared.action.copy(),
+                'published_action': (
+                    None
+                    if self._shared.last_published_action is None
+                    else self._shared.last_published_action.copy()
+                ),
                 'joint_names': list(LOGICAL_JOINT_ORDER),
                 'is_connected': self._shared.connection_event.is_set(),
                 'state_topic': self.state_topic,
                 'command_topic': self.command_topic,
                 'tactile': tactile,
                 'tactile_time': self._shared.tactile_time,
+                'state_monotonic_time': self._shared.state_time,
                 'time': time.time(),
             }
 

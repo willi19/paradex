@@ -22,8 +22,8 @@ EXCLUDED_SERIALS = {
     # "22684737",
     # "23173282",
     # "22684210",
-    "26256735",
-    "25452066",
+    # "26256735",
+    # "25452066",
 }
 
 
@@ -55,7 +55,9 @@ def process_match(args):
 def parallel_processing(db, serial_index, tot_kypt_matches, tot_kypt_dict, cam_keys):
     """ Parallelize the processing of keypoint matches """
     args = [((cam_keys[serial_index[serial_1]], cam_keys[serial_index[serial_2]]), np.vstack(matches, dtype=np.int32), tot_kypt_dict[serial_1], tot_kypt_dict[serial_2], serial_index[serial_1], serial_index[serial_2]) for (serial_1, serial_2), matches in tot_kypt_matches.items()]
-    num_processes = mp.cpu_count()  # Use all available cores
+    if not args:
+        return
+    num_processes = min(mp.cpu_count(), len(args))
     with mp.Pool(processes=num_processes) as pool:
         results = list(pool.map(process_match, args))
     # Add two-view geometry to database
@@ -198,6 +200,8 @@ def run_calibration(name):
         'ba_refine_extra_params': True,
         'ba_refine_focal_length': True,
         'max_extra_param': 4,
+        'num_threads': mp.cpu_count(),
+        'extract_colors': False,
     }
     Options = pycolmap.IncrementalPipelineOptions(options)
     

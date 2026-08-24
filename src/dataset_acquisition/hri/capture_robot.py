@@ -1,6 +1,10 @@
 import os
 import argparse
 import atexit
+import json
+import time
+from datetime import datetime
+from pathlib import Path
 import numpy as np
 from threading import Event
 
@@ -60,7 +64,7 @@ camera_group.add_argument(
     help="Alias for '--camera=preview'.",
 )
 parser.add_argument('--camera-preview-port', type=int, default=5484)
-parser.add_argument('--camera-preview-refresh-interval', type=float, default=0.2)
+parser.add_argument('--camera-preview-refresh-interval', type=float, default=1.0 / 30.0)
 parser.add_argument('--camera-preview-request-timeout', type=float, default=1.5)
 parser.add_argument(
     '--no-timestamp',
@@ -72,7 +76,7 @@ parser.set_defaults(timestamp=True)
 parser.add_argument('--arm', type=str, default="xarm",
                     help="Arm controller name. Use 'none' (or empty) to disable arm control.")
 parser.add_argument('--hand', type=str, default="inspire_f1",
-                    help="Hand controller/retargetor name. Use 'none' for arm-only teleop; 'allegro_v5' for the direct-anchor retargeter; 'allegro_v5_wonik' for Wonik's Manus ergonomics rule-based mapping; 'allegro_v5_anyteleop' for opt-in geometric retargeting with direct-anchor fallback; 'wuji' for optimization, 'wuji_direct' for direct mapping, or 'wuji_hybrid' for opt thumb + direct fingers.")
+                    help="Hand controller/retargetor name. Use 'none' for arm-only teleop; 'allegro_v5' for the direct-anchor retargeter; 'wuji' for optimization, 'wuji_direct' for direct mapping, or 'wuji_hybrid' for opt thumb + direct fingers.")
 parser.add_argument('--capture_root', type=str, default="eccv2026/allegro_v5")
 parser.add_argument('--name', type=str, required=True)
 parser.add_argument('--tactile', action="store_true")
@@ -83,8 +87,20 @@ parser.add_argument(
     default=30.0,
     help=(
         'Maximum live target-update rate for Allegro V5 hands. Defaults to '
-        '30 Hz, matching allegro_retargeter_alignment_ui.py; the driver holds '
+        '30 Hz, matching the Allegro alignment experiment; the driver holds '
         'the latest target between updates.'
+    ),
+)
+parser.add_argument(
+    '--allegro-teleop-log',
+    nargs='?',
+    const='auto',
+    default=None,
+    metavar='PATH',
+    help=(
+        'Record every commanded Allegro V5 tick with the MANUS frame/ergonomics, '
+        'retargeter target, controller target, and measured ROS feedback. '
+        'Without PATH, save a timestamped .npz below this capture name.'
     ),
 )
 parser.add_argument(
@@ -163,21 +179,30 @@ if args.allegro_tactile_display_max <= 0.0:
 
 camera_enabled = args.camera_mode != 'off'
 camera_preview_enabled = args.camera_mode == 'preview'
-allegro_v5_hands = {
-    'allegro_v5',
-    'allegro_v5_wonik',
-    'allegro_v5_anyteleop',
-}
+allegro_v5_hands = {'allegro_v5'}
 allegro_realtime_visualization = (
     args.visualize_tactile_realtime
     and args.hand in allegro_v5_hands
     and args.hand_side == 'right'
 )
+allegro_teleop_diagnostic_path = None
+if args.allegro_teleop_log is not None:
+    if args.hand not in allegro_v5_hands or args.hand_side != 'right':
+        parser.error('--allegro-teleop-log currently requires --hand allegro_v5 and --hand-side right.')
+    if args.allegro_teleop_log == 'auto':
+        diagnostic_name = datetime.now().strftime('allegro_teleop_%Y%m%d_%H%M%S.npz')
+        allegro_teleop_diagnostic_path = (
+            Path(shared_dir) / 'capture' / args.capture_root / args.name / diagnostic_name
+        )
+    else:
+        allegro_teleop_diagnostic_path = Path(args.allegro_teleop_log).expanduser()
 
 
 stop_event = Event()
 save_event = Event()
 exit_event = Event()
+grasp_yes_event = Event()
+grasp_no_event = Event()
 events = {"save": save_event, "stop": stop_event, "exit": exit_event}
 
 listen_keyboard(
@@ -185,9 +210,11 @@ listen_keyboard(
         "c": save_event,
         "q": exit_event,
         "s": stop_event,
+        "y": grasp_yes_event,
+        "n": grasp_no_event,
     }
 )
-print("Keyboard control: c=start capture, s=stop capture, q=exit")
+print("Keyboard control: c=start capture, s=stop capture, q=exit, y=grasp success, n=grasp fail")
 print("In keyboard_control mode, gesture states 2/3 do not control session start/stop/exit.")
 
 pedal_state = MiddlePedalState() if args.hand_side == "bimanual" else None
@@ -234,13 +261,10 @@ try:
         hand_scale=args.hand_scale,
         hand_command_rate_hz=(
             args.allegro_command_rate_hz
-            if args.hand in (
-                'allegro_v5',
-                'allegro_v5_wonik',
-                'allegro_v5_anyteleop',
-            )
+            if args.hand == 'allegro_v5'
             else None
         ),
+        allegro_teleop_diagnostic_path=allegro_teleop_diagnostic_path,
         use_vive=args.use_vive,
         require_left_control=args.use_vive,
     )
@@ -248,6 +272,9 @@ except Exception:
     if pedal_state is not None:
         pedal_state.close()
     raise
+
+if allegro_teleop_diagnostic_path is not None:
+    print(f"Allegro teleop diagnostic will be saved to: {allegro_teleop_diagnostic_path}")
 
 bimanual_state_provider = pedal_state.get_state if pedal_state is not None else None
 
@@ -295,9 +322,28 @@ def refresh_guis(_session=None):
     if camera_preview is not None:
         camera_preview.show()
 
+
+def wait_for_grasp_result():
+    grasp_yes_event.clear()
+    grasp_no_event.clear()
+    print("Grasp success? Press y or n.")
+
+    while not exit_event.is_set():
+        refresh_guis()
+        if grasp_yes_event.is_set():
+            return True
+        if grasp_no_event.is_set():
+            return False
+        time.sleep(0.01)
+
+    return None
+
+
 name = args.name
 
 last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.capture_root, args.name)))
+success_count = 0
+fail_count = 0
 
 try:
     while not exit_event.is_set():
@@ -344,6 +390,51 @@ try:
 
         save_event.clear()
         stop_event.clear()
+
+        if state != "exit":
+            grasp_success = wait_for_grasp_result()
+            if grasp_success is not None:
+                success_count += int(grasp_success)
+                fail_count += int(not grasp_success)
+                os.makedirs(episode_abs_path, exist_ok=True)
+                grasp_json_path = os.path.join(episode_abs_path, "grasp_result.json")
+                with open(grasp_json_path, "w") as file:
+                    json.dump(
+                        {
+                            "episode": last_idx,
+                            "grasp_success": grasp_success,
+                        },
+                        file,
+                        indent=2,
+                    )
+
+                paired_human_episode = int(
+                    input(
+                        "Enter the episode number of paired human sequence "
+                        f"for {args.name}: "
+                    )
+                )
+                paired_info_json_path = os.path.join(
+                    episode_abs_path,
+                    "paired_human_episode.json",
+                )
+                with open(paired_info_json_path, "w") as file:
+                    json.dump(
+                        {
+                            "human hand episode": last_idx,
+                            "paired human episode": paired_human_episode,
+                        },
+                        file,
+                        indent=2,
+                    )
+
+                print(
+                    f"Current Success count: {success_count} / "
+                    f"Failure count: {fail_count}"
+                )
+
+        grasp_yes_event.clear()
+        grasp_no_event.clear()
         print(f"============== episode {last_idx} done =========================")
 
         if state == "exit":

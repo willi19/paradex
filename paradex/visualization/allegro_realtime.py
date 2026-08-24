@@ -10,6 +10,10 @@ import numpy as np
 import trimesh
 
 from paradex.utils.path import rsc_path
+from paradex.retargetor.allegro_alignment import (
+    feedback_to_urdf_qpos,
+    urdf_qpos_from_hand_qpos,
+)
 from paradex.visualization.robot import RobotModule
 from paradex.visualization.visualizer.viser import ViserViewer
 
@@ -149,7 +153,7 @@ def fingertip_surface_arrow_frame(
 
 
 class AllegroRealtimeViser:
-    """Render a static canonical hand with lightweight live tactile arrows."""
+    """Render Allegro tactile data, optionally following live feedback qpos."""
 
     _ARROW_COLORS = {
         "index": (255, 80, 60, 255),
@@ -167,6 +171,7 @@ class AllegroRealtimeViser:
         max_arrow_length: float = 0.1,
         tactile_max_age_s: float = 0.25,
         urdf_path: str = DEFAULT_ALLEGRO_V5_URDF,
+        render_feedback_pose: bool = False,
     ) -> None:
         positive = {
             "update_rate_hz": update_rate_hz,
@@ -182,6 +187,7 @@ class AllegroRealtimeViser:
         self.tactile_display_max = float(tactile_display_max)
         self.max_arrow_length = float(max_arrow_length)
         self.tactile_max_age_s = float(tactile_max_age_s)
+        self.render_feedback_pose = bool(render_feedback_pose)
         self.exit_event = Event()
         self.thread: Optional[Thread] = None
         self.arrow_handles = {}
@@ -193,15 +199,50 @@ class AllegroRealtimeViser:
         )
         self.robot = RobotModule(urdf_path)
         self.robot.update_cfg(np.zeros(self.robot.get_num_joints()))
-        self.scene_offset = centered_robot_offset(self.robot)
-        static_mesh = canonical_allegro_mesh(self.robot)
-        static_mesh.apply_translation(self.scene_offset)
-        # One combined mesh, no robot joint frames and no per-link scene nodes.
-        self.robot_mesh_handle = self.viewer.server.scene.add_mesh_trimesh(
-            "/allegro",
-            static_mesh,
+        self.urdf_joint_names = tuple(self.robot.get_joint_names())
+        self.viser_robot = None
+        self.robot_mesh_handle = None
+        if self.render_feedback_pose:
+            # Use the exact light-weight per-link transform renderer used by
+            # the Allegro alignment experiment.  It sends 16 joint-frame
+            # transforms, not a 235k-vertex mesh every feedback update.
+            self.viewer.add_robot("allegro", urdf_path, include_arm_meshes=True)
+            self.viser_robot = self.viewer.robot_dict["allegro"]
+            self.viser_robot.change_color([], (0.78, 0.78, 0.82))
+            self.robot = self.viser_robot.urdf
+            self.urdf_joint_names = tuple(self.robot.get_joint_names())
+            self.scene_offset = np.zeros(3, dtype=np.float64)
+        else:
+            self.scene_offset = centered_robot_offset(self.robot)
+            static_mesh = canonical_allegro_mesh(self.robot)
+            static_mesh.apply_translation(self.scene_offset)
+            # One combined mesh, no robot joint frames and no per-link scene nodes.
+            self.robot_mesh_handle = self.viewer.server.scene.add_mesh_trimesh(
+                "/allegro",
+                static_mesh,
+            )
+        self._configure_initial_camera()
+        self.has_tactile_arrow_geometry = all(
+            link_name in self.robot.urdf.link_map
+            for link_name in ALLEGRO_V5_TIP_LINKS.values()
         )
-        self._create_static_arrow_handles()
+        if self.has_tactile_arrow_geometry:
+            self._create_static_arrow_handles()
+
+    def _configure_initial_camera(self) -> None:
+        """Frame the hand independently of a stale global Viser saved view."""
+        mesh = canonical_allegro_mesh(self.robot)
+        center = np.asarray(mesh.bounding_box.centroid, dtype=np.float64) + self.scene_offset
+        radius = float(np.max(mesh.bounding_box.extents))
+        distance = max(0.35, radius * 2.5)
+
+        @self.viewer.server.on_client_connect
+        def _frame_hand(client) -> None:
+            client.camera.look_at = center
+            client.camera.position = center + np.array(
+                (distance, -distance, distance * 0.8), dtype=np.float64
+            )
+            client.camera.up_direction = np.array((0.0, 0.0, 1.0))
 
     def _create_static_arrow_handles(self) -> None:
         """Create four shafts and heads once; never recreate mesh geometry."""
@@ -244,7 +285,8 @@ class AllegroRealtimeViser:
             daemon=True,
         )
         self.thread.start()
-        print("Static Allegro/tactile Viser started at http://localhost:8080")
+        pose_mode = "live feedback pose" if self.render_feedback_pose else "static pose"
+        print(f"Allegro/tactile Viser ({pose_mode}) started at http://localhost:8080")
 
     def _clear_arrows(self) -> None:
         for handles in self.arrow_handles.values():
@@ -278,6 +320,53 @@ class AllegroRealtimeViser:
             handles["shaft"].visible = True
             handles["head"].visible = True
 
+    def _sync_arrow_frames_to_feedback_pose(self) -> None:
+        """Keep tactile origins on the moved fingertip meshes in pose mode."""
+        if not getattr(self, "render_feedback_pose", False) or not self.arrow_handles:
+            return
+        for finger in ALLEGRO_FINGERS:
+            anchor, direction = fingertip_surface_arrow_frame(
+                self.robot,
+                ALLEGRO_V5_TIP_LINKS[finger],
+            )
+            self.arrow_handles[finger]["anchor"] = anchor + self.scene_offset
+            self.arrow_handles[finger]["direction"] = direction
+
+    def _update_feedback_pose(self, feedback: Mapping[str, Any]) -> bool:
+        """Apply named controller feedback using the alignment UI's conversion."""
+        if self.viser_robot is None:
+            return False
+        values = feedback.get("qpos")
+        joint_names = feedback.get("joint_names")
+        if values is None or joint_names is None:
+            return False
+        try:
+            values = np.asarray(values, dtype=np.float64).reshape(-1)
+            joint_names = tuple(str(name) for name in joint_names)
+            if values.shape != (len(joint_names),) or not np.all(np.isfinite(values)):
+                return False
+            by_name = dict(zip(joint_names, values.tolist()))
+            if all(name in by_name for name in self.urdf_joint_names):
+                # The standalone Allegro V5 URDF exposes joint_0_0 ...
+                # joint_15_0, exactly like the ROS2 driver.  Retain that
+                # native named ordering instead of forcing UI-only aliases.
+                cfg = np.asarray(
+                    [by_name[name] for name in self.urdf_joint_names],
+                    dtype=np.float64,
+                )
+            else:
+                # The alignment UI's combined URDF has semantic joint names;
+                # preserve its thumb/index/middle/ring conversion there.
+                hand_qpos = feedback_to_urdf_qpos(values, joint_names)
+                cfg = urdf_qpos_from_hand_qpos(hand_qpos, self.urdf_joint_names)
+        except (TypeError, ValueError):
+            # Startup and disconnected-driver payloads are expected to be
+            # incomplete; keep the last valid rendered pose in that case.
+            return False
+        self.viser_robot.update_cfg(cfg)
+        self._sync_arrow_frames_to_feedback_pose()
+        return True
+
     def update_once(self, feedback: Mapping[str, Any]) -> bool:
         levels = (
             allegro_tactile_finger_levels(feedback.get("tactile"))
@@ -285,6 +374,7 @@ class AllegroRealtimeViser:
             else None
         )
         with self.viewer.server.atomic():
+            self._update_feedback_pose(feedback)
             if levels is None:
                 self._clear_arrows()
             else:
@@ -369,7 +459,10 @@ class AllegroRealtimeViser:
                 return self._latest_render_bgr
 
             client_id = candidates[0]
-            scale = min(1.0, 720.0 / height, 960.0 / width)
+            # The render is enlarged to fill the OpenCV panel.  A 480p source
+            # preserves enough tactile detail while reducing browser readback,
+            # JPEG encoding, and transfer latency substantially.
+            scale = min(1.0, 480.0 / height, 640.0 / width)
             render_height = max(1, int(round(height * scale)))
             render_width = max(1, int(round(width * scale)))
             token = object()

@@ -143,11 +143,7 @@ def retargeter_action_to_live_controller_qpos(
     index/middle/ring/thumb vector directly to ``allegro_v5_controller_ros2``.
     The older driver uses its named logical controller order instead.
     """
-    if hand_name in (
-        "allegro_v5",
-        "allegro_v5_anyteleop",
-        "allegro_v5_wonik",
-    ):
+    if hand_name == "allegro_v5":
         return list(_named_values(action, ALLEGRO_RETARGETER_JOINT_NAMES).values())
     if hand_name == "allegro":
         return retargeter_action_to_controller_qpos(action)

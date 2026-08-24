@@ -71,7 +71,33 @@ def solve_axb_cpu(A, B):
     return T
 
     
-def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.001, verbose=False):
+def _handeye_device(device=None):
+    if device is not None:
+        return torch.device(device)
+    if torch.cuda.is_available():
+        return torch.device("cuda:0")
+    return torch.device("cpu")
+
+
+def handeye_residual_loss(A_batch, B_batch, X):
+    """Return the batched equivalent of the original per-pose AX=XB loss."""
+    AX = torch.matmul(A_batch, X)
+    XB = torch.matmul(X, B_batch)
+    residual = AX - XB
+    return residual.square().sum() + torch.linalg.vector_norm(
+        residual[:, :3, 3], dim=1
+    ).sum()
+
+
+def solve_ax_xb(
+    A_list,
+    B_list,
+    init_X=None,
+    max_epochs=3000,
+    learning_rate=0.001,
+    verbose=False,
+    device=None,
+):
     """
     Solve AX = XB using PyTorch gradient descent
     
@@ -99,16 +125,22 @@ def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.00
             # Initialize rotation using 6D representation (more stable than quaternions)
             if init_rotation is not None:
                 # Convert rotation matrix to 6D representation
-                self.rotation_6d = nn.Parameter(self._matrix_to_6d(init_rotation))
+                self.rotation_6d = nn.Parameter(
+                    self._matrix_to_6d(init_rotation).detach().clone()
+                )
             else:
                 # Random initialization
-                self.rotation_6d = nn.Parameter(torch.randn(6))
+                self.rotation_6d = nn.Parameter(
+                    torch.randn((3, 2), dtype=torch.float64)
+                )
             
             # Initialize translation
             if init_translation is not None:
-                self.translation = nn.Parameter(torch.tensor(init_translation, dtype=torch.float64))
+                self.translation = nn.Parameter(
+                    init_translation.detach().clone().to(dtype=torch.float64)
+                )
             else:
-                self.translation = nn.Parameter(torch.zeros(3))
+                self.translation = nn.Parameter(torch.zeros(3, dtype=torch.float64))
         
         def _matrix_to_6d(self, matrix):
             """Convert 3x3 rotation matrix to 6D representation"""
@@ -124,7 +156,7 @@ def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.00
             b1 = a1 / torch.norm(a1)
             b2 = a2 - torch.dot(b1, a2) * b1
             b2 = b2 / torch.norm(b2)
-            b3 = torch.cross(b1, b2)
+            b3 = torch.cross(b1, b2, dim=0)
             
             return torch.stack([b1, b2, b3], dim=1)
         
@@ -133,50 +165,69 @@ def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.00
             rotation_matrix = self._6d_to_matrix(self.rotation_6d)
             
             # Build 4x4 transformation matrix
-            X = torch.eye(4,dtype=torch.float64)
+            X = torch.eye(
+                4,
+                dtype=self.translation.dtype,
+                device=self.translation.device,
+            )
             X[:3, :3] = rotation_matrix
             X[:3, 3] = self.translation
             
             return X
     
-    # Convert to PyTorch tensors
-    A_tensors = [torch.tensor(A, dtype=torch.float64) for A in A_list]
-    B_tensors = [torch.tensor(B, dtype=torch.float64) for B in B_list]
+    if len(A_list) != len(B_list) or not A_list:
+        raise ValueError("A_list and B_list must contain the same non-zero count")
+
+    compute_device = _handeye_device(device)
+    if compute_device.type == "cuda":
+        torch.cuda.set_device(compute_device.index or 0)
+
+    # One transfer and one batched kernel per operation replaces the per-pose loop.
+    A_tensors = torch.as_tensor(
+        np.asarray(A_list), dtype=torch.float64, device=compute_device
+    )
+    B_tensors = torch.as_tensor(
+        np.asarray(B_list), dtype=torch.float64, device=compute_device
+    )
     
     # Initialize network with Tsai-Lenz solution as starting point
     if init_X is None:
         init_X = solve_axb_cpu(np.array(A_list), np.array(B_list))
     init_R = init_X[:3, :3]
     init_t = init_X[:3, 3]
-    model = HandEyeCalibrationNet(init_rotation=torch.tensor(init_R, dtype=torch.float64),
-                                    init_translation=torch.tensor(init_t, dtype=torch.float64))
+    model = HandEyeCalibrationNet(
+        init_rotation=torch.as_tensor(init_R, dtype=torch.float64),
+        init_translation=torch.as_tensor(init_t, dtype=torch.float64),
+    ).to(compute_device)
     
     # Optimizer
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
     scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=1000, gamma=0.8)
     
-    losses = []
-    
+    if verbose:
+        print(f"Hand-eye optimizer device: {compute_device}")
+
     for epoch in range(max_epochs):
         optimizer.zero_grad()
         
         # Get current transformation
         X = model()
         
-        # Compute loss: ||AX - XB||_F^2 for all pose pairs
-        total_loss = 0
-        for A, B in zip(A_tensors, B_tensors):
-            AX = torch.matmul(A, X)
-            XB = torch.matmul(X, B)
-            loss = torch.norm(AX - XB, 'fro') ** 2
-            total_loss += loss
-            total_loss += torch.norm((AX-XB)[:3,3])
+        # Compute every pose-pair residual in one batched operation.
+        total_loss = handeye_residual_loss(A_tensors, B_tensors, X)
         
         # Add regularization terms
         rotation_matrix = X[:3, :3]
         
         # Orthogonality constraint: R^T R = I
-        ortho_loss = torch.norm(torch.matmul(rotation_matrix.T, rotation_matrix) - torch.eye(3)) ** 2
+        identity = torch.eye(
+            3,
+            dtype=rotation_matrix.dtype,
+            device=rotation_matrix.device,
+        )
+        ortho_loss = torch.norm(
+            torch.matmul(rotation_matrix.T, rotation_matrix) - identity
+        ) ** 2
         
         # Determinant constraint: det(R) = 1
         det_loss = (torch.det(rotation_matrix) - 1) ** 2
@@ -189,13 +240,11 @@ def solve_ax_xb(A_list, B_list, init_X=None, max_epochs=3000, learning_rate=0.00
         optimizer.step()
         scheduler.step()
         
-        losses.append(total_loss.item())
-        
         if verbose and epoch % 500 == 0:
             print(f"Epoch {epoch}, Loss: {total_loss.item():.8f}, "
                   f"Ortho: {ortho_loss.item():.8f}, Det: {det_loss.item():.8f}")
     
     # Return final transformation as numpy array
     with torch.no_grad():
-        X_final = model().numpy()
+        X_final = model().detach().cpu().numpy()
     return X_final

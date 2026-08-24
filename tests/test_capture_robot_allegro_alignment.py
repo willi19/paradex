@@ -1,7 +1,7 @@
 import numpy as np
 
 from paradex.retargetor.hand_regargetor import allegro_v5
-from src.dataset_acquisition.hri.capture_robot_allegro_alignment import (
+from paradex.retargetor.experiment.capture_robot_allegro_alignment import (
     AlignmentUiAllegroRetargetor,
 )
 
@@ -45,17 +45,3 @@ def test_direct_mode_passes_right_manus_ergonomics_like_alignment_ui():
     assert adapter.hand_retargetor.calls == [
         (frame, {"ergonomics": ergonomics})
     ]
-
-
-def test_anyteleop_mode_does_not_receive_direct_mode_ergonomics():
-    adapter = _adapter("anyteleop")
-    frame = {"wrist": np.eye(4)}
-
-    adapter.get_action(
-        {
-            "Right": frame,
-            "ergonomics": {"Right": {"ThumbMCPStretch": 42.0}},
-        }
-    )
-
-    assert adapter.hand_retargetor.calls == [(frame, {})]

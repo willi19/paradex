@@ -13,9 +13,6 @@ from paradex.retargetor.hand_regargetor import (
     wuji_direct,
     wuji_hybrid,
 )
-from paradex.retargetor.allegro_v5_wonik import AllegroV5WonikManusRetargeter
-from paradex.retargetor.allegro_v5_anyteleop import AllegroV5AnyTeleopRetargeter
-
 _HAND_RETARGETORS = {
     "inspire": inspire,
     "inspire_dftp": inspire,
@@ -23,24 +20,11 @@ _HAND_RETARGETORS = {
     "inspire_f1": inspire_f1,
     "kistar": kistar,
     "allegro_v5": allegro_v5,
-    "allegro_v5_wonik": AllegroV5WonikManusRetargeter,
-    "allegro_v5_anyteleop": AllegroV5AnyTeleopRetargeter,
     "robotiq_2f85": robotiq_2f85,
     "wuji": wuji,
     "wuji_direct": wuji_direct,
     "wuji_hybrid": wuji_hybrid,
 }
-
-_HAND_COORDINATE_NAMES = {
-    # The AnyTeleop implementation changes only the retargeting algorithm;
-    # it mounts on the same physical Allegro V5 hand frame.
-    "allegro_v5_anyteleop": "allegro_v5",
-    "allegro_v5_wonik": "allegro_v5",
-}
-
-
-def _hand_coordinate_name(name):
-    return _HAND_COORDINATE_NAMES.get(name, name)
 
 
 def _resolve_hand(name, is_right=True, scale=1.0):
@@ -49,8 +33,6 @@ def _resolve_hand(name, is_right=True, scale=1.0):
     if name not in _HAND_RETARGETORS:
         raise ValueError(f"Invalid hand name: {name}")
     fn = _HAND_RETARGETORS[name]
-    if name in ("allegro_v5_anyteleop", "allegro_v5_wonik"):
-        return fn()
     if name in ("wuji", "wuji_direct", "wuji_hybrid"):
         return partial(fn, is_right=is_right, scale=scale)
     if name in ("inspire", "inspire_dftp"):
@@ -118,8 +100,8 @@ class Retargetor(): # Input is only from Xsens
                 left_name = hand_name_left if hand_name_left is not None else hand_name
                 right_name = hand_name_right if hand_name_right is not None else hand_name
                 self.device2wrist = {
-                    "Left": DEVICE2WRIST[_hand_coordinate_name(left_name)].copy(),
-                    "Right": DEVICE2WRIST[_hand_coordinate_name(right_name)].copy(),
+                    "Left": DEVICE2WRIST[left_name].copy(),
+                    "Right": DEVICE2WRIST[right_name].copy(),
                 }
                 self.device2global = np.eye(4)
         elif self.arm_name is not None:
@@ -133,9 +115,7 @@ class Retargetor(): # Input is only from Xsens
             ].copy()
             self.device2global = DEVICE2GLOBAL[self.arm_name].copy()
         else:
-            self.device2wrist = DEVICE2WRIST[
-                _hand_coordinate_name(self.hand_name)
-            ].copy()
+            self.device2wrist = DEVICE2WRIST[self.hand_name].copy()
             self.device2global = np.eye(4)
 
     def _compute_wrist_pose(self, side, data):
@@ -170,12 +150,12 @@ class Retargetor(): # Input is only from Xsens
             right_name = self.hand_name_right or self.hand_name
             left_kwargs = (
                 {"ergonomics": ergonomics.get("Left")}
-                if left_name in ("inspire", "inspire_dftp", "allegro_v5", "allegro_v5_wonik")
+                if left_name in ("inspire", "inspire_dftp", "allegro_v5")
                 else {}
             )
             right_kwargs = (
                 {"ergonomics": ergonomics.get("Right")}
-                if right_name in ("inspire", "inspire_dftp", "allegro_v5", "allegro_v5_wonik")
+                if right_name in ("inspire", "inspire_dftp", "allegro_v5")
                 else {}
             )
             hand_action_left = (
@@ -206,7 +186,7 @@ class Retargetor(): # Input is only from Xsens
 
             if self.hand_retargetor is not None:
                 kwargs = {}
-                if self.hand_name in ("inspire", "inspire_dftp", "allegro_v5", "allegro_v5_wonik"):
+                if self.hand_name in ("inspire", "inspire_dftp", "allegro_v5"):
                     kwargs["ergonomics"] = data.get("ergonomics", {}).get(
                         self.hand_side
                     )

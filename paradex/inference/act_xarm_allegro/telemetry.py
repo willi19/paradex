@@ -12,7 +12,7 @@ from typing import Any, Iterator
 import cv2
 import numpy as np
 
-from paradex.inference.act_xarm_allegro.core import ObservationPacket
+from paradex.inference.act_xarm_allegro.core import ACTION_DIM, ObservationPacket
 
 
 def _json_value(value: Any) -> Any:
@@ -47,10 +47,36 @@ class RunLogger:
             **fields,
         }
         with self._lock:
-            self._events.write(json.dumps(_json_value(record), separators=(",", ":")) + "\n")
+            self._events.write(
+                json.dumps(_json_value(record), separators=(",", ":")) + "\n"
+            )
             self._events.flush()
 
-    def inference_boundary(self, packet: ObservationPacket, raw_actions: np.ndarray, inference_ms: float) -> Path:
+    def inference_boundary(
+        self,
+        packet: ObservationPacket,
+        selected_actions: np.ndarray,
+        full_action_chunk: np.ndarray,
+        inference_ms: float,
+    ) -> Path:
+        selected_actions = np.asarray(selected_actions, dtype=np.float64)
+        full_action_chunk = np.asarray(full_action_chunk, dtype=np.float64)
+        if selected_actions.ndim != 2 or full_action_chunk.ndim != 2:
+            raise ValueError("Action chunks must be rank-2 arrays")
+        if selected_actions.shape[1:] != (ACTION_DIM,) or full_action_chunk.shape[
+            1:
+        ] != (ACTION_DIM,):
+            raise ValueError(f"Action chunks must contain {ACTION_DIM}D actions")
+        if len(selected_actions) > len(full_action_chunk):
+            raise ValueError(
+                "Selected actions cannot be longer than the full action chunk"
+            )
+        if not np.array_equal(
+            selected_actions, full_action_chunk[: len(selected_actions)]
+        ):
+            raise ValueError(
+                "Selected actions must be an exact prefix of the full action chunk"
+            )
         index = self._chunk_index
         self._chunk_index += 1
         boundary = self.run_dir / f"chunk_{index:06d}"
@@ -59,7 +85,9 @@ class RunLogger:
             safe_key = key.replace(".", "_")
             jpeg = packet.jpeg_bytes.get(key)
             if jpeg is None:
-                ok, encoded = cv2.imencode(".jpg", cv2.cvtColor(image, cv2.COLOR_RGB2BGR))
+                ok, encoded = cv2.imencode(
+                    ".jpg", cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+                )
                 if not ok:
                     raise RuntimeError(f"Failed to encode replay image {key}")
                 jpeg = encoded.tobytes()
@@ -67,7 +95,10 @@ class RunLogger:
         np.savez_compressed(
             boundary / "observation_action.npz",
             state=np.asarray(packet.state, dtype=np.float64),
-            raw_actions=np.asarray(raw_actions, dtype=np.float64),
+            # Keep raw_actions as a compatibility alias for older analysis scripts.
+            raw_actions=selected_actions,
+            selected_actions=selected_actions,
+            full_action_chunk=full_action_chunk,
             captured_monotonic_ns=np.int64(packet.captured_monotonic_ns),
             state_monotonic_ns=np.int64(packet.state_monotonic_ns),
         )
@@ -75,6 +106,9 @@ class RunLogger:
             "frame_ids": dict(packet.frame_ids),
             "image_keys": list(packet.images),
             "inference_ms": float(inference_ms),
+            "selected_action_steps": len(selected_actions),
+            "predicted_chunk_steps": len(full_action_chunk),
+            "action_selection": "prefix",
         }
         (boundary / "metadata.json").write_text(json.dumps(metadata, indent=2))
         self.event("inference", chunk=index, artifact=str(boundary), **metadata)

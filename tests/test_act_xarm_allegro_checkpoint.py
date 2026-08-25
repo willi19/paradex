@@ -18,7 +18,15 @@ def test_checkpoint_saved_processors_and_synthetic_inference():
     assert loaded.contract.action_dim == 25
     assert loaded.contract.chunk_size == 50
     assert loaded.contract.n_action_steps == 10
-    images = {key: np.zeros((480, 640, 3), dtype=np.uint8) for key in loaded.contract.image_keys}
-    actions, _elapsed_ms = loaded.infer(images, np.zeros(22, dtype=np.float32), 10)
-    assert actions.shape == (10, 25)
-    assert np.all(np.isfinite(actions))
+    images = {
+        key: np.zeros((480, 640, 3), dtype=np.uint8)
+        for key in loaded.contract.image_keys
+    }
+    prediction = loaded.infer(images, np.zeros(22, dtype=np.float32), 10)
+    assert prediction.selected_actions.shape == (10, 25)
+    assert prediction.full_action_chunk.shape == (50, 25)
+    np.testing.assert_array_equal(
+        prediction.selected_actions,
+        prediction.full_action_chunk[:10],
+    )
+    assert np.all(np.isfinite(prediction.full_action_chunk))

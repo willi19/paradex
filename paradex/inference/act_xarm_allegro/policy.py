@@ -33,6 +33,15 @@ class PolicyContract:
     n_action_steps: int
 
 
+@dataclass(frozen=True)
+class ActionChunkPrediction:
+    """A complete policy prediction and the prefix selected for execution."""
+
+    full_action_chunk: np.ndarray
+    selected_actions: np.ndarray
+    inference_ms: float
+
+
 @dataclass
 class LoadedPolicy:
     policy: object
@@ -41,33 +50,50 @@ class LoadedPolicy:
     contract: PolicyContract
     snapshot_path: str
 
-    def infer(self, images: dict[str, np.ndarray], state: np.ndarray, action_steps: int) -> tuple[np.ndarray, float]:
+    def infer(
+        self,
+        images: dict[str, np.ndarray],
+        state: np.ndarray,
+        action_steps: int,
+    ) -> ActionChunkPrediction:
         import torch
         from lerobot.policies.utils import prepare_observation_for_inference
 
         observation = {key: np.asarray(value).copy() for key, value in images.items()}
         observation[STATE_KEY] = np.asarray(state, dtype=np.float32).reshape(STATE_DIM)
-        batch = prepare_observation_for_inference(observation, torch.device(self.policy.config.device))
+        batch = prepare_observation_for_inference(
+            observation, torch.device(self.policy.config.device)
+        )
         batch = self.preprocessor(batch)
-        if torch.cuda.is_available() and str(self.policy.config.device).startswith("cuda"):
+        if torch.cuda.is_available() and str(self.policy.config.device).startswith(
+            "cuda"
+        ):
             torch.cuda.synchronize()
         started = time.perf_counter()
         with torch.inference_mode():
-            normalized = self.policy.predict_action_chunk(batch)[:, :action_steps]
-            actions = self.postprocessor(normalized)
-        if torch.cuda.is_available() and str(self.policy.config.device).startswith("cuda"):
+            normalized_chunk = self.policy.predict_action_chunk(batch)
+            actions = self.postprocessor(normalized_chunk)
+        if torch.cuda.is_available() and str(self.policy.config.device).startswith(
+            "cuda"
+        ):
             torch.cuda.synchronize()
         elapsed_ms = (time.perf_counter() - started) * 1000.0
         if hasattr(actions, "detach"):
             actions = actions.detach().cpu().numpy()
         result = np.asarray(actions, dtype=np.float64)
-        if result.shape != (1, action_steps, ACTION_DIM):
+        expected_shape = (1, self.contract.chunk_size, ACTION_DIM)
+        if result.shape != expected_shape:
             raise RuntimeError(
-                f"Policy returned {result.shape}, expected {(1, action_steps, ACTION_DIM)}"
+                f"Policy returned {result.shape}, expected {expected_shape}"
             )
         if not np.all(np.isfinite(result)):
             raise RuntimeError("Policy returned non-finite actions")
-        return result[0], elapsed_ms
+        full_action_chunk = result[0]
+        return ActionChunkPrediction(
+            full_action_chunk=full_action_chunk,
+            selected_actions=full_action_chunk[:action_steps].copy(),
+            inference_ms=elapsed_ms,
+        )
 
 
 def _feature_shape(feature: object) -> tuple[int, ...]:
@@ -75,12 +101,18 @@ def _feature_shape(feature: object) -> tuple[int, ...]:
     return tuple(int(value) for value in shape)
 
 
-def validate_policy_contract(config: object, expected_image_keys: tuple[str, ...], action_steps: int) -> PolicyContract:
+def validate_policy_contract(
+    config: object, expected_image_keys: tuple[str, ...], action_steps: int
+) -> PolicyContract:
     input_features = config.input_features
     output_features = config.output_features
-    actual_image_keys = tuple(key for key in input_features if key.startswith("observation.images."))
+    actual_image_keys = tuple(
+        key for key in input_features if key.startswith("observation.images.")
+    )
     if set(actual_image_keys) != set(expected_image_keys):
-        raise ValueError(f"Checkpoint image keys {actual_image_keys} do not match {expected_image_keys}")
+        raise ValueError(
+            f"Checkpoint image keys {actual_image_keys} do not match {expected_image_keys}"
+        )
     if _feature_shape(input_features[STATE_KEY]) != (STATE_DIM,):
         raise ValueError("Checkpoint observation.state is not 22D")
     for key in expected_image_keys:
@@ -94,7 +126,9 @@ def validate_policy_contract(config: object, expected_image_keys: tuple[str, ...
         raise ValueError(
             f"Requested {action_steps} actions, checkpoint supports {saved_steps}/{chunk_size}"
         )
-    return PolicyContract(actual_image_keys, STATE_DIM, ACTION_DIM, chunk_size, saved_steps)
+    return PolicyContract(
+        actual_image_keys, STATE_DIM, ACTION_DIM, chunk_size, saved_steps
+    )
 
 
 def load_policy(config: RunnerConfig) -> LoadedPolicy:
@@ -109,7 +143,9 @@ def load_policy(config: RunnerConfig) -> LoadedPolicy:
     if source.is_dir():
         snapshot = str(source)
     else:
-        snapshot = snapshot_download(config.policy_path, revision=config.policy_revision)
+        snapshot = snapshot_download(
+            config.policy_path, revision=config.policy_revision
+        )
     config_path = Path(snapshot) / "config.json"
     raw_config = json.loads(config_path.read_text())
     raw_config.pop("pretrained_revision", None)
@@ -123,7 +159,9 @@ def load_policy(config: RunnerConfig) -> LoadedPolicy:
         config.action_steps,
     )
     policy = ACTPolicy.from_pretrained(snapshot, config=policy_config)
-    preprocessor, postprocessor = make_pre_post_processors(policy_config, pretrained_path=snapshot)
+    preprocessor, postprocessor = make_pre_post_processors(
+        policy_config, pretrained_path=snapshot
+    )
     return LoadedPolicy(policy, preprocessor, postprocessor, contract, snapshot)
 
 
@@ -143,16 +181,22 @@ def load_safety_config(
     from huggingface_hub import hf_hub_download
 
     validate_dataset_contract(dataset_repo_id)
-    stats_path = hf_hub_download(dataset_repo_id, "meta/stats.json", repo_type="dataset")
+    stats_path = hf_hub_download(
+        dataset_repo_id, "meta/stats.json", repo_type="dataset"
+    )
     stats = json.loads(Path(stats_path).read_text())
     action_lower = np.asarray(stats[ACTION_KEY]["min"], dtype=np.float64)
     action_upper = np.asarray(stats[ACTION_KEY]["max"], dtype=np.float64)
     action_lower[9:] = np.maximum(action_lower[9:], ALLEGRO_PHYSICAL_LOWER)
     action_upper[9:] = np.minimum(action_upper[9:], ALLEGRO_PHYSICAL_UPPER)
     if workspace_lower is not None:
-        action_lower[:3] = np.maximum(action_lower[:3], np.asarray(workspace_lower, dtype=np.float64))
+        action_lower[:3] = np.maximum(
+            action_lower[:3], np.asarray(workspace_lower, dtype=np.float64)
+        )
     if workspace_upper is not None:
-        action_upper[:3] = np.minimum(action_upper[:3], np.asarray(workspace_upper, dtype=np.float64))
+        action_upper[:3] = np.minimum(
+            action_upper[:3], np.asarray(workspace_upper, dtype=np.float64)
+        )
     return SafetyConfig(
         state_lower=np.asarray(stats[STATE_KEY]["q01"], dtype=np.float64),
         state_upper=np.asarray(stats[STATE_KEY]["q99"], dtype=np.float64),
@@ -176,7 +220,11 @@ def validate_dataset_contract(dataset_repo_id: str) -> dict[str, tuple[str, ...]
     state_axes = tuple(info["features"][STATE_KEY]["names"]["axes"])
     action_axes = tuple(info["features"][ACTION_KEY]["names"]["axes"])
     if state_axes != EXPECTED_STATE_AXES:
-        raise ValueError(f"Dataset state order does not match robot contract: {state_axes}")
+        raise ValueError(
+            f"Dataset state order does not match robot contract: {state_axes}"
+        )
     if action_axes != EXPECTED_ACTION_AXES:
-        raise ValueError(f"Dataset action order does not match decoder contract: {action_axes}")
+        raise ValueError(
+            f"Dataset action order does not match decoder contract: {action_axes}"
+        )
     return {"state_axes": state_axes, "action_axes": action_axes}

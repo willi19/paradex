@@ -72,3 +72,30 @@ def test_telemetry_rejects_selected_actions_that_are_not_chunk_prefix(tmp_path):
             assert "exact prefix" in str(error)
         else:
             raise AssertionError("Expected mismatched action chunks to be rejected")
+
+
+def test_telemetry_records_temporal_ensemble_actions(tmp_path):
+    packet = ObservationPacket(
+        images={},
+        state=np.zeros(22),
+        frame_ids={},
+        captured_monotonic_ns=100,
+        state_monotonic_ns=101,
+    )
+    full_action_chunk = np.zeros((50, 25))
+    selected_actions = np.ones((10, 25))
+    with RunLogger(tmp_path, run_name="ensemble-run") as logger:
+        artifact = logger.inference_boundary(
+            packet,
+            selected_actions,
+            full_action_chunk,
+            1.0,
+            action_selection="temporal_ensemble",
+            ensemble_contributors=np.full(10, 2),
+        )
+    arrays = np.load(artifact / "observation_action.npz")
+    np.testing.assert_array_equal(arrays["selected_actions"], selected_actions)
+    np.testing.assert_array_equal(arrays["full_action_chunk"], full_action_chunk)
+    np.testing.assert_array_equal(arrays["ensemble_contributors"], np.full(10, 2))
+    metadata = json.loads((artifact / "metadata.json").read_text())
+    assert metadata["action_selection"] == "temporal_ensemble"

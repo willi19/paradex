@@ -24,19 +24,14 @@ class DeadmanState:
 
     def press(self, key: str) -> None:
         with self._lock:
-            if key == "space" and not self._held and not self._aborted:
-                self._held = True
-                self._enable_generation += 1
-            elif key == "esc":
+            if key == "esc":
                 self._held = False
                 self._aborted = True
-            elif key == "r":
+            elif key == "r" and self._aborted:
                 self._rearm_requested = True
 
     def release(self, key: str) -> None:
-        if key == "space":
-            with self._lock:
-                self._held = False
+        del key
 
     def consume_rearm(self, checks_passed: bool) -> bool:
         with self._lock:
@@ -44,6 +39,7 @@ class DeadmanState:
             self._rearm_requested = False
             if requested and checks_passed:
                 self._aborted = False
+                self._enable_generation += 1
                 return True
             return False
 
@@ -66,8 +62,6 @@ class KeyboardDeadman:
     def _name(key: object) -> str | None:
         from pynput import keyboard
 
-        if key == keyboard.Key.space:
-            return "space"
         if key == keyboard.Key.esc:
             return "esc"
         char = getattr(key, "char", None)

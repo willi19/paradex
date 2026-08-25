@@ -58,6 +58,9 @@ class RunLogger:
         selected_actions: np.ndarray,
         full_action_chunk: np.ndarray,
         inference_ms: float,
+        *,
+        action_selection: str = "prefix",
+        ensemble_contributors: np.ndarray | None = None,
     ) -> Path:
         selected_actions = np.asarray(selected_actions, dtype=np.float64)
         full_action_chunk = np.asarray(full_action_chunk, dtype=np.float64)
@@ -71,12 +74,20 @@ class RunLogger:
             raise ValueError(
                 "Selected actions cannot be longer than the full action chunk"
             )
-        if not np.array_equal(
+        if action_selection not in {"prefix", "temporal_ensemble"}:
+            raise ValueError(f"Unsupported action selection: {action_selection}")
+        if action_selection == "prefix" and not np.array_equal(
             selected_actions, full_action_chunk[: len(selected_actions)]
         ):
             raise ValueError(
                 "Selected actions must be an exact prefix of the full action chunk"
             )
+        if ensemble_contributors is not None:
+            ensemble_contributors = np.asarray(ensemble_contributors, dtype=np.int64)
+            if ensemble_contributors.shape != (len(selected_actions),):
+                raise ValueError("ensemble_contributors must contain one value per action")
+            if np.any(ensemble_contributors <= 0):
+                raise ValueError("ensemble_contributors must be positive")
         index = self._chunk_index
         self._chunk_index += 1
         boundary = self.run_dir / f"chunk_{index:06d}"
@@ -99,6 +110,11 @@ class RunLogger:
             raw_actions=selected_actions,
             selected_actions=selected_actions,
             full_action_chunk=full_action_chunk,
+            **(
+                {"ensemble_contributors": ensemble_contributors}
+                if ensemble_contributors is not None
+                else {}
+            ),
             captured_monotonic_ns=np.int64(packet.captured_monotonic_ns),
             state_monotonic_ns=np.int64(packet.state_monotonic_ns),
         )
@@ -108,8 +124,10 @@ class RunLogger:
             "inference_ms": float(inference_ms),
             "selected_action_steps": len(selected_actions),
             "predicted_chunk_steps": len(full_action_chunk),
-            "action_selection": "prefix",
+            "action_selection": action_selection,
         }
+        if ensemble_contributors is not None:
+            metadata["ensemble_contributors"] = ensemble_contributors.tolist()
         (boundary / "metadata.json").write_text(json.dumps(metadata, indent=2))
         self.event("inference", chunk=index, artifact=str(boundary), **metadata)
         return boundary

@@ -140,13 +140,18 @@ class RunnerConfig:
     device: str = "cuda"
     control_hz: float = 30.0
     action_steps: int = 10
+    temporal_ensemble_decay: float = 0.01
     duration_seconds: float | None = None
-    max_chunks_per_enable: int = 1
+    max_chunks_per_enable: int = 0
     output_dir: Path = Path("~/shared_data/inference/act_xarm_allegro").expanduser()
     camera_bindings: tuple[CameraBinding, ...] = DEFAULT_CAMERA_BINDINGS
     state_endpoint: str = "tcp://127.0.0.1:5561"
     command_endpoint: str = "tcp://127.0.0.1:5562"
     enable_live: bool = False
+    # Match the established direct LIVE runner: dataset support, workspace,
+    # observation freshness, and per-tick rate validation are available for
+    # analysis, but are not command gates unless explicitly enabled.
+    enforce_safety_gates: bool = False
 
     def __post_init__(self) -> None:
         if self.mode not in {"contract", "replay", "shadow", "live"}:
@@ -157,6 +162,10 @@ class RunnerConfig:
             raise ValueError("control_hz must be positive and finite")
         if self.action_steps <= 0:
             raise ValueError("action_steps must be positive")
+        if self.temporal_ensemble_decay < 0 or not np.isfinite(
+            self.temporal_ensemble_decay
+        ):
+            raise ValueError("temporal_ensemble_decay must be finite and non-negative")
         if self.max_chunks_per_enable < 0:
             raise ValueError("max_chunks_per_enable must be non-negative")
 

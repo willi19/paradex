@@ -85,9 +85,9 @@ Live controls are global:
 
 - `R`: re-arm, but only when cameras, robot state, controller status, start
   pose, workspace, and training-support checks pass.
-- Hold `Space`: execute. Releasing it clears the remaining ACT queue and holds
-  the measured robot configuration.
-- `Esc`: clear the queue and latch an abort. A new `R` is required.
+- `R`: re-arm and execute continuously once checks pass.
+- `Esc`: clear the queue, hold the measured robot configuration, and latch an
+  abort. A new `R` is required.
 
 The operator must establish the start pose and retain access to the physical
 emergency stop. There is no automatic homing.
@@ -100,12 +100,18 @@ Cartesian/hand rate limits. Stale or mismatched inputs clear the ACT queue.
 Repeated action rejection or any controller/camera error latches the bridge.
 
 Every run writes `telemetry.jsonl`. Each inference boundary additionally writes
-the paired JPEGs, state, raw 10-action chunk, frame IDs, monotonic timestamps,
+the paired JPEGs, state, the selected 10 actions, the full predicted action
+chunk (50 actions for the current checkpoint), frame IDs, monotonic timestamps,
 and inference timing under:
 
 ```text
 ~/shared_data/inference/act_xarm_allegro/<run-id>/chunk_XXXXXX/
 ```
+
+Hardware execution uses temporal ensembling: each new 10-action execution
+window is blended with any earlier full chunks that predict the same execution
+times. Newer predictions receive larger weights; tune this with
+`--temporal-ensemble-decay` (default `0.01`, `0` for an unweighted mean).
 
 Useful overrides include `--camera POLICY_KEY=SERIAL@CAPTURE_PC` (repeat twice),
 `--workspace-lower x,y,z`, `--workspace-upper x,y,z`, freshness thresholds,

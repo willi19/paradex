@@ -8,12 +8,16 @@ from paradex.inference.act_xarm_allegro.controls import DeadmanState
 from paradex.inference.act_xarm_allegro.core import (
     ACTION_DIM,
     STATE_DIM,
+    RunnerConfig,
     SafetyConfig,
     SafetyFilter,
     decode_action,
     rotation_6d_to_matrix,
 )
-from paradex.inference.act_xarm_allegro.runner import HardwareRunner
+from paradex.inference.act_xarm_allegro.runner import (
+    HardwareRunner,
+    TemporalActionEnsembler,
+)
 
 
 def make_config() -> SafetyConfig:
@@ -101,23 +105,25 @@ def test_freshness_gate():
 
 def test_deadman_transitions_and_rearm_gate():
     state = DeadmanState()
-    state.press("space")
-    first = state.snapshot()
-    assert first.held and first.enable_generation == 1
-    state.release("space")
-    assert not state.snapshot().held
     state.press("esc")
     state.press("r")
     assert not state.consume_rearm(False)
     assert state.snapshot().aborted
     state.press("r")
     assert state.consume_rearm(True)
-    assert not state.snapshot().aborted
+    snapshot = state.snapshot()
+    assert not snapshot.aborted
+    assert snapshot.enable_generation == 1
+
+
+def test_runner_defaults_to_the_legacy_direct_gate_behavior():
+    assert not RunnerConfig(mode="shadow").enforce_safety_gates
 
 
 def test_fault_clears_remaining_action_queue():
     runner = HardwareRunner.__new__(HardwareRunner)
     runner.queue = deque([np.zeros(25), np.ones(25)])
+    runner.ensembler = TemporalActionEnsembler(decay=0.01)
     runner.faults = 0
     runner.safety = type("S", (), {"config": type("C", (), {"max_consecutive_faults": 3})()})()
     runner.config = type("C", (), {"mode": "shadow"})()
@@ -125,3 +131,31 @@ def test_fault_clears_remaining_action_queue():
     runner._fault("test")
     assert len(runner.queue) == 0
     assert runner.faults == 1
+
+
+def test_temporal_ensemble_averages_overlapping_chunk_predictions():
+    ensembler = TemporalActionEnsembler(decay=0.0)
+    first = np.tile(np.arange(1.0, 5.0)[:, None], (1, 25))
+    second = np.tile(np.arange(10.0, 14.0)[:, None], (1, 25))
+
+    ensembler.add(first)
+    np.testing.assert_array_equal(ensembler.take(2), first[:2])
+
+    ensembler.add(second)
+    actions, contributors = ensembler.take(2, return_contributors=True)
+    np.testing.assert_array_equal(actions[:, 0], [6.5, 7.5])
+    np.testing.assert_array_equal(contributors, [2, 2])
+
+
+def test_temporal_ensemble_prefers_newer_predictions_when_decay_is_positive():
+    ensembler = TemporalActionEnsembler(decay=1.0)
+    old = np.zeros((3, 25))
+    new = np.full((3, 25), 10.0)
+
+    ensembler.add(old)
+    ensembler.take(1)
+    ensembler.add(new)
+    action, contributors = ensembler.take(1, return_contributors=True)
+
+    assert contributors.tolist() == [2]
+    assert action[0, 0] > 5.0

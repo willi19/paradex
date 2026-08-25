@@ -43,9 +43,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--device", default="cuda")
     parser.add_argument("--control-hz", type=float, default=30.0)
     parser.add_argument("--action-steps", type=int, default=10)
+    parser.add_argument(
+        "--temporal-ensemble-decay",
+        type=float,
+        default=0.01,
+        help="Recency weighting for overlapping ACT predictions (0 = uniform).",
+    )
     parser.add_argument("--duration", type=float)
     parser.add_argument("--max-chunks", type=int)
-    parser.add_argument("--max-chunks-per-enable", type=int, default=1)
+    parser.add_argument("--max-chunks-per-enable", type=int, default=0)
     parser.add_argument("--output-dir", type=Path, default=Path("~/shared_data/inference/act_xarm_allegro").expanduser())
     parser.add_argument("--replay-dir", type=Path)
     parser.add_argument("--camera", action="append", type=_binding, dest="cameras")
@@ -77,6 +83,7 @@ def main() -> None:
         device=args.device,
         control_hz=args.control_hz,
         action_steps=args.action_steps,
+        temporal_ensemble_decay=args.temporal_ensemble_decay,
         duration_seconds=args.duration,
         max_chunks_per_enable=args.max_chunks_per_enable,
         output_dir=args.output_dir,

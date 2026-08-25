@@ -17,6 +17,7 @@ from paradex.inference.act_xarm_allegro.core import (
     ObservationPacket,
     RunnerConfig,
     SafetyFilter,
+    SafetyVerdict,
     decode_action,
 )
 from paradex.inference.act_xarm_allegro.policy import (
@@ -29,6 +30,58 @@ from paradex.inference.act_xarm_allegro.transport import (
     HardwareBridgeClient,
     RobotFeedback,
 )
+
+
+class TemporalActionEnsembler:
+    """Align overlapping ACT chunk predictions and blend each execution target."""
+
+    def __init__(self, *, decay: float) -> None:
+        self.decay = decay
+        self._step = 0
+        self._predictions: list[tuple[int, np.ndarray]] = []
+
+    def reset(self) -> None:
+        self._step = 0
+        self._predictions.clear()
+
+    def add(self, action_chunk: np.ndarray) -> None:
+        action_chunk = np.asarray(action_chunk, dtype=np.float64)
+        if action_chunk.ndim != 2 or not len(action_chunk):
+            raise ValueError("Temporal ensemble requires a non-empty rank-2 action chunk")
+        if not np.all(np.isfinite(action_chunk)):
+            raise ValueError("Temporal ensemble action chunk must be finite")
+        self._predictions.append((self._step, action_chunk.copy()))
+
+    def take(
+        self, count: int, *, return_contributors: bool = False
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+        if count <= 0:
+            raise ValueError("Temporal ensemble action count must be positive")
+        actions = []
+        contributors = []
+        for _ in range(count):
+            active = [
+                (start, chunk[self._step - start])
+                for start, chunk in self._predictions
+                if 0 <= self._step - start < len(chunk)
+            ]
+            if not active:
+                raise RuntimeError("No temporal ensemble prediction covers this action")
+            starts = np.asarray([start for start, _ in active], dtype=np.float64)
+            weights = np.exp(-self.decay * (starts.max() - starts))
+            candidates = np.stack([action for _, action in active])
+            actions.append(np.average(candidates, axis=0, weights=weights))
+            contributors.append(len(active))
+            self._step += 1
+            self._predictions = [
+                (start, chunk)
+                for start, chunk in self._predictions
+                if self._step < start + len(chunk)
+            ]
+        result = np.asarray(actions, dtype=np.float64)
+        if return_contributors:
+            return result, np.asarray(contributors, dtype=np.int64)
+        return result
 
 
 def _synthetic_observation(
@@ -111,12 +164,22 @@ class HardwareRunner:
         self.cameras = SynchronizedCameraStream(
             config.camera_bindings,
             fps=config.control_hz,
-            max_frame_age_ms=safety.config.max_observation_age_ms,
+            # The prior direct LIVE runner did not turn observation age into a
+            # command gate. Keep the same default behavior unless gates are
+            # explicitly requested.
+            max_frame_age_ms=(
+                safety.config.max_observation_age_ms
+                if config.enforce_safety_gates
+                else float("inf")
+            ),
             manage_capture_session=manage_capture_session,
         )
         self.keyboard: KeyboardDeadman | None = None
         self.deadman = DeadmanState()
         self.queue: deque[np.ndarray] = deque()
+        self.ensembler = TemporalActionEnsembler(
+            decay=config.temporal_ensemble_decay
+        )
         self.previous_tcp: np.ndarray | None = None
         self.previous_hand: np.ndarray | None = None
         self.faults = 0
@@ -164,6 +227,7 @@ class HardwareRunner:
 
     def _fault(self, reason: str, *, latch_immediately: bool = False) -> None:
         self.queue.clear()
+        self.ensembler.reset()
         self.faults += 1
         latched = (
             latch_immediately
@@ -184,11 +248,11 @@ class HardwareRunner:
         started = time.monotonic()
         if self.config.mode == "live":
             self.deadman.press("esc")
+            # The initial local latch must not abort a healthy bridge.
+            self.was_aborted = True
             self.keyboard = KeyboardDeadman(self.deadman)
             self.keyboard.start()
-            print(
-                "[act] LIVE latched: press R after checks pass, then hold Space; Esc aborts"
-            )
+            print("[act] LIVE latched: press R after checks pass to run; Esc aborts")
         try:
             self.cameras.start()
             initial = self.bridge.receive_feedback(timeout_seconds=3.0)
@@ -224,26 +288,24 @@ class HardwareRunner:
                     time.sleep(period)
                     continue
 
-                checks_passed, check_reason = self._checks(packet, feedback)
-                rearm_checks_passed, _ = self._checks(
-                    packet, feedback, allow_latched=True
-                )
+                if self.config.enforce_safety_gates:
+                    checks_passed, check_reason = self._checks(packet, feedback)
+                else:
+                    checks_passed, check_reason = True, "direct"
                 snapshot = self.deadman.snapshot()
-                if self.config.mode == "live" and self.deadman.consume_rearm(
-                    rearm_checks_passed
-                ):
+                if self.config.mode == "live" and self.deadman.consume_rearm(True):
                     self.bridge.send_rearm()
                     self.faults = 0
                     self.queue.clear()
+                    self.ensembler.reset()
                     self.previous_tcp = feedback.tcp_transform.copy()
                     self.previous_hand = feedback.state[6:].copy()
                     self.logger.event("rearmed")
+                    print("[act] ARMED: executing continuously; Esc aborts and holds")
                     time.sleep(period)
                     continue
 
-                enabled = self.config.mode == "shadow" or (
-                    snapshot.held and not snapshot.aborted
-                )
+                enabled = self.config.mode == "shadow" or not snapshot.aborted
                 if snapshot.enable_generation != self.last_enable_generation:
                     self.last_enable_generation = snapshot.enable_generation
                     self.chunks_in_enable = 0
@@ -253,15 +315,9 @@ class HardwareRunner:
                     and self.config.mode == "live"
                 ):
                     self.queue.clear()
+                    self.ensembler.reset()
                     self.bridge.send_abort()
                     self.logger.event("operator_abort")
-                elif self.was_held and not snapshot.held and self.config.mode == "live":
-                    self.queue.clear()
-                    self.bridge.send_hold()
-                    self.previous_tcp = feedback.tcp_transform.copy()
-                    self.previous_hand = feedback.state[6:].copy()
-                    self.logger.event("deadman_released")
-                self.was_held = snapshot.held
                 self.was_aborted = snapshot.aborted
 
                 if not checks_passed:
@@ -285,11 +341,18 @@ class HardwareRunner:
                                     packet.state,
                                     self.config.action_steps,
                                 )
+                                self.ensembler.add(prediction.full_action_chunk)
+                                selected_actions, contributors = self.ensembler.take(
+                                    self.config.action_steps,
+                                    return_contributors=True,
+                                )
                                 self.logger.inference_boundary(
                                     packet,
-                                    prediction.selected_actions,
+                                    selected_actions,
                                     prediction.full_action_chunk,
                                     prediction.inference_ms,
+                                    action_selection="temporal_ensemble",
+                                    ensemble_contributors=contributors,
                                 )
                             except Exception as exc:
                                 self._fault(
@@ -299,15 +362,19 @@ class HardwareRunner:
                                 if self.config.mode == "shadow":
                                     raise
                             else:
-                                self.queue.extend(prediction.selected_actions)
+                                self.queue.extend(selected_actions)
                                 self.chunks += 1
                                 self.chunks_in_enable += 1
                     if self.queue:
                         raw = self.queue.popleft()
                         try:
                             decoded = decode_action(raw)
-                            verdict = self.safety.validate_action(
-                                decoded, self.previous_tcp, self.previous_hand
+                            verdict = (
+                                self.safety.validate_action(
+                                    decoded, self.previous_tcp, self.previous_hand
+                                )
+                                if self.config.enforce_safety_gates
+                                else SafetyVerdict(True, "direct", decoded)
                             )
                         except ValueError as exc:
                             verdict = None

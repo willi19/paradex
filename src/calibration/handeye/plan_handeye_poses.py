@@ -319,6 +319,9 @@ def main():
 
     if args.write:
         os.makedirs(OUT_DIR, exist_ok=True)
+        for old in os.listdir(OUT_DIR):        # clear stale waypoints (else old runs mix in)
+            if old.endswith(("_qpos.npy", "_pose.npy")):
+                os.remove(os.path.join(OUT_DIR, old))
         for i, (T, q, ng, seen) in enumerate(chosen):
             fk_urdf.update_cfg(q)
             ee = np.array(fk_urdf.get_transform(EEF_LINK, fk_urdf.base_link))

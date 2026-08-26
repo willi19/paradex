@@ -165,38 +165,16 @@ def main():
         if q is not None:
             pool.append((T, q, ng, []))
     chosen = ph.farthest_point_select(pool, args.n)
-    # order into a continuous sweep: greedy nearest-neighbor in joint space from HOME,
-    # so the arm moves in small steps (smooth path, low collision risk between waypoints).
+    # simple nearest-neighbor ordering from HOME (small moves between waypoints).
+    # Collision along the motion is a SEPARATE check: check_traj_collision.py.
     remaining = list(range(len(chosen)))
     order, cur = [], HOME
     while remaining:
         j = min(remaining, key=lambda i: np.linalg.norm(chosen[i][1] - cur))
         order.append(j); cur = chosen[j][1]; remaining.remove(j)
     chosen = [chosen[i] for i in order]
-    jumps = [np.linalg.norm(chosen[i + 1][1] - chosen[i][1]) for i in range(len(chosen) - 1)]
-    print(f"pool {len(pool)} ({tries} tries) -> selected {len(chosen)}, "
-          f"ordered (max joint jump {max(jumps):.2f} rad)" if jumps else f"selected {len(chosen)}", flush=True)
-
-    # INTERMEDIATE-path check: sample the straight-line joint move between consecutive
-    # waypoints (incl HOME -> first) and check the board never dips below the floor.
-    # This is a floor-collision CHECK only (no self/robot collision -> that needs curobo).
-    def seg_board_min(qa, qb, steps=15):
-        m = 1e9
-        for t in np.linspace(0, 1, steps):
-            fk.update_cfg((1 - t) * qa + t * qb)
-            Tb = np.array(fk.get_transform(EEF_LINK, fk.base_link))
-            Tb = Tb @ np.array([[1,0,0,0],[0,1,0,0],[0,0,1,BOARD_Z_FROM_EEF],[0,0,0,1]])
-            m = min(m, board_min_z(Tb))
-        return m
-    seq = [HOME] + [q for _, q, _, _ in chosen]
-    seg_mins = [seg_board_min(seq[i], seq[i + 1]) for i in range(len(seq) - 1)]
-    worst = min(seg_mins)
-    print(f"INTERMEDIATE-path board_min_z (straight-line moves): {worst:.3f} "
-          f"(>= {floor_lo:.3f} => board clears floor en route)", flush=True)
-    if worst < floor_lo:
-        bad = [i for i, m in enumerate(seg_mins) if m < floor_lo]
-        print(f"  WARNING: {len(bad)} transition(s) dip the board below floor (segments {bad}). "
-              f"Use curobo, or add a retract via-point, before executing.", flush=True)
+    print(f"pool {len(pool)} ({tries} tries) -> selected {len(chosen)}, nearest-neighbor ordered "
+          f"(run check_traj_collision.py to check the motion)", flush=True)
     if len(chosen) < args.n:
         print(f"  (got {len(chosen)} < {args.n}: try --min-obs 0, or lower --z-min / widen --extent)", flush=True)
 
@@ -209,6 +187,9 @@ def main():
 
     if args.write:
         os.makedirs(OUT_DIR, exist_ok=True)
+        for old in os.listdir(OUT_DIR):        # clear stale waypoints (else old runs mix in)
+            if old.endswith(("_qpos.npy", "_pose.npy")):
+                os.remove(os.path.join(OUT_DIR, old))
         for i, (T, q, ng, _) in enumerate(chosen):
             fk.update_cfg(q)
             np.save(os.path.join(OUT_DIR, f"{i}_qpos.npy"), q)

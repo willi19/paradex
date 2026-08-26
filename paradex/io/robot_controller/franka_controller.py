@@ -43,6 +43,16 @@ class FrankaController:
         self.save_path = None
         self.data = {}
 
+        # Last command sent, mirrored into every recorded sample so a trial can
+        # be replayed/overlaid the way an xarm trial can. The xarm records the
+        # action next to the state because its recording loop IS its command
+        # loop; here state arrives on its own SUB thread and never sees a
+        # command, so commands have to be latched here instead. NaN = nothing
+        # commanded in that space yet, so it is never mistaken for a real one.
+        self._last_action_qpos = np.full(action_dof, np.nan)   # joint target
+        self._last_action = np.full((4, 4), np.nan)            # cartesian target
+        self._last_action_dq = np.zeros(action_dof)            # joint velocity
+
         self._connect()
 
         self._state_thread = Thread(target=self._state_loop, daemon=True)
@@ -116,13 +126,21 @@ class FrankaController:
                     self._latest_state = state
 
                     if self.save_event.is_set():
-                        self.data["time"].append(state["timestamp"])
+                        # ``time`` is the wall clock, like the xarm and the hand
+                        # controllers write, so arm/hand/video share one axis.
+                        # state["timestamp"] is the libfranka controller's own
+                        # uptime clock -- kept, but under its own key.
+                        self.data["time"].append(time.time())
+                        self.data["robot_time"].append(state["timestamp"])
                         self.data["position"].append(np.array(state["qpos"]))
                         self.data["velocity"].append(np.array(state["qvel"]))
                         self.data["torque"].append(np.array(state["tau_ext"]))
                         self.data["wrench"].append(np.array(state["wrench"]))
                         self.data["O_T_EE"].append(np.array(state["O_T_EE"]))
                         self.data["gripper_width"].append(state["gripper_width"])
+                        self.data["action_qpos"].append(self._last_action_qpos.copy())
+                        self.data["action"].append(self._last_action.copy())
+                        self.data["action_dq"].append(self._last_action_dq.copy())
 
             except zmq.Again:
                 continue
@@ -147,6 +165,9 @@ class FrankaController:
         assert action.shape == (7,) or action.shape == (4, 4)
 
         if action.shape == (7,):
+            with self.lock:
+                self._last_action_qpos = np.asarray(action, dtype=float).copy()
+                self._last_action_dq = np.zeros(action_dof)
             resp = self._send_command({
                 "type": "move_to_qpos",
                 "qpos": action.tolist(),
@@ -154,6 +175,9 @@ class FrankaController:
             })
         else:
             pos, R = homo2rotmat_pos(action)
+            with self.lock:
+                self._last_action = np.asarray(action, dtype=float).copy()
+                self._last_action_dq = np.zeros(action_dof)
             resp = self._send_command({
                 "type": "move_to_cartesian",
                 "position": pos.tolist(),
@@ -202,12 +226,16 @@ class FrankaController:
 
         self.data = {
             "time": [],
+            "robot_time": [],
             "position": [],
             "velocity": [],
             "torque": [],
             "wrench": [],
             "O_T_EE": [],
             "gripper_width": [],
+            "action_qpos": [],
+            "action": [],
+            "action_dq": [],
         }
 
         with self.lock:
@@ -304,6 +332,11 @@ class FrankaController:
         """
         dq = np.asarray(dq, dtype=float)
         assert dq.shape == (7,)
+        with self.lock:
+            self._last_action_dq = dq.copy()
+            # A velocity command carries no position target, so action_qpos
+            # stops describing the current command.
+            self._last_action_qpos = np.full(action_dof, np.nan)
         resp = self._send_command({
             "type": "set_joint_velocity",
             "dq": dq.tolist(),

@@ -158,6 +158,7 @@ paradex/io/teleop/xsens/receiver.py
 paradex/process/__init__.py
 paradex/process/distributed.py
 paradex/process/processor.py
+paradex/process/web.py
 paradex/retargetor/__init__.py
 paradex/retargetor/hand_regargetor.py
 paradex/retargetor/state.py

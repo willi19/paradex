@@ -323,24 +323,20 @@ class FrankaController:
             print(f"[FrankaController] velocity error: {resp.get('message')}")
         return resp
 
-    def set_joint_velocity(self, dq, duration_ms=100, ref_qpos=None):
+    def set_joint_velocity(self, dq, duration_ms=100):
         """Send joint velocity command.
 
         Args:
             dq: array-like [dq1..dq7] joint velocities (rad/s).
             duration_ms: how long to apply (ms).
-            ref_qpos: the joint config this velocity is steering toward, if the
-                caller tracks one. Recorded as ``action_qpos`` -- a velocity
-                stream has no position command of its own, so without this a
-                trajectory followed by streaming leaves no record of what was
-                asked for.
         """
         dq = np.asarray(dq, dtype=float)
         assert dq.shape == (7,)
         with self.lock:
             self._last_action_dq = dq.copy()
-            if ref_qpos is not None:
-                self._last_action_qpos = np.asarray(ref_qpos, dtype=float).copy()
+            # A velocity command carries no position target, so action_qpos
+            # stops describing the current command.
+            self._last_action_qpos = np.full(action_dof, np.nan)
         resp = self._send_command({
             "type": "set_joint_velocity",
             "dq": dq.tolist(),

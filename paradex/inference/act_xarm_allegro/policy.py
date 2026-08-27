@@ -158,6 +158,7 @@ def load_safety_config(
         state_upper=np.asarray(stats[STATE_KEY]["q99"], dtype=np.float64),
         action_lower=action_lower,
         action_upper=action_upper,
+        allegro_start_target=np.asarray(stats[STATE_KEY]["q50"][6:], dtype=np.float64),
         control_hz=control_hz,
         max_linear_speed_m_s=max_linear_speed_m_s,
         max_angular_speed_deg_s=max_angular_speed_deg_s,

@@ -55,9 +55,9 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-viser-object-align", action="store_true")
     parser.add_argument("--output-dir", type=Path, default=None)
     parser.add_argument("--rate-scale", type=float, default=1.0)
-    parser.add_argument("--approach-linear-speed-mps", type=float, default=0.05)
-    parser.add_argument("--approach-angular-speed-rps", type=float, default=0.5)
-    parser.add_argument("--approach-min-seconds", type=float, default=5.0)
+    parser.add_argument("--approach-linear-speed-mps", type=float, default=0.2)
+    parser.add_argument("--approach-angular-speed-rps", type=float, default=1.0)
+    parser.add_argument("--approach-min-seconds", type=float, default=1.0)
     parser.add_argument("--approach-rate-hz", type=float, default=50.0)
     parser.add_argument("--settle-seconds", type=float, default=1.0)
     parser.add_argument(

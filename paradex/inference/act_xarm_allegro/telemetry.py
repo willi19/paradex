@@ -73,6 +73,7 @@ class RunLogger:
         )
         metadata = {
             "frame_ids": dict(packet.frame_ids),
+            "raw_frame_ids": dict(packet.raw_frame_ids),
             "image_keys": list(packet.images),
             "inference_ms": float(inference_ms),
         }
@@ -112,4 +113,7 @@ def iter_replay_packets(run_dir: Path) -> Iterator[ObservationPacket]:
             captured_monotonic_ns=int(arrays["captured_monotonic_ns"]),
             state_monotonic_ns=int(arrays["state_monotonic_ns"]),
             jpeg_bytes=jpeg_bytes,
+            raw_frame_ids={
+                key: int(value) for key, value in metadata.get("raw_frame_ids", {}).items()
+            },
         )

@@ -42,6 +42,11 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from paradex.calibration.utils import load_current_C2R, save_current_camparam
 from paradex.io.camera_system.remote_camera_controller import remote_camera_controller
+from paradex.retargetor.allegro_alignment import (
+    ALLEGRO_URDF_JOINT_NAMES,
+    ALLEGRO_V5_DRIVER_JOINT_NAMES,
+    retargeter_action_to_urdf_qpos,
+)
 from paradex.utils.path import shared_dir
 
 
@@ -170,6 +175,58 @@ def _as_allegro_v5_joint_vector(values: np.ndarray, *, label: str) -> np.ndarray
     return joints
 
 
+def _allegro_v5_preview_qpos(
+    actions: np.ndarray,
+    *,
+    urdf_hand_joint_names: tuple[str, ...],
+    joint_limits: Mapping[str, tuple[float, float]],
+) -> np.ndarray:
+    """Map recorded v5 actions by joint name and clamp the rendered URDF pose.
+
+    Captures and the v5 driver use index/middle/ring/thumb blocks.  Some
+    preview URDFs expose those native ``joint_<n>_0`` names, while older
+    combined URDFs expose semantic thumb/index/middle/ring names.  Mapping by
+    name keeps both conventions correct.  Clamping is display-only: historical
+    captures contain requested commands outside the physical joint limits,
+    especially ``joint_13_0=-2.1``, which otherwise makes the thumb animation
+    look unrelated to the real hand.
+    """
+
+    actions = _as_allegro_v5_actions(actions, label="Allegro V5 preview hand action")
+    names = tuple(str(name) for name in urdf_hand_joint_names)
+    if len(names) != 16 or len(set(names)) != 16:
+        raise ValueError(f"preview URDF must expose 16 unique Allegro joints, got {names}")
+
+    if set(names) == set(ALLEGRO_V5_DRIVER_JOINT_NAMES):
+        mapped = np.asarray(
+            [
+                [dict(zip(ALLEGRO_V5_DRIVER_JOINT_NAMES, action))[name] for name in names]
+                for action in actions
+            ],
+            dtype=np.float64,
+        )
+    elif set(names) == set(ALLEGRO_URDF_JOINT_NAMES):
+        mapped = np.asarray(
+            [
+                [retargeter_action_to_urdf_qpos(action)[name] for name in names]
+                for action in actions
+            ],
+            dtype=np.float64,
+        )
+    else:
+        raise ValueError(
+            "preview URDF Allegro joints match neither the v5 driver nor semantic "
+            f"convention: {names}"
+        )
+
+    missing_limits = [name for name in names if name not in joint_limits]
+    if missing_limits:
+        raise ValueError(f"preview URDF is missing Allegro joint limits: {missing_limits}")
+    lower = np.asarray([joint_limits[name][0] for name in names], dtype=np.float64)
+    upper = np.asarray([joint_limits[name][1] for name in names], dtype=np.float64)
+    return np.clip(mapped, lower, upper)
+
+
 def _episode_source_pose_path(root: Path, override: str | None) -> Path:
     if override:
         return Path(override).expanduser()
@@ -183,10 +240,41 @@ def _episode_source_pose_path(root: Path, override: str | None) -> Path:
     ):
         if candidate.is_file():
             return candidate
+    # FoundPose+GoTrack captures keep the frame-0 initialization below a
+    # run/attempt directory instead of materializing the legacy pose files at
+    # the episode root. GoTrack runs can contain a copied FoundPose
+    # initialization; always prefer the dedicated ``*_foundpose_init_*`` run
+    # so retrieval uses the pose produced by the initialization pipeline.
+    foundpose_candidates = sorted(
+        root.glob(
+            "object_tracking_foundpose_gotrack/*/attempt_*/"
+            "foundpose_init/init_pose_world.npy"
+        )
+    )
+    preferred_candidates = [
+        path
+        for path in foundpose_candidates
+        if "_foundpose_init_" in path.parents[2].name
+    ]
+    if len(preferred_candidates) == 1:
+        return preferred_candidates[0]
+    if len(preferred_candidates) > 1:
+        raise ValueError(
+            "multiple dedicated FoundPose initialization poses found; select one "
+            f"with --source-object-pose: {preferred_candidates}"
+        )
+    if len(foundpose_candidates) == 1:
+        return foundpose_candidates[0]
+    if len(foundpose_candidates) > 1:
+        raise ValueError(
+            "multiple FoundPose initialization poses found, but none belongs to a "
+            f"*_foundpose_init_* run: {foundpose_candidates}"
+        )
     raise FileNotFoundError(
         "source object frame-0 pose not found; expected "
         f"{root / 'object_6d' / 'pose_000000.txt'}, "
-        f"{root / 'object_6d_pose_v2.npz'}, or {root / 'object_6d_pose.npz'}"
+        f"{root / 'object_6d_pose_v2.npz'}, {root / 'object_6d_pose.npz'}, "
+        "or one FoundPose initialization under object_tracking_foundpose_gotrack"
     )
 
 
@@ -821,8 +909,21 @@ def _preview_joint_trajectory(
         raise ValueError(f"Preview URDF must expose 22 xArm+Allegro V5 joints, got {robot.get_num_joints()}")
 
     indices = _preview_indices(len(arm_poses), args.preview_max_frames)
-    hand_qpos = _as_allegro_v5_actions(hand_actions[indices], label="Allegro V5 preview hand action")
     limits = robot.get_joint_limits()
+    hand_joint_names = tuple(joint_names[6:])
+    raw_hand_qpos = _as_allegro_v5_actions(
+        hand_actions[indices], label="Allegro V5 preview hand action"
+    )
+    hand_qpos = _allegro_v5_preview_qpos(
+        raw_hand_qpos,
+        urdf_hand_joint_names=hand_joint_names,
+        joint_limits=limits,
+    )
+    clipped_values = int(np.count_nonzero(~np.isclose(hand_qpos, raw_hand_qpos)))
+    if clipped_values:
+        print(
+            f"[preview] clamped {clipped_values} Allegro value(s) to URDF physical limits"
+        )
     lower = np.array([limits[name][0] for name in arm_joint_names], dtype=np.float64)
     upper = np.array([limits[name][1] for name in arm_joint_names], dtype=np.float64)
     if initial_arm_qpos is None:
@@ -1002,6 +1103,7 @@ def _preview_replay(
     live_arm_pose: np.ndarray | None = None,
     live_arm_qpos: np.ndarray | None = None,
     live_hand_qpos: np.ndarray | None = None,
+    object_pose_markers: dict[str, np.ndarray] | None = None,
 ) -> None:
     """Show the planned xArm+Allegro V5 mesh trajectory and current object in Viser."""
 
@@ -1042,16 +1144,12 @@ def _preview_replay(
         replay_hand_actions,
         initial_arm_qpos=approach_joint_trajectory[-1, :6],
     )
-    expected_approach_hand = approach_hand_actions[
-        _preview_indices(len(approach_hand_actions), args.preview_max_frames)
-    ]
-    if not np.allclose(approach_joint_trajectory[:, 6:], expected_approach_hand):
-        raise RuntimeError("preview hand trajectory does not match the generated hand approach")
+    rendered_approach_hand = approach_joint_trajectory[:, 6:]
     np.savez_compressed(
         output_dir / "viser_preview_trajectory.npz",
         approach_joint_trajectory=approach_joint_trajectory,
         replay_joint_trajectory=replay_joint_trajectory,
-        approach_hand_action=expected_approach_hand,
+        approach_hand_action=rendered_approach_hand,
         transition_frame_count=transition_frame_count,
         transition_seconds=arm_times[transition_end],
     )
@@ -1092,7 +1190,21 @@ def _preview_replay(
     viewer.add_floor(height=0.0)
     viewer.add_robot("robot", str(args.robot_urdf), include_arm_meshes=True)
     viewer.robot_dict["robot"].update_cfg(approach_joint_trajectory[0])
-    viewer.add_object(args.object, _load_preview_mesh(mesh_path), object_pose_for_viser)
+    preview_mesh = _load_preview_mesh(mesh_path)
+    viewer.add_object(args.object, preview_mesh, object_pose_for_viser)
+    if object_pose_markers:
+        for marker_name, marker_pose in object_pose_markers.items():
+            marker_pose_for_viser = _viser_object_pose(
+                _as_transform(marker_pose, label=f"preview marker {marker_name}"),
+                mesh_path,
+                apply_mesh_alignment=not args.no_viser_object_align,
+            )
+            viewer.add_object(
+                f"{args.object}_{marker_name}",
+                preview_mesh.copy(),
+                marker_pose_for_viser,
+                opacity=0.3,
+            )
     # Keep them separate in Viser so the user can scrub the entire hand
     # approach before the episode trajectory begins.
     viewer.add_traj("live_arm_hand_approach", robot_traj={"robot": approach_joint_trajectory})
@@ -1307,11 +1419,12 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--allegro-command-rate-hz", type=float, default=30.0,
                         help="Allegro V5 command rate during live teleoperation")
     parser.add_argument("--rate-scale", type=float, default=1.0)
-    parser.add_argument("--approach-linear-speed-mps", type=float, default=0.05,
+    
+    parser.add_argument("--approach-linear-speed-mps", type=float, default=0.5,
                         help="maximum xArm translation speed while approaching replay start")
-    parser.add_argument("--approach-angular-speed-rps", type=float, default=0.5,
+    parser.add_argument("--approach-angular-speed-rps", type=float, default=2.0,
                         help="maximum xArm angular speed while approaching replay start")
-    parser.add_argument("--approach-min-seconds", type=float, default=5.0,
+    parser.add_argument("--approach-min-seconds", type=float, default=1.0,
                         help="minimum duration of the initial current-pose-to-replay approach")
     parser.add_argument("--approach-rate-hz", type=float, default=50.0,
                         help="Cartesian command rate for the initial approach")

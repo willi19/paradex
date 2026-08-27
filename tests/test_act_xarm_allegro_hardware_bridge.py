@@ -19,6 +19,9 @@ class FakeController:
     def is_error(self):
         return self._error
 
+    def move(self, target):
+        self.last_target = np.asarray(target).copy()
+
 
 def test_feedback_and_header_normalize_numpy_scalars_for_json():
     hardware = XArmAllegroHardware.__new__(XArmAllegroHardware)
@@ -52,3 +55,30 @@ def test_feedback_and_header_normalize_numpy_scalars_for_json():
     )
     encoded = json.dumps(header)
     assert json.loads(encoded)["connected"] is True
+
+
+def test_hand_only_target_and_hold_do_not_command_arm():
+    hardware = XArmAllegroHardware.__new__(XArmAllegroHardware)
+    hardware.arm = FakeController(
+        {
+            "qpos": np.zeros(6),
+            "position": np.eye(4),
+            "state_monotonic_time": 10.0,
+        }
+    )
+    hardware.hand = FakeController(
+        {
+            "qpos": np.arange(16, dtype=float),
+            "is_connected": True,
+            "state_monotonic_time": 10.0,
+        }
+    )
+
+    target = np.linspace(0.0, 1.0, 16)
+    hardware.hand_target(target)
+    np.testing.assert_array_equal(hardware.hand.last_target, target)
+    assert not hasattr(hardware.arm, "last_target")
+
+    hardware.hold_hand()
+    np.testing.assert_array_equal(hardware.hand.last_target, np.arange(16, dtype=float))
+    assert not hasattr(hardware.arm, "last_target")

@@ -10,7 +10,7 @@ from typing import Optional
 import numpy as np
 import zmq
 
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 3
 STATE_DIM = 22
 
 
@@ -93,6 +93,19 @@ class HardwareBridgeClient:
     def send_hold(self) -> None:
         self._send("hold")
 
+    def send_hand_target(
+        self,
+        allegro_target: np.ndarray,
+        *,
+        ttl_ms: float = 100.0,
+    ) -> None:
+        self._send("hand_target", allegro_target=allegro_target, ttl_ms=ttl_ms)
+
+    def send_hand_hold(self) -> None:
+        """Hold the measured hand state without commanding or latching the xArm."""
+
+        self._send("hand_hold")
+
     def send_abort(self) -> None:
         self._send("abort")
 
@@ -122,6 +135,11 @@ class HardwareBridgeClient:
             if tcp.shape != (4, 4) or hand.shape != (16,):
                 raise ValueError("target command requires tcp (4,4) and Allegro (16,)")
             parts.extend([tcp.tobytes(order="C"), hand.tobytes(order="C")])
+        elif kind == "hand_target":
+            hand = np.asarray(allegro_target, dtype=np.float64).reshape(-1)
+            if hand.shape != (16,) or not np.all(np.isfinite(hand)):
+                raise ValueError("hand_target command requires a finite Allegro (16,) target")
+            parts.append(hand.tobytes(order="C"))
         self.command_push.send_multipart(parts)
 
     def close(self) -> None:

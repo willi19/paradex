@@ -21,6 +21,11 @@ from paradex.utils.system import get_pc_list, network_info
 
 
 EXCLUDED_PCS = set()
+LEFT_XARM_IP = "192.168.1.221"
+BIMANUAL_TRAJECTORY_DIR = os.path.join(
+    os.path.dirname(get_handeye_calib_traj("xarm")),
+    "xarm_bimanual",
+)
 
 # Change only this value to tune every robot move duration.
 # 1.0: default, 2.0: twice as long, 0.5: half as long.
@@ -124,7 +129,6 @@ def capture_sequence(
                     f"Invalid xArm qpos in {pose_path}: expected finite shape "
                     f"(6,), got {action.shape}"
                 )
-
             robot_data = controller.get_data()
             current_qpos = np.asarray(robot_data["qpos"], dtype=np.float64)
             current_eef = np.asarray(robot_data["position"], dtype=np.float64)
@@ -170,6 +174,17 @@ def capture_sequence(
         controller.end(set_break=False)
 
 
+def wait_for_left_arm():
+    while True:
+        answer = input(
+            "Move the marker to the left arm and move the robots to safe positions. "
+            "Continue with the left xArm? [Y]: "
+        )
+        if answer.strip().lower() == "y":
+            return
+        print("Waiting for Y...")
+
+
 def main():
     parser = argparse.ArgumentParser(
         description=(
@@ -187,6 +202,21 @@ def main():
         "--trajectory-dir",
         default=None,
         help="Directory containing ordered *_qpos.npy calibration poses.",
+    )
+    parser.add_argument(
+        "--bimanual",
+        action="store_true",
+        help="Capture right and left xArms into one all-in-one session.",
+    )
+    parser.add_argument(
+        "--left-ip",
+        default=LEFT_XARM_IP,
+        help="Left xArm IP used with --bimanual.",
+    )
+    parser.add_argument(
+        "--bimanual-trajectory-dir",
+        default=BIMANUAL_TRAJECTORY_DIR,
+        help="Measured trajectory root containing Right/ and Left/ qpos files.",
     )
     args = parser.parse_args()
 
@@ -215,13 +245,44 @@ def main():
     try:
         camera_controller.start("stream", False, fps=30)
         stream_started = True
-        capture_sequence(
-            root_dir,
-            args.arm,
-            args.ip,
-            camera_controller,
-            trajectory_dir,
-        )
+        if args.bimanual:
+            right_dir = os.path.join(root_dir, "Right")
+            left_dir = os.path.join(root_dir, "Left")
+            right_trajectory_dir = os.path.join(
+                args.bimanual_trajectory_dir, "Right"
+            )
+            left_trajectory_dir = os.path.join(
+                args.bimanual_trajectory_dir, "Left"
+            )
+            os.makedirs(right_dir, exist_ok=True)
+            capture_sequence(
+                right_dir,
+                args.arm,
+                args.ip,
+                camera_controller,
+                right_trajectory_dir,
+            )
+            camera_controller.stop()
+            stream_started = False
+            wait_for_left_arm()
+            camera_controller.start("stream", False, fps=30)
+            stream_started = True
+            os.makedirs(left_dir, exist_ok=True)
+            capture_sequence(
+                left_dir,
+                args.arm,
+                args.left_ip,
+                camera_controller,
+                left_trajectory_dir,
+            )
+        else:
+            capture_sequence(
+                root_dir,
+                args.arm,
+                args.ip,
+                camera_controller,
+                trajectory_dir,
+            )
     finally:
         try:
             if stream_started:
@@ -233,6 +294,7 @@ def main():
     print(
         "Next: python src/calibration/allinone/calculate.py "
         f"--name {session_name} --arm {args.arm}"
+        f"{' --bimanual' if args.bimanual else ''}"
     )
 
 

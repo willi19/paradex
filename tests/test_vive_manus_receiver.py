@@ -8,7 +8,6 @@ import pytest
 
 from paradex.io.teleop.vive.receiver import (
     _VIVE_TRACKER_TO_WRIST_ROTATION,
-    _VIVE_TRANSLATION_AXIS_TRANSFORM,
     _canonical_joint_name,
     apply_vive_tracker_mount_rotation,
     manus_ergonomics_to_dict,
@@ -134,10 +133,7 @@ def test_vive_mount_rotation_preserves_existing_right_hand_correction():
     initial[:3, 3] = [0.4, -0.2, 1.1]
     corrected_initial = apply_vive_tracker_mount_rotation(initial)
 
-    np.testing.assert_allclose(
-        corrected_initial[:3, 3],
-        _VIVE_TRANSLATION_AXIS_TRANSFORM @ initial[:3, 3],
-    )
+    np.testing.assert_allclose(corrected_initial[:3, 3], initial[:3, 3])
     np.testing.assert_allclose(
         corrected_initial[:3, :3],
         _VIVE_TRACKER_TO_WRIST_ROTATION,
@@ -371,4 +367,4 @@ def test_vive_arm_only_mode_does_not_require_a_robot_hand():
     wrist_action, hand_action = retargetor.get_action(data)
 
     assert hand_action is None
-    np.testing.assert_allclose(wrist_action[:3, 3], [0.1, -0.2, 0.3])
+    np.testing.assert_allclose(wrist_action[:3, 3], [-0.1, 0.2, 0.3])

@@ -1672,6 +1672,7 @@ def allegro_v5(hand_pose_frame, ergonomics=None):
     # one-sided angle branches that are sensitive to round-off introduced by
     # VIVE frame reparenting; named ergonomics avoid that ambiguity whenever
     # the glove publishes a complete payload.
+    return _allegro_v5_raw(hand_pose_frame, ergonomics=ergonomics)
     try:
         raw_action = _allegro_v5_raw(hand_pose_frame, ergonomics=ergonomics)
     except ValueError:

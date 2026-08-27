@@ -128,7 +128,8 @@ class Retargetor(): # Input is only from Xsens
             self.init_human_pose[side] = init_human
 
         delta_R = device2wrist[:3,:3].T @ np.linalg.inv(init_human[:3,:3]) @ data[side]["wrist"][:3,:3] @ device2wrist[:3,:3]
-        delta_t = data[side]["wrist"][:3,3] - init_human[:3,3]
+        delta_t_device = data[side]["wrist"][:3,3] - init_human[:3,3]
+        delta_t = self.device2global[:3, :3] @ delta_t_device
 
         robot_wrist_pose = np.zeros((4,4))
         robot_wrist_pose[:3,:3] = init_robot[:3,:3] @ delta_R

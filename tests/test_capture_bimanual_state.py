@@ -787,7 +787,7 @@ def test_pose_command_limiter_rejects_rotation_jump():
     assert np.allclose(limiter.last_sent_pose, np.eye(4))
 
 
-def test_vive_bimanual_uses_right_xarm_wrist_rotation_for_both_sides():
+def test_vive_bimanual_uses_side_specific_xarm_wrist_rotations():
     retargetor = Retargetor(
         arm_name="xarm",
         hand_side="Bimanual",
@@ -802,11 +802,24 @@ def test_vive_bimanual_uses_right_xarm_wrist_rotation_for_both_sides():
         retargetor.device2wrist["Right"],
         DEVICE2WRIST["xarm_vive_Right"],
     )
-    np.testing.assert_array_equal(
-        DEVICE2WRIST["xarm_vive_Left"],
-        DEVICE2WRIST["xarm_Right"],
+
+
+def test_xarm_translation_delta_uses_device_to_global_rotation():
+    retargetor = Retargetor(
+        arm_name="xarm",
+        hand_side="Right",
+        teleop_name="vive",
     )
-    np.testing.assert_array_equal(
-        DEVICE2WRIST["xarm_vive_Right"],
-        DEVICE2WRIST["xarm_Right"],
+    retargetor.device2global = np.diag([-1.0, 1.0, -1.0, 1.0])
+    retargetor.start(np.eye(4))
+
+    initial_wrist = np.eye(4)
+    retargetor.get_action({"Right": {"wrist": initial_wrist}})
+
+    moved_wrist = np.eye(4)
+    moved_wrist[:3, 3] = [0.1, 0.2, 0.3]
+    arm_action, _ = retargetor.get_action(
+        {"Right": {"wrist": moved_wrist}}
     )
+
+    np.testing.assert_allclose(arm_action[:3, 3], [-0.1, 0.2, -0.3])

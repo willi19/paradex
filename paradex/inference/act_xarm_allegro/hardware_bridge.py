@@ -1,8 +1,8 @@
 """ROS-side xArm6 + Allegro v5 bridge.
 
 Run this process from the ROS Humble/Python 3.8 environment.  It never loads
-PyTorch or the policy.  Live publication requires the explicit --allow-live
-flag and is protected by a command-expiry watchdog.
+PyTorch or the policy. Live publication requires the explicit --allow-live
+flag. A command-expiry watchdog can be enabled explicitly when desired.
 """
 
 from __future__ import annotations
@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import json
 import time
+from typing import Optional
 
 import numpy as np
 import zmq
@@ -18,7 +19,7 @@ from paradex.inference.act_xarm_allegro.transport import PROTOCOL_VERSION
 
 
 class XArmAllegroHardware:
-    def __init__(self, namespace: str, *, hand_slew_rate_rad_s: float):
+    def __init__(self, namespace: str, *, hand_slew_rate_rad_s: Optional[float]):
         from paradex.io.robot_controller.allegro_v5_controller_ros2 import AllegroController
         from paradex.io.robot_controller.xarm_controller_ros import XArmControllerROS
 
@@ -66,6 +67,14 @@ class XArmAllegroHardware:
         self.arm.move(np.asarray(tcp, dtype=np.float64))
         self.hand.move(np.asarray(hand, dtype=np.float64))
 
+    def hand_target(self, hand: np.ndarray) -> None:
+        self.hand.move(np.asarray(hand, dtype=np.float64))
+
+    def hold_hand(self) -> None:
+        state, _tcp, connected, _error, _timestamp = self.feedback()
+        if connected and np.all(np.isfinite(state)):
+            self.hand.move(state[6:])
+
     def hold(self) -> None:
         state, tcp, connected, _error, _timestamp = self.feedback()
         if connected and np.all(np.isfinite(state)) and np.all(np.isfinite(tcp)):
@@ -89,8 +98,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--command-endpoint", default="tcp://127.0.0.1:5562")
     parser.add_argument("--namespace", default="right")
     parser.add_argument("--publish-hz", type=float, default=100.0)
-    parser.add_argument("--watchdog-ms", type=float, default=120.0)
-    parser.add_argument("--hand-slew-rate-rad-s", type=float, default=4.0)
+    parser.add_argument(
+        "--watchdog-ms",
+        type=float,
+        default=0.0,
+        help="Optional command-expiry watchdog; disabled by default for direct ACT execution",
+    )
+    parser.add_argument(
+        "--hand-slew-rate-rad-s",
+        type=float,
+        default=None,
+        help="Optional Allegro output slew limit; disabled by default for direct ACT execution",
+    )
     parser.add_argument("--allow-live", action="store_true")
     return parser.parse_args()
 
@@ -124,6 +143,7 @@ def main() -> None:
     latched = False
     status = "ready"
     target_active = False
+    target_scope = None
     last_valid_command_ns = 0
     period = 1.0 / args.publish_hz
 
@@ -141,6 +161,7 @@ def main() -> None:
                 except zmq.Again:
                     break
             if latest is not None:
+                kind = None
                 try:
                     if len(latest) < 2 or latest[0] != b"command":
                         raise ValueError("invalid command packet")
@@ -155,6 +176,7 @@ def main() -> None:
                         hardware.hold()
                         latched = True
                         target_active = False
+                        target_scope = None
                         status = "aborted"
                     elif kind == "rearm":
                         _state, _tcp, connected, error, _stamp = hardware.feedback()
@@ -164,7 +186,32 @@ def main() -> None:
                     elif kind == "hold":
                         hardware.hold()
                         target_active = False
+                        target_scope = None
                         status = "holding"
+                    elif kind == "hand_hold":
+                        if not args.allow_live:
+                            raise PermissionError("bridge was not started with --allow-live")
+                        hardware.hold_hand()
+                        target_active = False
+                        target_scope = None
+                        status = "hand_holding"
+                    elif kind == "hand_target":
+                        if not args.allow_live:
+                            raise PermissionError("bridge was not started with --allow-live")
+                        if latched:
+                            raise RuntimeError("bridge is latched")
+                        if expired:
+                            raise TimeoutError("hand target command expired before receipt")
+                        if len(latest) != 3:
+                            raise ValueError("hand target payload missing")
+                        hand = np.frombuffer(latest[2], dtype=np.float64).reshape(16).copy()
+                        if not np.all(np.isfinite(hand)):
+                            raise ValueError("hand target contains non-finite values")
+                        hardware.hand_target(hand)
+                        target_active = True
+                        target_scope = "hand"
+                        last_valid_command_ns = time.monotonic_ns()
+                        status = "commanding_hand"
                     elif kind == "target":
                         if not args.allow_live:
                             raise PermissionError("bridge was not started with --allow-live")
@@ -180,17 +227,30 @@ def main() -> None:
                             raise ValueError("target contains non-finite values")
                         hardware.target(tcp, hand)
                         target_active = True
+                        target_scope = "robot"
                         last_valid_command_ns = time.monotonic_ns()
                         status = "commanding"
                 except Exception as exc:
-                    hardware.hold()
+                    if kind in {"hand_target", "hand_hold"}:
+                        hardware.hold_hand()
+                    else:
+                        hardware.hold()
                     target_active = False
+                    target_scope = None
                     latched = True
                     status = f"command_fault:{type(exc).__name__}:{exc}"
 
-            if target_active and (time.monotonic_ns() - last_valid_command_ns) / 1e6 > args.watchdog_ms:
-                hardware.hold()
+            if (
+                args.watchdog_ms > 0.0
+                and target_active
+                and (time.monotonic_ns() - last_valid_command_ns) / 1e6 > args.watchdog_ms
+            ):
+                if target_scope == "hand":
+                    hardware.hold_hand()
+                else:
+                    hardware.hold()
                 target_active = False
+                target_scope = None
                 latched = True
                 status = "watchdog_timeout"
 

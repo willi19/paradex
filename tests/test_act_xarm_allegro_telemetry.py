@@ -21,6 +21,7 @@ def test_telemetry_replay_round_trip(tmp_path):
         captured_monotonic_ns=100,
         state_monotonic_ns=101,
         jpeg_bytes=full_resolution_jpegs,
+        raw_frame_ids={key: 100 + index for index, key in enumerate(keys)},
     )
     with RunLogger(tmp_path, run_name="test-run") as logger:
         logger.inference_boundary(packet, np.zeros((10, 25)), 5.5)
@@ -29,5 +30,6 @@ def test_telemetry_replay_round_trip(tmp_path):
     assert len(replayed) == 1
     np.testing.assert_array_equal(replayed[0].state, packet.state)
     assert replayed[0].frame_ids == packet.frame_ids
+    assert replayed[0].raw_frame_ids == packet.raw_frame_ids
     assert set(replayed[0].images) == set(keys)
     assert all(image.shape == (480, 640, 3) for image in replayed[0].images.values())

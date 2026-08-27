@@ -349,23 +349,23 @@ class XArmControllerROS(Node):
             start_time = time.perf_counter()
 
             with self.lock:
-                should_save = self.save_event.is_set() and self.data is not None
-                qpos = None if self.latest_qpos is None else self.latest_qpos.copy()
-                qvel = None if self.latest_qvel is None else self.latest_qvel.copy()
-                torque = None if self.latest_torque is None else self.latest_torque.copy()
-                action_qpos = None if self.latest_action_qpos is None else self.latest_action_qpos.copy()
-                sample_time = self.latest_joint_time if self.latest_joint_time is not None else time.time()
-                action = self.action.copy()
+                # Keep the save-state check and append in one critical section.
+                # stop() sets self.data to None under this same lock; splitting
+                # these operations lets stop() kill this thread between them.
+                if self.save_event.is_set() and self.data is not None:
+                    qpos = None if self.latest_qpos is None else self.latest_qpos.copy()
+                    qvel = None if self.latest_qvel is None else self.latest_qvel.copy()
+                    torque = None if self.latest_torque is None else self.latest_torque.copy()
+                    action_qpos = None if self.latest_action_qpos is None else self.latest_action_qpos.copy()
+                    sample_time = self.latest_joint_time if self.latest_joint_time is not None else time.time()
+                    action = self.action.copy()
+                    if action.shape == (4, 4):
+                        action_homo = action.copy()
+                    elif action.shape == (6,):
+                        action_homo = aa2homo(action)
+                    else:
+                        action_homo = np.eye(4, dtype=np.float64)
 
-            if should_save:
-                if action.shape == (4, 4):
-                    action_homo = action.copy()
-                elif action.shape == (6,):
-                    action_homo = aa2homo(action)
-                else:
-                    action_homo = np.eye(4, dtype=np.float64)
-
-                with self.lock:
                     self.data["time"].append(sample_time)
                     self.data["position"].append(
                         qpos.copy() if qpos is not None else np.full(6, np.nan, dtype=np.float64)
@@ -387,6 +387,8 @@ class XArmControllerROS(Node):
             time.sleep(max(0.0, (1.0 / self.save_fps) - elapsed))
 
     def start(self, save_path):
+        if not self.record_thread.is_alive():
+            raise RuntimeError("xArm record thread is not running; restart the capture process")
         self.save_path = save_path
         os.makedirs(self.save_path, exist_ok=True)
         with self.lock:

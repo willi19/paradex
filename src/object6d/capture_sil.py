@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Capture one multiview frame, request Object6D, and visualize the result."""
+"""Run interactive multiview Object6D capture and optional robot replay."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Any, Dict, Optional
 
@@ -28,9 +29,14 @@ from paradex.retargetor.experiment import replay_object_relative as replay_core
 from paradex.retargetor.experiment.replay_pose_retrieval import (
     DEFAULT_CANDIDATE_EPISODES,
     DEFAULT_EPISODE_ROOT,
+    load_candidate_episodes,
     parse_episode_ids,
     replay_closest_episode,
 )
+
+
+DEFAULT_RETRIEVAL_TRANSLATION_SCALE_M = 0.05
+DEFAULT_RETRIEVAL_ROTATION_SCALE_RAD = 0.25
 
 
 def parse_args() -> argparse.Namespace:
@@ -53,9 +59,32 @@ def parse_args() -> argparse.Namespace:
         help="retrieve the closest banana episode and prepare annotated dish replay",
     )
     parser.add_argument(
-        "--execute", action="store_true", help="send replay commands after typing PLAY"
+        "--execute",
+        action="store_true",
+        help="allow replay execution after confirming with y",
     )
-    parser.add_argument("--replay-preview", action="store_true")
+    parser.add_argument(
+        "--auto-execute",
+        action="store_true",
+        help=(
+            "execute each planned replay without confirmation; implies --execute "
+            "and is intended for use with --no-replay-preview"
+        ),
+    )
+    preview_group = parser.add_mutually_exclusive_group()
+    preview_group.add_argument(
+        "--replay-preview",
+        dest="replay_preview",
+        action="store_true",
+        help="show the replay preview before execution (default)",
+    )
+    preview_group.add_argument(
+        "--no-replay-preview",
+        dest="replay_preview",
+        action="store_false",
+        help="skip replay preview generation and visualization",
+    )
+    parser.set_defaults(replay_preview=None)
     parser.add_argument("--episode-root", type=Path, default=DEFAULT_EPISODE_ROOT)
     parser.add_argument(
         "--candidate-episodes",
@@ -63,11 +92,23 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_CANDIDATE_EPISODES,
         help="comma-separated candidate episode IDs",
     )
-    parser.add_argument("--retrieval-translation-scale-m", type=float, default=0.05)
-    parser.add_argument("--retrieval-rotation-scale-rad", type=float, default=0.5)
+    parser.add_argument(
+        "--retrieval-translation-scale-m",
+        type=float,
+        default=DEFAULT_RETRIEVAL_TRANSLATION_SCALE_M,
+    )
+    parser.add_argument(
+        "--retrieval-rotation-scale-rad",
+        type=float,
+        default=DEFAULT_RETRIEVAL_ROTATION_SCALE_RAD,
+        help=(
+            "rotation error represented by one retrieval-score unit; the 0.25 rad "
+            "default makes rotation twice as influential as the previous 0.5 rad default"
+        ),
+    )
     parser.add_argument("--rate-scale", type=float, default=1.0)
-    parser.add_argument("--approach-linear-speed-mps", type=float, default=0.2)
-    parser.add_argument("--approach-angular-speed-rps", type=float, default=1.0)
+    parser.add_argument("--approach-linear-speed-mps", type=float, default=0.13)
+    parser.add_argument("--approach-angular-speed-rps", type=float, default=0.8)
     parser.add_argument("--approach-min-seconds", type=float, default=1.0)
     parser.add_argument("--approach-rate-hz", type=float, default=50.0)
     parser.add_argument("--dish-transfer-linear-speed-mps", type=float, default=0.2)
@@ -98,10 +139,14 @@ def parse_args() -> argparse.Namespace:
 
 
 def validate_args(args: argparse.Namespace) -> None:
+    if args.auto_execute:
+        args.execute = True
     if args.execute and not args.replay:
         raise ValueError("--execute requires --replay")
     if args.replay_preview and not args.replay:
         raise ValueError("--replay-preview requires --replay")
+    if args.replay and args.replay_preview is None:
+        args.replay_preview = True
     positive = {
         "--retrieval-translation-scale-m": args.retrieval_translation_scale_m,
         "--retrieval-rotation-scale-rad": args.retrieval_rotation_scale_rad,
@@ -309,9 +354,15 @@ def capture_once(capture_root: Path, remote_path: str, rcc_entry: str) -> None:
         controller.end()
 
 
-def main() -> None:
-    args = parse_args()
-    validate_args(args)
+def run_round(
+    args: argparse.Namespace,
+    *,
+    replay_arm: Any | None = None,
+    replay_hand: Any | None = None,
+    replay_episodes: list[replay_core.Episode] | None = None,
+) -> None:
+    """Capture, infer, plan, and optionally execute one replay round."""
+
     timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     relative_capture = Path(args.save_path) / timestamp
     capture_root = Path(shared_dir) / relative_capture
@@ -391,6 +442,9 @@ def main() -> None:
             current_object_robot=pose_robot,
             current_c2r=c2r,
             dish_point_robot=cutting_board_point_robot,
+            arm=replay_arm,
+            hand=replay_hand,
+            episodes=replay_episodes,
         )
         return
 
@@ -429,6 +483,88 @@ def main() -> None:
             time.sleep(0.01)
     except KeyboardInterrupt:
         pass
+
+
+def _preload_replay_episodes(args: argparse.Namespace) -> list[replay_core.Episode]:
+    started = time.perf_counter()
+    print(
+        f"[preload] loading {len(args.candidate_episodes)} candidate episode(s) "
+        "from shared storage."
+    )
+    episodes = load_candidate_episodes(args.episode_root, args.candidate_episodes)
+    print(
+        f"[preload] {len(episodes)} candidate episode(s) ready in "
+        f"{time.perf_counter() - started:.3f}s."
+    )
+    return episodes
+
+
+def run_replay_idle_loop(args: argparse.Namespace) -> None:
+    """Wait for capture commands and return to idle after every replay round."""
+
+    replay_arm = None
+    replay_hand = None
+    replay_episodes = _preload_replay_episodes(args)
+    try:
+        if args.execute:
+            from paradex.io.robot_controller import get_arm, get_hand
+
+            print("[idle] connecting persistent xArm and Allegro controllers.")
+            replay_arm = get_arm("xarm", servo_api="cartesian_aa")
+            try:
+                replay_hand = get_hand("allegro_v5", hand_side="right")
+            except Exception:
+                replay_arm.end()
+                replay_arm = None
+                raise
+
+        print("[idle] Ready. Enter c to capture and replay, or q to quit.")
+        while True:
+            try:
+                key = input("[idle] c=capture, q=quit > ").strip().lower()
+            except EOFError:
+                print("\n[idle] stdin closed; exiting.")
+                return
+            except KeyboardInterrupt:
+                print("\n[idle] interrupted; exiting.")
+                return
+
+            if key == "q":
+                print("[idle] exiting.")
+                return
+            if key != "c":
+                if key:
+                    print(f"[idle] unknown command {key!r}; enter c or q.")
+                continue
+
+            print("[round] starting capture -> Object6D -> replay planning.")
+            try:
+                run_round(
+                    args,
+                    replay_arm=replay_arm,
+                    replay_hand=replay_hand,
+                    replay_episodes=replay_episodes,
+                )
+            except Exception as exc:
+                print(f"[round] failed: {exc}", file=sys.stderr)
+                traceback.print_exc()
+                print("[round] returning to idle after failure.")
+            else:
+                print("[round] complete; returning to idle.")
+    finally:
+        if replay_hand is not None:
+            replay_hand.end()
+        if replay_arm is not None:
+            replay_arm.end()
+
+
+def main() -> None:
+    args = parse_args()
+    validate_args(args)
+    if args.replay:
+        run_replay_idle_loop(args)
+    else:
+        run_round(args)
 
 
 if __name__ == "__main__":

@@ -445,6 +445,7 @@ def calculate_sequence(
     save_path,
     charuco_workers=DEFAULT_CHARUCO_WORKERS,
     precomputed_charuco=False,
+    render_debug=True,
 ):
     validate_capture_directory(root_path)
     if not precomputed_charuco:
@@ -471,7 +472,9 @@ def calculate_sequence(
         save_path = os.path.join(root_path, valid_index_list[0], "C2R.npy")
     np.save(save_path, robot_wrt_cam_world)
     print(f"Saved C2R to {save_path}")
-    debug(root_path, arm, robot_wrt_cam_world)
+    if render_debug:
+        debug(root_path, arm, robot_wrt_cam_world)
+    return robot_wrt_cam_world
 
 
 def get_bimanual_arm_name(arm, side):

@@ -17,7 +17,7 @@ from paradex.utils.system import network_info, get_pc_list
 
 EXCLUDED_PCS = {}
 pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
-LEFT_XARM_IP = "192.168.1.196"
+LEFT_XARM_IP = "192.168.1.221"
 BIMANUAL_POSE_SESSION = "20260803_125942"
 BIMANUAL_POSE_DIR = os.path.join(
     shared_dir,

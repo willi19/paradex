@@ -70,34 +70,53 @@ The capture PCs must run the matching Paradex revision. This revision changes
 `/frame/<serial>` to expose the GigE Vision hardware frame ID instead of a
 process-local encode count. Deploy it to `/opt/paradex` on `capture16` and
 `capture18` and restart their camera-agent services before relying on the exact
-cross-PC frame check. A persistent ID offset is a hard validation failure.
+cross-PC frame check. At each runner startup, time-coincident frames calibrate
+the cameras' fixed raw-counter offset; the runner then requires exact,
+advancing normalized trigger IDs. The planner waits for the next matching pair;
+both raw and normalized IDs are retained in telemetry.
 
-The first live run is limited to one saved 10-action chunk per Space press:
+Live execution stays on after a single `R` press and stops on `Esc` (or the
+configured duration/chunk limit):
 
 ```bash
 python src/inference/act_xarm_allegro.py live \
   --enable-live \
-  --max-chunks-per-enable 1 \
   --duration 30
 ```
 
+The live runtime uses two independent loops. A monotonic-deadline publisher
+sends queued actions at `--control-hz` (30 Hz by default), while a planner
+thread acquires the next synchronized camera pair, reads robot feedback, and
+runs ACT before the current queue reaches four remaining actions. The predicted
+chunk is placed on the queue before its JPEG/NPZ telemetry is written, so camera,
+inference, and artifact I/O latency do not pause command publication at chunk
+boundaries.
+
+Before every live run, the runner issues the training dataset's median 16-joint
+Allegro target through a hand-only bridge command. It does not wait for a
+convergence check before inference; use `--no-allegro-preposition` only when an
+externally established hand pose must be preserved. Shadow, replay, and contract
+modes never preposition or publish robot commands.
+
 Live controls are global:
 
-- `R`: re-arm, but only when cameras, robot state, controller status, start
-  pose, workspace, and training-support checks pass.
-- Hold `Space`: execute. Releasing it clears the remaining ACT queue and holds
-  the measured robot configuration.
-- `Esc`: clear the queue and latch an abort. A new `R` is required.
+- `R`: re-arm and start continuous execution. Training-support, workspace,
+  action-range, rate, and observation-age values do not block publication. The
+  bridge has neither an Allegro slew limit nor a command expiry watchdog by
+  default.
+- `Esc`: clear the queue, hold the measured robot configuration, and latch an
+  abort. A new `R` is required.
 
 The operator must establish the start pose and retain access to the physical
 emergency stop. There is no automatic homing.
 
-## Safety and telemetry
+## Direct execution and telemetry
 
-Actions are rejected rather than silently clipped. Bounds intersect dataset
-min/max, the Allegro v5 URDF hard limits, optional CLI workspace bounds, and
-Cartesian/hand rate limits. Stale or mismatched inputs clear the ACT queue.
-Repeated action rejection or any controller/camera error latches the bridge.
+Live mode decodes finite ACT outputs and publishes them without dataset bounds,
+workspace bounds, rate checks, freshness checks, clipping, or automatic
+fault-count latching. `Esc` remains the operator-controlled abort and hold.
+If the planner cannot obtain or decode an observation, it retries while the
+publisher holds the last target until a new chunk is available.
 
 Every run writes `telemetry.jsonl`. Each inference boundary additionally writes
 the paired JPEGs, state, raw 10-action chunk, frame IDs, monotonic timestamps,
@@ -108,6 +127,5 @@ and inference timing under:
 ```
 
 Useful overrides include `--camera POLICY_KEY=SERIAL@CAPTURE_PC` (repeat twice),
-`--workspace-lower x,y,z`, `--workspace-upper x,y,z`, freshness thresholds,
-rate limits, endpoints, duration, and chunk limits. Use
+endpoints, control rate, duration, and chunk limits. Use
 `python src/inference/act_xarm_allegro.py --help` for the complete interface.

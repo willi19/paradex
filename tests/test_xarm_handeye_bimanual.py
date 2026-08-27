@@ -109,7 +109,7 @@ def test_capture_bimanual_uses_right_then_left(monkeypatch, tmp_path):
         (
             "Left",
             "xarm",
-            "192.168.1.196",
+            capture.LEFT_XARM_IP,
             rcc,
             tmp_path / "handeye_pose_matching/20260803_125942/Left",
         ),

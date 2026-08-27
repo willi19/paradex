@@ -65,8 +65,11 @@ def parallel_processing(db, serial_index, tot_kypt_matches, tot_kypt_dict, cam_k
         if twoviewgeom is not None:
             db.add_two_view_geometry(*twoviewgeom)
     
-def load_keypoint(root_dir):
-    index_list = sorted(os.listdir(root_dir))
+def load_keypoint(root_dir, index_list=None):
+    if index_list is None:
+        index_list = sorted(os.listdir(root_dir))
+    else:
+        index_list = list(index_list)
     if len(index_list) == 0:
         print("No valid directories found.")
         return 
@@ -171,11 +174,14 @@ def generate_db(database_path, intrinsics_dict, serial_list, keypoint_dict):
     db.commit()
     db.close()
 
-def run_calibration(name):
-    root_dir = os.path.join(extrinsic_dir, name)
-    index_list = sorted(os.listdir(root_dir))
+def run_calibration(name, root_dir=None, index_list=None):
+    root_dir = os.path.join(extrinsic_dir, name) if root_dir is None else root_dir
+    if index_list is None:
+        index_list = sorted(os.listdir(root_dir))
+    else:
+        index_list = list(index_list)
     
-    keypoint_dict_distort = load_keypoint(root_dir)
+    keypoint_dict_distort = load_keypoint(root_dir, index_list)
     intrinsics_dict = load_current_intrinsic()
     
     serial_list = []

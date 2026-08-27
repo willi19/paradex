@@ -448,7 +448,7 @@ def _wrist_pose(
 def _live_wrist_pose(robot_urdf: Path) -> np.ndarray:
     """Read the current xArm pose without enabling Cartesian commands."""
 
-    from src.dataset_acquisition.hri.replay_object_relative import (
+    from paradex.retargetor.experiment.replay_object_relative import (
         _live_xarm_preview_state,
     )
 

@@ -35,7 +35,7 @@ def _xyz(value: str) -> np.ndarray:
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Safety-gated ACT inference on xArm6 + Allegro v5")
+    parser = argparse.ArgumentParser(description="Direct ACT inference on xArm6 + Allegro v5")
     parser.add_argument("mode", choices=("contract", "replay", "shadow", "live"))
     parser.add_argument("--policy", default="hahahataeyun/hrdexdb-act-two-view-all-v1-act-100k")
     parser.add_argument("--policy-revision")
@@ -45,13 +45,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--action-steps", type=int, default=10)
     parser.add_argument("--duration", type=float)
     parser.add_argument("--max-chunks", type=int)
-    parser.add_argument("--max-chunks-per-enable", type=int, default=1)
+    parser.add_argument(
+        "--max-chunks-per-enable",
+        type=int,
+        default=0,
+        help="Maximum chunks after one R arm; 0 (default) continues until Esc, --duration, or --max-chunks",
+    )
     parser.add_argument("--output-dir", type=Path, default=Path("~/shared_data/inference/act_xarm_allegro").expanduser())
     parser.add_argument("--replay-dir", type=Path)
     parser.add_argument("--camera", action="append", type=_binding, dest="cameras")
     parser.add_argument("--state-endpoint", default="tcp://127.0.0.1:5561")
     parser.add_argument("--command-endpoint", default="tcp://127.0.0.1:5562")
     parser.add_argument("--enable-live", action="store_true")
+    parser.add_argument(
+        "--no-allegro-preposition",
+        action="store_false",
+        dest="preposition_allegro",
+        help="Do not move Allegro v5 to the dataset-median start pose before live inference",
+    )
+    parser.set_defaults(preposition_allegro=True)
+    parser.add_argument("--allegro-preposition-timeout", type=float, default=5.0)
+    parser.add_argument("--allegro-preposition-tolerance", type=float, default=0.20)
     parser.add_argument("--no-manage-capture-session", action="store_true")
     parser.add_argument("--workspace-lower", type=_xyz)
     parser.add_argument("--workspace-upper", type=_xyz)
@@ -83,6 +97,9 @@ def main() -> None:
         state_endpoint=args.state_endpoint,
         command_endpoint=args.command_endpoint,
         enable_live=args.enable_live,
+        preposition_allegro=args.preposition_allegro,
+        preposition_timeout_seconds=args.allegro_preposition_timeout,
+        preposition_tolerance_rad=args.allegro_preposition_tolerance,
         **kwargs,
     )
     if args.mode == "contract":

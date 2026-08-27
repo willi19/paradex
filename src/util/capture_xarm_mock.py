@@ -2,8 +2,9 @@
 
 This is a variant of ``src/calibration/extrinsic/capture.py`` with the same
 unimanual ``CaptureSession`` teleoperation flow as ``capture_robot.py``.
-Press ``c`` in the OpenCV window to save the camera calibration frame and the
-xArm's current joint and wrist poses.  Press ``q`` to stop.
+Press the Stream Deck middle pedal (or ``c`` in the OpenCV window) to save the
+camera calibration frame and the xArm's current joint and wrist poses. Press
+``q`` to stop.
 
 The xArm files use the established calibration format:
 ``<index>_qpos.npy`` contains the first six measured joint angles (radians),
@@ -11,6 +12,7 @@ and ``<index>_aa.npy`` contains the 4x4 measured wrist transform.
 """
 
 import argparse
+import atexit
 import os
 import sys
 import time
@@ -31,11 +33,14 @@ from paradex.image.merge import merge_image
 from paradex.io.capture_pc.command_sender import CommandSender
 from paradex.io.capture_pc.data_sender import DataCollector
 from paradex.io.capture_pc.ssh import run_script
+from paradex.io.streamdeck_pedal import MiddlePedalState
 from paradex.utils.system import get_pc_list
 
 
 EXCLUDED_PCS = {}
-DEFAULT_XARM_SAVE_DIR = REPOSITORY_ROOT / "system/current/hecalib/xarm/new"
+DEFAULT_BIMANUAL_SAVE_ROOT = (
+    REPOSITORY_ROOT / "system/current/hecalib/xarm_bimanual"
+)
 BOARD_COLORS = [(0, 0, 255), (0, 255, 0)]
 
 
@@ -65,10 +70,30 @@ def save_xarm_pose(arm: Any, save_dir: Path, index: int) -> None:
     print(f"Saved xArm wrist transform {index}: {save_dir / f'{index}_aa.npy'}")
 
 
+def pedal_capture_edge(pedal_state: MiddlePedalState, was_pressed: bool):
+    """Return whether this poll is a new middle-pedal press and its state."""
+    is_pressed = pedal_state.get_state() == 0
+    return is_pressed and not was_pressed, is_pressed
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--device", choices=["xsens", "vive"], default="vive")
-    parser.add_argument("--hand-side", choices=["right", "left"], default="right")
+    side_group = parser.add_mutually_exclusive_group(required=True)
+    side_group.add_argument(
+        "--right",
+        dest="robot_side",
+        action="store_const",
+        const="right",
+        help="Teleoperate the right xArm and save under xarm_bimanual/Right.",
+    )
+    side_group.add_argument(
+        "--left",
+        dest="robot_side",
+        action="store_const",
+        const="left",
+        help="Teleoperate the left xArm and save under xarm_bimanual/Left.",
+    )
     parser.add_argument(
         "--hand",
         default="inspire_f1",
@@ -91,23 +116,34 @@ def main() -> None:
     parser.add_argument(
         "--xarm-save-dir",
         type=Path,
-        default=DEFAULT_XARM_SAVE_DIR,
-        help=f"Directory for xArm pose files (default: {DEFAULT_XARM_SAVE_DIR})",
+        default=None,
+        help=(
+            "Override the xArm pose directory. By default, --right uses "
+            "system/current/hecalib/xarm_bimanual/Right and --left uses Left."
+        ),
     )
     args = parser.parse_args()
     if args.hand.strip().lower() in ("", "none", "null"):
         args.hand = None
-    if args.device == "vive" and args.use_vive and args.hand_side != "right":
-        parser.error("VIVE unimanual teleoperation currently requires --hand-side right.")
+    if args.robot_side == "left" and args.device == "vive" and args.hand is not None:
+        parser.error("VIVE left-arm recording is arm-only; pass --hand none.")
     if args.allegro_command_rate_hz <= 0.0:
         parser.error("--allegro-command-rate-hz must be positive.")
 
     # Import lazily so ``--help`` remains usable outside the robot ROS environment.
     from paradex.dataset_acqusition.capture import CaptureSession
 
-    xarm_save_dir = args.xarm_save_dir
+    side_name = args.robot_side.capitalize()
+    xarm_save_dir = args.xarm_save_dir or DEFAULT_BIMANUAL_SAVE_ROOT / side_name
     xarm_save_dir.mkdir(parents=True, exist_ok=True)
     pose_index = next_pose_index(xarm_save_dir)
+
+    pedal_state = MiddlePedalState()
+    atexit.register(pedal_state.close)
+    pedal_was_pressed = [False]
+    print(f"Selected {side_name} xArm: ROS namespace=/{args.robot_side}/xarm")
+    print(f"Measured poses will be saved to: {xarm_save_dir}")
+    print("Middle pedal: press once to capture the current cameras and measured xArm pose.")
 
     pc_list = [pc for pc in get_pc_list() if pc not in EXCLUDED_PCS]
     filename = time.strftime("%Y%m%d_%H%M%S", time.localtime())
@@ -131,14 +167,20 @@ def main() -> None:
         arm="xarm",
         hand=args.hand,
         teleop=args.device,
-        hand_side=args.hand_side,
+        # The installed VIVE unimanual path uses the right tracker.  It can
+        # drive either selected robot because retargeting is relative to the
+        # selected arm's measured home pose.
+        hand_side=("right" if args.device == "vive" else args.robot_side),
         events=session_events,
         tactile=False,
         ip=False,
         hand_kwargs=None,
         timestamp=False,
         camera_pc_list=pc_list,
-        arm_kwargs={"servo_api": args.xarm_servo_api},
+        arm_kwargs={
+            "servo_api": args.xarm_servo_api,
+            "namespace": args.robot_side,
+        },
         hand_scale=args.hand_scale,
         hand_command_rate_hz=(
             args.allegro_command_rate_hz
@@ -147,7 +189,7 @@ def main() -> None:
         ),
         allegro_teleop_diagnostic_path=None,
         use_vive=args.use_vive,
-        require_left_control=args.use_vive,
+        require_left_control=False,
     )
 
     saved_corner_img = {}
@@ -249,6 +291,14 @@ def main() -> None:
 
     def refresh_guis(_session: Any = None) -> None:
         """Match capture_robot.py's lightweight teleop loop callback."""
+        capture_pressed, pedal_pressed = pedal_capture_edge(
+            pedal_state,
+            pedal_was_pressed[0],
+        )
+        if capture_pressed:
+            save_event.set()
+        pedal_was_pressed[0] = pedal_pressed
+
         with latest_image_lock:
             merged_image = latest_merged_image[0].copy()
         cv2.imshow("Merged Stream", merged_image)
@@ -273,7 +323,7 @@ def main() -> None:
         teleop_source = "MANUS only"
     print(f"{teleop_source} unimanual teleoperation uses capture_robot.py's main loop.")
     print("JPEG decoding runs separately from teleoperation.")
-    print("Press 'c' in the Merged Stream window to capture; press 'q' to quit.")
+    print("Press the middle pedal (or 'c') to capture; press 'q' to quit.")
     try:
         while not exit_event.is_set():
             state = session.teleop(
@@ -325,6 +375,8 @@ def main() -> None:
         exit_event.set()
         camera_thread.join(timeout=3.0)
         session.end()
+        pedal_state.close()
+        atexit.unregister(pedal_state.close)
         collector.end()
         commands.end()
         cv2.destroyAllWindows()

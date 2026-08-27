@@ -27,6 +27,7 @@ class EncodedFrame:
 class CameraPair:
     images: dict[str, np.ndarray]
     frame_ids: dict[str, int]
+    raw_frame_ids: dict[str, int]
     jpeg_bytes: dict[str, bytes]
     received_monotonic_ns: int
 
@@ -141,8 +142,43 @@ class SynchronizedCameraStream:
         self._remote = None
         self._trigger = None
         self._last_pair_id = 0
+        self._frame_id_offsets: tuple[int, int] | None = None
+
+    def _calibrate_frame_offsets(
+        self, snapshots: list[dict[int, EncodedFrame]]
+    ) -> tuple[int, int] | None:
+        """Learn per-camera raw-ID origins from time-coincident trigger frames."""
+
+        if any(len(snapshot) < 3 for snapshot in snapshots):
+            return None
+        max_skew_ns = int(0.75 / self.fps * 1e9)
+        candidates: dict[int, list[tuple[int, EncodedFrame, EncodedFrame]]] = {}
+        for first in snapshots[0].values():
+            for second in snapshots[1].values():
+                skew_ns = abs(first.received_monotonic_ns - second.received_monotonic_ns)
+                if skew_ns <= max_skew_ns:
+                    raw_delta = second.frame_id - first.frame_id
+                    candidates.setdefault(raw_delta, []).append((skew_ns, first, second))
+        if not candidates:
+            return None
+        raw_delta, matches = min(
+            candidates.items(),
+            key=lambda item: (-len(item[1]), np.median([match[0] for match in item[1]])),
+        )
+        if len(matches) < 2:
+            return None
+        _skew, first, second = min(matches, key=lambda match: match[0])
+        offsets = (first.frame_id - 1, second.frame_id - 1)
+        print(
+            "[act-camera] calibrated raw frame IDs: "
+            f"{self.bindings[0].physical_serial}={first.frame_id}, "
+            f"{self.bindings[1].physical_serial}={second.frame_id}, delta={raw_delta}"
+        )
+        return offsets
 
     def start(self) -> None:
+        self._last_pair_id = 0
+        self._frame_id_offsets = None
         try:
             if self.manage_capture_session:
                 from paradex.io.camera_system.remote_camera_controller import (
@@ -196,13 +232,26 @@ class SynchronizedCameraStream:
         while time.monotonic() < deadline:
             snapshots = [reader.snapshot() for reader in self.readers]
             if all(snapshots):
-                common_ids = set(snapshots[0])
-                for snapshot in snapshots[1:]:
+                if self._frame_id_offsets is None:
+                    self._frame_id_offsets = self._calibrate_frame_offsets(snapshots)
+                    if self._frame_id_offsets is None:
+                        time.sleep(0.002)
+                        continue
+                normalized = [
+                    {
+                        raw_id - offset: frame
+                        for raw_id, frame in snapshot.items()
+                        if raw_id - offset > 0
+                    }
+                    for snapshot, offset in zip(snapshots, self._frame_id_offsets)
+                ]
+                common_ids = set(normalized[0])
+                for snapshot in normalized[1:]:
                     common_ids.intersection_update(snapshot)
                 eligible = [frame_id for frame_id in common_ids if frame_id > self._last_pair_id]
                 if eligible:
                     frame_id = max(eligible)
-                    encoded = [snapshot[frame_id] for snapshot in snapshots]
+                    encoded = [snapshot[frame_id] for snapshot in normalized]
                     oldest_receive_ns = min(frame.received_monotonic_ns for frame in encoded)
                     if (time.monotonic_ns() - oldest_receive_ns) / 1e6 <= self.max_frame_age_ms:
                         self._last_pair_id = frame_id
@@ -213,6 +262,10 @@ class SynchronizedCameraStream:
                         return CameraPair(
                             images=images,
                             frame_ids={binding.policy_key: frame_id for binding in self.bindings},
+                            raw_frame_ids={
+                                binding.policy_key: frame.frame_id
+                                for binding, frame in zip(self.bindings, encoded)
+                            },
                             jpeg_bytes={
                                 binding.policy_key: frame.jpeg
                                 for binding, frame in zip(self.bindings, encoded)
@@ -227,7 +280,9 @@ class SynchronizedCameraStream:
         }
         raise CameraStreamError(
             f"Timed out waiting for a fresh matched camera pair after {timeout:.2f}s; "
-            f"reader_errors={errors}"
+            f"reader_errors={errors}; "
+            f"latest_raw_ids={[max(reader.snapshot(), default=None) for reader in self.readers]}; "
+            f"frame_id_offsets={self._frame_id_offsets}"
         )
 
     def close(self) -> None:

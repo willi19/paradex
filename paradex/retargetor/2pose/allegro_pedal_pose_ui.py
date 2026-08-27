@@ -1,30 +1,32 @@
 #!/usr/bin/env python3
-"""Pedal-controlled interpolation between two edited Allegro target poses.
+"""Quest/pedal interpolation between two edited Allegro target poses.
 
-This is a MANUS-free hand-only experiment. It follows capture_robot.py's
-Stream Deck pedal connection pattern, but maps its outer pedals to a scalar:
-left pedal increases the interpolation parameter and right pedal decreases it.
-The scalar blends two saved Allegro target_robot.json poses. ``--with-xarm``
-additionally drives an xArm with the right VIVE tracker. Used by itself,
-``--simulate`` updates only the URDF mesh.
+Quest mode maps right-controller A to grasp and B to open. With
+``--with-quest-xarm``, the right grip pose drives xArm relative teleoperation
+only while Grip is held. With ``--with-xarm``, VIVE supplies the arm pose and
+Quest Grip is the default deadman; ``--input-source=pedal`` retains the legacy
+middle-pedal deadman. ``--simulate`` updates only the Allegro URDF mesh unless
+an explicit xArm mode is selected.
 """
 
 from __future__ import annotations
 
 import argparse
 import atexit
+import re
 import shutil
+import subprocess
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from threading import Event, Thread
+from threading import Event, Lock, Thread
 from typing import Any, Mapping
 
 import numpy as np
 
-from paradex.io.robot_controller import get_hand
+from paradex.io.robot_controller import get_arm, get_hand
 from paradex.io.streamdeck_pedal import LeftRightPedalState
-from paradex.dataset_acqusition.capture import CaptureSession
+from paradex.dataset_acqusition.capture import CaptureSession, _PoseCommandLimiter
 from paradex.retargetor.allegro_alignment import (
     ALLEGRO_RETARGETER_JOINT_NAMES,
     ALLEGRO_URDF_JOINT_NAMES,
@@ -37,14 +39,36 @@ from paradex.utils.keyboard_listener import listen_keyboard, stop_listening
 from paradex.utils.path import shared_dir
 from paradex.visualization.visualizer.viser import ViserViewer
 
+if __package__:
+    from .quest_teleop import (
+        QuestTeleopGate,
+        QuestGripTeleopStateAdapter,
+        openxr_pose_matrix,
+        quest_delta_to_xarm_target,
+        quest_grip_deadman_pressed,
+    )
+else:
+    from quest_teleop import (
+        QuestTeleopGate,
+        QuestGripTeleopStateAdapter,
+        openxr_pose_matrix,
+        quest_delta_to_xarm_target,
+        quest_grip_deadman_pressed,
+    )
 
-COMMAND_RATE_HZ = 30.0
+
+COMMAND_RATE_HZ = 100.0
+UI_RATE_HZ = 20.0
+QUEST_POSE_MAX_AGE_S = 0.25
 TACTILE_MAX_AGE_S = 0.25
+HAND_SLEW_MARGIN = 1.2
+HAND_MIN_SLEW_RAD_S = 0.1
 # The official V5 driver zeros invalid tactile values outside [0, 5000].
 TACTILE_DISPLAY_MAX = 5000
-# A single ROS tactile sample must not permanently stop a finger.  At the
-# 30 Hz pedal control rate this is roughly a 0.1 second contact confirmation.
+# A single ROS tactile sample must not stop or restart a finger. At the 100 Hz
+# control rate these require roughly 30 ms of sustained contact state.
 TACTILE_CONTACT_DEBOUNCE_SAMPLES = 3
+TACTILE_RELEASE_DEBOUNCE_SAMPLES = 3
 # Allegro v5 driver/action order is four contiguous 4-DoF finger blocks.
 ALLEGRO_FINGERS = ("index", "middle", "ring", "thumb")
 ALLEGRO_FINGER_ACTION_SLICES = {
@@ -58,6 +82,30 @@ DEFAULT_SOURCE_POSE_B = DEFAULT_SESSION / "000001"
 # and browsed with the Allegro alignment experiment just like any capture.
 DEFAULT_POSE_A = DEFAULT_SESSION / "000008"
 DEFAULT_POSE_B = DEFAULT_SESSION / "000009"
+DEFAULT_QUEST_OPENXR_LAUNCHER = (
+    Path(__file__).resolve().parents[4] / "quest-openxr" / "scripts" / "run-input.sh"
+)
+# Backward-compatible import name used by the capture entry point.
+DEFAULT_QUEST_OPENXR_BIN = DEFAULT_QUEST_OPENXR_LAUNCHER
+QUEST_ANALOG_PATTERN = re.compile(
+    r"^analog right trigger=(?P<trigger>[0-9]+(?:\.[0-9]+)?) "
+    r"squeeze=(?P<grip>[0-9]+(?:\.[0-9]+)?)"
+)
+QUEST_BUTTON_PATTERN = re.compile(
+    r"^button right\.(?P<button>primary|secondary) = (?P<state>pressed|released)$"
+)
+QUEST_DEBUG_BUTTON_PATTERN = re.compile(
+    r"^debug right primary\(active=\d+, value=(?P<primary>[01])\) "
+    r"secondary\(active=\d+, value=(?P<secondary>[01])\)$"
+)
+_POSE_NUMBER = r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][-+]?\d+)?"
+QUEST_POSE_PATTERN = re.compile(
+    rf"^pose right\.grip position=\((?P<px>{_POSE_NUMBER}), "
+    rf"(?P<py>{_POSE_NUMBER}), (?P<pz>{_POSE_NUMBER})\) rotation=\("
+    rf"(?P<qx>{_POSE_NUMBER}), (?P<qy>{_POSE_NUMBER}), "
+    rf"(?P<qz>{_POSE_NUMBER}), (?P<qw>{_POSE_NUMBER})\)$"
+)
+QUEST_POSE_UNAVAILABLE_PATTERN = re.compile(r"^pose right\.grip unavailable$")
 
 
 def _now() -> str:
@@ -73,6 +121,122 @@ def interpolate_allegro_pose(
         name: (1.0 - parameter) * float(pose_a[name]) + parameter * float(pose_b[name])
         for name in ALLEGRO_URDF_JOINT_NAMES
     }
+
+
+class QuestOpenXRInput:
+    """Read the right Touch controller analog values from quest-openxr.
+
+    The reference probe binds trigger to ``/input/trigger/value`` and grip to
+    ``/input/squeeze/value``.  Its debug stream emits both values continuously
+    without requiring a new OpenXR Python dependency in this robot process.
+    """
+
+    def __init__(self, launcher: Path, *, headless: bool = False):
+        launcher = launcher.expanduser().resolve()
+        if not launcher.is_file():
+            raise FileNotFoundError(
+                "Quest OpenXR input launcher was not found: "
+                f"{launcher}. Build quest-openxr first or pass --quest-openxr-bin."
+            )
+        self._lock = Lock()
+        self._trigger = 0.0
+        self._grip = 0.0
+        self._primary = False
+        self._secondary = False
+        self._pose: np.ndarray | None = None
+        self._updated_at: float | None = None
+        self._grip_updated_at: float | None = None
+        self._pose_updated_at: float | None = None
+        self._last_error: str | None = None
+        command = [str(launcher), "--debug", "--stream-input", "--poses"]
+        if headless:
+            command.append("--headless")
+        self._process = subprocess.Popen(
+            command,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+        self._thread = Thread(target=self._read_output, daemon=True)
+        self._thread.start()
+
+    def _read_output(self) -> None:
+        assert self._process.stdout is not None
+        for line in self._process.stdout:
+            text = line.strip()
+            now = time.monotonic()
+            analog = QUEST_ANALOG_PATTERN.match(text)
+            button = QUEST_BUTTON_PATTERN.match(text)
+            debug_buttons = QUEST_DEBUG_BUTTON_PATTERN.match(text)
+            pose = QUEST_POSE_PATTERN.match(text)
+            if analog is not None:
+                with self._lock:
+                    self._trigger = float(analog.group("trigger"))
+                    self._grip = float(analog.group("grip"))
+                    self._updated_at = now
+                    self._grip_updated_at = now
+            elif button is not None:
+                pressed = button.group("state") == "pressed"
+                with self._lock:
+                    if button.group("button") == "primary":
+                        self._primary = pressed
+                    else:
+                        self._secondary = pressed
+                    self._updated_at = now
+            elif debug_buttons is not None:
+                with self._lock:
+                    self._primary = debug_buttons.group("primary") == "1"
+                    self._secondary = debug_buttons.group("secondary") == "1"
+                    self._updated_at = now
+            elif pose is not None:
+                try:
+                    pose_matrix = openxr_pose_matrix(
+                        [float(pose.group(name)) for name in ("px", "py", "pz")],
+                        [float(pose.group(name)) for name in ("qx", "qy", "qz", "qw")],
+                    )
+                except ValueError:
+                    continue
+                with self._lock:
+                    self._pose = pose_matrix
+                    self._pose_updated_at = now
+            elif QUEST_POSE_UNAVAILABLE_PATTERN.match(text) is not None:
+                with self._lock:
+                    self._pose = None
+                    self._pose_updated_at = None
+        if self._process.poll() not in (None, 0):
+            with self._lock:
+                self._last_error = f"quest-openxr exited with code {self._process.returncode}"
+
+    def get_values(self) -> tuple[float, float, float | None, str | None]:
+        """Return ``(trigger, grip, updated_at, error)`` from the right controller."""
+        with self._lock:
+            return self._trigger, self._grip, self._updated_at, self._last_error
+
+    def get_snapshot(self) -> dict[str, Any]:
+        """Return a coherent right-controller input and pose snapshot."""
+        with self._lock:
+            return {
+                "trigger": self._trigger,
+                "grip": self._grip,
+                "primary": self._primary,
+                "secondary": self._secondary,
+                "pose": None if self._pose is None else self._pose.copy(),
+                "updated_at": self._updated_at,
+                "grip_updated_at": self._grip_updated_at,
+                "pose_updated_at": self._pose_updated_at,
+                "error": self._last_error,
+            }
+
+    def close(self) -> None:
+        if self._process.poll() is None:
+            self._process.terminate()
+            try:
+                self._process.wait(timeout=2.0)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
+                self._process.wait(timeout=2.0)
+        self._thread.join(timeout=2.0)
 
 
 def allegro_tactile_finger_levels(
@@ -181,12 +345,12 @@ def _save_pose_sample(sample_dir: Path, pose: Mapping[str, float]) -> None:
 
 
 class XArmVivePedalTeleop:
-    """Run VIVE-only xArm teleoperation alongside the pedal-driven hand.
+    """Run VIVE xArm teleoperation with a Quest Grip or pedal deadman.
 
     ``CaptureSession`` owns only the physical xArm and uses the same VIVE pose
     limiter as ``capture_robot.py``. The studio continues to own the Allegro
-    controller, so its outer-pedal/tactile control never depends on VIVE or
-    the middle-pedal xArm deadman switch.
+    controller. The selected studio input supplies both Allegro interpolation
+    controls and the xArm deadman without enabling MANUS hand teleoperation.
     """
 
     def __init__(self, studio: "AllegroPedalPoseStudio", servo_api: str):
@@ -210,8 +374,17 @@ class XArmVivePedalTeleop:
                 use_vive=True,
                 use_manus=False,
                 require_left_control=False,
-                arm_command_enabled_provider=self.studio.xarm_deadman_pressed,
+                arm_command_enabled_provider=(
+                    self.studio.xarm_deadman_pressed
+                    if self.studio.input_source == "pedal"
+                    else None
+                ),
             )
+            if self.studio.input_source == "quest":
+                self.session.teleop_device = QuestGripTeleopStateAdapter(
+                    self.session.teleop_device,
+                    self.studio.quest_grip_teleop_state,
+                )
         except Exception:
             if self.session is not None:
                 self.session.end()
@@ -222,7 +395,10 @@ class XArmVivePedalTeleop:
             return
         self.thread = Thread(target=self._run, daemon=True)
         self.thread.start()
-        print("[allegro-pedal] xArm VIVE teleoperation started (MANUS disabled).")
+        print(
+            "[allegro-vive] xArm VIVE teleoperation ready; hold "
+            f"{self.studio.xarm_deadman_name} to move (MANUS disabled)."
+        )
 
     def _run(self) -> None:
         try:
@@ -246,6 +422,133 @@ class XArmVivePedalTeleop:
             self.session = None
 
 
+class XArmQuestTeleop:
+    """Drive xArm from the right Quest grip pose while Grip is held."""
+
+    def __init__(
+        self,
+        studio: "AllegroPedalPoseStudio",
+        servo_api: str,
+        *,
+        grip_threshold: float,
+        translation_scale: float,
+    ):
+        if studio.quest_input is None:
+            raise ValueError("Quest xArm teleoperation requires Quest input")
+        if not 0.0 <= grip_threshold <= 1.0:
+            raise ValueError("--quest-grip-threshold must be between 0 and 1")
+        if translation_scale <= 0.0 or not np.isfinite(translation_scale):
+            raise ValueError("--quest-arm-translation-scale must be positive and finite")
+        self.studio = studio
+        self.quest_input = studio.quest_input
+        self.grip_threshold = float(grip_threshold)
+        self.translation_scale = float(translation_scale)
+        self.arm = get_arm("xarm", servo_api=servo_api)
+        self.thread: Thread | None = None
+        self._active = False
+        self._initial_controller_pose: np.ndarray | None = None
+        self._initial_xarm_pose: np.ndarray | None = None
+        self._limiter: _PoseCommandLimiter | None = None
+        self._gate = QuestTeleopGate()
+
+    def start(self) -> None:
+        if self.thread is not None:
+            return
+        self.thread = Thread(target=self._run, daemon=True)
+        self.thread.start()
+        print("[allegro-quest] xArm Quest teleoperation ready; hold right Grip to move.")
+
+    def _hold(self, status: str) -> None:
+        self._active = False
+        self._initial_controller_pose = None
+        self._initial_xarm_pose = None
+        self._limiter = None
+        self.studio.arm_status.value = status
+
+    def _start_from_current_pose(self, controller_pose: np.ndarray) -> bool:
+        arm_pose = np.asarray(self.arm.get_data()["position"], dtype=float)
+        if arm_pose.shape != (4, 4) or not np.all(np.isfinite(arm_pose)):
+            self._hold("QUEST xARM: WAITING FOR VALID ARM POSE")
+            return False
+        self._initial_controller_pose = controller_pose.copy()
+        self._initial_xarm_pose = arm_pose.copy()
+        self._limiter = _PoseCommandLimiter(arm_pose, time.monotonic())
+        self._active = True
+        self.studio.arm_status.value = "QUEST xARM: ACTIVE (GRIP HELD)"
+        return True
+
+    def _run(self) -> None:
+        try:
+            while not self.studio.exit_event.is_set():
+                snapshot = self.quest_input.get_snapshot()
+                now = time.monotonic()
+                pose = snapshot["pose"]
+                pose_time = snapshot["pose_updated_at"]
+                grip_time = snapshot["grip_updated_at"]
+                pose_fresh = (
+                    pose is not None
+                    and pose_time is not None
+                    and now - pose_time <= QUEST_POSE_MAX_AGE_S
+                )
+                grip_fresh = (
+                    grip_time is not None
+                    and now - grip_time <= QUEST_POSE_MAX_AGE_S
+                )
+                grip_held = snapshot["grip"] >= self.grip_threshold
+                gate_state = self._gate.update(
+                    pose_fresh=pose_fresh,
+                    grip_fresh=grip_fresh,
+                    grip_held=grip_held,
+                )
+
+                if gate_state == "pose_stale":
+                    self._hold("QUEST xARM: HOLD (POSE STALE)")
+                elif gate_state == "grip_stale":
+                    self._hold("QUEST xARM: HOLD (GRIP INPUT STALE)")
+                elif gate_state == "release_to_rearm":
+                    self._hold("QUEST xARM: RELEASE GRIP TO REARM")
+                elif gate_state == "grip_released":
+                    if self._active:
+                        self._hold("QUEST xARM: HOLD (GRIP RELEASED)")
+                else:
+                    assert pose is not None
+                    if gate_state == "start" and not self._start_from_current_pose(pose):
+                        self._gate.retry_activation()
+                        self.studio.exit_event.wait(1.0 / COMMAND_RATE_HZ)
+                        continue
+                    assert self._initial_controller_pose is not None
+                    assert self._initial_xarm_pose is not None
+                    assert self._limiter is not None
+                    candidate = quest_delta_to_xarm_target(
+                        self._initial_controller_pose,
+                        pose,
+                        self._initial_xarm_pose,
+                        translation_scale=self.translation_scale,
+                    )
+                    filtered, translation_delta, rotation_delta_deg = self._limiter.filter(
+                        candidate,
+                        now,
+                    )
+                    if filtered is not None:
+                        self.arm.move(filtered)
+                    elif self._limiter.rejected_count == 1:
+                        self.studio.arm_status.value = (
+                            "QUEST xARM: REJECTED JUMP "
+                            f"({translation_delta * 1000.0:.1f} mm, "
+                            f"{rotation_delta_deg:.1f} deg)"
+                        )
+                self.studio.exit_event.wait(1.0 / COMMAND_RATE_HZ)
+        except Exception as exc:
+            self.studio.arm_status.value = f"QUEST xARM ERROR: {exc}"
+            print(f"[allegro-quest] xArm teleoperation stopped: {exc}")
+
+    def close(self) -> None:
+        if self.thread is not None:
+            self.thread.join(timeout=2.0)
+            self.thread = None
+        self.arm.end()
+
+
 class AllegroPedalPoseStudio:
     def __init__(
         self,
@@ -254,8 +557,11 @@ class AllegroPedalPoseStudio:
         pose_b_sample: Path,
         simulate: bool,
         observe_only: bool,
-        use_pedal: bool,
-        pedal_rate: float,
+        input_source: str,
+        input_rate: float,
+        quest_grip_threshold: float = 0.5,
+        quest_openxr_bin: Path = DEFAULT_QUEST_OPENXR_BIN,
+        quest_headless: bool = False,
         tactile_contact_stop: bool = True,
         tactile_threshold: float = 200.0,
         ring_tactile_threshold: float = 150.0,
@@ -267,8 +573,12 @@ class AllegroPedalPoseStudio:
         urdf_b, self.pose_b = _load_pose_sample(self.pose_b_sample)
         if urdf_b != self.urdf_path:
             raise ValueError("Pose A and B use different Allegro URDFs")
-        if pedal_rate <= 0.0 or not np.isfinite(pedal_rate):
-            raise ValueError("--pedal-rate must be a positive finite value")
+        if input_source not in {"quest", "pedal", "slider"}:
+            raise ValueError("--input-source must be quest, pedal, or slider")
+        if input_rate <= 0.0 or not np.isfinite(input_rate):
+            raise ValueError("--input-rate must be a positive finite value")
+        if not 0.0 <= quest_grip_threshold <= 1.0:
+            raise ValueError("--quest-grip-threshold must be between 0 and 1")
         if tactile_threshold < 0.0 or not np.isfinite(tactile_threshold):
             raise ValueError("--tactile-threshold must be a non-negative finite value")
         if ring_tactile_threshold < 0.0 or not np.isfinite(ring_tactile_threshold):
@@ -281,8 +591,9 @@ class AllegroPedalPoseStudio:
         self.simulate = simulate
         self.observe_only = observe_only
         self.external_hand = bool(external_hand)
-        self.use_pedal = use_pedal
-        self.pedal_rate = float(pedal_rate)
+        self.input_source = input_source
+        self.input_rate = float(input_rate)
+        self.quest_grip_threshold = float(quest_grip_threshold)
         self.tactile_contact_stop = bool(tactile_contact_stop)
         self.tactile_threshold = float(tactile_threshold)
         self.ring_tactile_threshold = float(ring_tactile_threshold)
@@ -295,15 +606,22 @@ class AllegroPedalPoseStudio:
         self.contact_hold_action = {finger: None for finger in ALLEGRO_FINGERS}
         self.contact_latch_level = {finger: None for finger in ALLEGRO_FINGERS}
         self.contact_above_threshold_count = {finger: 0 for finger in ALLEGRO_FINGERS}
+        self.contact_below_threshold_count = {finger: 0 for finger in ALLEGRO_FINGERS}
         self.editing_endpoint = "A"
         self.command_enabled = Event()
+        if not observe_only:
+            self.command_enabled.set()
         self.exit_event = Event()
         self.pedal = None
+        self.quest_input = None
         self.hand = None
+        self._hand_command_controller = None
+        self._hand_slew_configured = False
         self._syncing = False
         self.last_time = None
+        self._next_ui_update_time = 0.0
 
-        self.viewer = ViserViewer(scene_title="Allegro pedal pose interpolation", show_player=False)
+        self.viewer = ViserViewer(scene_title="Allegro two-pose interpolation", show_player=False)
         self.viewer.add_robot("allegro", str(self.urdf_path), include_arm_meshes=True)
         self.viser_robot = self.viewer.robot_dict["allegro"]
         self.robot = self.viser_robot.urdf
@@ -327,9 +645,15 @@ class AllegroPedalPoseStudio:
 
         self._build_gui()
         self._update_interpolated_pose()
-        if use_pedal:
+        if input_source == "pedal":
             self.pedal = LeftRightPedalState()
             atexit.register(self.pedal.close)
+        elif input_source == "quest":
+            self.quest_input = QuestOpenXRInput(
+                quest_openxr_bin,
+                headless=quest_headless,
+            )
+            atexit.register(self.quest_input.close)
         if not simulate and not self.external_hand:
             self.hand = get_hand(
                 "allegro_v5",
@@ -339,6 +663,7 @@ class AllegroPedalPoseStudio:
                 tactile=True,
                 command_enabled=not observe_only,
             )
+            self.attach_hand_controller(self.hand)
         if self.external_hand:
             self._set_status("WAITING: ALLEGRO FEEDBACK")
         else:
@@ -346,9 +671,10 @@ class AllegroPedalPoseStudio:
 
     def _build_gui(self) -> None:
         gui = self.viewer.server.gui
-        with gui.add_folder("Pedal interpolation"):
+        with gui.add_folder("Pose interpolation"):
             self.command_status = gui.add_text("Command state", initial_value="STARTING", disabled=True)
-            self.pedal_status = gui.add_text("Pedal input", initial_value="DISABLED", disabled=True)
+            self.input_status = gui.add_text("Control input", initial_value="STARTING", disabled=True)
+            self.arm_status = gui.add_text("xArm teleoperation", initial_value="DISABLED", disabled=True)
             self.actual_status = gui.add_text("Actual Allegro qpos", initial_value="WAITING", disabled=True)
             self.tactile_raw_status = gui.add_text("Tactile raw values", initial_value="WAITING", disabled=True)
             self.tactile_value_sliders = {}
@@ -379,7 +705,7 @@ class AllegroPedalPoseStudio:
                 disabled=not self.tactile_contact_stop,
             )
             disable_commands = self.observe_only or (self.simulate and not self.external_hand)
-            self.enable_button = gui.add_button("Enable pedal interpolation", disabled=disable_commands)
+            self.enable_button = gui.add_button("Enable pose interpolation", disabled=disable_commands)
             self.pause_button = gui.add_button("Pause hand (hold feedback)", disabled=disable_commands)
 
         with gui.add_folder("Endpoint editor"):
@@ -431,7 +757,7 @@ class AllegroPedalPoseStudio:
         @self.enable_button.on_click
         def _(_event):
             self.command_enabled.set()
-            self._set_status("PEDAL → ALLEGRO")
+            self._set_status("INPUT → ALLEGRO")
 
         @self.pause_button.on_click
         def _(_event):
@@ -486,14 +812,18 @@ class AllegroPedalPoseStudio:
             self.moving_toward_b = False
             for finger, latch_parameter in self.contact_latch_parameter.items():
                 if latch_parameter is not None and new_value <= latch_parameter + 1e-6:
-                    self.contact_latched[finger] = False
-                    self.contact_latch_parameter[finger] = None
-                    self.contact_hold_action[finger] = None
-                    self.contact_latch_level[finger] = None
-                    self.contact_above_threshold_count[finger] = 0
+                    self._release_contact_latch(finger)
         elif new_value > self.parameter + 1e-6:
             self.moving_toward_b = True
         self.parameter = new_value
+
+    def _release_contact_latch(self, finger: str) -> None:
+        self.contact_latched[finger] = False
+        self.contact_latch_parameter[finger] = None
+        self.contact_hold_action[finger] = None
+        self.contact_latch_level[finger] = None
+        self.contact_above_threshold_count[finger] = 0
+        self.contact_below_threshold_count[finger] = 0
 
     def _update_interpolated_pose(self) -> None:
         self.parameter = float(np.clip(self.parameter, 0.0, 1.0))
@@ -506,24 +836,115 @@ class AllegroPedalPoseStudio:
         pose = self._safe_interpolated_pose()
         self.viser_robot.update_cfg({name: pose[name] for name in ALLEGRO_URDF_JOINT_NAMES})
 
-    def _update_pedal_parameter(self, now: float) -> None:
-        if self.pedal is None:
-            self.pedal_status.value = "DISABLED: use UI parameter slider"
-            return
-        direction = self.pedal.get_direction()
-        outer_status = {1: "LEFT PEDAL: +", -1: "RIGHT PEDAL: -", 0: "HOLD"}[direction]
-        xarm_status = "ACTIVE" if self.xarm_deadman_pressed() else "HOLD"
-        self.pedal_status.value = f"{outer_status}; CENTER/xArm: {xarm_status}"
-        if self.last_time is not None:
-            self._set_parameter(
-                self.parameter + direction * self.pedal_rate * (now - self.last_time)
-            )
-        self.last_time = now
-        self._update_interpolated_pose()
+    def _update_input_parameter(self, now: float, *, update_ui: bool = True) -> None:
+        """Apply the selected input source to the interpolation parameter.
 
-    def xarm_deadman_pressed(self) -> bool:
-        """The shared middle pedal gates xArm only; outer pedals keep working."""
-        return self.pedal is not None and self.pedal.get_state() == 0
+        Quest A closes toward B (grasp), while B opens back toward A. Grip is
+        reserved as the Quest xArm deadman switch.
+        """
+        direction = 0.0
+        if self.input_source == "pedal":
+            assert self.pedal is not None
+            direction = float(self.pedal.get_direction())
+            outer_status = {1.0: "LEFT PEDAL: GRASP", -1.0: "RIGHT PEDAL: OPEN", 0.0: "HOLD"}[direction]
+            xarm_status = "ACTIVE" if self.xarm_deadman_pressed() else "HOLD"
+            if update_ui:
+                self.input_status.value = (
+                    f"PEDAL: {outer_status}; CENTER/xArm: {xarm_status}"
+                )
+        elif self.input_source == "quest":
+            assert self.quest_input is not None
+            snapshot = self.quest_input.get_snapshot()
+            updated_at = snapshot["updated_at"]
+            error = snapshot["error"]
+            if error is not None:
+                if update_ui:
+                    self.input_status.value = f"QUEST ERROR: {error}"
+            elif updated_at is None:
+                if update_ui:
+                    self.input_status.value = "QUEST: WAITING FOR RIGHT CONTROLLER"
+            elif now - updated_at > 1.5:
+                if update_ui:
+                    self.input_status.value = "QUEST: INPUT STALE; HOLD"
+            else:
+                direction = float(snapshot["primary"]) - float(snapshot["secondary"])
+                if update_ui:
+                    self.input_status.value = (
+                        "QUEST RIGHT: "
+                        f"A/grasp={'DOWN' if snapshot['primary'] else 'UP'}, "
+                        f"B/open={'DOWN' if snapshot['secondary'] else 'UP'}, "
+                        f"Grip/xArm={snapshot['grip']:.2f} "
+                        f"({'ACTIVE' if self.xarm_deadman_pressed(now=now) else 'HOLD'})"
+                    )
+        else:
+            if update_ui:
+                self.input_status.value = "SLIDER: use Parameter: A ← → B"
+
+        if self.last_time is not None and direction:
+            self._set_parameter(self.parameter + direction * self.input_rate * (now - self.last_time))
+        self.last_time = now
+        if update_ui:
+            self._update_interpolated_pose()
+
+    @property
+    def xarm_deadman_name(self) -> str:
+        return "right Quest Grip" if self.input_source == "quest" else "middle pedal"
+
+    def xarm_deadman_pressed(self, *, now: float | None = None) -> bool:
+        """Return whether fresh Quest Grip or the middle pedal is active."""
+        if self.input_source == "pedal":
+            return self.pedal is not None and self.pedal.get_state() == 0
+        if self.input_source != "quest" or self.quest_input is None:
+            return False
+        snapshot = self.quest_input.get_snapshot()
+        return quest_grip_deadman_pressed(
+            grip=float(snapshot["grip"]),
+            updated_at=snapshot["grip_updated_at"],
+            now=time.monotonic() if now is None else now,
+            threshold=self.quest_grip_threshold,
+            max_age=QUEST_POSE_MAX_AGE_S,
+        )
+
+    def quest_grip_teleop_state(self) -> int:
+        """Map fresh pressed Grip to active state 0, otherwise hold state 1."""
+        now = time.monotonic()
+        active = self.xarm_deadman_pressed(now=now)
+        if self.external_hand and not active:
+            # CaptureSession does not request a hand target in state 1. Keep
+            # the interpolation clock current so the next active frame cannot
+            # integrate the entire hold duration as one large target jump.
+            self.last_time = now
+        return 0 if active else 1
+
+    def attach_hand_controller(self, controller) -> None:
+        """Enable publisher-level smoothing once valid hand feedback arrives."""
+        self._hand_command_controller = controller
+        self._hand_slew_configured = False
+
+    def _configure_hand_slew(self, feedback: Mapping[str, Any]) -> None:
+        if self._hand_slew_configured or self._hand_command_controller is None:
+            return
+        setter = getattr(self._hand_command_controller, "set_command_slew_rate", None)
+        if setter is None:
+            self._hand_slew_configured = True
+            return
+        endpoint_delta = np.abs(
+            np.asarray(urdf_qpos_to_retargeter_action(self.pose_b), dtype=float)
+            - np.asarray(urdf_qpos_to_retargeter_action(self.pose_a), dtype=float)
+        )
+        max_velocity = np.maximum(
+            endpoint_delta * self.input_rate * HAND_SLEW_MARGIN,
+            HAND_MIN_SLEW_RAD_S,
+        )
+        setter(max_velocity, initial_action=np.asarray(feedback["qpos"], dtype=float))
+        self._hand_slew_configured = True
+
+    def _ui_update_due(self, now: float) -> bool:
+        next_update = getattr(self, "_next_ui_update_time", 0.0)
+        if now < next_update:
+            return False
+        self._next_ui_update_time = now + 1.0 / UI_RATE_HZ
+        return True
 
     def _tactile_is_fresh(self, feedback: Mapping[str, Any]) -> bool:
         tactile_time = feedback.get("tactile_time")
@@ -555,24 +976,59 @@ class AllegroPedalPoseStudio:
             )
 
     def _apply_tactile_contact_stop(
-        self, desired: np.ndarray, feedback: Mapping[str, Any]
+        self,
+        desired: np.ndarray,
+        feedback: Mapping[str, Any],
+        *,
+        update_ui: bool = True,
     ) -> np.ndarray:
-        """Latch contacted fingers during A→B motion; fail closed on bad tactile."""
+        """Latch contacted fingers and resume them after contact is released."""
+        def set_tactile_status(value: str) -> None:
+            if update_ui:
+                self.tactile_status.value = value
+
         feedback_action = np.asarray(feedback["qpos"], dtype=float)
         if not self.tactile_contact_stop:
-            self.tactile_status.value = "OFF"
+            set_tactile_status("OFF")
             return desired
+
+        tactile_is_fresh = self._tactile_is_fresh(feedback)
+        levels = (
+            allegro_tactile_finger_levels(feedback.get("tactile"))
+            if tactile_is_fresh
+            else None
+        )
+        released = []
+        if levels is not None:
+            for finger, level in levels.items():
+                threshold = (
+                    self.ring_tactile_threshold
+                    if finger == "ring"
+                    else self.tactile_threshold
+                )
+                if self.contact_latched[finger] and level < threshold:
+                    self.contact_below_threshold_count[finger] += 1
+                    if (
+                        self.contact_below_threshold_count[finger]
+                        >= TACTILE_RELEASE_DEBOUNCE_SAMPLES
+                    ):
+                        self._release_contact_latch(finger)
+                        released.append(finger)
+                else:
+                    self.contact_below_threshold_count[finger] = 0
+
         if not self.moving_toward_b:
             stopped = [finger for finger in ALLEGRO_FINGERS if self.contact_latched[finger]]
             if not stopped:
-                self.tactile_status.value = "OPENING: all fingers moving"
+                released_text = f"; RELEASED: {', '.join(released)}" if released else ""
+                set_tactile_status("OPENING: all fingers moving" + released_text)
                 return desired
             release_points = ", ".join(
                 f"{finger}@{self.contact_latch_parameter[finger]:.3f}"
                 f" (latched={self.contact_latch_level[finger]:.0f})"
                 for finger in stopped
             )
-            self.tactile_status.value = (
+            set_tactile_status(
                 "OPENING: HOLD UNTIL PARAMETER REACHES " + release_points
             )
             return hold_contacted_allegro_fingers(
@@ -581,12 +1037,11 @@ class AllegroPedalPoseStudio:
                 self.contact_latched,
                 self.contact_hold_action,
             )
-        if not self._tactile_is_fresh(feedback):
-            self.tactile_status.value = "NO FRESH TACTILE: HOLDING ALL FINGERS"
+        if not tactile_is_fresh:
+            set_tactile_status("NO FRESH TACTILE: HOLDING ALL FINGERS")
             return feedback_action.copy()
-        levels = allegro_tactile_finger_levels(feedback.get("tactile"))
         if levels is None:
-            self.tactile_status.value = "INVALID TACTILE: HOLDING ALL FINGERS"
+            set_tactile_status("INVALID TACTILE: HOLDING ALL FINGERS")
             return feedback_action.copy()
         arming = []
         for finger, level in levels.items():
@@ -604,6 +1059,7 @@ class AllegroPedalPoseStudio:
                 and not self.contact_latched[finger]
             ):
                 self.contact_latched[finger] = True
+                self.contact_below_threshold_count[finger] = 0
                 self.contact_latch_parameter[finger] = self.parameter
                 self.contact_latch_level[finger] = level
                 action_slice = ALLEGRO_FINGER_ACTION_SLICES[finger]
@@ -627,8 +1083,9 @@ class AllegroPedalPoseStudio:
             if stopped else ""
         )
         arming_text = "; ARMING: " + ", ".join(arming) if arming else ""
+        released_text = "; RELEASED: " + ", ".join(released) if released else ""
         suffix = held_text or "; MOVING"
-        self.tactile_status.value = levels_text + suffix + arming_text
+        set_tactile_status(levels_text + suffix + arming_text + released_text)
         return hold_contacted_allegro_fingers(
             desired,
             feedback_action,
@@ -638,31 +1095,47 @@ class AllegroPedalPoseStudio:
 
     def command_action(self, feedback: Mapping[str, Any] | None) -> np.ndarray | None:
         """Return a safe command, or current feedback while the hand is paused."""
-        self._update_pedal_parameter(time.monotonic())
+        now = time.monotonic()
+        update_ui = self._ui_update_due(now)
+        self._update_input_parameter(now, update_ui=update_ui)
         if feedback is None:
             return None
         if not feedback.get("is_connected", False):
-            self.actual_status.value = f"WAITING: {feedback.get('state_topic', '/joint_states')}"
+            if update_ui:
+                self.actual_status.value = (
+                    f"WAITING: {feedback.get('state_topic', '/joint_states')}"
+                )
             return None
-        actual = feedback_to_urdf_qpos(feedback["qpos"], feedback["joint_names"])
-        self.actual_status.value = np.array2string(
-            np.asarray([actual[name] for name in ALLEGRO_URDF_JOINT_NAMES]), precision=3, separator=","
-        )
-        self._update_tactile_raw_status(feedback)
+        self._configure_hand_slew(feedback)
+        if update_ui:
+            actual = feedback_to_urdf_qpos(feedback["qpos"], feedback["joint_names"])
+            self.actual_status.value = np.array2string(
+                np.asarray([actual[name] for name in ALLEGRO_URDF_JOINT_NAMES]),
+                precision=3,
+                separator=",",
+            )
+            self._update_tactile_raw_status(feedback)
         if self.observe_only:
-            self._set_status("OBSERVING ALLEGRO FEEDBACK (NO COMMANDS)")
+            if update_ui:
+                self._set_status("OBSERVING ALLEGRO FEEDBACK (NO COMMANDS)")
             return None
         if not self.command_enabled.is_set():
-            self._set_status("HOLDING CURRENT FEEDBACK")
-            self.tactile_status.value = "COMMAND PAUSED"
+            if update_ui:
+                self._set_status("HOLDING CURRENT FEEDBACK")
+                self.tactile_status.value = "COMMAND PAUSED"
             return np.asarray(feedback["qpos"], dtype=float).copy()
         command = self._safe_interpolated_action()
-        command = self._apply_tactile_contact_stop(command, feedback)
-        preview = retargeter_action_to_urdf_qpos(command)
-        self.viser_robot.update_cfg(
-            {name: preview[name] for name in ALLEGRO_URDF_JOINT_NAMES}
+        command = self._apply_tactile_contact_stop(
+            command,
+            feedback,
+            update_ui=update_ui,
         )
-        self._set_status("PEDAL → ALLEGRO")
+        if update_ui:
+            preview = retargeter_action_to_urdf_qpos(command)
+            self.viser_robot.update_cfg(
+                {name: preview[name] for name in ALLEGRO_URDF_JOINT_NAMES}
+            )
+            self._set_status("INPUT → ALLEGRO")
         return command
 
     def _update_hand(self) -> None:
@@ -688,15 +1161,23 @@ class AllegroPedalPoseStudio:
 
     def run(self) -> None:
         listen_keyboard({"q": self.exit_event})
-        print("[allegro-pedal] Open the Viser URL. q + Enter exits. No MANUS/VIVE is used.")
+        print("[allegro-quest] Open the Viser URL. q + Enter exits.")
+        period = 1.0 / COMMAND_RATE_HZ
+        next_tick = time.monotonic()
         try:
             while not self.exit_event.is_set():
                 self._update_hand()
-                self.exit_event.wait(timeout=1.0 / COMMAND_RATE_HZ)
+                next_tick += period
+                now = time.monotonic()
+                if next_tick <= now:
+                    next_tick = now
+                    continue
+                self.exit_event.wait(timeout=next_tick - now)
         finally:
             self.close()
 
     def close(self) -> None:
+        self.exit_event.set()
         stop_listening()
         if self.hand is not None:
             self.hand.end()
@@ -704,6 +1185,9 @@ class AllegroPedalPoseStudio:
         if self.pedal is not None:
             self.pedal.close()
             self.pedal = None
+        if self.quest_input is not None:
+            self.quest_input.close()
+            self.quest_input = None
 
 
 def parse_args() -> argparse.Namespace:
@@ -712,8 +1196,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pose-b", type=Path, default=DEFAULT_POSE_B)
     parser.add_argument("--source-pose-a", type=Path, default=DEFAULT_SOURCE_POSE_A)
     parser.add_argument("--source-pose-b", type=Path, default=DEFAULT_SOURCE_POSE_B)
-    parser.add_argument("--pedal-rate", type=float, default=0.35, help="parameter change per second while a pedal is held")
-    parser.add_argument("--no-pedal", action="store_true", help="UI slider only; do not open Stream Deck Pedal")
+    parser.add_argument(
+        "--input-source", choices=("quest", "pedal", "slider"), default="quest",
+        help="pose interpolation control source (default: quest)",
+    )
+    parser.add_argument(
+        "--input-rate", "--pedal-rate", dest="input_rate", type=float, default=0.7,
+        help="parameter change per second at full input (legacy alias: --pedal-rate)",
+    )
+    parser.add_argument(
+        "--quest-openxr-bin", type=Path, default=DEFAULT_QUEST_OPENXR_BIN,
+        help="path to quest-openxr run-input.sh launcher (legacy name retained)",
+    )
+    parser.add_argument(
+        "--quest-headless", action="store_true",
+        help="use a headless OpenXR session; focused streaming mode is the default",
+    )
+    parser.add_argument(
+        "--no-pedal", action="store_true",
+        help="legacy alias for --input-source=slider",
+    )
     parser.add_argument(
         "--tactile-threshold", type=float, default=200.0,
         help="per-finger raw tactile maximum at which a closing finger latches (default: 200)",
@@ -728,12 +1230,27 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--with-xarm", action="store_true",
-        help="teleoperate xArm from right VIVE only while middle pedal is held (MANUS is not used)",
+        help=(
+            "teleoperate xArm from right VIVE while the selected deadman is held: "
+            "Quest Grip by default, or middle pedal with --input-source=pedal"
+        ),
+    )
+    parser.add_argument(
+        "--with-quest-xarm", action="store_true",
+        help="teleoperate xArm from right Quest pose while Grip is held",
+    )
+    parser.add_argument(
+        "--quest-grip-threshold", type=float, default=0.5,
+        help="Grip value that enables Quest xArm teleoperation (default: 0.5)",
+    )
+    parser.add_argument(
+        "--quest-arm-translation-scale", type=float, default=1.0,
+        help="Quest controller translation multiplier for xArm (default: 1.0)",
     )
     parser.add_argument(
         "--xarm-servo-api", choices=("cartesian_aa", "angle_j"),
         default="cartesian_aa",
-        help="xArm controller command API used with --with-xarm",
+        help="xArm controller command API used by either xArm teleoperation mode",
     )
     behavior = parser.add_mutually_exclusive_group()
     behavior.add_argument("--simulate", action="store_true", help="URDF mesh only; do not create an Allegro driver")
@@ -743,10 +1260,20 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    if args.with_xarm and args.observe_only:
-        raise ValueError("--with-xarm cannot be combined with --observe-only")
-    if args.with_xarm and args.no_pedal:
-        raise ValueError("--with-xarm requires the Stream Deck Pedal middle switch")
+    if args.with_xarm and args.with_quest_xarm:
+        raise ValueError("--with-xarm and --with-quest-xarm are mutually exclusive")
+    if (args.with_xarm or args.with_quest_xarm) and args.observe_only:
+        raise ValueError("xArm teleoperation cannot be combined with --observe-only")
+    if args.no_pedal:
+        if args.input_source != "quest":
+            raise ValueError("--no-pedal cannot be combined with --input-source")
+        args.input_source = "slider"
+    if args.with_xarm and args.input_source == "slider":
+        raise ValueError(
+            "--with-xarm requires --input-source=quest (Grip deadman) or pedal"
+        )
+    if args.with_quest_xarm and args.input_source != "quest":
+        raise ValueError("--with-quest-xarm requires --input-source=quest")
     pose_a = ensure_editable_pose_copy(args.pose_a, args.source_pose_a)
     pose_b = ensure_editable_pose_copy(args.pose_b, args.source_pose_b)
     studio = AllegroPedalPoseStudio(
@@ -754,8 +1281,11 @@ def main() -> None:
         pose_b_sample=pose_b,
         simulate=args.simulate,
         observe_only=args.observe_only,
-        use_pedal=not args.no_pedal,
-        pedal_rate=args.pedal_rate,
+        input_source=args.input_source,
+        input_rate=args.input_rate,
+        quest_grip_threshold=args.quest_grip_threshold,
+        quest_openxr_bin=args.quest_openxr_bin,
+        quest_headless=args.quest_headless,
         tactile_contact_stop=not args.no_tactile_contact_stop,
         tactile_threshold=args.tactile_threshold,
         ring_tactile_threshold=args.ring_tactile_threshold,
@@ -765,6 +1295,14 @@ def main() -> None:
     try:
         if args.with_xarm:
             xarm_teleop = XArmVivePedalTeleop(studio, args.xarm_servo_api)
+            xarm_teleop.start()
+        elif args.with_quest_xarm:
+            xarm_teleop = XArmQuestTeleop(
+                studio,
+                args.xarm_servo_api,
+                grip_threshold=args.quest_grip_threshold,
+                translation_scale=args.quest_arm_translation_scale,
+            )
             xarm_teleop.start()
         studio.run()
     except KeyboardInterrupt:

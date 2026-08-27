@@ -39,22 +39,7 @@ _FINGER_CHAINS = {
         for finger in ("index", "middle", "ring", "pinky")
     },
 }
-_VIVE_TRACKER_TO_WRIST_ROTATION = np.array(
-    [
-        [0.0, -1.0, 0.0],
-        [1.0, 0.0, 0.0],
-        [0.0, 0.0, -1.0],
-    ],
-    dtype=np.float64,
-)
-_VIVE_TRANSLATION_AXIS_TRANSFORM = np.array(
-    [
-        [-1.0, 0.0, 0.0],
-        [0.0, -1.0, 0.0],
-        [0.0, 0.0, 1.0],
-    ],
-    dtype=np.float64,
-)
+_VIVE_TRACKER_TO_WRIST_ROTATION = np.diag([1.0, -1.0, -1.0])
 
 
 def pose_to_matrix(pose, allow_invalid_orientation=False):
@@ -97,13 +82,10 @@ def pose_to_matrix(pose, allow_invalid_orientation=False):
 
 
 def apply_vive_tracker_mount_rotation(transform):
-    """Apply the configured VIVE rotation and translation-axis corrections."""
+    """Rotate the tracker frame 180 degrees about its local upward (Y) axis."""
     corrected = transform.copy()
     corrected[:3, :3] = (
         corrected[:3, :3] @ _VIVE_TRACKER_TO_WRIST_ROTATION
-    )
-    corrected[:3, 3] = (
-        _VIVE_TRANSLATION_AXIS_TRANSFORM @ corrected[:3, 3]
     )
     return corrected
 

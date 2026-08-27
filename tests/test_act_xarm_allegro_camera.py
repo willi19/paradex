@@ -37,14 +37,35 @@ def jpeg(color_bgr):
 def test_camera_alias_matching_rgb_and_resize():
     stream = SynchronizedCameraStream(DEFAULT_CAMERA_BINDINGS, manage_capture_session=False)
     now = time.monotonic_ns()
+    period_ns = int(1e9 / 30)
     stream.readers = [
-        FakeReader(DEFAULT_CAMERA_BINDINGS[0], {7: EncodedFrame(7, now, jpeg((0, 0, 255)))}),
-        FakeReader(DEFAULT_CAMERA_BINDINGS[1], {7: EncodedFrame(7, now, jpeg((0, 255, 0)))}),
+        FakeReader(
+            DEFAULT_CAMERA_BINDINGS[0],
+            {
+                raw_id: EncodedFrame(raw_id, now - (9 - raw_id) * period_ns, jpeg((0, 0, 255)))
+                for raw_id in (7, 8, 9)
+            },
+        ),
+        FakeReader(
+            DEFAULT_CAMERA_BINDINGS[1],
+            {
+                raw_id: EncodedFrame(
+                    raw_id,
+                    now - (10 - raw_id) * period_ns + 1_000_000,
+                    jpeg((0, 255, 0)),
+                )
+                for raw_id in (8, 9, 10)
+            },
+        ),
     ]
     pair = stream.get_pair(timeout_seconds=0.05)
     assert pair.frame_ids == {
-        "observation.images.cam_23029839": 7,
-        "observation.images.cam_25452066": 7,
+        "observation.images.cam_23029839": 3,
+        "observation.images.cam_25452066": 3,
+    }
+    assert pair.raw_frame_ids == {
+        "observation.images.cam_23029839": 9,
+        "observation.images.cam_25452066": 10,
     }
     assert all(image.shape == (480, 640, 3) for image in pair.images.values())
     assert pair.images["observation.images.cam_23029839"][0, 0, 0] > 240
@@ -53,10 +74,30 @@ def test_camera_alias_matching_rgb_and_resize():
 def test_camera_pair_must_advance_and_match():
     stream = SynchronizedCameraStream(DEFAULT_CAMERA_BINDINGS, manage_capture_session=False)
     now = time.monotonic_ns()
+    period_ns = int(1e9 / 30)
     stream.readers = [
-        FakeReader(DEFAULT_CAMERA_BINDINGS[0], {8: EncodedFrame(8, now, jpeg((0, 0, 0)))}),
-        FakeReader(DEFAULT_CAMERA_BINDINGS[1], {9: EncodedFrame(9, now, jpeg((0, 0, 0)))}),
+        FakeReader(
+            DEFAULT_CAMERA_BINDINGS[0],
+            {
+                raw_id: EncodedFrame(raw_id, now - (3 - raw_id) * period_ns, jpeg((0, 0, 0)))
+                for raw_id in (1, 2, 3)
+            },
+        ),
+        FakeReader(
+            DEFAULT_CAMERA_BINDINGS[1],
+            {
+                raw_id: EncodedFrame(
+                    raw_id,
+                    now - (4 - raw_id) * period_ns + 1_000_000,
+                    jpeg((0, 0, 0)),
+                )
+                for raw_id in (2, 3, 4)
+            },
+        ),
     ]
+    stream.get_pair(timeout_seconds=0.05)
+    stream.readers[0].frames[5] = EncodedFrame(5, time.monotonic_ns(), jpeg((0, 0, 0)))
+    stream.readers[1].frames[7] = EncodedFrame(7, time.monotonic_ns(), jpeg((0, 0, 0)))
     with pytest.raises(CameraStreamError):
         stream.get_pair(timeout_seconds=0.01)
 

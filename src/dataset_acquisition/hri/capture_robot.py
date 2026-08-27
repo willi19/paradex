@@ -64,7 +64,7 @@ camera_group.add_argument(
     help="Alias for '--camera=preview'.",
 )
 parser.add_argument('--camera-preview-port', type=int, default=5484)
-parser.add_argument('--camera-preview-refresh-interval', type=float, default=1.0 / 30.0)
+parser.add_argument('--camera-preview-refresh-interval', type=float, default=0.2)
 parser.add_argument('--camera-preview-request-timeout', type=float, default=1.5)
 parser.add_argument(
     '--no-timestamp',
@@ -75,7 +75,7 @@ parser.add_argument(
 parser.set_defaults(timestamp=True)
 parser.add_argument('--arm', type=str, default="xarm",
                     help="Arm controller name. Use 'none' (or empty) to disable arm control.")
-parser.add_argument('--hand', type=str, default="inspire_f1",
+parser.add_argument('--hand', type=str, default="allegro_v5",
                     help="Hand controller/retargetor name. Use 'none' for arm-only teleop; 'allegro_v5' for the direct-anchor retargeter; 'wuji' for optimization, 'wuji_direct' for direct mapping, or 'wuji_hybrid' for opt thumb + direct fingers.")
 parser.add_argument('--capture_root', type=str, default="eccv2026/allegro_v5")
 parser.add_argument('--name', type=str, required=True)

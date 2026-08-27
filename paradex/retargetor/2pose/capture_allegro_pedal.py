@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Capture VIVE arm teleoperation with an Allegro hand driven by outer pedals.
+"""Capture VIVE arm teleoperation with Quest or pedal Allegro controls.
 
 The VIVE wrist stream drives the xArm exactly through ``CaptureSession``.
-MANUS is deliberately not subscribed to.  The left pedal moves the Allegro
-hand from endpoint A toward B; the right pedal moves it back toward A.
+MANUS is deliberately not subscribed to. Quest A/B drive Allegro interpolation
+by default, and fresh right Quest Grip is the xArm deadman. The optional pedal
+mode uses the outer pedals for Allegro and the middle pedal as the deadman.
 """
 
 from __future__ import annotations
@@ -25,18 +26,22 @@ if __package__:
     from .allegro_pedal_pose_ui import (
         DEFAULT_POSE_A,
         DEFAULT_POSE_B,
+        DEFAULT_QUEST_OPENXR_BIN,
         DEFAULT_SOURCE_POSE_A,
         DEFAULT_SOURCE_POSE_B,
         AllegroPedalPoseStudio,
+        QuestGripTeleopStateAdapter,
         ensure_editable_pose_copy,
     )
 else:
     from allegro_pedal_pose_ui import (
         DEFAULT_POSE_A,
         DEFAULT_POSE_B,
+        DEFAULT_QUEST_OPENXR_BIN,
         DEFAULT_SOURCE_POSE_A,
         DEFAULT_SOURCE_POSE_B,
         AllegroPedalPoseStudio,
+        QuestGripTeleopStateAdapter,
         ensure_editable_pose_copy,
     )
 
@@ -55,8 +60,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--pose-b", type=Path, default=DEFAULT_POSE_B)
     parser.add_argument("--source-pose-a", type=Path, default=DEFAULT_SOURCE_POSE_A)
     parser.add_argument("--source-pose-b", type=Path, default=DEFAULT_SOURCE_POSE_B)
-    parser.add_argument("--pedal-rate", type=float, default=0.35)
-    parser.add_argument("--no-pedal", action="store_true", help="Use the UI parameter slider instead of Stream Deck Pedal.")
+    parser.add_argument(
+        "--input-source", choices=("quest", "pedal", "slider"), default="quest",
+        help="pose interpolation control source (default: quest)",
+    )
+    parser.add_argument(
+        "--input-rate", "--pedal-rate", dest="input_rate", type=float, default=0.35,
+        help="parameter change per second at full input (legacy alias: --pedal-rate)",
+    )
+    parser.add_argument(
+        "--quest-openxr-bin", type=Path, default=DEFAULT_QUEST_OPENXR_BIN,
+        help="path to quest-openxr run-input.sh launcher (legacy name retained)",
+    )
+    parser.add_argument(
+        "--quest-headless", action="store_true",
+        help="use a headless OpenXR session; focused streaming mode is the default",
+    )
+    parser.add_argument(
+        "--quest-grip-threshold", type=float, default=0.5,
+        help="Grip value that enables VIVE xArm teleoperation (default: 0.5)",
+    )
+    parser.add_argument("--no-pedal", action="store_true", help="legacy alias for --input-source=slider")
     parser.add_argument(
         "--tactile-threshold", type=float, default=200.0,
         help="per-finger raw tactile maximum at which a closing finger latches (default: 200)",
@@ -83,6 +107,14 @@ def wait_for_grasp_result(exit_event: Event, yes_event: Event, no_event: Event) 
 
 def main() -> None:
     args = parse_args()
+    if args.no_pedal:
+        if args.input_source != "quest":
+            raise ValueError("--no-pedal cannot be combined with --input-source")
+        args.input_source = "slider"
+    if args.input_source == "slider":
+        raise ValueError(
+            "VIVE capture requires --input-source=quest (Grip deadman) or pedal"
+        )
     stop_event = Event()
     save_event = Event()
     exit_event = Event()
@@ -107,8 +139,11 @@ def main() -> None:
         pose_b_sample=pose_b,
         simulate=True,
         observe_only=False,
-        use_pedal=not args.no_pedal,
-        pedal_rate=args.pedal_rate,
+        input_source=args.input_source,
+        input_rate=args.input_rate,
+        quest_grip_threshold=args.quest_grip_threshold,
+        quest_openxr_bin=args.quest_openxr_bin,
+        quest_headless=args.quest_headless,
         tactile_contact_stop=not args.no_tactile_contact_stop,
         tactile_threshold=args.tactile_threshold,
         external_hand=True,
@@ -133,8 +168,19 @@ def main() -> None:
             use_vive=True,
             use_manus=False,
             require_left_control=False,
+            arm_command_enabled_provider=(
+                studio.xarm_deadman_pressed
+                if studio.input_source == "pedal"
+                else None
+            ),
             hand_action_provider=lambda: studio.command_action(session.hand.get_data()),
         )
+        if studio.input_source == "quest":
+            session.teleop_device = QuestGripTeleopStateAdapter(
+                session.teleop_device,
+                studio.quest_grip_teleop_state,
+            )
+        studio.attach_hand_controller(session.hand)
 
         last_idx = int(find_latest_index(os.path.join(shared_dir, "capture", args.capture_root, args.name)))
         success_count = 0

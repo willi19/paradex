@@ -21,6 +21,7 @@ from paradex.calibration.utils import (  # noqa: E402
     cam_param_dir,
     extrinsic_dir,
     get_cammtx,
+    handeye_calib_bimanual_path,
     handeye_calib_path,
     load_current_intrinsic,
 )
@@ -44,6 +45,7 @@ CHARUCO_DETECTION_WORKERS = max(1, os.cpu_count() or 1)
 EXCLUDED_SERIALS = set()
 IMAGE_EXTENSIONS = {".png", ".jpg", ".jpeg", ".bmp", ".tiff"}
 UNDISTORT_EXCLUDED_SERIALS = {"22684253"}
+BIMANUAL_SIDES = (("Right", "R"), ("Left", "L"))
 
 
 def numeric_step_names(root_dir):
@@ -74,6 +76,24 @@ def validate_allinone_capture(root_dir):
         if missing:
             raise ValueError(f"Incomplete capture at {step_dir}: missing {missing}")
     return steps
+
+
+def validate_bimanual_allinone_capture(root_dir):
+    steps_by_side = {}
+    for side, _suffix in BIMANUAL_SIDES:
+        side_dir = os.path.join(root_dir, side)
+        if not os.path.isdir(side_dir):
+            raise FileNotFoundError(f"Missing {side} capture directory: {side_dir}")
+        steps_by_side[side] = validate_allinone_capture(side_dir)
+    return steps_by_side
+
+
+def combine_bimanual_steps(steps_by_side):
+    return [
+        os.path.join(side, step)
+        for side, _suffix in BIMANUAL_SIDES
+        for step in steps_by_side[side]
+    ]
 
 
 def detect_charuco_file(image_path):
@@ -596,11 +616,19 @@ def json_ready(value):
     return value
 
 
-def save_camera_parameters(root_dir, session_name, intrinsics, extrinsics):
+def save_camera_parameters(
+    root_dir,
+    session_name,
+    intrinsics,
+    extrinsics,
+    capture_param_steps=("0",),
+):
     session_cam_param_dir = os.path.join(cam_param_dir, session_name)
-    capture_cam_param_dir = os.path.join(root_dir, "0", "cam_param")
+    capture_cam_param_dirs = [
+        os.path.join(root_dir, step, "cam_param") for step in capture_param_steps
+    ]
 
-    for output_dir in (session_cam_param_dir, capture_cam_param_dir):
+    for output_dir in (session_cam_param_dir, *capture_cam_param_dirs):
         os.makedirs(output_dir, exist_ok=True)
         with open(os.path.join(output_dir, "intrinsics.json"), "w") as stream:
             json.dump(json_ready(intrinsics), stream, indent=4)
@@ -608,7 +636,8 @@ def save_camera_parameters(root_dir, session_name, intrinsics, extrinsics):
             json.dump(json_ready(extrinsics), stream, indent=4)
 
     print(f"Saved camera parameters to {session_cam_param_dir}")
-    print(f"Copied camera parameters into {capture_cam_param_dir}")
+    for output_dir in capture_cam_param_dirs:
+        print(f"Copied camera parameters into {output_dir}")
 
 
 def save_reprojection_errors(root_dir, first_step, error_dict):
@@ -645,12 +674,55 @@ def get_reconstructed_length(triangulated_by_step, adjacent_ids):
     return np.mean(lengths)
 
 
-def calculate_camera_stage(name, root_dir, steps):
+def load_completed_camera_stage(root_dir, steps):
+    """Load saved triangulation and recover scale without rerunning COLMAP."""
+    from src.calibration.extrinsic import calculate as camera_calibration
+
+    triangulated_by_step = {}
+    for step in steps:
+        step_dir = os.path.join(root_dir, step)
+        id_path = os.path.join(step_dir, "kypt_3d_id.npy")
+        corner_path = os.path.join(step_dir, "kypt_3d_cor.npy")
+        missing = [
+            path for path in (id_path, corner_path) if not os.path.isfile(path)
+        ]
+        if missing:
+            raise FileNotFoundError(
+                "Camera calibration is incomplete; cannot start at C2R. "
+                f"Missing files for {step}: {missing}"
+            )
+        triangulated_by_step[step] = {
+            "ids": np.asarray(np.load(id_path)).reshape(-1),
+            "corners": np.asarray(
+                np.load(corner_path), dtype=np.float64
+            ).reshape(-1, 3),
+        }
+
+    reconstructed_length = get_reconstructed_length(
+        triangulated_by_step,
+        camera_calibration.get_adjecent_ids(),
+    )
+    if not np.isfinite(reconstructed_length) or reconstructed_length <= 0:
+        raise ValueError(
+            f"Invalid reconstructed ChArUco spacing: {reconstructed_length}"
+        )
+    scale = HAND_EYE_SQUARE_LENGTH_M / reconstructed_length
+    print("Reusing completed camera extrinsic calibration.")
+    print(f"Camera scale factor: {scale:.8f}")
+    return scale, triangulated_by_step
+
+
+def calculate_camera_stage(
+    name,
+    root_dir,
+    steps,
+    capture_param_steps=None,
+):
     from src.calibration.extrinsic import calculate as camera_calibration
 
     print("Calculating camera extrinsic calibration...")
     save_charuco_markers(root_dir, steps)
-    camera_calibration.run_calibration(name)
+    camera_calibration.run_calibration(name, root_dir=root_dir, index_list=steps)
 
     colmap_dir = os.path.join(root_dir, steps[0], "colmap")
     intrinsics, extrinsics = camera_calibration.load_colmap_camparam(colmap_dir)
@@ -695,9 +767,10 @@ def calculate_camera_stage(name, root_dir, steps):
 
     save_camera_parameters(
         root_dir,
-        os.path.basename(root_dir),
+        name,
         intrinsics,
         scaled_extrinsics,
+        steps[:1] if capture_param_steps is None else capture_param_steps,
     )
     print(
         "ChArUco square length: "
@@ -733,6 +806,76 @@ def calculate_handeye_stage(
     return output_path
 
 
+def side_triangulation(combined_triangulated_by_step, side, steps):
+    return {
+        step: combined_triangulated_by_step[os.path.join(side, step)]
+        for step in steps
+    }
+
+
+def calculate_bimanual_handeye_stage(
+    root_dir,
+    arm,
+    steps_by_side,
+    scale,
+    triangulated_by_step=None,
+):
+    from src.calibration.handeye.xarm import calculate as handeye_calibration
+
+    session_name = os.path.basename(os.path.normpath(root_dir))
+    output_root = os.path.join(handeye_calib_bimanual_path, session_name)
+    os.makedirs(output_root, exist_ok=True)
+
+    debug_inputs = []
+    output_paths = {}
+    for side, suffix in BIMANUAL_SIDES:
+        side_root = os.path.join(root_dir, side)
+        side_steps = steps_by_side[side]
+        side_triangulated = (
+            None
+            if triangulated_by_step is None
+            else side_triangulation(triangulated_by_step, side, side_steps)
+        )
+        scale_triangulated_charuco(
+            side_root,
+            side_steps,
+            scale,
+            side_triangulated,
+        )
+        output_path = os.path.join(output_root, f"C2R_{suffix}.npy")
+        robot_wrt_cam_world = handeye_calibration.calculate_sequence(
+            side_root,
+            handeye_calibration.get_bimanual_arm_name(arm, side),
+            output_path,
+            precomputed_charuco=True,
+            render_debug=False,
+        )
+        output_paths[side] = output_path
+        debug_inputs.append(
+            (
+                side_root,
+                handeye_calibration.get_bimanual_arm_name(arm, side),
+                robot_wrt_cam_world,
+            )
+        )
+
+    with ThreadPoolExecutor(max_workers=len(debug_inputs)) as executor:
+        futures = {
+            executor.submit(handeye_calibration.debug, *debug_input): side
+            for (side, _suffix), debug_input in zip(BIMANUAL_SIDES, debug_inputs)
+        }
+        progress = tqdm.tqdm(
+            as_completed(futures),
+            total=len(futures),
+            desc="Rendering bimanual robot debug",
+        )
+        for future in progress:
+            side = futures[future]
+            progress.set_postfix(side=side)
+            future.result()
+    return output_paths
+
+
 def format_elapsed(seconds):
     minutes, remaining_seconds = divmod(float(seconds), 60.0)
     hours, minutes = divmod(int(minutes), 60)
@@ -759,6 +902,22 @@ def main():
     )
     parser.add_argument("--name", default=None, help="Capture session timestamp.")
     parser.add_argument("--arm", default="xarm")
+    parser.add_argument(
+        "--bimanual",
+        action="store_true",
+        help=(
+            "Calculate one camera calibration from Right/ and Left/ captures, "
+            "then separate C2R_R.npy and C2R_L.npy hand-eye transforms."
+        ),
+    )
+    parser.add_argument(
+        "--c2r",
+        action="store_true",
+        help=(
+            "Skip camera calibration and start at C2R using saved "
+            "kypt_3d_id.npy and kypt_3d_cor.npy files."
+        ),
+    )
     args = parser.parse_args()
 
     name = args.name or find_latest_directory(extrinsic_dir)
@@ -767,18 +926,51 @@ def main():
         raise FileNotFoundError(f"Calibration session does not exist: {root_dir}")
 
     total_started = time.perf_counter()
-    steps = validate_allinone_capture(root_dir)
-    extrinsic_started = time.perf_counter()
-    scale, triangulated_by_step = calculate_camera_stage(name, root_dir, steps)
-    extrinsic_seconds = time.perf_counter() - extrinsic_started
+    if args.bimanual:
+        steps_by_side = validate_bimanual_allinone_capture(root_dir)
+        camera_root_dir = root_dir
+        steps = combine_bimanual_steps(steps_by_side)
+        capture_param_steps = [
+            os.path.join(side, steps_by_side[side][0])
+            for side, _suffix in BIMANUAL_SIDES
+        ]
+    else:
+        steps_by_side = None
+        camera_root_dir = root_dir
+        steps = validate_allinone_capture(root_dir)
+        capture_param_steps = [steps[0]]
+    if args.c2r:
+        extrinsic_seconds = 0.0
+        scale, triangulated_by_step = load_completed_camera_stage(
+            camera_root_dir,
+            steps,
+        )
+    else:
+        extrinsic_started = time.perf_counter()
+        scale, triangulated_by_step = calculate_camera_stage(
+            name,
+            camera_root_dir,
+            steps,
+            capture_param_steps,
+        )
+        extrinsic_seconds = time.perf_counter() - extrinsic_started
     handeye_started = time.perf_counter()
-    c2r_path = calculate_handeye_stage(
-        root_dir,
-        args.arm,
-        steps,
-        scale,
-        triangulated_by_step,
-    )
+    if args.bimanual:
+        c2r_path = calculate_bimanual_handeye_stage(
+            root_dir,
+            args.arm,
+            steps_by_side,
+            scale,
+            triangulated_by_step,
+        )
+    else:
+        c2r_path = calculate_handeye_stage(
+            root_dir,
+            args.arm,
+            steps,
+            scale,
+            triangulated_by_step,
+        )
     handeye_seconds = time.perf_counter() - handeye_started
     total_seconds = time.perf_counter() - total_started
     print("All-in-one calibration complete.")
@@ -786,7 +978,11 @@ def main():
         "Camera parameters: "
         f"{os.path.join(cam_param_dir, os.path.basename(root_dir))}"
     )
-    print(f"Hand-eye C2R: {c2r_path}")
+    if args.bimanual:
+        print(f"Hand-eye C2R_R: {c2r_path['Right']}")
+        print(f"Hand-eye C2R_L: {c2r_path['Left']}")
+    else:
+        print(f"Hand-eye C2R: {c2r_path}")
     print_timing_summary(extrinsic_seconds, handeye_seconds, total_seconds)
 
 

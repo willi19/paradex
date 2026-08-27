@@ -74,6 +74,7 @@ class ObservationPacket:
     captured_monotonic_ns: int
     state_monotonic_ns: int
     jpeg_bytes: Mapping[str, bytes] = field(default_factory=dict)
+    raw_frame_ids: Mapping[str, int] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -96,6 +97,7 @@ class SafetyConfig:
     state_upper: np.ndarray
     action_lower: np.ndarray
     action_upper: np.ndarray
+    allegro_start_target: np.ndarray | None = None
     control_hz: float = 30.0
     # Same conservative live Cartesian bounds used by CaptureSession's Vive path.
     max_linear_speed_m_s: float = 0.70
@@ -112,10 +114,19 @@ class SafetyConfig:
         self.state_upper = _finite_vector(self.state_upper, STATE_DIM, "state_upper")
         self.action_lower = _finite_vector(self.action_lower, ACTION_DIM, "action_lower")
         self.action_upper = _finite_vector(self.action_upper, ACTION_DIM, "action_upper")
+        if self.allegro_start_target is not None:
+            self.allegro_start_target = _finite_vector(
+                self.allegro_start_target, 16, "allegro_start_target"
+            )
         if np.any(self.state_lower > self.state_upper):
             raise ValueError("state_lower must not exceed state_upper")
         if np.any(self.action_lower > self.action_upper):
             raise ValueError("action_lower must not exceed action_upper")
+        if self.allegro_start_target is not None and (
+            np.any(self.allegro_start_target < ALLEGRO_PHYSICAL_LOWER)
+            or np.any(self.allegro_start_target > ALLEGRO_PHYSICAL_UPPER)
+        ):
+            raise ValueError("allegro_start_target violates physical bounds")
         for name in (
             "control_hz",
             "max_linear_speed_m_s",
@@ -141,12 +152,22 @@ class RunnerConfig:
     control_hz: float = 30.0
     action_steps: int = 10
     duration_seconds: float | None = None
-    max_chunks_per_enable: int = 1
+    max_chunks_per_enable: int = 0
     output_dir: Path = Path("~/shared_data/inference/act_xarm_allegro").expanduser()
     camera_bindings: tuple[CameraBinding, ...] = DEFAULT_CAMERA_BINDINGS
     state_endpoint: str = "tcp://127.0.0.1:5561"
     command_endpoint: str = "tcp://127.0.0.1:5562"
     enable_live: bool = False
+    # This runner publishes the checkpoint output as-is.  Dataset support,
+    # workspace and per-tick rate checks are retained only for offline analysis
+    # through SafetyFilter; they are deliberately not live execution gates.
+    enforce_safety_gates: bool = False
+    preposition_allegro: bool = True
+    preposition_timeout_seconds: float = 5.0
+    # Allegro joint-state feedback has a repeatable controller/encoder offset
+    # relative to a commanded pose. This is a convergence sanity bound, not an
+    # exact setpoint requirement.
+    preposition_tolerance_rad: float = 0.20
 
     def __post_init__(self) -> None:
         if self.mode not in {"contract", "replay", "shadow", "live"}:
@@ -159,6 +180,14 @@ class RunnerConfig:
             raise ValueError("action_steps must be positive")
         if self.max_chunks_per_enable < 0:
             raise ValueError("max_chunks_per_enable must be non-negative")
+        if self.preposition_timeout_seconds <= 0 or not np.isfinite(
+            self.preposition_timeout_seconds
+        ):
+            raise ValueError("preposition_timeout_seconds must be positive and finite")
+        if self.preposition_tolerance_rad <= 0 or not np.isfinite(
+            self.preposition_tolerance_rad
+        ):
+            raise ValueError("preposition_tolerance_rad must be positive and finite")
 
 
 def _finite_vector(value: np.ndarray, size: int, name: str) -> np.ndarray:
@@ -229,16 +258,35 @@ class SafetyFilter:
                 return SafetyVerdict(False, "start_tcp_rotation_invalid")
         except ValueError as exc:
             return SafetyVerdict(False, f"start_state_invalid:{exc}")
-        if np.any(state_vector < self.config.state_lower) or np.any(
-            state_vector > self.config.state_upper
-        ):
-            return SafetyVerdict(False, "start_state_outside_training_support")
+        return SafetyVerdict(True, "ok")
+
+    def training_support_warning(self, state: np.ndarray, tcp_transform: np.ndarray) -> str | None:
+        """Describe model-distribution extrapolation without blocking live arming."""
+
+        state_vector = _finite_vector(state, STATE_DIM, "state")
+        pose = np.asarray(tcp_transform, dtype=np.float64)
+        warnings = []
+        if np.any(state_vector < self.config.state_lower) or np.any(state_vector > self.config.state_upper):
+            outside = np.flatnonzero(
+                (state_vector < self.config.state_lower)
+                | (state_vector > self.config.state_upper)
+            )
+            details = []
+            for index in outside:
+                value = state_vector[index]
+                lower = self.config.state_lower[index]
+                upper = self.config.state_upper[index]
+                details.append(
+                    f"{EXPECTED_STATE_AXES[index]}={value:.6f} "
+                    f"outside [{lower:.6f}, {upper:.6f}]"
+                )
+            warnings.append("state_outside_training_support:" + "; ".join(details))
         xyz = pose[:3, 3]
         if np.any(xyz < self.config.action_lower[:3]) or np.any(
             xyz > self.config.action_upper[:3]
         ):
-            return SafetyVerdict(False, "start_tcp_outside_workspace")
-        return SafetyVerdict(True, "ok")
+            warnings.append("tcp_outside_training_workspace")
+        return "; ".join(warnings) if warnings else None
 
     def validate_action(
         self,

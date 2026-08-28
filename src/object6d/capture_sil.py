@@ -4,9 +4,11 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import datetime
 import json
 import os
+import signal
 import sys
 import time
 import traceback
@@ -31,7 +33,9 @@ from paradex.retargetor.experiment.replay_pose_retrieval import (
     DEFAULT_EPISODE_ROOT,
     load_candidate_episodes,
     parse_episode_ids,
-    replay_closest_episode,
+    rank_by_object_pose,
+    replay_closest_episode_into_box_pink,
+    replay_closest_episode_naive,
 )
 
 
@@ -43,7 +47,13 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Capture images, run remote Object6D, and show the pose in Viser."
     )
-    parser.add_argument("--name", "--mesh_name", dest="mesh_name", required=True)
+    parser.add_argument(
+        "--name",
+        "--mesh_name",
+        dest="mesh_name",
+        default=None,
+        help="initial/default object name; prompted per round in replay sessions",
+    )
     parser.add_argument("--save_path", default="object_6d/sil")
     parser.add_argument("--rpc_addr", default="tcp://192.168.0.3:5570")
     parser.add_argument("--rpc_timeout_ms", type=int, default=300_000)
@@ -56,7 +66,35 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--replay",
         action="store_true",
-        help="retrieve the closest banana episode and prepare annotated dish replay",
+        help=(
+            "retrieve the closest episode by frame-0 object pose and replay its "
+            "full object-relative trajectory without dish transfer"
+        ),
+    )
+    parser.add_argument(
+        "--retrieval-only",
+        action="store_true",
+        help=(
+            "capture and estimate the object pose, rank ECCV2026 episodes by their "
+            "frame-0 object pose, then exit without preview or robot execution"
+        ),
+    )
+    parser.add_argument(
+        "--naive-replay",
+        action="store_true",
+        help=(
+            "retrieve the closest ECCV2026 episode by frame-0 object pose and "
+            "replay its full object-relative trajectory without dish transfer"
+        ),
+    )
+    parser.add_argument(
+        "--put-into-box-pink",
+        action="store_true",
+        help=(
+            "retrieve the closest ECCV2026 episode, replay through its annotated "
+            "EEF apex, move the fingertip midpoint to the detected pink-box x/y "
+            "at the configured absolute z, and open the hand"
+        ),
     )
     parser.add_argument(
         "--execute",
@@ -85,12 +123,27 @@ def parse_args() -> argparse.Namespace:
         help="skip replay preview generation and visualization",
     )
     parser.set_defaults(replay_preview=None)
-    parser.add_argument("--episode-root", type=Path, default=DEFAULT_EPISODE_ROOT)
+    parser.add_argument(
+        "--capture-root",
+        type=Path,
+        default=replay_core.DEFAULT_CAPTURE_ROOT,
+        help="capture dataset root containing <robot>/<object>/<episode>",
+    )
+    parser.add_argument("--robot", default="allegro_v5", choices=("allegro_v5",))
+    parser.add_argument(
+        "--episode-root",
+        type=Path,
+        default=None,
+        help=(
+            "override the object episode directory; retrieval-only defaults to "
+            "<capture-root>/<robot>/<name>"
+        ),
+    )
     parser.add_argument(
         "--candidate-episodes",
         type=parse_episode_ids,
-        default=DEFAULT_CANDIDATE_EPISODES,
-        help="comma-separated candidate episode IDs",
+        default=None,
+        help="comma-separated candidate episode IDs (default: discover automatically)",
     )
     parser.add_argument(
         "--retrieval-translation-scale-m",
@@ -106,7 +159,17 @@ def parse_args() -> argparse.Namespace:
             "default makes rotation twice as influential as the previous 0.5 rad default"
         ),
     )
-    parser.add_argument("--rate-scale", type=float, default=1.0)
+    parser.add_argument(
+        "--replay-speed-scale",
+        "--rate-scale",
+        dest="rate_scale",
+        type=float,
+        default=1.0,
+        help=(
+            "episode trajectory playback multiplier (for example, 2.0 is 2x); "
+            "does not change the initial approach speed"
+        ),
+    )
     parser.add_argument("--approach-linear-speed-mps", type=float, default=0.13)
     parser.add_argument("--approach-angular-speed-rps", type=float, default=0.8)
     parser.add_argument("--approach-min-seconds", type=float, default=1.0)
@@ -126,6 +189,48 @@ def parse_args() -> argparse.Namespace:
         default=0.02,
         help="robot +z offset above the detected dish center for banana release",
     )
+    parser.add_argument(
+        "--box-pink-clearance-m",
+        type=float,
+        default=0.30,
+        help=(
+            "absolute robot-frame z target for the thumb-index fingertip "
+            "midpoint; box-pink triangulation contributes x/y only"
+        ),
+    )
+    parser.add_argument(
+        "--hand-open-seconds",
+        type=float,
+        default=1.0,
+        help="duration of the stationary Allegro opening motion above box-pink",
+    )
+    parser.add_argument(
+        "--return-joint-speed-rps",
+        type=float,
+        default=0.5,
+        help="maximum per-joint speed when returning after the box-pink release",
+    )
+    parser.add_argument(
+        "--return-min-seconds",
+        type=float,
+        default=2.0,
+        help="minimum duration of the post-release joint-space return",
+    )
+    parser.add_argument(
+        "--return-rate-hz",
+        type=float,
+        default=50.0,
+        help="command rate for the post-release joint-space return",
+    )
+    parser.add_argument(
+        "--eef-apex-annotations",
+        type=Path,
+        default=None,
+        help=(
+            "combined EEF apex annotation JSON; defaults to "
+            "<capture-root>/<robot>/eef_apex_annotations.json"
+        ),
+    )
     parser.add_argument("--settle-seconds", type=float, default=1.0)
     parser.add_argument(
         "--robot-urdf", type=Path, default=replay_core.DEFAULT_ROBOT_URDF
@@ -134,29 +239,63 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--preview-ik-max-nfev", type=int, default=50)
     parser.add_argument("--preview-position-scale", type=float, default=0.05)
     parser.add_argument("--preview-rotation-scale", type=float, default=0.5)
+    parser.add_argument(
+        "--preview-object-max-faces",
+        type=int,
+        default=3_000,
+        help="maximum object mesh faces sent to Viser; 0 disables simplification",
+    )
+    parser.add_argument(
+        "--preview-robot-link-max-faces",
+        type=int,
+        default=1_500,
+        help="maximum faces per robot link sent to Viser; 0 disables simplification",
+    )
     parser.add_argument("--no-viser-object-align", action="store_true")
     return parser.parse_args()
 
 
 def validate_args(args: argparse.Namespace) -> None:
+    selected_modes = sum(
+        (
+            args.replay,
+            args.retrieval_only,
+            args.naive_replay,
+            args.put_into_box_pink,
+        )
+    )
+    if selected_modes > 1:
+        raise ValueError(
+            "--replay, --retrieval-only, --naive-replay, and "
+            "--put-into-box-pink are mutually exclusive"
+        )
+    if not args.mesh_name and not (
+        args.replay or args.naive_replay or args.put_into_box_pink
+    ):
+        raise ValueError(
+            "--name is required unless using an interactive replay mode"
+        )
     if args.auto_execute:
         args.execute = True
-    if args.execute and not args.replay:
-        raise ValueError("--execute requires --replay")
-    if args.replay_preview and not args.replay:
-        raise ValueError("--replay-preview requires --replay")
-    if args.replay and args.replay_preview is None:
+    replay_mode = args.replay or args.naive_replay or args.put_into_box_pink
+    if args.execute and not replay_mode:
+        raise ValueError("--execute requires a replay mode")
+    if args.replay_preview and not replay_mode:
+        raise ValueError("--replay-preview requires a replay mode")
+    if replay_mode and args.replay_preview is None:
         args.replay_preview = True
     positive = {
         "--retrieval-translation-scale-m": args.retrieval_translation_scale_m,
         "--retrieval-rotation-scale-rad": args.retrieval_rotation_scale_rad,
-        "--rate-scale": args.rate_scale,
+        "--replay-speed-scale": args.rate_scale,
         "--approach-linear-speed-mps": args.approach_linear_speed_mps,
         "--approach-angular-speed-rps": args.approach_angular_speed_rps,
         "--approach-rate-hz": args.approach_rate_hz,
         "--dish-transfer-linear-speed-mps": args.dish_transfer_linear_speed_mps,
         "--dish-transfer-max-distance-m": args.dish_transfer_max_distance_m,
         "--dish-transfer-rate-hz": args.dish_transfer_rate_hz,
+        "--return-joint-speed-rps": args.return_joint_speed_rps,
+        "--return-rate-hz": args.return_rate_hz,
         "--preview-max-frames": args.preview_max_frames,
         "--preview-ik-max-nfev": args.preview_ik_max_nfev,
         "--preview-position-scale": args.preview_position_scale,
@@ -169,12 +308,74 @@ def validate_args(args: argparse.Namespace) -> None:
         args.approach_min_seconds < 0
         or args.dish_transfer_min_seconds < 0
         or args.dish_clearance_m < 0
+        or args.box_pink_clearance_m < 0
+        or args.return_min_seconds < 0
         or args.settle_seconds < 0
     ):
         raise ValueError(
             "approach/dish-transfer/settle durations and dish clearance must be "
             "non-negative"
         )
+    if args.hand_open_seconds <= 0:
+        raise ValueError("--hand-open-seconds must be positive")
+    if args.preview_object_max_faces < 0 or args.preview_robot_link_max_faces < 0:
+        raise ValueError("preview mesh face limits must be non-negative")
+
+
+def _discover_candidate_episode_ids(episode_root: Path) -> tuple[int, ...]:
+    """Return successful numeric episodes when labeled, otherwise every numeric episode."""
+
+    root = Path(episode_root).expanduser()
+    if not root.is_dir():
+        raise FileNotFoundError(f"object episode directory not found: {root}")
+    episode_dirs = sorted(
+        (path for path in root.iterdir() if path.is_dir() and path.name.isdigit()),
+        key=lambda path: int(path.name),
+    )
+    if not episode_dirs:
+        raise FileNotFoundError(f"no numeric episode directories found under {root}")
+
+    successful: list[int] = []
+    for episode_dir in episode_dirs:
+        result_path = episode_dir / "grasp_result.json"
+        if not result_path.is_file():
+            continue
+        try:
+            result = json.loads(result_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"[preload] ignoring unreadable grasp result {result_path}: {exc}")
+            continue
+        if result.get("grasp_success") is True:
+            successful.append(int(episode_dir.name))
+
+    if successful:
+        print(f"[preload] using {len(successful)} successful grasp episode(s).")
+        return tuple(successful)
+    print(
+        f"[preload] no successful grasp labels found; "
+        f"using all {len(episode_dirs)} episode(s)."
+    )
+    return tuple(int(path.name) for path in episode_dirs)
+
+
+def configure_episode_selection(args: argparse.Namespace) -> None:
+    """Resolve banana defaults or generic ECCV retrieval dataset conventions."""
+
+    if args.episode_root is None:
+        if args.replay and args.mesh_name == "banana":
+            args.episode_root = DEFAULT_EPISODE_ROOT
+        else:
+            args.episode_root = (
+                Path(args.capture_root).expanduser() / args.robot / args.mesh_name
+            )
+    else:
+        args.episode_root = Path(args.episode_root).expanduser()
+
+    if args.candidate_episodes is None:
+        if args.replay and args.episode_root == DEFAULT_EPISODE_ROOT:
+            args.candidate_episodes = DEFAULT_CANDIDATE_EPISODES
+        else:
+            args.candidate_episodes = _discover_candidate_episode_ids(args.episode_root)
 
 
 def send_rpc_once(address: str, request: dict, timeout_ms: int) -> dict:
@@ -247,7 +448,7 @@ def extract_pose(response: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
-def get_cutting_board_point(result: Dict[str, Any]) -> Optional[np.ndarray]:
+def get_triangulated_target_point(result: Dict[str, Any]) -> Optional[np.ndarray]:
     triangulation = result.get("wooden_object")
     if not isinstance(triangulation, dict):
         return None
@@ -354,6 +555,58 @@ def capture_once(capture_root: Path, remote_path: str, rcc_entry: str) -> None:
         controller.end()
 
 
+def _save_retrieval_result(
+    capture_root: Path,
+    current_object_robot: np.ndarray,
+    episodes: list[replay_core.Episode],
+    args: argparse.Namespace,
+) -> Path:
+    ranked = rank_by_object_pose(
+        current_object_robot,
+        episodes,
+        translation_scale_m=args.retrieval_translation_scale_m,
+        rotation_scale_rad=args.retrieval_rotation_scale_rad,
+    )
+    print(f"[retrieval] candidate ranking by frame-0 {args.mesh_name} pose:")
+    for rank, match in enumerate(ranked, start=1):
+        print(
+            f"  {rank}. episode {match.episode.root.name}: "
+            f"translation={match.translation_error_m:.4f} m, "
+            f"rotation={np.rad2deg(match.rotation_error_rad):.1f} deg, "
+            f"score={match.score:.3f}"
+        )
+
+    selected = ranked[0]
+    payload = {
+        "object": args.mesh_name,
+        "episode_root": str(args.episode_root),
+        "selected_episode": int(selected.episode.root.name),
+        "current_object_robot": current_object_robot.astype(float).tolist(),
+        "translation_scale_m": args.retrieval_translation_scale_m,
+        "rotation_scale_rad": args.retrieval_rotation_scale_rad,
+        "ranking": [
+            {
+                "episode": int(match.episode.root.name),
+                "episode_path": str(match.episode.root),
+                "translation_error_m": match.translation_error_m,
+                "rotation_error_rad": match.rotation_error_rad,
+                "score": match.score,
+                "source_object_robot": match.source_object_robot.astype(float).tolist(),
+            }
+            for match in ranked
+        ],
+    }
+    result_path = capture_root / "retrieval_result.json"
+    result_path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
+    print(
+        f"[retrieval] selected episode {selected.episode.root.name}; "
+        f"saved ranking to {result_path}"
+    )
+    return result_path
+
+
 def run_round(
     args: argparse.Namespace,
     *,
@@ -375,8 +628,12 @@ def run_round(
         "image_path": to_shared_data_path(capture_root),
         "mesh_name": args.mesh_name,
         "save_projection_grids": True,
-        "wooden_object_triangulation": True,
-        "wooden_object_prompt": "wooden object",
+        "wooden_object_triangulation": not (
+            args.retrieval_only or args.naive_replay or args.replay
+        ),
+        "wooden_object_prompt": (
+            "pink box" if args.put_into_box_pink else "wooden object"
+        ),
     }
     response = send_rpc_once(args.rpc_addr, request, args.rpc_timeout_ms)
     pose = extract_pose(response)
@@ -389,19 +646,20 @@ def run_round(
     pose["C2R"] = c2r.astype(float).tolist()
     pose["pose_robot"] = pose_robot.astype(float).tolist()
 
-    cutting_board_point_world = get_cutting_board_point(pose)
-    cutting_board_point_robot = None
-    if cutting_board_point_world is not None:
-        point_world_h = np.append(cutting_board_point_world, 1.0)
-        cutting_board_point_robot = (robot_from_world @ point_world_h)[:3]
-        pose["cutting_board_point_robot"] = cutting_board_point_robot.astype(
-            float
-        ).tolist()
+    target_point_world = get_triangulated_target_point(pose)
+    target_point_robot = None
+    if target_point_world is not None:
+        point_world_h = np.append(target_point_world, 1.0)
+        target_point_robot = (robot_from_world @ point_world_h)[:3]
+        target_key = (
+            "box_pink_point_robot"
+            if args.put_into_box_pink
+            else "cutting_board_point_robot"
+        )
+        pose[target_key] = target_point_robot.astype(float).tolist()
         triangulation_payload = pose.get("wooden_object")
         if isinstance(triangulation_payload, dict):
-            triangulation_payload["point_robot"] = cutting_board_point_robot.astype(
-                float
-            ).tolist()
+            triangulation_payload["point_robot"] = target_point_robot.astype(float).tolist()
 
     result_path = capture_root / "object_6d.json"
     result_path.write_text(
@@ -411,37 +669,68 @@ def run_round(
 
     triangulation = pose.get("wooden_object")
     if isinstance(triangulation, dict):
-        triangulation_path = capture_root / "cutting_board_triangulation.json"
+        triangulation_name = (
+            "box_pink_triangulation.json"
+            if args.put_into_box_pink
+            else "cutting_board_triangulation.json"
+        )
+        triangulation_path = capture_root / triangulation_name
         triangulation_path.write_text(
             json.dumps(triangulation, ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8",
         )
-        print(f"Saved cutting-board triangulation: {triangulation_path}")
+        print(f"Saved target triangulation: {triangulation_path}")
 
-    if cutting_board_point_world is None:
-        status = (
-            triangulation.get("status", "missing")
-            if isinstance(triangulation, dict)
-            else "missing"
-        )
-        print(f"Cutting-board triangulation unavailable: status={status}")
+    if target_point_world is None:
+        if not (args.retrieval_only or args.naive_replay or args.replay):
+            status = (
+                triangulation.get("status", "missing")
+                if isinstance(triangulation, dict)
+                else "missing"
+            )
+            target_name = "box-pink" if args.put_into_box_pink else "cutting-board"
+            print(f"{target_name} triangulation unavailable: status={status}")
     else:
-        print(f"Cutting-board point_world: {cutting_board_point_world.tolist()}")
-        print(f"Cutting-board point_robot: {cutting_board_point_robot.tolist()}")
+        target_name = "Box-pink" if args.put_into_box_pink else "Cutting-board"
+        print(f"{target_name} point_world: {target_point_world.tolist()}")
+        print(f"{target_name} point_robot: {target_point_robot.tolist()}")
 
-    if args.replay:
-        if args.mesh_name != "banana":
-            raise ValueError(
-                "the configured retrieval dataset currently supports --name banana only"
+    if args.retrieval_only:
+        episodes = replay_episodes
+        if episodes is None:
+            episodes = load_candidate_episodes(
+                args.episode_root, args.candidate_episodes
+            )
+        _save_retrieval_result(capture_root, pose_robot, episodes, args)
+        return
+
+    if args.naive_replay or args.replay:
+        args.object = args.mesh_name
+        args.replay_output_dir = capture_root / "replay"
+        args.mesh_root_dir = Path(args.mesh_root_dir).expanduser()
+        replay_closest_episode_naive(
+            args,
+            current_object_robot=pose_robot,
+            current_c2r=c2r,
+            arm=replay_arm,
+            hand=replay_hand,
+            episodes=replay_episodes,
+        )
+        return
+
+    if args.put_into_box_pink:
+        if target_point_robot is None:
+            raise RuntimeError(
+                "box-pink center triangulation is required for --put-into-box-pink"
             )
         args.object = args.mesh_name
         args.replay_output_dir = capture_root / "replay"
         args.mesh_root_dir = Path(args.mesh_root_dir).expanduser()
-        replay_closest_episode(
+        replay_closest_episode_into_box_pink(
             args,
             current_object_robot=pose_robot,
             current_c2r=c2r,
-            dish_point_robot=cutting_board_point_robot,
+            box_point_robot=target_point_robot,
             arm=replay_arm,
             hand=replay_hand,
             episodes=replay_episodes,
@@ -461,13 +750,13 @@ def run_round(
     viewer.add_frame("robot_origin", np.eye(4, dtype=np.float32))
     add_cameras(viewer, capture_root, c2r)
     viewer.add_object(args.mesh_name, mesh, pose_robot, opacity=1.0)
-    if cutting_board_point_robot is not None:
+    if target_point_robot is not None:
         point_frame = np.eye(4, dtype=np.float32)
-        point_frame[:3, 3] = cutting_board_point_robot
+        point_frame[:3, 3] = target_point_robot
         viewer.add_frame("cutting_board_triangulation", point_frame)
         viewer.add_sphere(
             "cutting_board_triangulation",
-            cutting_board_point_robot,
+            target_point_robot,
             radius=0.02,
             color=(1.0, 0.1, 0.0),
         )
@@ -504,7 +793,12 @@ def run_replay_idle_loop(args: argparse.Namespace) -> None:
 
     replay_arm = None
     replay_hand = None
-    replay_episodes = _preload_replay_episodes(args)
+    original_sigint_handler = signal.getsignal(signal.SIGINT)
+    replay_sigint_overridden = False
+    episode_cache: dict[
+        tuple[Path, tuple[int, ...]], list[replay_core.Episode]
+    ] = {}
+    last_mesh_name = args.mesh_name
     try:
         if args.execute:
             from paradex.io.robot_controller import get_arm, get_hand
@@ -517,6 +811,13 @@ def run_replay_idle_loop(args: argparse.Namespace) -> None:
                 replay_arm.end()
                 replay_arm = None
                 raise
+            # rclpy installs a process-wide SIGINT handler during controller
+            # construction.  Viser also uses Ctrl+C to leave its blocking
+            # preview, so replace only that handler with Python's normal
+            # KeyboardInterrupt behavior while these persistent controllers
+            # are alive.  Controller end() still shuts ROS down explicitly.
+            signal.signal(signal.SIGINT, signal.default_int_handler)
+            replay_sigint_overridden = True
 
         print("[idle] Ready. Enter c to capture and replay, or q to quit.")
         while True:
@@ -537,10 +838,47 @@ def run_replay_idle_loop(args: argparse.Namespace) -> None:
                     print(f"[idle] unknown command {key!r}; enter c or q.")
                 continue
 
-            print("[round] starting capture -> Object6D -> replay planning.")
             try:
+                prompt_default = f" [{last_mesh_name}]" if last_mesh_name else ""
+                mesh_name = input(f"[round] object name{prompt_default} > ").strip()
+                if not mesh_name:
+                    mesh_name = last_mesh_name
+                if not mesh_name:
+                    print("[round] object name is required; returning to idle.")
+                    continue
+
+                round_args = copy.copy(args)
+                round_args.mesh_name = mesh_name
+                round_args.episode_root = args.episode_root
+                round_args.candidate_episodes = args.candidate_episodes
+                configure_episode_selection(round_args)
+                if round_args.replay and mesh_name != "banana":
+                    print(
+                        "[round] annotated dish replay supports banana only; "
+                        "use --naive-replay for arbitrary objects."
+                    )
+                    continue
+
+                cache_key = (
+                    Path(round_args.episode_root),
+                    tuple(round_args.candidate_episodes),
+                )
+                replay_episodes = episode_cache.get(cache_key)
+                if replay_episodes is None:
+                    replay_episodes = _preload_replay_episodes(round_args)
+                    episode_cache[cache_key] = replay_episodes
+                else:
+                    print(
+                        f"[preload] reusing {len(replay_episodes)} cached "
+                        f"{mesh_name} episode(s)."
+                    )
+                last_mesh_name = mesh_name
+                print(
+                    f"[round] starting {mesh_name}: capture -> Object6D -> "
+                    "replay planning."
+                )
                 run_round(
-                    args,
+                    round_args,
                     replay_arm=replay_arm,
                     replay_hand=replay_hand,
                     replay_episodes=replay_episodes,
@@ -556,13 +894,20 @@ def run_replay_idle_loop(args: argparse.Namespace) -> None:
             replay_hand.end()
         if replay_arm is not None:
             replay_arm.end()
+        if replay_sigint_overridden:
+            signal.signal(signal.SIGINT, original_sigint_handler)
 
 
 def main() -> None:
     args = parse_args()
     validate_args(args)
-    if args.replay:
+    if args.retrieval_only:
+        configure_episode_selection(args)
+    if args.replay or args.naive_replay or args.put_into_box_pink:
         run_replay_idle_loop(args)
+    elif args.retrieval_only:
+        episodes = _preload_replay_episodes(args)
+        run_round(args, replay_episodes=episodes)
     else:
         run_round(args)
 

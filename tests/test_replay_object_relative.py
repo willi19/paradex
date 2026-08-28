@@ -4,6 +4,9 @@ from pathlib import Path
 import sys
 import numpy as np
 import pytest
+import trimesh
+
+from paradex.visualization.robot import simplify_mesh
 
 
 REPO_ROOT = Path(__file__).parents[1]
@@ -15,6 +18,15 @@ replay = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 sys.modules[SPEC.name] = replay
 SPEC.loader.exec_module(replay)
+
+
+def test_preview_mesh_simplification_caps_faces_without_changing_bounds():
+    mesh = trimesh.creation.icosphere(subdivisions=4, radius=0.1)
+
+    simplified = simplify_mesh(mesh, 300)
+
+    assert len(simplified.faces) <= 300
+    np.testing.assert_allclose(simplified.bounds, mesh.bounds, atol=2e-3)
 
 
 def test_relative_arm_actions_applies_object_translation_to_every_eef_target():
@@ -668,6 +680,86 @@ def test_execute_streams_the_saved_combined_plan_without_regenerating_transition
     np.testing.assert_array_equal(moved_arm, arm_poses)
     np.testing.assert_array_equal(moved_hand, hand_actions)
     np.testing.assert_allclose(sleeps, [0.1, 0.1, 0.25, 0.3])
+
+
+def test_joint_return_trajectory_respects_speed_and_endpoints():
+    current = np.zeros(6)
+    target = np.array([0.2, -0.4, 0.1, 0.0, 0.3, -0.2])
+
+    positions, times, seconds = replay._joint_return_trajectory(
+        current,
+        target,
+        speed_rps=0.2,
+        min_seconds=0.5,
+        rate_hz=20.0,
+    )
+
+    assert seconds == pytest.approx(2.0)
+    np.testing.assert_array_equal(positions[0], current)
+    np.testing.assert_array_equal(positions[-1], target)
+    assert np.all(np.diff(times) > 0)
+    joint_speeds = np.abs(np.diff(positions, axis=0)) / np.diff(times)[:, None]
+    assert np.max(joint_speeds) <= 0.2 + 1.0e-12
+
+
+def test_execute_returns_from_live_post_release_joints_to_saved_initial(monkeypatch):
+    args = type(
+        "Args",
+        (),
+        {
+            "settle_seconds": 0.0,
+            "return_joint_speed_rps": 0.5,
+            "return_min_seconds": 0.2,
+            "return_rate_hz": 10.0,
+        },
+    )()
+    arm_poses = np.repeat(np.eye(4)[None], 2, axis=0)
+    hand_actions = np.zeros((2, 16))
+    arm_times = np.array([0.0, 0.1])
+    post_release_qpos = np.array([0.5, -0.2, 0.3, 0.0, 0.1, -0.4])
+    initial_qpos = np.array([0.1, -0.1, 0.0, 0.2, -0.2, 0.1])
+
+    class FakeArm:
+        def __init__(self):
+            self.return_trajectory = None
+
+        def move(self, _pose):
+            pass
+
+        def get_data(self):
+            return {"qpos": post_release_qpos.copy()}
+
+        def move_joint_trajectory(self, positions, times):
+            self.return_trajectory = (positions.copy(), times.copy())
+
+        def is_error(self):
+            return False
+
+    class FakeHand:
+        def move(self, _action):
+            pass
+
+        def is_error(self):
+            return False
+
+    arm = FakeArm()
+    monkeypatch.setattr(replay.time, "sleep", lambda _seconds: None)
+
+    replay._execute(
+        args,
+        arm_poses,
+        hand_actions,
+        arm_times,
+        transition_frame_count=2,
+        arm=arm,
+        hand=FakeHand(),
+        return_arm_qpos=initial_qpos,
+    )
+
+    positions, times = arm.return_trajectory
+    np.testing.assert_array_equal(positions[0], post_release_qpos)
+    np.testing.assert_array_equal(positions[-1], initial_qpos)
+    assert np.all(np.diff(times) > 0)
 
 
 def test_preview_starts_at_the_live_arm_and_hand_state_before_interpolation():

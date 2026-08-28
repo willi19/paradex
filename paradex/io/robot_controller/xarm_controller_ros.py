@@ -446,6 +446,17 @@ class XArmControllerROS(Node):
         for name, values in data.items():
             np.save(os.path.join(save_path, f"{name}.npy"), np.asarray(values, dtype=object))
 
+    def stop_motion_commands(self):
+        """Stop servo publishing without destroying the ROS controller.
+
+        The controller can be reused by a later move(), which re-enables
+        publishing with the new target.  This is useful while a replay plan is
+        previewed after teleoperation has stopped.
+        """
+
+        with self.lock:
+            self._has_motion_command = False
+
     def end(self, set_break=False):
         del set_break  # no direct equivalent in ROS service interface
 
@@ -472,6 +483,44 @@ class XArmControllerROS(Node):
         with self.lock:
             self.action = action.copy()
             self._has_motion_command = True
+
+    def move_joint_trajectory(self, positions, times):
+        """Stream a timed joint-space path, then stop joint-servo publishing."""
+
+        positions = np.asarray(positions, dtype=np.float64)
+        times = np.asarray(times, dtype=np.float64).reshape(-1)
+        if (
+            positions.ndim != 2
+            or positions.shape[1] != action_dof
+            or len(positions) < 2
+            or len(positions) != len(times)
+            or not np.all(np.isfinite(positions))
+            or not np.all(np.isfinite(times))
+            or np.any(np.diff(times) <= 0)
+        ):
+            raise ValueError(
+                "joint trajectory must contain matching finite (N, 6) positions "
+                "and strictly increasing times"
+            )
+        if self.cli_set_servo_angle_j is None:
+            raise RuntimeError("xArm set_servo_angle_j service is unavailable")
+
+        original_servo_api = self.servo_api
+        self.servo_api = "angle_j"
+        try:
+            for index, qpos in enumerate(positions):
+                self.move(qpos)
+                if index + 1 < len(positions):
+                    time.sleep(max(0.0, times[index + 1] - times[index]))
+            # Give the control loop enough time to publish the final target.
+            time.sleep(max(0.01, 1.5 / self.fps))
+        finally:
+            # Stop re-publishing the six-vector before restoring Cartesian
+            # interpretation; otherwise it could be treated as axis-angle.
+            with self.lock:
+                self._has_motion_command = False
+            time.sleep(max(0.01, 1.5 / self.fps))
+            self.servo_api = original_servo_api
 
     def move_cartesian_timed(self, action, *, seconds, speed=0.0, acc=0.0):
         """Send one blocking linear Cartesian waypoint with an explicit duration."""

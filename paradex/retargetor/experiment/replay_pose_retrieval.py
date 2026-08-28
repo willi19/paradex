@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
+from functools import lru_cache
 import json
 from pathlib import Path
 from typing import Any, Iterable
@@ -17,6 +18,9 @@ from paradex.retargetor.experiment import (
 
 
 DEFAULT_EPISODE_ROOT = Path("/home/temp_id/shared_data/capture/0825_test_4/banana")
+DEFAULT_EEF_APEX_ANNOTATION_NAME = "eef_apex_annotations.json"
+ALLEGRO_V5_INDEX_TIP_LINK = "link_3_0_tip"
+ALLEGRO_V5_THUMB_TIP_LINK = "link_15_0_tip"
 DEFAULT_CANDIDATE_EPISODES = (
     6,
     7,
@@ -58,6 +62,22 @@ class DishInterleave:
     release_position_error_m: float
     transfer_frame_count: int
     transfer_seconds: float
+
+
+@dataclass(frozen=True)
+class BoxPinkTransfer:
+    trajectory: core.ReplayTrajectory
+    target_eef_robot: np.ndarray
+    fingertip_midpoint_eef: np.ndarray
+    target_fingertip_midpoint_robot: np.ndarray
+    transfer_frame_count: int
+    transfer_seconds: float
+    vertical_frame_count: int
+    vertical_seconds: float
+    horizontal_frame_count: int
+    horizontal_seconds: float
+    release_frame_count: int
+    release_seconds: float
 
 
 def parse_episode_ids(value: str | Iterable[int]) -> tuple[int, ...]:
@@ -376,6 +396,648 @@ def _execution_confirmed(args: argparse.Namespace) -> bool:
         return True
     answer = input("Execute the robot trajectory? [y/N]: ").strip().lower()
     return answer == "y"
+
+
+def _load_eef_apex_annotations(args: argparse.Namespace) -> tuple[Path, dict]:
+    configured_path = getattr(args, "eef_apex_annotations", None)
+    path = (
+        Path(configured_path).expanduser()
+        if configured_path is not None
+        else Path(args.episode_root).expanduser().parent
+        / DEFAULT_EEF_APEX_ANNOTATION_NAME
+    )
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        raise FileNotFoundError(f"EEF apex annotation file not found: {path}")
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ValueError(f"could not read EEF apex annotations {path}: {exc}") from exc
+    annotations = payload.get("annotations")
+    if not isinstance(annotations, dict):
+        raise ValueError(f"EEF apex annotation file has no annotations object: {path}")
+    return path, annotations
+
+
+def _episode_eef_apex(
+    annotations: dict,
+    *,
+    object_name: str,
+    episode: core.Episode,
+) -> dict:
+    object_annotations = annotations.get(object_name)
+    annotation = (
+        object_annotations.get(episode.root.name)
+        if isinstance(object_annotations, dict)
+        else None
+    )
+    if not isinstance(annotation, dict):
+        raise ValueError(
+            f"no EEF apex annotation for {object_name}/{episode.root.name}"
+        )
+    frame = int(annotation.get("arm_frame_index", -1))
+    if not 0 <= frame < len(episode.arm_poses):
+        raise ValueError(
+            f"EEF apex arm frame {frame} is outside {object_name}/"
+            f"{episode.root.name} trajectory of length {len(episode.arm_poses)}"
+        )
+    return annotation
+
+
+@lru_cache(maxsize=4)
+def _load_fingertip_fk_urdf(robot_urdf: str):
+    import yourdfpy
+
+    return yourdfpy.URDF.load(
+        robot_urdf,
+        build_scene_graph=True,
+        load_meshes=False,
+    )
+
+
+def allegro_thumb_index_midpoint_eef(
+    hand_action: np.ndarray,
+    *,
+    robot_urdf: Path,
+) -> np.ndarray:
+    """Return the thumb/index tip-link midpoint expressed in xArm link6."""
+
+    urdf_path = str(Path(robot_urdf).expanduser().resolve())
+    urdf = _load_fingertip_fk_urdf(urdf_path)
+    joint_names = tuple(urdf.actuated_joint_names)
+    if len(joint_names) != 22 or tuple(joint_names[:6]) != tuple(
+        f"joint{i}" for i in range(1, 7)
+    ):
+        raise ValueError(
+            "fingertip FK requires the 6-axis xArm + 16-axis Allegro V5 URDF"
+        )
+    hand_joint_names = joint_names[6:]
+    joint_limits = {
+        joint.name: (joint.limit.lower, joint.limit.upper)
+        for joint in urdf.actuated_joints
+        if joint.limit is not None
+    }
+    hand_qpos = core._allegro_v5_preview_qpos(
+        np.asarray(hand_action, dtype=np.float64).reshape(1, 16),
+        urdf_hand_joint_names=hand_joint_names,
+        joint_limits=joint_limits,
+    )[0]
+    urdf.update_cfg(
+        {
+            name: value
+            for name, value in zip(
+                joint_names,
+                np.concatenate((np.zeros(6, dtype=np.float64), hand_qpos)),
+            )
+        }
+    )
+    index_tip_eef = urdf.get_transform(ALLEGRO_V5_INDEX_TIP_LINK, "link6")[
+        :3, 3
+    ]
+    thumb_tip_eef = urdf.get_transform(ALLEGRO_V5_THUMB_TIP_LINK, "link6")[
+        :3, 3
+    ]
+    midpoint = (index_tip_eef + thumb_tip_eef) * 0.5
+    if midpoint.shape != (3,) or not np.all(np.isfinite(midpoint)):
+        raise ValueError(f"invalid Allegro fingertip midpoint from {robot_urdf}")
+    return midpoint
+
+
+def append_box_pink_transfer_and_release(
+    trajectory: core.ReplayTrajectory,
+    *,
+    box_point_robot: np.ndarray,
+    fingertip_midpoint_eef: np.ndarray,
+    clearance_m: float,
+    linear_speed_mps: float,
+    max_translation_m: float,
+    min_seconds: float,
+    rate_hz: float,
+    release_seconds: float,
+) -> BoxPinkTransfer:
+    """Move the fingertip midpoint to box x/y at a fixed robot-frame z, then open."""
+
+    if (
+        clearance_m < 0
+        or linear_speed_mps <= 0
+        or max_translation_m <= 0
+        or min_seconds < 0
+        or rate_hz <= 0
+        or release_seconds <= 0
+    ):
+        raise ValueError(
+            "box clearance/min-duration must be non-negative and transfer speed/"
+            "distance/rate/release duration must be positive"
+        )
+    box_point = np.asarray(box_point_robot, dtype=np.float64).reshape(-1)
+    if box_point.shape != (3,) or not np.all(np.isfinite(box_point)):
+        raise ValueError(f"box-pink point must be a finite xyz vector, got {box_point_robot}")
+    midpoint_eef = np.asarray(fingertip_midpoint_eef, dtype=np.float64).reshape(-1)
+    if midpoint_eef.shape != (3,) or not np.all(np.isfinite(midpoint_eef)):
+        raise ValueError(
+            "thumb-index fingertip midpoint must be a finite EEF-frame xyz vector"
+        )
+
+    current_eef = core._as_transform(
+        trajectory.arm_poses[-1], label="EEF pose at annotated apex"
+    )
+    target_eef = current_eef.copy()
+    target_midpoint = box_point.copy()
+    # Triangulation contributes only the horizontal target.  The configured
+    # release height is an absolute robot-frame z, independent of box_point.z.
+    target_midpoint[2] = clearance_m
+    target_eef[:3, 3] = (
+        target_midpoint - target_eef[:3, :3] @ midpoint_eef
+    )
+    vertical_target = current_eef.copy()
+    vertical_target[2, 3] = target_eef[2, 3]
+    vertical_distance = abs(float(target_eef[2, 3] - current_eef[2, 3]))
+    horizontal_distance = float(
+        np.linalg.norm(target_eef[:2, 3] - current_eef[:2, 3])
+    )
+    transfer_distance = vertical_distance + horizontal_distance
+    if transfer_distance > max_translation_m:
+        raise RuntimeError(
+            f"box-pink axis-aligned path length {transfer_distance:.3f} m exceeds "
+            f"configured maximum {max_translation_m:.3f} m"
+        )
+    segment_poses: list[np.ndarray] = []
+    segment_times: list[np.ndarray] = []
+    elapsed = float(trajectory.times[-1])
+
+    def append_segment(
+        start_pose: np.ndarray,
+        end_pose: np.ndarray,
+        distance: float,
+    ) -> tuple[int, float]:
+        nonlocal elapsed
+        if distance <= 1.0e-9:
+            return 0, 0.0
+        poses, seconds = core._cartesian_approach_trajectory(
+            start_pose,
+            end_pose,
+            linear_speed_mps=linear_speed_mps,
+            angular_speed_rps=1.0,
+            min_seconds=min_seconds,
+            rate_hz=rate_hz,
+        )
+        count = len(poses)
+        times = elapsed + np.linspace(
+            seconds / count,
+            seconds,
+            count,
+            dtype=np.float64,
+        )
+        segment_poses.append(poses)
+        segment_times.append(times)
+        elapsed = float(times[-1])
+        return count, float(seconds)
+
+    vertical_count, vertical_seconds = append_segment(
+        current_eef,
+        vertical_target,
+        vertical_distance,
+    )
+    horizontal_count, horizontal_seconds = append_segment(
+        vertical_target,
+        target_eef,
+        horizontal_distance,
+    )
+    transfer_count = vertical_count + horizontal_count
+    transfer_seconds = vertical_seconds + horizontal_seconds
+    transfer_poses = (
+        np.concatenate(segment_poses, axis=0)
+        if segment_poses
+        else np.empty((0, 4, 4), dtype=np.float64)
+    )
+    transfer_times = (
+        np.concatenate(segment_times)
+        if segment_times
+        else np.empty(0, dtype=np.float64)
+    )
+    transfer_hands = np.repeat(
+        trajectory.hand_actions[-1][None], transfer_count, axis=0
+    )
+
+    release_count = max(1, int(np.ceil(release_seconds * rate_hz)))
+    release_alphas = np.linspace(
+        0.0, 1.0, release_count + 1, dtype=np.float64
+    )[1:]
+    closed_hand = trajectory.hand_actions[-1]
+    open_hand = np.zeros(16, dtype=np.float64)
+    release_hands = (
+        closed_hand[None] * (1.0 - release_alphas[:, None])
+        + open_hand[None] * release_alphas[:, None]
+    )
+    release_poses = np.repeat(target_eef[None], release_count, axis=0)
+    release_times = elapsed + np.linspace(
+        release_seconds / release_count,
+        release_seconds,
+        release_count,
+        dtype=np.float64,
+    )
+
+    combined = core.ReplayTrajectory(
+        arm_poses=np.concatenate(
+            (trajectory.arm_poses, transfer_poses, release_poses), axis=0
+        ),
+        hand_actions=np.concatenate(
+            (trajectory.hand_actions, transfer_hands, release_hands), axis=0
+        ),
+        times=np.concatenate((trajectory.times, transfer_times, release_times)),
+        transition_frame_count=trajectory.transition_frame_count,
+        transition_seconds=trajectory.transition_seconds,
+    )
+    return BoxPinkTransfer(
+        trajectory=combined,
+        target_eef_robot=target_eef,
+        fingertip_midpoint_eef=midpoint_eef,
+        target_fingertip_midpoint_robot=target_midpoint,
+        transfer_frame_count=transfer_count,
+        transfer_seconds=float(transfer_seconds),
+        vertical_frame_count=vertical_count,
+        vertical_seconds=vertical_seconds,
+        horizontal_frame_count=horizontal_count,
+        horizontal_seconds=horizontal_seconds,
+        release_frame_count=release_count,
+        release_seconds=float(release_seconds),
+    )
+
+
+def replay_closest_episode_naive(
+    args: argparse.Namespace,
+    *,
+    current_object_robot: np.ndarray,
+    current_c2r: np.ndarray,
+    arm: Any | None = None,
+    hand: Any | None = None,
+    episodes: Iterable[core.Episode] | None = None,
+) -> Path:
+    """Replay the closest episode in full without annotations or dish transfer."""
+
+    if (arm is None) != (hand is None):
+        raise ValueError("arm and hand controllers must be supplied together")
+    candidate_episodes = (
+        load_candidate_episodes(args.episode_root, args.candidate_episodes)
+        if episodes is None
+        else list(episodes)
+    )
+    ranked = rank_by_object_pose(
+        current_object_robot,
+        candidate_episodes,
+        translation_scale_m=args.retrieval_translation_scale_m,
+        rotation_scale_rad=args.retrieval_rotation_scale_rad,
+    )
+    print(f"[retrieval] candidate ranking by frame-0 {args.object} pose:")
+    for rank, match in enumerate(ranked, start=1):
+        print(
+            f"  {rank}. episode {match.episode.root.name}: "
+            f"translation={match.translation_error_m:.4f} m, "
+            f"rotation={np.rad2deg(match.rotation_error_rad):.1f} deg, "
+            f"score={match.score:.3f}"
+        )
+
+    selected = ranked[0]
+    episode = selected.episode
+    replay_arm_poses = core.relative_arm_actions(
+        selected.source_object_robot, current_object_robot, episode.arm_poses
+    )
+    replay_hand_actions = core._zoh_resample(
+        episode.hand_times, episode.hand_commands, episode.arm_times
+    )
+    if arm is None:
+        live_arm_pose, live_arm_qpos, live_hand_qpos = _read_live_robot_state()
+    else:
+        live_arm_pose, live_arm_qpos, live_hand_qpos = core._read_live_robot_state(
+            arm, hand
+        )
+    trajectory = core._compose_replay_trajectory(
+        args,
+        live_arm_pose=live_arm_pose,
+        live_hand_qpos=live_hand_qpos,
+        episode_arm_poses=replay_arm_poses,
+        episode_hand_actions=replay_hand_actions,
+        episode_arm_times=episode.arm_times,
+    )
+
+    output_dir = Path(args.replay_output_dir).expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    plan_path = output_dir / "naive_relative_replay_plan.npz"
+    object_delta = current_object_robot @ np.linalg.inv(selected.source_object_robot)
+    np.savez_compressed(
+        plan_path,
+        arm_action=trajectory.arm_poses,
+        arm_time=trajectory.times,
+        hand_action=trajectory.hand_actions,
+        episode_arm_action=replay_arm_poses,
+        episode_arm_time=episode.arm_times,
+        episode_hand_action=replay_hand_actions,
+        transition_frame_count=trajectory.transition_frame_count,
+        transition_seconds=trajectory.transition_seconds,
+        replay_speed_scale=args.rate_scale,
+        episode_start_frame_in_plan=trajectory.transition_frame_count - 1,
+        selected_episode=episode.root.name,
+        selected_frame=0,
+        source_object_robot=selected.source_object_robot,
+        current_object_robot=current_object_robot,
+        object_delta=object_delta,
+        source_c2r=episode.source_c2r,
+        current_c2r=current_c2r,
+        retrieval_translation_error_m=selected.translation_error_m,
+        retrieval_rotation_error_rad=selected.rotation_error_rad,
+        retrieval_score=selected.score,
+        candidate_episode=np.asarray([match.episode.root.name for match in ranked]),
+        candidate_translation_error_m=np.asarray(
+            [match.translation_error_m for match in ranked]
+        ),
+        candidate_rotation_error_rad=np.asarray(
+            [match.rotation_error_rad for match in ranked]
+        ),
+        candidate_score=np.asarray([match.score for match in ranked]),
+        live_wrist_robot=live_arm_pose,
+    )
+    print(f"[retrieval] selected episode {episode.root.name} from arm frame 0")
+    print(f"[plan] saved {plan_path}")
+    print(
+        f"[plan] current state -> transformed episode frame 0: "
+        f"{trajectory.transition_frame_count} frames over "
+        f"{trajectory.transition_seconds:.2f}s; then replaying all "
+        f"{len(replay_arm_poses)} source frames at {args.rate_scale:.2f}x"
+    )
+
+    preview_match = core.EpisodeMatch(
+        episode=episode,
+        frame_index=0,
+        grasp_frame_index=int(
+            np.argmin(
+                np.linalg.norm(
+                    (
+                        np.linalg.inv(selected.source_object_robot)[None]
+                        @ episode.arm_poses
+                    )[:, :3, 3],
+                    axis=1,
+                )
+            )
+        ),
+        wrist_object_distance_m=0.0,
+        distance_delta_m=0.0,
+        position_error_m=selected.translation_error_m,
+        rotation_error_rad=selected.rotation_error_rad,
+        score=selected.score,
+    )
+    if args.replay_preview:
+        core._preview_replay(
+            args,
+            preview_match,
+            trajectory.arm_poses,
+            trajectory.hand_actions,
+            trajectory.times,
+            trajectory.transition_frame_count,
+            current_object_robot,
+            output_dir,
+            live_arm_pose=live_arm_pose,
+            live_arm_qpos=live_arm_qpos,
+            live_hand_qpos=live_hand_qpos,
+        )
+    if not args.execute:
+        print("[plan] complete; no robot or hand motion commands were sent.")
+        return plan_path
+    if not _execution_confirmed(args):
+        print("[execute] cancelled; no robot commands sent.")
+        return plan_path
+    core._execute(
+        args,
+        trajectory.arm_poses,
+        trajectory.hand_actions,
+        trajectory.times,
+        trajectory.transition_frame_count,
+        arm=arm,
+        hand=hand,
+    )
+    return plan_path
+
+
+def replay_closest_episode_into_box_pink(
+    args: argparse.Namespace,
+    *,
+    current_object_robot: np.ndarray,
+    current_c2r: np.ndarray,
+    box_point_robot: np.ndarray,
+    arm: Any | None = None,
+    hand: Any | None = None,
+    episodes: Iterable[core.Episode] | None = None,
+) -> Path:
+    """Replay through the EEF apex, move above box-pink, and release."""
+
+    if (arm is None) != (hand is None):
+        raise ValueError("arm and hand controllers must be supplied together")
+    candidate_episodes = (
+        load_candidate_episodes(args.episode_root, args.candidate_episodes)
+        if episodes is None
+        else list(episodes)
+    )
+    annotation_path, annotations = _load_eef_apex_annotations(args)
+    replayable_episodes: list[core.Episode] = []
+    apex_by_episode: dict[str, dict] = {}
+    for episode in candidate_episodes:
+        try:
+            annotation = _episode_eef_apex(
+                annotations,
+                object_name=args.object,
+                episode=episode,
+            )
+        except ValueError as exc:
+            print(f"[apex] skipping episode {episode.root.name}: {exc}")
+            continue
+        replayable_episodes.append(episode)
+        apex_by_episode[episode.root.name] = annotation
+    if not replayable_episodes:
+        raise RuntimeError(
+            f"no replayable {args.object} episode has a valid EEF apex annotation"
+        )
+
+    ranked = rank_by_object_pose(
+        current_object_robot,
+        replayable_episodes,
+        translation_scale_m=args.retrieval_translation_scale_m,
+        rotation_scale_rad=args.retrieval_rotation_scale_rad,
+    )
+    print(f"[retrieval] candidate ranking by frame-0 {args.object} pose:")
+    for rank, match in enumerate(ranked, start=1):
+        print(
+            f"  {rank}. episode {match.episode.root.name}: "
+            f"translation={match.translation_error_m:.4f} m, "
+            f"rotation={np.rad2deg(match.rotation_error_rad):.1f} deg, "
+            f"score={match.score:.3f}"
+        )
+
+    selected = ranked[0]
+    episode = selected.episode
+    apex_annotation = apex_by_episode[episode.root.name]
+    apex_arm_frame = int(apex_annotation["arm_frame_index"])
+    apex_review = str(apex_annotation.get("manual_review", "unknown"))
+    if apex_review != "not_required":
+        print(
+            f"[apex] warning: {args.object}/{episode.root.name} annotation "
+            f"manual_review={apex_review}"
+        )
+    transformed_arm_poses = core.relative_arm_actions(
+        selected.source_object_robot, current_object_robot, episode.arm_poses
+    )
+    transformed_hand_actions = core._zoh_resample(
+        episode.hand_times, episode.hand_commands, episode.arm_times
+    )
+    replay_arm_poses = transformed_arm_poses[: apex_arm_frame + 1]
+    replay_hand_actions = transformed_hand_actions[: apex_arm_frame + 1]
+    replay_arm_times = episode.arm_times[: apex_arm_frame + 1]
+
+    if arm is None:
+        live_arm_pose, live_arm_qpos, live_hand_qpos = _read_live_robot_state()
+    else:
+        live_arm_pose, live_arm_qpos, live_hand_qpos = core._read_live_robot_state(
+            arm, hand
+        )
+    apex_trajectory = core._compose_replay_trajectory(
+        args,
+        live_arm_pose=live_arm_pose,
+        live_hand_qpos=live_hand_qpos,
+        episode_arm_poses=replay_arm_poses,
+        episode_hand_actions=replay_hand_actions,
+        episode_arm_times=replay_arm_times,
+    )
+    fingertip_midpoint_eef = allegro_thumb_index_midpoint_eef(
+        replay_hand_actions[-1],
+        robot_urdf=args.robot_urdf,
+    )
+    box_transfer = append_box_pink_transfer_and_release(
+        apex_trajectory,
+        box_point_robot=box_point_robot,
+        fingertip_midpoint_eef=fingertip_midpoint_eef,
+        clearance_m=args.box_pink_clearance_m,
+        linear_speed_mps=args.dish_transfer_linear_speed_mps,
+        max_translation_m=args.dish_transfer_max_distance_m,
+        min_seconds=args.dish_transfer_min_seconds,
+        rate_hz=args.dish_transfer_rate_hz,
+        release_seconds=args.hand_open_seconds,
+    )
+    trajectory = box_transfer.trajectory
+
+    output_dir = Path(args.replay_output_dir).expanduser()
+    output_dir.mkdir(parents=True, exist_ok=True)
+    plan_path = output_dir / "box_pink_replay_plan.npz"
+    object_delta = current_object_robot @ np.linalg.inv(selected.source_object_robot)
+    box_point = np.asarray(box_point_robot, dtype=np.float64).reshape(3)
+    np.savez_compressed(
+        plan_path,
+        arm_action=trajectory.arm_poses,
+        arm_time=trajectory.times,
+        hand_action=trajectory.hand_actions,
+        episode_arm_action=replay_arm_poses,
+        episode_arm_time=replay_arm_times,
+        episode_hand_action=replay_hand_actions,
+        transition_frame_count=trajectory.transition_frame_count,
+        transition_seconds=trajectory.transition_seconds,
+        episode_start_frame_in_plan=trajectory.transition_frame_count - 1,
+        selected_episode=episode.root.name,
+        selected_frame=0,
+        apex_arm_frame=apex_arm_frame,
+        apex_annotation_path=str(annotation_path),
+        apex_manual_review=apex_review,
+        source_object_robot=selected.source_object_robot,
+        current_object_robot=current_object_robot,
+        object_delta=object_delta,
+        source_c2r=episode.source_c2r,
+        current_c2r=current_c2r,
+        box_pink_point_robot=box_point,
+        box_pink_clearance_m=args.box_pink_clearance_m,
+        box_pink_target_eef_robot=box_transfer.target_eef_robot,
+        apex_fingertip_midpoint_eef=box_transfer.fingertip_midpoint_eef,
+        box_pink_target_fingertip_midpoint_robot=(
+            box_transfer.target_fingertip_midpoint_robot
+        ),
+        box_transfer_frame_count=box_transfer.transfer_frame_count,
+        box_transfer_seconds=box_transfer.transfer_seconds,
+        box_vertical_frame_count=box_transfer.vertical_frame_count,
+        box_vertical_seconds=box_transfer.vertical_seconds,
+        box_horizontal_frame_count=box_transfer.horizontal_frame_count,
+        box_horizontal_seconds=box_transfer.horizontal_seconds,
+        hand_open_frame_count=box_transfer.release_frame_count,
+        hand_open_seconds=box_transfer.release_seconds,
+        initial_arm_qpos=live_arm_qpos,
+        return_joint_speed_rps=args.return_joint_speed_rps,
+        return_min_seconds=args.return_min_seconds,
+        return_rate_hz=args.return_rate_hz,
+        retrieval_translation_error_m=selected.translation_error_m,
+        retrieval_rotation_error_rad=selected.rotation_error_rad,
+        retrieval_score=selected.score,
+        candidate_episode=np.asarray([match.episode.root.name for match in ranked]),
+        candidate_translation_error_m=np.asarray(
+            [match.translation_error_m for match in ranked]
+        ),
+        candidate_rotation_error_rad=np.asarray(
+            [match.rotation_error_rad for match in ranked]
+        ),
+        candidate_score=np.asarray([match.score for match in ranked]),
+        live_wrist_robot=live_arm_pose,
+    )
+    print(
+        f"[retrieval] selected episode {episode.root.name}; replaying arm frames "
+        f"0..{apex_arm_frame} (annotated EEF apex)"
+    )
+    print(f"[plan] saved {plan_path}")
+    print(
+        f"[box-pink] thumb-index midpoint target xyz "
+        f"{np.round(box_transfer.target_fingertip_midpoint_robot, 4).tolist()} "
+        f"-> compensated EEF xyz "
+        f"{np.round(box_transfer.target_eef_robot[:3, 3], 4).tolist()}: "
+        f"vertical {box_transfer.vertical_frame_count} frames/"
+        f"{box_transfer.vertical_seconds:.2f}s, then XY "
+        f"{box_transfer.horizontal_frame_count} frames/"
+        f"{box_transfer.horizontal_seconds:.2f}s; then opening the hand over "
+        f"{box_transfer.release_seconds:.2f}s"
+    )
+
+    preview_match = core.EpisodeMatch(
+        episode=episode,
+        frame_index=0,
+        grasp_frame_index=min(apex_arm_frame, len(episode.arm_poses) - 1),
+        wrist_object_distance_m=0.0,
+        distance_delta_m=0.0,
+        position_error_m=selected.translation_error_m,
+        rotation_error_rad=selected.rotation_error_rad,
+        score=selected.score,
+    )
+    if args.replay_preview:
+        core._preview_replay(
+            args,
+            preview_match,
+            trajectory.arm_poses,
+            trajectory.hand_actions,
+            trajectory.times,
+            trajectory.transition_frame_count,
+            current_object_robot,
+            output_dir,
+            live_arm_pose=live_arm_pose,
+            live_arm_qpos=live_arm_qpos,
+            live_hand_qpos=live_hand_qpos,
+            return_arm_qpos=live_arm_qpos,
+        )
+    if not args.execute:
+        print("[plan] complete; no robot or hand motion commands were sent.")
+        return plan_path
+    if not _execution_confirmed(args):
+        print("[execute] cancelled; no robot commands sent.")
+        return plan_path
+    core._execute(
+        args,
+        trajectory.arm_poses,
+        trajectory.hand_actions,
+        trajectory.times,
+        trajectory.transition_frame_count,
+        arm=arm,
+        hand=hand,
+        return_arm_qpos=live_arm_qpos,
+    )
+    return plan_path
 
 
 def replay_closest_episode(

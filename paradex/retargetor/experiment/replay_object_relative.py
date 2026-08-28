@@ -30,6 +30,7 @@ import sys
 import time
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -778,6 +779,39 @@ def _hand_approach_slew_rate(
     return np.abs(target_qpos - current_qpos) / seconds
 
 
+def _joint_return_trajectory(
+    current_qpos: np.ndarray,
+    target_qpos: np.ndarray,
+    *,
+    speed_rps: float,
+    min_seconds: float,
+    rate_hz: float,
+) -> tuple[np.ndarray, np.ndarray, float]:
+    """Build a synchronized linear xArm joint-space return trajectory."""
+
+    current = np.asarray(current_qpos, dtype=np.float64).reshape(-1)
+    target = np.asarray(target_qpos, dtype=np.float64).reshape(-1)
+    if (
+        current.shape != (6,)
+        or target.shape != (6,)
+        or not np.all(np.isfinite(current))
+        or not np.all(np.isfinite(target))
+    ):
+        raise ValueError("xArm return endpoints must be finite 6-joint vectors")
+    if speed_rps <= 0 or rate_hz <= 0 or min_seconds < 0:
+        raise ValueError(
+            "joint return speed/rate must be positive and minimum duration "
+            "must be non-negative"
+        )
+    seconds = max(min_seconds, float(np.max(np.abs(target - current))) / speed_rps)
+    seconds = max(seconds, 1.0 / rate_hz)
+    frame_count = max(2, int(np.ceil(seconds * rate_hz)) + 1)
+    alphas = np.linspace(0.0, 1.0, frame_count, dtype=np.float64)
+    positions = current[None] * (1.0 - alphas[:, None]) + target[None] * alphas[:, None]
+    times = np.linspace(0.0, seconds, frame_count, dtype=np.float64)
+    return positions, times, float(seconds)
+
+
 def _extend_stationary_approach(
     approach_poses: np.ndarray,
     *,
@@ -973,15 +1007,24 @@ def _preview_joint_trajectory(
     return result
 
 
-def _load_preview_mesh(mesh_path: Path):
+@lru_cache(maxsize=32)
+def _load_preview_mesh(mesh_path: Path, max_faces: int = 3_000):
     import trimesh
+    from paradex.visualization.robot import simplify_mesh
 
+    started = time.perf_counter()
     mesh = trimesh.load(mesh_path, force="mesh", process=False)
-    if isinstance(mesh, trimesh.Trimesh):
-        return mesh
     if isinstance(mesh, trimesh.Scene):
-        return trimesh.util.concatenate(tuple(mesh.geometry.values()))
-    raise ValueError(f"Unsupported object mesh: {mesh_path}")
+        mesh = trimesh.util.concatenate(tuple(mesh.geometry.values()))
+    if not isinstance(mesh, trimesh.Trimesh):
+        raise ValueError(f"Unsupported object mesh: {mesh_path}")
+    source_faces = len(mesh.faces)
+    mesh = simplify_mesh(mesh, max_faces)
+    print(
+        f"[preview] object mesh ready in {time.perf_counter() - started:.3f}s: "
+        f"{source_faces} -> {len(mesh.faces)} faces"
+    )
+    return mesh
 
 
 def _xarm_position_to_transform(position: Any) -> np.ndarray:
@@ -1104,6 +1147,7 @@ def _preview_replay(
     live_arm_qpos: np.ndarray | None = None,
     live_hand_qpos: np.ndarray | None = None,
     object_pose_markers: dict[str, np.ndarray] | None = None,
+    return_arm_qpos: np.ndarray | None = None,
 ) -> None:
     """Show the planned xArm+Allegro V5 mesh trajectory and current object in Viser."""
 
@@ -1144,6 +1188,20 @@ def _preview_replay(
         replay_hand_actions,
         initial_arm_qpos=approach_joint_trajectory[-1, :6],
     )
+    return_joint_trajectory = None
+    return_times = None
+    if return_arm_qpos is not None:
+        return_arm, return_times, _ = _joint_return_trajectory(
+            replay_joint_trajectory[-1, :6],
+            return_arm_qpos,
+            speed_rps=args.return_joint_speed_rps,
+            min_seconds=args.return_min_seconds,
+            rate_hz=args.return_rate_hz,
+        )
+        return_hand = np.repeat(
+            replay_joint_trajectory[-1:, 6:], len(return_arm), axis=0
+        )
+        return_joint_trajectory = np.concatenate((return_arm, return_hand), axis=1)
     rendered_approach_hand = approach_joint_trajectory[:, 6:]
     np.savez_compressed(
         output_dir / "viser_preview_trajectory.npz",
@@ -1152,6 +1210,16 @@ def _preview_replay(
         approach_hand_action=rendered_approach_hand,
         transition_frame_count=transition_frame_count,
         transition_seconds=arm_times[transition_end],
+        return_joint_trajectory=(
+            return_joint_trajectory
+            if return_joint_trajectory is not None
+            else np.empty((0, 22), dtype=np.float64)
+        ),
+        return_time=(
+            return_times
+            if return_times is not None
+            else np.empty(0, dtype=np.float64)
+        ),
     )
     mesh_path = _resolve_capture_object6d_mesh(args.mesh_name, args.mesh_root_dir)
     object_pose_for_viser = _viser_object_pose(
@@ -1188,9 +1256,17 @@ def _preview_replay(
             disabled=True,
         )
     viewer.add_floor(height=0.0)
-    viewer.add_robot("robot", str(args.robot_urdf), include_arm_meshes=True)
+    viewer.add_robot(
+        "robot",
+        str(args.robot_urdf),
+        include_arm_meshes=True,
+        max_mesh_faces=getattr(args, "preview_robot_link_max_faces", 1_500),
+    )
     viewer.robot_dict["robot"].update_cfg(approach_joint_trajectory[0])
-    preview_mesh = _load_preview_mesh(mesh_path)
+    preview_mesh = _load_preview_mesh(
+        mesh_path,
+        getattr(args, "preview_object_max_faces", 3_000),
+    )
     viewer.add_object(args.object, preview_mesh, object_pose_for_viser)
     if object_pose_markers:
         for marker_name, marker_pose in object_pose_markers.items():
@@ -1209,17 +1285,57 @@ def _preview_replay(
     # approach before the episode trajectory begins.
     viewer.add_traj("live_arm_hand_approach", robot_traj={"robot": approach_joint_trajectory})
     viewer.add_traj("object_relative_replay", robot_traj={"robot": replay_joint_trajectory})
+    if return_joint_trajectory is not None:
+        viewer.add_traj(
+            "return_to_initial_joint_position",
+            robot_traj={"robot": return_joint_trajectory},
+        )
     # The server begins ticking before the browser connects.  Start paused at
     # frame zero so the live arm/hand state and its approach are inspectable.
     viewer.gui_playing.value = False
     viewer.gui_timestep.value = 0
+    from threading import Event
+
+    finish_event = Event()
+    finish_button = viewer.server.gui.add_button("Finish preview")
+
+    @finish_button.on_click
+    def _(_) -> None:
+        finish_event.set()
+
     print(
         "[preview] Viser preview is paused at frame 0. Frames "
         f"0..{len(approach_joint_trajectory) - 1} are the live arm+hand approach; "
         f"frame {len(approach_joint_trajectory)} starts object-relative replay. "
-        "Click Resume (or scrub Playback/Timestep) to inspect it; press Ctrl+C in this terminal to return."
+        "Click Resume (or scrub Playback/Timestep) to inspect it, then click "
+        "Finish preview to continue."
     )
-    viewer.start_viewer()
+    try:
+        while not finish_event.is_set():
+            viewer.update()
+    finally:
+        _stop_viser_server(viewer.server)
+
+
+def _stop_viser_server(server: Any) -> None:
+    """Stop old and new Viser releases without leaving a duplicate atexit stop."""
+
+    import atexit
+
+    stop_targets = [server]
+    for attribute in ("_websock_server", "_server"):
+        target = getattr(server, attribute, None)
+        if target is not None:
+            stop_targets.append(target)
+    for target in stop_targets:
+        stop = getattr(target, "stop", None)
+        if stop is not None:
+            atexit.unregister(stop)
+    try:
+        server.stop()
+    except RuntimeError as exc:
+        if "Event loop is closed" not in str(exc):
+            raise
 
 
 def _execute(
@@ -1231,6 +1347,7 @@ def _execute(
     *,
     arm: Any | None = None,
     hand: Any | None = None,
+    return_arm_qpos: np.ndarray | None = None,
 ) -> None:
     from paradex.io.robot_controller import get_arm, get_hand
 
@@ -1264,6 +1381,23 @@ def _execute(
             if i + 1 < len(arm_poses):
                 dt = max(0.0, arm_times[i + 1] - arm_times[i])
                 time.sleep(dt)
+        if return_arm_qpos is not None:
+            arm_state = arm.get_data()
+            current_qpos = np.asarray(arm_state.get("qpos"), dtype=np.float64)
+            positions, return_times, return_seconds = _joint_return_trajectory(
+                current_qpos,
+                return_arm_qpos,
+                speed_rps=args.return_joint_speed_rps,
+                min_seconds=args.return_min_seconds,
+                rate_hz=args.return_rate_hz,
+            )
+            print(
+                f"[execute] returning xArm to initial ROS joint position: "
+                f"{len(positions)} frames over {return_seconds:.2f}s"
+            )
+            arm.move_joint_trajectory(positions, return_times)
+            if arm.is_error():
+                raise RuntimeError("controller error during return to initial joints")
     finally:
         if owns_controllers:
             arm.end()

@@ -458,6 +458,12 @@ def test_capture_session_replaces_manus_hand_action_with_external_provider(monke
     assert session.teleop(session_events=events, state_policy="keyboard_control") == "exit"
     np.testing.assert_allclose(session.hand.moves[0], [0.3, 0.4])
 
+    events["exit"].clear()
+    session.teleop_device = ViveOnlyDevice()
+    session.set_hand_teleoperation_enabled(False)
+    assert session.teleop(session_events=events, state_policy="keyboard_control") == "exit"
+    assert len(session.hand.moves) == 1
+
 
 def test_unimanual_arm_deadman_holds_arm_but_keeps_external_hand_active(monkeypatch):
     monkeypatch.setattr(capture_module.chime, "warning", lambda **_kwargs: None)

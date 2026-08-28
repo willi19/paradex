@@ -413,6 +413,7 @@ class CaptureSession():
             else None
         )
         self.hand_action_provider = hand_action_provider
+        self.hand_teleoperation_enabled = True
         self.arm_command_enabled_provider = arm_command_enabled_provider
         if (
             self.arm_command_enabled_provider is not None
@@ -694,19 +695,21 @@ class CaptureSession():
             except Exception as exc:
                 print(f"Failed to save Allegro teleop diagnostic: {exc}")
             self._allegro_teleop_diagnostic_logger = None
-        if self.arm is not None:
-            self.arm.end()
-        if self.arm_left is not None:
-            self.arm_left.end()
-        if self.arm_right is not None:
-            self.arm_right.end()
-        
+        # ROS hand controllers share the process-wide rclpy context initialized
+        # by the arm controller.  Destroy them before ending the arm, because
+        # the arm may own and shut down that context.
         if self.hand is not None:
             self.hand.end()
         if self.hand_left is not None:
             self.hand_left.end()
         if self.hand_right is not None:
             self.hand_right.end()
+        if self.arm is not None:
+            self.arm.end()
+        if self.arm_left is not None:
+            self.arm_left.end()
+        if self.arm_right is not None:
+            self.arm_right.end()
         if self.teleop_device is not None:
             self.teleop_device.end()
         
@@ -719,7 +722,12 @@ class CaptureSession():
             self.realsense.end()
         if self.human_tactile is not None:
             self.human_tactile.close()
-    
+
+    def set_hand_teleoperation_enabled(self, enabled):
+        """Enable or suppress new hand targets from the teleoperation device."""
+
+        self.hand_teleoperation_enabled = bool(enabled)
+
     def teleop(
         self,
         session_events=None,
@@ -796,6 +804,8 @@ class CaptureSession():
 
         def move_hands_if_due(hand_commands, *, teleop_data=None, state=None):
             """Send a coherent hand target set at the configured UI-rate cap."""
+            if not getattr(self, "hand_teleoperation_enabled", True):
+                return
             # The UI samples feedback and updates its target on a single 30 Hz
             # command tick.  Do the rate check before acquiring the Allegro
             # feedback lock, so CaptureSession's 10 ms loop cannot contend with

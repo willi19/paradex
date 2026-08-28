@@ -10,6 +10,32 @@ from trimesh.scene import Scene
 import os
 from scipy.spatial.transform import Rotation as R
 
+
+def simplify_mesh(mesh: trimesh.Trimesh, max_faces: int | None) -> trimesh.Trimesh:
+    """Return a display-only quadric-decimated mesh without adding dependencies."""
+
+    if not max_faces or len(mesh.faces) <= max_faces:
+        return mesh
+    import open3d as o3d
+
+    source_color = (
+        np.asarray(mesh.visual.vertex_colors[0], dtype=np.uint8)
+        if hasattr(mesh.visual, "vertex_colors") and len(mesh.visual.vertex_colors)
+        else np.array([200, 200, 200, 255], dtype=np.uint8)
+    )
+    open3d_mesh = o3d.geometry.TriangleMesh(
+        o3d.utility.Vector3dVector(np.asarray(mesh.vertices)),
+        o3d.utility.Vector3iVector(np.asarray(mesh.faces)),
+    )
+    simplified = open3d_mesh.simplify_quadric_decimation(int(max_faces))
+    result = trimesh.Trimesh(
+        vertices=np.asarray(simplified.vertices),
+        faces=np.asarray(simplified.triangles),
+        process=False,
+    )
+    result.visual.vertex_colors = np.tile(source_color, (len(result.vertices), 1))
+    return result
+
 class RobotModule():
     def __init__(self, urdf_path: str):
         self.urdf_path = urdf_path

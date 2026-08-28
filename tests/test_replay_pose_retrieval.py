@@ -180,6 +180,188 @@ def test_object_pose_retrieval_combines_translation_and_rotation(tmp_path):
     assert ranked[1].score == pytest.approx(0.8)
 
 
+def test_naive_replay_uses_full_selected_episode_without_dish_annotations(
+    tmp_path, monkeypatch
+):
+    episode = _episode(tmp_path, 4, np.eye(4))
+    live_pose = np.eye(4)
+    live_qpos = np.zeros(6)
+    live_hand = np.zeros(16)
+    monkeypatch.setattr(
+        retrieval,
+        "_read_live_robot_state",
+        lambda: (live_pose, live_qpos, live_hand),
+    )
+    args = Namespace(
+        object="apple",
+        episode_root=tmp_path,
+        candidate_episodes=(4,),
+        retrieval_translation_scale_m=0.05,
+        retrieval_rotation_scale_rad=0.25,
+        approach_linear_speed_mps=0.5,
+        approach_angular_speed_rps=2.0,
+        approach_min_seconds=0.1,
+        approach_rate_hz=10.0,
+        rate_scale=1.0,
+        replay_output_dir=tmp_path / "output",
+        replay_preview=False,
+        execute=False,
+    )
+
+    plan_path = retrieval.replay_closest_episode_naive(
+        args,
+        current_object_robot=np.eye(4),
+        current_c2r=np.eye(4),
+        episodes=[episode],
+    )
+
+    plan = np.load(plan_path)
+    assert plan_path.name == "naive_relative_replay_plan.npz"
+    assert int(plan["selected_frame"]) == 0
+    assert plan["episode_arm_action"].shape == (3, 4, 4)
+    assert plan["episode_hand_action"].shape == (3, 16)
+    assert plan["replay_speed_scale"].item() == pytest.approx(1.0)
+
+
+def test_box_pink_transfer_moves_to_clearance_then_opens_hand():
+    poses = np.repeat(np.eye(4)[None], 3, axis=0)
+    poses[:, :3, 3] = [[0.2, 0.0, 0.3], [0.3, 0.0, 0.4], [0.4, 0.0, 0.5]]
+    closed = np.full(16, 0.8)
+    trajectory = core.ReplayTrajectory(
+        arm_poses=poses,
+        hand_actions=np.repeat(closed[None], 3, axis=0),
+        times=np.array([0.0, 0.1, 0.2]),
+        transition_frame_count=2,
+        transition_seconds=0.1,
+    )
+
+    result = retrieval.append_box_pink_transfer_and_release(
+        trajectory,
+        box_point_robot=np.array([0.6, 0.2, 0.1]),
+        fingertip_midpoint_eef=np.array([0.1, -0.02, 0.2]),
+        clearance_m=0.15,
+        linear_speed_mps=10.0,
+        max_translation_m=1.0,
+        min_seconds=0.2,
+        rate_hz=10.0,
+        release_seconds=0.3,
+    )
+
+    np.testing.assert_allclose(result.target_eef_robot[:3, 3], [0.5, 0.22, -0.05])
+    np.testing.assert_allclose(
+        result.target_eef_robot[:3, :3] @ result.fingertip_midpoint_eef
+        + result.target_eef_robot[:3, 3],
+        [0.6, 0.2, 0.15],
+    )
+    transfer_start = len(trajectory.arm_poses)
+    vertical_end = transfer_start + result.vertical_frame_count
+    horizontal_end = vertical_end + result.horizontal_frame_count
+    vertical = result.trajectory.arm_poses[transfer_start:vertical_end]
+    horizontal = result.trajectory.arm_poses[vertical_end:horizontal_end]
+    np.testing.assert_allclose(
+        vertical[:, :2, 3],
+        np.repeat([[0.4, 0.0]], len(vertical), axis=0),
+    )
+    assert vertical[-1, 2, 3] == pytest.approx(-0.05)
+    np.testing.assert_allclose(
+        horizontal[:, 2, 3],
+        np.repeat(-0.05, len(horizontal)),
+    )
+    np.testing.assert_allclose(horizontal[-1, :3, 3], [0.5, 0.22, -0.05])
+    np.testing.assert_allclose(
+        result.trajectory.arm_poses[-result.release_frame_count :],
+        np.repeat(result.target_eef_robot[None], result.release_frame_count, axis=0),
+    )
+    np.testing.assert_allclose(result.trajectory.hand_actions[-1], np.zeros(16))
+    np.testing.assert_allclose(result.trajectory.arm_poses[-1, :3, :3], np.eye(3))
+    assert np.all(np.diff(result.trajectory.times) >= 0)
+
+
+def test_box_pink_replay_stops_episode_at_annotated_apex(tmp_path, monkeypatch):
+    episode = _episode(tmp_path, 4, np.eye(4))
+    annotation_path = tmp_path / "eef_apex_annotations.json"
+    annotation_path.write_text(
+        json.dumps(
+            {
+                "annotations": {
+                    "apple": {
+                        "4": {
+                            "arm_frame_index": 1,
+                            "manual_review": "not_required",
+                        }
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        retrieval,
+        "_read_live_robot_state",
+        lambda: (np.eye(4), np.zeros(6), np.zeros(16)),
+    )
+    monkeypatch.setattr(
+        retrieval,
+        "allegro_thumb_index_midpoint_eef",
+        lambda *_args, **_kwargs: np.array([0.1, 0.0, 0.2]),
+    )
+    executed = {}
+    monkeypatch.setattr(retrieval, "_execution_confirmed", lambda _args: True)
+    monkeypatch.setattr(
+        core,
+        "_execute",
+        lambda *_args, **kwargs: executed.update(kwargs),
+    )
+    args = Namespace(
+        object="apple",
+        episode_root=tmp_path,
+        candidate_episodes=(4,),
+        eef_apex_annotations=annotation_path,
+        retrieval_translation_scale_m=0.05,
+        retrieval_rotation_scale_rad=0.25,
+        approach_linear_speed_mps=1.0,
+        approach_angular_speed_rps=2.0,
+        approach_min_seconds=0.1,
+        approach_rate_hz=10.0,
+        rate_scale=1.0,
+        replay_output_dir=tmp_path / "output",
+        replay_preview=False,
+        execute=True,
+        box_pink_clearance_m=0.15,
+        dish_transfer_linear_speed_mps=1.0,
+        dish_transfer_max_distance_m=2.0,
+        dish_transfer_min_seconds=0.1,
+        dish_transfer_rate_hz=10.0,
+        hand_open_seconds=0.2,
+        return_joint_speed_rps=0.5,
+        return_min_seconds=2.0,
+        return_rate_hz=50.0,
+        robot_urdf=core.DEFAULT_ROBOT_URDF,
+    )
+
+    plan_path = retrieval.replay_closest_episode_into_box_pink(
+        args,
+        current_object_robot=np.eye(4),
+        current_c2r=np.eye(4),
+        box_point_robot=np.array([0.5, 0.2, 0.1]),
+        episodes=[episode],
+    )
+
+    with np.load(plan_path) as plan:
+        assert plan_path.name == "box_pink_replay_plan.npz"
+        assert plan["apex_arm_frame"].item() == 1
+        assert plan["episode_arm_action"].shape == (2, 4, 4)
+        np.testing.assert_allclose(
+            plan["box_pink_target_eef_robot"][:3, 3], [0.4, 0.2, -0.05]
+        )
+        np.testing.assert_allclose(
+            plan["box_pink_target_fingertip_midpoint_robot"], [0.5, 0.2, 0.15]
+        )
+        np.testing.assert_allclose(plan["hand_action"][-1], np.zeros(16))
+        np.testing.assert_allclose(plan["initial_arm_qpos"], np.zeros(6))
+    np.testing.assert_allclose(executed["return_arm_qpos"], np.zeros(6))
+
+
 def test_retrieved_replay_starts_from_the_annotated_synchronized_frame(
     tmp_path, monkeypatch
 ):

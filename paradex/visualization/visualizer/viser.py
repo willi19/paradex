@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import json
 from distro import name
 import numpy as np
@@ -12,7 +14,13 @@ import time
 import cv2
 import viser.transforms as tf
 
-from paradex.visualization.robot import RobotModule  
+from paradex.visualization.robot import RobotModule, simplify_mesh
+
+
+_ROBOT_PREVIEW_MESH_CACHE: dict[
+    tuple[str, str, bool, int, float], tuple[np.ndarray, np.ndarray, np.ndarray]
+] = {}
+
 
 class ViserViewer():
     def __init__(
@@ -148,7 +156,14 @@ class ViserViewer():
             print(f"Loaded saved view from: {self.view_state_path}")
         return True
 
-    def add_robot(self, name, urdf_path, pose=None, include_arm_meshes=True):
+    def add_robot(
+        self,
+        name,
+        urdf_path,
+        pose=None,
+        include_arm_meshes=True,
+        max_mesh_faces=None,
+    ):
         robot = ViserRobotModule(
             target=self.server,
             urdf_path=urdf_path,
@@ -157,18 +172,21 @@ class ViserViewer():
             load_meshes=True,
             load_collision_meshes=False,
             include_arm_meshes=include_arm_meshes,
+            max_mesh_faces=max_mesh_faces,
         )
         if pose is not None:
-            if hasattr(robot, '_visual_root_frame'):
+            if hasattr(robot, "_visual_root_frame"):
                 robot._visual_root_frame.position = pose[:3, 3]
-                robot._visual_root_frame.wxyz = R.from_matrix(pose[:3, :3]).as_quat()[[3, 0, 1, 2]]
-        
+                robot._visual_root_frame.wxyz = R.from_matrix(pose[:3, :3]).as_quat()[
+                    [3, 0, 1, 2]
+                ]
+
         self.robot_dict[name] = robot
 
     def add_object(self, name, obj: trimesh.Trimesh, obj_T, opacity: float = 1.0):
         """
         Add an object mesh to the scene
-        
+
         Args:
             name: Unique name for the object
             obj: trimesh.Trimesh object
@@ -176,8 +194,7 @@ class ViserViewer():
             opacity: Object opacity [0,1]. Uses simple mesh path when < 1.
         """
         # Create a frame for the object
-        
-        
+
         frame_handle = self.server.scene.add_frame(
             f"/objects/{name}_frame",
             position=obj_T[:3, 3],
@@ -186,13 +203,13 @@ class ViserViewer():
             axes_length=0.05,
             axes_radius=0.002,
         )
-        
+
         # Add mesh to the frame (at origin relative to frame).
         # add_mesh_trimesh in this viser version does not expose handle.opacity,
         # so use add_mesh_simple when transparency is requested.
         obj_name = f"/objects/{name}_frame/{name}"
         self._set_view_state_path_for_object(name)
-        
+
         if opacity < 0.999:
             color = np.array([200, 200, 200], dtype=np.uint8)
             vc = getattr(obj.visual, "vertex_colors", None)
@@ -208,19 +225,16 @@ class ViserViewer():
             )
             mesh_handle.opacity = float(np.clip(opacity, 0.0, 1.0))
         else:
-            mesh_handle = self.server.scene.add_mesh_trimesh(
-                name=obj_name,
-                mesh=obj
-            )
-        
+            mesh_handle = self.server.scene.add_mesh_trimesh(name=obj_name, mesh=obj)
+
         # Store in object dictionary
         self.obj_dict[name] = {
-            'mesh': obj,
-            'transform': obj_T,
-            'frame': frame_handle,
-            'handle': mesh_handle
+            "mesh": obj,
+            "transform": obj_T,
+            "frame": frame_handle,
+            "handle": mesh_handle,
         }
-        
+
         self.frame_nodes[name] = frame_handle
 
     def add_traj(self, name, robot_traj: Dict, obj_traj: Dict = {}):
@@ -617,7 +631,7 @@ class ViserViewer():
     ):
         """
         Add a camera frustum visualization to the scene
-        
+
         Args:
             name: Unique name for the camera
             extrinsic: 4x4 or 3x4 camera extrinsic matrix (cam_from_world or world_from_cam)
@@ -628,31 +642,33 @@ class ViserViewer():
         """
         # Handle extrinsic matrix format
         if extrinsic.shape == (3, 4):
-            extrinsic_4x4 = np.concatenate([extrinsic, np.array([[0, 0, 0, 1]])], axis=0)
+            extrinsic_4x4 = np.concatenate(
+                [extrinsic, np.array([[0, 0, 0, 1]])], axis=0
+            )
         else:
             extrinsic_4x4 = extrinsic
-        
+
         # Convert to world_from_cam if it's cam_from_world
         # Assuming extrinsic is cam_from_world (COLMAP convention), invert it
-        world_from_cam = extrinsic_4x4#3 np.linalg.inv(extrinsic_4x4)
-        
+        world_from_cam = extrinsic_4x4  # 3 np.linalg.inv(extrinsic_4x4)
+
         # Extract camera position and rotation in world frame
         cam_pos = world_from_cam[:3, 3]
         cam_rot = world_from_cam[:3, :3]
-        
+
         # Parse intrinsic parameters
         if isinstance(intrinsic, dict):
-            if 'intrinsics_undistort' in intrinsic:
-                K = np.array(intrinsic['intrinsics_undistort'])
+            if "intrinsics_undistort" in intrinsic:
+                K = np.array(intrinsic["intrinsics_undistort"])
                 fx, fy = K[0, 0], K[1, 1]
                 cx, cy = K[0, 2], K[1, 2]
             else:
-                fx = intrinsic.get('fx')
-                fy = intrinsic.get('fy')
-                cx = intrinsic.get('cx')
-                cy = intrinsic.get('cy')
-            width = intrinsic.get('width', 640)
-            height = intrinsic.get('height', 480)
+                fx = intrinsic.get("fx")
+                fy = intrinsic.get("fy")
+                cx = intrinsic.get("cx")
+                cy = intrinsic.get("cy")
+            width = intrinsic.get("width", 640)
+            height = intrinsic.get("height", 480)
         else:  # Assume 3x3 matrix
             fx = intrinsic[0, 0]
             fy = intrinsic[1, 1]
@@ -660,7 +676,7 @@ class ViserViewer():
             cy = intrinsic[1, 2]
             width = cx * 2
             height = cy * 2
-        
+
         # Create camera frame
         frame_handle = self.server.scene.add_frame(
             f"/cameras/{name}_frame",
@@ -702,32 +718,60 @@ class ViserViewer():
             # Calculate frustum corners in camera space
             frustum_depth = size
             if fov_override is not None:
-                fov = float(np.clip(float(fov_override) * fov_scale, 1e-4, np.pi - 1e-3))
-                aspect = float(aspect_override) if aspect_override is not None else float(width) / max(float(height), 1.0)
+                fov = float(
+                    np.clip(float(fov_override) * fov_scale, 1e-4, np.pi - 1e-3)
+                )
+                aspect = (
+                    float(aspect_override)
+                    if aspect_override is not None
+                    else float(width) / max(float(height), 1.0)
+                )
                 half_h = np.tan(0.5 * fov) * frustum_depth
                 half_w = half_h * aspect
-                corners_cam = np.array([
-                    [-half_w, -half_h, frustum_depth],
-                    [half_w, -half_h, frustum_depth],
-                    [half_w, half_h, frustum_depth],
-                    [-half_w, half_h, frustum_depth],
-                ])
+                corners_cam = np.array(
+                    [
+                        [-half_w, -half_h, frustum_depth],
+                        [half_w, -half_h, frustum_depth],
+                        [half_w, half_h, frustum_depth],
+                        [-half_w, half_h, frustum_depth],
+                    ]
+                )
             else:
-                corners_cam = np.array([
-                    [((0 - cx) / fx) * frustum_depth * fov_scale, ((0 - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # top-left
-                    [((width - cx) / fx) * frustum_depth * fov_scale, ((0 - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # top-right
-                    [((width - cx) / fx) * frustum_depth * fov_scale, ((height - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # bottom-right
-                    [((0 - cx) / fx) * frustum_depth * fov_scale, ((height - cy) / fy) * frustum_depth * fov_scale, frustum_depth],  # bottom-left
-                ])
+                corners_cam = np.array(
+                    [
+                        [
+                            ((0 - cx) / fx) * frustum_depth * fov_scale,
+                            ((0 - cy) / fy) * frustum_depth * fov_scale,
+                            frustum_depth,
+                        ],  # top-left
+                        [
+                            ((width - cx) / fx) * frustum_depth * fov_scale,
+                            ((0 - cy) / fy) * frustum_depth * fov_scale,
+                            frustum_depth,
+                        ],  # top-right
+                        [
+                            ((width - cx) / fx) * frustum_depth * fov_scale,
+                            ((height - cy) / fy) * frustum_depth * fov_scale,
+                            frustum_depth,
+                        ],  # bottom-right
+                        [
+                            ((0 - cx) / fx) * frustum_depth * fov_scale,
+                            ((height - cy) / fy) * frustum_depth * fov_scale,
+                            frustum_depth,
+                        ],  # bottom-left
+                    ]
+                )
 
             camera_origin = np.array([0, 0, 0])  # Origin in camera frame
 
             for i, corner in enumerate(corners_cam):
                 self.server.scene.add_spline_catmull_rom(
                     f"/cameras/{name}_frame/edge_{i}",
-                    positions=np.array([camera_origin, corner]),  # Use camera frame coordinates
+                    positions=np.array(
+                        [camera_origin, corner]
+                    ),  # Use camera frame coordinates
                     color=color_normalized,
-                    line_width=2.0
+                    line_width=2.0,
                 )
 
             # Draw frustum rectangle (connecting corners) - in CAMERA FRAME coordinates
@@ -736,7 +780,7 @@ class ViserViewer():
                     f"/cameras/{name}_frame/rect_{i}",
                     positions=np.array([corners_cam[i], corners_cam[(i + 1) % 4]]),
                     color=color_normalized,
-                    line_width=2.0
+                    line_width=2.0,
                 )
 
             # Optionally add a small sphere at camera center
@@ -744,7 +788,7 @@ class ViserViewer():
                 f"/cameras/{name}_frame/center",
                 radius=size * 0.05,
                 color=color_normalized,
-                position=camera_origin  # At origin of camera frame
+                position=camera_origin,  # At origin of camera frame
             )
 
         self.camera_dict[name] = {
@@ -773,10 +817,19 @@ class ViserViewer():
             position=position
         )
 
-    def add_arrow(self, name, start, end, color=(0,255,0), shaft_radius=0.01, head_radius=0.02, head_length=0.5):
+    def add_arrow(
+        self,
+        name,
+        start,
+        end,
+        color=(0, 255, 0),
+        shaft_radius=0.01,
+        head_radius=0.02,
+        head_length=0.5,
+    ):
         """
         Add an arrow visualization
-        
+
         Args:
             name: Unique name for the arrow
             start: Starting position [x, y, z]
@@ -791,23 +844,29 @@ class ViserViewer():
             name=f"/arrows/{name}",
             positions=np.array([start, end]),
             color=tuple(c / 255.0 for c in color),
-            line_width=shaft_radius * 1000  # Convert to line width
+            line_width=shaft_radius * 1000,  # Convert to line width
         )
 
 class ViserRobotModule():
-    def __init__(self, target,#: viser.ViserServer | viser.ClientHandle,
-                 urdf_path, 
-                 scale: float = 1.0,
-                 root_node_name: str = "/",
-                 load_meshes=True, 
-                 load_collision_meshes=False,
-                 include_arm_meshes=True):
+    def __init__(
+        self,
+        target,  #: viser.ViserServer | viser.ClientHandle,
+        urdf_path,
+        scale: float = 1.0,
+        root_node_name: str = "/",
+        load_meshes=True,
+        load_collision_meshes=False,
+        include_arm_meshes=True,
+        max_mesh_faces=None,
+    ):
         self._urdf = RobotModule(urdf_path)
         self._target = target
         self._scale = scale
         self._load_meshes = load_meshes
         self._load_collision_meshes = load_collision_meshes
         self._include_arm_meshes = include_arm_meshes
+        self._max_mesh_faces = max_mesh_faces
+        self._urdf_path = str(Path(urdf_path).resolve())
         self._joint_frames: List[viser.FrameHandle] = []
         self._meshes: Dict[str, viser.MeshHandle] = {}
         num_joints_to_repeat = 0
@@ -816,18 +875,14 @@ class ViserRobotModule():
             if self._urdf.scene is not None:
                 num_joints_to_repeat += 1
                 self._visual_root_frame = self._add_joint_frames_and_meshes(
-                    self._urdf.scene,
-                    root_node_name,
-                    collision_geometry=False
+                    self._urdf.scene, root_node_name, collision_geometry=False
                 )
 
         if load_collision_meshes:
             if self._urdf.collision_scene is not None:
                 num_joints_to_repeat += 1
                 self._collision_root_frame = self._add_joint_frames_and_meshes(
-                    self._urdf.collision_scene,
-                    root_node_name,
-                    collision_geometry=True
+                    self._urdf.collision_scene, root_node_name, collision_geometry=True
                 )
         self._joint_map_values = [*self._urdf.joint_map.values()] * num_joints_to_repeat
         self.update_cfg(np.zeros(self._urdf.get_num_joints(), dtype=float))
@@ -850,11 +905,10 @@ class ViserRobotModule():
         """Returns whether the visual meshes are currently visible."""
         return self._visual_root_frame is not None and self._visual_root_frame.visible
 
-    @show_visual.setter
-    def show_visual(self, visible: bool) -> None:
-        """Set whether the visual meshes are currently visible."""
-        if self._visual_root_frame is not None:
-            self._visual_root_frame.visible = visible
+    @property
+    def show_visual(self) -> bool:
+        """Returns whether the visual meshes are currently visible."""
+        return self._visual_root_frame is not None and self._visual_root_frame.visible
 
     @property
     def show_collision(self) -> bool:
@@ -864,11 +918,13 @@ class ViserRobotModule():
             and self._collision_root_frame.visible
         )
 
-    @show_collision.setter
-    def show_collision(self, visible: bool) -> None:
-        """Set whether the collision meshes are currently visible."""
-        if self._collision_root_frame is not None:
-            self._collision_root_frame.visible = visible
+    @property
+    def show_collision(self) -> bool:
+        """Returns whether the collision meshes are currently visible."""
+        return (
+            self._collision_root_frame is not None
+            and self._collision_root_frame.visible
+        )
 
     @property
     def urdf(self) -> RobotModule:
@@ -898,11 +954,8 @@ class ViserRobotModule():
             frame_handle.position = T_parent_child.copy()[:3, 3] * self._scale
             
     def _add_joint_frames_and_meshes(
-        self,
-        scene: Scene,
-        root_node_name: str,
-        collision_geometry: bool
-    ) :
+        self, scene: Scene, root_node_name: str, collision_geometry: bool
+    ):
         """
         Helper function to add joint frames and meshes to the ViserUrdf object.
         """
@@ -926,6 +979,8 @@ class ViserRobotModule():
             )
 
         # Add the URDF's meshes/geometry to viser.
+        source_face_count = 0
+        preview_face_count = 0
         for link_name, mesh in scene.geometry.items():
             assert isinstance(mesh, trimesh.Trimesh)
             T_parent_child = self._urdf.get_transform(
@@ -935,9 +990,28 @@ class ViserRobotModule():
             )
             name = _viser_name_from_frame(scene, link_name, prefixed_root_node_name)
             if not self._include_arm_meshes:
-                is_hand_mesh = ("/left_hand_" in name) or ("/right_hand_" in name)
+                is_hand_mesh = (
+                    ("/left_hand_" in name)
+                    or ("/right_hand_" in name)
+                )
                 if not is_hand_mesh:
                     continue
+            source_face_count += len(mesh.faces)
+            cache_key = (
+                self._urdf_path,
+                link_name,
+                collision_geometry,
+                int(self._max_mesh_faces or 0),
+                float(self._scale),
+            )
+            cached = _ROBOT_PREVIEW_MESH_CACHE.get(cache_key)
+            if cached is not None:
+                vertices, faces, color = cached
+                preview_face_count += len(faces)
+                self._meshes[name] = self._target.scene.add_mesh_simple(
+                    name, vertices, faces, color=color
+                )
+                continue
             # Scale + transform the mesh. (these will mutate it!)
             #
             # It's important that we use apply_transform() instead of unpacking
@@ -946,6 +1020,7 @@ class ViserRobotModule():
             mesh = mesh.copy()
             mesh.apply_scale(self._scale)
             mesh.apply_transform(T_parent_child)
+            mesh = simplify_mesh(mesh, self._max_mesh_faces)
 
             vertices = mesh.vertices
             faces = mesh.faces
@@ -954,78 +1029,94 @@ class ViserRobotModule():
             else:
                 # fall back to per-face color or a neutral gray
                 color = np.array([200, 200, 200])
-            self._meshes[name] = (self._target.scene.add_mesh_simple(name, vertices, faces, color=color))
+            preview_face_count += len(faces)
+            _ROBOT_PREVIEW_MESH_CACHE[cache_key] = (
+                np.asarray(vertices).copy(),
+                np.asarray(faces).copy(),
+                np.asarray(color).copy(),
+            )
+            self._meshes[name] = self._target.scene.add_mesh_simple(
+                name, vertices, faces, color=color
+            )
             # self._meshes[name] = self._target.scene.add_mesh_trimesh(
             #     name=name,
             #     mesh=mesh
             # )
+        if self._max_mesh_faces and preview_face_count < source_face_count:
+            print(
+                f"[preview] robot mesh simplified: {source_face_count} -> "
+                f"{preview_face_count} faces "
+                f"(max {self._max_mesh_faces} per link)"
+            )
         return root_frame
     
     def get_link_vertices(self, link_name: str = None) -> Dict[str, np.ndarray]:
         """
         Get vertices of link meshes in world coordinates
-        
+
         Args:
             link_name: Specific link name to get vertices from. If None, returns all links.
-            
+
         Returns:
             Dictionary mapping link names to their vertices (N, 3) in world coordinates
         """
         vertices_dict = {}
-        
+
         # Iterate through all meshes
         for mesh_name, mesh_handle in self._meshes.items():
             # Extract actual link name from the viser mesh name
             # Example: "/robot/arm/visual/link1" -> "link1"
             actual_link_name = mesh_name.split("/")[-1]
-            
+
             # If specific link requested, filter
             if link_name is not None and actual_link_name != link_name:
                 continue
-            
+
             # Get the mesh from the handle
             # Note: viser doesn't directly expose vertex data after adding,
             # so we need to get it from the original URDF scene
             if self._load_meshes and self._urdf.scene is not None:
                 if actual_link_name in self._urdf.scene.geometry:
                     mesh = self._urdf.scene.geometry[actual_link_name]
-                    
+
                     # Get current transform for this link
                     T = self._urdf.get_transform(
-                        actual_link_name, 
+                        actual_link_name,
                         self._urdf.scene.graph.base_frame,
-                        collision_geometry=False
+                        collision_geometry=False,
                     )
-                    
+
                     # Transform vertices to world coordinates
                     vertices = mesh.vertices.copy()
-                    vertices_homogeneous = np.hstack([vertices, np.ones((len(vertices), 1))])
+                    vertices_homogeneous = np.hstack(
+                        [vertices, np.ones((len(vertices), 1))]
+                    )
                     vertices_world = (T @ vertices_homogeneous.T).T[:, :3]
-                    
+
                     # Apply scale
                     vertices_world = vertices_world * self._scale
-                    
+
                     vertices_dict[actual_link_name.split(".")[0]] = vertices_world
-        
+
         return vertices_dict
 
 
     def get_all_vertices(self) -> np.ndarray:
         """
         Get all vertices from all links concatenated together
-        
+
         Returns:
             (N, 3) array of all vertices in world coordinates
         """
         all_vertices = []
         vertices_dict = self.get_link_vertices()
-        
+
         for vertices in vertices_dict.values():
             all_vertices.append(vertices)
-        
+
         if len(all_vertices) == 0:
             return np.array([]).reshape(0, 3)
-        
+
         return np.vstack(all_vertices)
     # def apply_mesh_color_override(mesh_color_override):
         # elif len(mesh_color_override) == 3:

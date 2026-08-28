@@ -24,6 +24,8 @@ except ImportError:
 
 SHARED_DIR = Path.home() / "shared_data"
 MESH_ROOT = SHARED_DIR / "mesh_new"
+CAPTURED_OBJECT_COLOR = "#4ade80"
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -215,6 +217,17 @@ def discover_mesh_names(mesh_root=MESH_ROOT):
     )
 
 
+def discover_captured_object_names(capture_root):
+    capture_root = Path(capture_root)
+    if not capture_root.is_dir():
+        return set()
+    return {
+        path.name
+        for path in capture_root.iterdir()
+        if path.is_dir() and not path.name.startswith(".")
+    }
+
+
 class QueueStream:
     """Route stdout/stderr text to the GUI event queue."""
 
@@ -294,6 +307,7 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         super().__init__()
         self.args = args
         self.capture_root = args.capture_root
+        self.capture_root_path = SHARED_DIR / "capture" / self.capture_root
         self.ui_queue = queue.Queue()
 
         self.save_event = threading.Event()
@@ -303,6 +317,7 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         self.grasp_no_event = threading.Event()
         self.paired_episode_event = threading.Event()
         self.name_selected_event = threading.Event()
+        self.teleop_paused_event = threading.Event()
         self.events = {
             "save": self.save_event,
             "stop": self.stop_event,
@@ -314,8 +329,12 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         self._paired_episode = None
         self.mesh_names = []
         self.filtered_names = []
+        self.captured_object_names = set()
         self.runtime_state = "initializing"
         self.worker = None
+        self._capture_session = None
+        self._capture_session_lock = threading.Lock()
+        self._teleop_state_request_inflight = False
         self.camera_preview = None
         self.tactile_plotter = None
         self._next_preview_time = 0.0
@@ -327,6 +346,9 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         self._original_stderr = sys.stderr
 
         self._build_ui()
+        qt_app = QtWidgets.QApplication.instance()
+        if qt_app is not None:
+            qt_app.installEventFilter(self)
         self._apply_style()
         self._refresh_mesh_names()
         self._set_runtime_state("select_name")
@@ -334,20 +356,48 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         self.timer.timeout.connect(self._poll_ui_queue)
         self.timer.start(self.POLL_INTERVAL_MS)
 
+    def place_on_right_half(self):
+        qt_app = QtWidgets.QApplication.instance()
+        if qt_app is None:
+            return
+        screen = None
+        if hasattr(qt_app, "screenAt"):
+            screen = qt_app.screenAt(QtGui.QCursor.pos())
+        if screen is None:
+            screen = qt_app.primaryScreen()
+        if screen is None:
+            return
+
+        available = screen.availableGeometry()
+        left_width = available.width() // 2
+        self.setGeometry(
+            available.x() + left_width,
+            available.y(),
+            available.width() - left_width,
+            available.height(),
+        )
+
     def _build_ui(self):
         self.setWindowTitle("Robot Capture")
-        self.setMinimumSize(1280, 760)
+        # The initial geometry is the monitor's right half, even on displays
+        # narrower than the original 1540 px design size.
+        self.setMinimumSize(0, 0)
         self.resize(1540, 920)
 
         central = QtWidgets.QWidget()
         self.setCentralWidget(central)
         root = QtWidgets.QHBoxLayout(central)
+        root.setSizeConstraint(QtWidgets.QLayout.SetNoConstraint)
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
 
         sidebar = QtWidgets.QFrame()
         sidebar.setObjectName("sidebar")
         sidebar.setFixedWidth(390)
+        sidebar.setSizePolicy(
+            QtWidgets.QSizePolicy.Fixed,
+            QtWidgets.QSizePolicy.Ignored,
+        )
         side = QtWidgets.QVBoxLayout(sidebar)
         side.setContentsMargins(26, 28, 26, 24)
         side.setSpacing(12)
@@ -395,9 +445,11 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         self.selected_name_label.setObjectName("selectedName")
         self.selected_name_label.setWordWrap(True)
         object_actions.addWidget(self.selected_name_label, 1)
-        refresh = QtWidgets.QPushButton("새로고침")
+        refresh = QtWidgets.QPushButton("목록/완료 갱신")
         refresh.setObjectName("smallButton")
-        refresh.clicked.connect(self._refresh_mesh_names)
+        refresh.clicked.connect(
+            lambda: self._refresh_mesh_names(announce=True)
+        )
         object_actions.addWidget(refresh)
         object_layout.addLayout(object_actions)
         side.addWidget(object_card, 1)
@@ -415,6 +467,11 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
 
         content = QtWidgets.QWidget()
         content.setObjectName("content")
+        content.setMinimumWidth(0)
+        content.setSizePolicy(
+            QtWidgets.QSizePolicy.Ignored,
+            QtWidgets.QSizePolicy.Ignored,
+        )
         main = QtWidgets.QVBoxLayout(content)
         main.setContentsMargins(34, 26, 34, 28)
         main.setSpacing(18)
@@ -458,6 +515,13 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         self.stop_button.setObjectName("stopButton")
         self.stop_button.clicked.connect(self._on_stop)
         capture_buttons.addWidget(self.stop_button, 2)
+        self.teleop_pause_button = QtWidgets.QPushButton(
+            "P  ⏸  Pause teleop · state 1"
+        )
+        self.teleop_pause_button.setObjectName("teleopPauseButton")
+        self.teleop_pause_button.setCheckable(True)
+        self.teleop_pause_button.clicked.connect(self._on_toggle_teleop)
+        capture_buttons.addWidget(self.teleop_pause_button, 2)
         self.exit_button = QtWidgets.QPushButton("Q  Exit")
         self.exit_button.setObjectName("exitButton")
         self.exit_button.clicked.connect(self._on_exit)
@@ -580,6 +644,10 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
             #primaryButton:hover { background: #3b82f6; }
             #stopButton { background: #b45309; border: none; color: white; font-size: 17px; }
             #stopButton:hover { background: #d97706; }
+            #teleopPauseButton { background: #6d28d9; border: 2px solid #a78bfa; color: white; font-size: 16px; }
+            #teleopPauseButton:hover { background: #7c3aed; border-color: #c4b5fd; }
+            #teleopPauseButton:checked { background: #0f766e; border: 2px solid #5eead4; color: white; }
+            #teleopPauseButton:checked:hover { background: #0d9488; }
             #exitButton, #smallButton { background: #263247; border: 1px solid #3b4a62; color: #e5e7eb; }
             #exitButton:hover, #smallButton:hover { background: #334155; }
             #successButton { background: #15803d; border: none; color: white; }
@@ -614,11 +682,20 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         sys.stdout = self._original_stdout
         sys.stderr = self._original_stderr
 
-    def _refresh_mesh_names(self):
+    def _refresh_mesh_names(self, announce=False):
         self.mesh_names = discover_mesh_names()
+        self.captured_object_names = discover_captured_object_names(
+            self.capture_root_path
+        )
         self._filter_mesh_names()
         if not self.mesh_names:
             self._append_log(f"No object directories found in {MESH_ROOT}\n")
+        if announce:
+            self._append_log(
+                "Object status refreshed: "
+                f"{len(self.captured_object_names)} captured folder(s) in "
+                f"{self.capture_root_path}\n"
+            )
 
     def _filter_mesh_names(self, *_args):
         query = self.search_entry.text().strip().casefold()
@@ -628,7 +705,21 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         selected = self._get_selected_name()
         self.name_listbox.blockSignals(True)
         self.name_listbox.clear()
-        self.name_listbox.addItems(self.filtered_names)
+        for name in self.filtered_names:
+            item = QtWidgets.QListWidgetItem(name)
+            if name in self.captured_object_names:
+                item.setForeground(QtGui.QColor(CAPTURED_OBJECT_COLOR))
+                marker = QtGui.QPixmap(12, 12)
+                marker.fill(QtCore.Qt.transparent)
+                painter = QtGui.QPainter(marker)
+                painter.setRenderHint(QtGui.QPainter.Antialiasing)
+                painter.setBrush(QtGui.QColor(CAPTURED_OBJECT_COLOR))
+                painter.setPen(QtCore.Qt.NoPen)
+                painter.drawEllipse(1, 1, 10, 10)
+                painter.end()
+                item.setIcon(QtGui.QIcon(marker))
+                item.setToolTip(str(self.capture_root_path / name))
+            self.name_listbox.addItem(item)
         if selected in self.filtered_names:
             self.name_listbox.setCurrentRow(self.filtered_names.index(selected))
         self.name_listbox.blockSignals(False)
@@ -675,6 +766,57 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         self.grasp_no_event.set()
         self._set_runtime_state("saving_result")
 
+    def _on_toggle_teleop(self):
+        if self._teleop_state_request_inflight:
+            return
+
+        target_state = 0 if self.teleop_paused_event.is_set() else 1
+        self.teleop_pause_button.setChecked(target_state == 1)
+        if target_state == 1:
+            # Stop generating new arm targets before the hardware pause call.
+            self.teleop_paused_event.set()
+
+        self._teleop_state_request_inflight = True
+        self.teleop_pause_button.setEnabled(False)
+        action = "Pausing" if target_state == 1 else "Resuming"
+        self._append_log(f"{action} xArm teleop (state {target_state})...\n")
+        threading.Thread(
+            target=self._set_xarm_motion_state,
+            args=(target_state,),
+            name="xarm-state-toggle",
+            daemon=True,
+        ).start()
+
+    def _set_xarm_motion_state(self, target_state):
+        try:
+            with self._capture_session_lock:
+                session = self._capture_session
+            if session is None:
+                raise RuntimeError("CaptureSession is not ready")
+
+            arms = [
+                arm
+                for arm in (session.arm, session.arm_left, session.arm_right)
+                if arm is not None
+            ]
+            if not arms:
+                raise RuntimeError("No xArm controller is available")
+            for arm in arms:
+                arm.set_motion_state(target_state)
+        except Exception as exc:
+            if target_state == 1:
+                self.teleop_paused_event.clear()
+            self.ui_queue.put(
+                ("teleop_state", target_state, False, str(exc))
+            )
+            return
+
+        if target_state == 0:
+            # The CaptureSession deadman path rebases VIVE to the current arm
+            # pose when this event changes back to enabled.
+            self.teleop_paused_event.clear()
+        self.ui_queue.put(("teleop_state", target_state, True, None))
+
     def _on_paired_submit(self):
         try:
             episode = int(self.paired_episode_entry.text().strip())
@@ -688,6 +830,9 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
 
     def _on_exit(self):
         if self.exit_event.is_set():
+            if self.worker is None or not self.worker.is_alive():
+                self._shutdown_complete = True
+                QtCore.QTimer.singleShot(100, self.close)
             return
         self._close_requested = True
         self.exit_event.set()
@@ -709,6 +854,49 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         event.ignore()
         self._on_exit()
 
+    def eventFilter(self, watched, event):
+        if event.type() == QtCore.QEvent.KeyPress:
+            blocked_modifiers = (
+                QtCore.Qt.ControlModifier
+                | QtCore.Qt.AltModifier
+                | QtCore.Qt.MetaModifier
+            )
+            if not event.modifiers() & blocked_modifiers:
+                focused_widget = QtWidgets.QApplication.focusWidget()
+                editable_text_input_focused = (
+                    isinstance(focused_widget, QtWidgets.QLineEdit)
+                    and not focused_widget.isReadOnly()
+                    or isinstance(
+                        focused_widget,
+                        (QtWidgets.QTextEdit, QtWidgets.QPlainTextEdit),
+                    )
+                    and not focused_widget.isReadOnly()
+                )
+                if editable_text_input_focused:
+                    return super().eventFilter(watched, event)
+
+                if event.key() == QtCore.Qt.Key_Q:
+                    self._on_exit()
+                    return True
+
+                shortcuts = {
+                    QtCore.Qt.Key_C: (self.start_button, self._on_start),
+                    QtCore.Qt.Key_S: (self.stop_button, self._on_stop),
+                    QtCore.Qt.Key_P: (
+                        self.teleop_pause_button,
+                        self._on_toggle_teleop,
+                    ),
+                    QtCore.Qt.Key_Y: (self.success_button, self._on_grasp_success),
+                    QtCore.Qt.Key_N: (self.failure_button, self._on_grasp_failure),
+                }
+                shortcut = shortcuts.get(event.key())
+                if shortcut is not None:
+                    button, handler = shortcut
+                    if button.isEnabled() and not event.isAutoRepeat():
+                        handler()
+                        return True
+        return super().eventFilter(watched, event)
+
     def _set_runtime_state(self, state, **payload):
         self.runtime_state = state
         copy = {
@@ -719,6 +907,7 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
             "recording": ("로봇 데이터를 캡처하고 있습니다", "VIVE로 로봇을 조작하고, 끝내려면 S 버튼을 누르세요.", "Recording", 62, 2),
             "stop_requested": ("캡처 종료를 요청했습니다", "현재 스트림을 정상 종료하고 있습니다.", "Stop requested", 70, 2),
             "saving": ("캡처 데이터를 저장하고 있습니다", "장치 종료와 파일 저장이 끝날 때까지 잠시 기다리세요.", "Saving episode", 76, 2),
+            "checking_integrity": ("저장 데이터 무결성을 확인하고 있습니다", "Robot raw, hand, teleop, timestamp를 검사합니다.", "Integrity check", 82, 2),
             "await_grasp": ("Grasp 성공 여부를 선택하세요", "Y Success 또는 N Failure 버튼으로 결과를 저장합니다.", "Waiting for Y / N", 84, 3),
             "saving_result": ("결과를 저장하고 있습니다", "Grasp 결과와 paired human episode을 연결합니다.", "Saving metadata", 90, 3),
             "await_paired": ("Paired human episode을 입력하세요", "연결할 human episode 번호를 입력한 뒤 Save pair를 누르세요.", "Waiting for episode number", 94, 3),
@@ -765,6 +954,12 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
         can_start = state == "ready" and selected is not None
         self.start_button.setEnabled(can_start)
         self.stop_button.setEnabled(state in ("recording", "start_requested"))
+        can_toggle_teleop = (
+            self.args.arm == "xarm"
+            and state in ("ready", "start_requested", "recording")
+            and not self._teleop_state_request_inflight
+        )
+        self.teleop_pause_button.setEnabled(can_toggle_teleop)
         grasp_enabled = state == "await_grasp"
         self.success_button.setEnabled(grasp_enabled)
         self.failure_button.setEnabled(grasp_enabled)
@@ -807,6 +1002,31 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
                     self.fail_count = message[2]
                     self.success_metric.value.setText(str(self.success_count))
                     self.failure_metric.value.setText(str(self.fail_count))
+                elif kind == "teleop_state":
+                    target_state, succeeded, error = message[1:]
+                    self._teleop_state_request_inflight = False
+                    if succeeded:
+                        paused = target_state == 1
+                        self.teleop_pause_button.setChecked(paused)
+                        self.teleop_pause_button.setText(
+                            "P  ▶  Resume teleop · state 0"
+                            if paused
+                            else "P  ⏸  Pause teleop · state 1"
+                        )
+                        status = "paused" if paused else "running"
+                        self._append_log(
+                            f"xArm teleop {status} (state {target_state}).\n"
+                        )
+                    else:
+                        self.teleop_pause_button.setChecked(
+                            self.teleop_paused_event.is_set()
+                        )
+                        self._append_log(
+                            f"xArm state {target_state} failed: {error}\n"
+                        )
+                    self._set_runtime_state(self.runtime_state)
+                elif kind == "refresh_objects":
+                    self._refresh_mesh_names()
         except queue.Empty:
             pass
 
@@ -960,7 +1180,12 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
                 allegro_teleop_diagnostic_path=allegro_teleop_diagnostic_path,
                 use_vive=args.use_vive,
                 require_left_control=args.use_vive,
+                arm_command_enabled_provider=(
+                    lambda: not self.teleop_paused_event.is_set()
+                ),
             )
+            with self._capture_session_lock:
+                self._capture_session = cs
 
             if allegro_teleop_diagnostic_path is not None:
                 print(
@@ -972,9 +1197,17 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
                 from paradex.io.streamdeck_pedal import MiddlePedalState
 
                 pedal_state = MiddlePedalState()
-            bimanual_state_provider = (
-                pedal_state.get_state if pedal_state is not None else None
-            )
+            if args.hand_side == "bimanual":
+                def bimanual_state_provider():
+                    if self.teleop_paused_event.is_set():
+                        return 1
+                    return (
+                        pedal_state.get_state()
+                        if pedal_state is not None
+                        else 0
+                    )
+            else:
+                bimanual_state_provider = None
 
             if args.visualize_tactile_realtime:
                 if args.hand_side == "bimanual":
@@ -1091,17 +1324,30 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
                 print("Stopping recording session:", name)
                 cs.stop()
                 print("Stopped recording session:", name)
-
-                timestamp_path = os.path.join(
-                    episode_abs_path,
-                    "raw",
-                    "timestamps",
-                    "timestamp.npy",
+                self._post_state(
+                    "checking_integrity", name=name, episode=episode
                 )
-                if os.path.exists(timestamp_path):
-                    print(f"timestamp.npy length: {len(np.load(timestamp_path))}")
-                else:
-                    print(f"timestamp.npy not found at {timestamp_path}")
+                try:
+                    from paradex.dataset_acqusition.capture_integrity import (
+                        format_integrity_report,
+                        validate_immediate_capture,
+                    )
+
+                    integrity_report = validate_immediate_capture(
+                        episode_abs_path,
+                        arm_enabled=args.arm is not None,
+                        hand_enabled=args.hand is not None,
+                        bimanual=args.hand_side == "bimanual",
+                        teleop_enabled=args.device is not None,
+                        camera_enabled=camera_enabled,
+                        timestamp_expected=(camera_enabled and args.timestamp),
+                    )
+                    print(format_integrity_report(integrity_report))
+                except Exception as exc:
+                    print(
+                        f"Immediate integrity check could not run: {exc}",
+                        file=sys.stderr,
+                    )
 
                 self.save_event.clear()
                 self.stop_event.clear()
@@ -1153,6 +1399,7 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
                 self.grasp_yes_event.clear()
                 self.grasp_no_event.clear()
                 self.paired_episode_event.clear()
+                self.ui_queue.put(("refresh_objects",))
                 print(f"============== episode {episode} done =========================")
 
                 if state == "exit" or self.exit_event.is_set():
@@ -1167,6 +1414,8 @@ class CaptureRobotGui(QtWidgets.QMainWindow):
             self._post_state("error")
         finally:
             print("Exiting teleoperation recording.")
+            with self._capture_session_lock:
+                self._capture_session = None
             camera_preview = self.camera_preview
             self.camera_preview = None
             if camera_preview is not None:
@@ -1205,7 +1454,9 @@ def main():
     qt_app.setApplicationName("Robot Capture")
     qt_app.setFont(QtGui.QFont("Noto Sans CJK KR", 12))
     window = CaptureRobotGui(args)
-    window.showMaximized()
+    window.place_on_right_half()
+    window.show()
+    QtCore.QTimer.singleShot(0, window.place_on_right_half)
     window.start_worker()
     try:
         return qt_app.exec()

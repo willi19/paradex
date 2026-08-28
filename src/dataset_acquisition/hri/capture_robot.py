@@ -1,4 +1,5 @@
 import os
+import sys
 import argparse
 import atexit
 import json
@@ -381,12 +382,29 @@ try:
         print("Stopping recording session:", name)
         cs.stop()
         print("Stopped recording session:", name)
+        try:
+            from paradex.dataset_acqusition.capture_integrity import (
+                format_integrity_report,
+                validate_immediate_capture,
+            )
 
-        timestamp_npy_path = os.path.join(episode_abs_path, "raw", "timestamps", "timestamp.npy")
-        if os.path.exists(timestamp_npy_path):
-            print(f"timestamp.npy length: {len(np.load(timestamp_npy_path))}")
-        else:
-            print(f"timestamp.npy not found at {timestamp_npy_path}")
+            integrity_report = validate_immediate_capture(
+                episode_abs_path,
+                arm_enabled=args.arm is not None,
+                hand_enabled=args.hand is not None,
+                bimanual=args.hand_side == "bimanual",
+                teleop_enabled=args.device is not None,
+                camera_enabled=args.camera_mode != "off",
+                timestamp_expected=(
+                    args.camera_mode != "off" and args.timestamp
+                ),
+            )
+            print(format_integrity_report(integrity_report))
+        except Exception as exc:
+            print(
+                f"Immediate integrity check could not run: {exc}",
+                file=sys.stderr,
+            )
 
         save_event.clear()
         stop_event.clear()

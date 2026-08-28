@@ -135,6 +135,7 @@ class XArmControllerROS(Node):
         self.error_event = Event()
         self.connect_event = Event()
         self.position_control_event = Event()
+        self.motion_paused_event = Event()
 
         self.latest_qpos = None
         self.latest_qvel = None
@@ -248,6 +249,31 @@ class XArmControllerROS(Node):
         if self.servo_ready_settle_seconds:
             time.sleep(self.servo_ready_settle_seconds)
 
+    def set_motion_state(self, state):
+        """Set xArm motion state to running (0) or paused (1)."""
+
+        state = int(state)
+        if state not in (0, 1):
+            raise ValueError(f"xArm motion state must be 0 or 1, got {state}")
+
+        # Stop the local servo loop before asking the robot to pause.  Keep it
+        # stopped until a resume request has succeeded.
+        if state == 1:
+            self.motion_paused_event.set()
+
+        req = SetInt16.Request()
+        req.data = state
+        res = self._call_sync(self.cli_set_state, req)
+        if res is None or res.ret != 0:
+            if state == 1:
+                self.motion_paused_event.clear()
+            raise RuntimeError(
+                f"set_state({state}) failed: {None if res is None else res.ret}"
+            )
+
+        if state == 0:
+            self.motion_paused_event.clear()
+
     def _send_servo_aa(self, aa):
         req = MoveCartesian.Request()
         req.pose = np.asarray(aa, dtype=np.float32).tolist()
@@ -280,6 +306,10 @@ class XArmControllerROS(Node):
     def control_loop(self):
         while not self.exit_event.is_set():
             start_time = time.perf_counter()
+
+            if self.motion_paused_event.is_set():
+                time.sleep(1.0 / self.fps)
+                continue
 
             with self.lock:
                 action = self.action.copy()
